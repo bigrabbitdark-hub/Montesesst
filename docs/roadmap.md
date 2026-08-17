@@ -60,16 +60,15 @@ foi você quem pediu esse checkpoint antes de codificar.
 
 ---
 
-## 🔴 Risco crítico identificado: projeto sem controle de versão
+## ✅ Risco crítico resolvido: controle de versão
 
-`git status` confirma: **este diretório não é um repositório git.** Todo o
-trabalho de fundação (auth, RLS, employees/technicians/partners) está apenas
-no disco da VPS, sem histórico, sem backup, sem forma de reverter um erro.
+Resolvido em 2026-08-17: `git init` + primeiro commit (`b8eb5bc`), 57
+arquivos, `.gitignore` confirmado cobrindo `.env`/`node_modules` antes do
+commit (nenhum segredo versionado). Branch `main`.
 
-**Recomendo como primeira ação, antes de qualquer outra coisa:** rodar `git
-init`, criar um `.gitignore` (já existe um arquivo `.gitignore` na raiz — vou
-conferir se cobre `node_modules`, `.env`, etc.) e fazer o primeiro commit.
-Isso é barato agora e caro depois. Posso fazer isso já, só confirme.
+> Nota: a identidade do commit (`root@<hostname>`) foi auto-configurada pelo
+> git — ajustar depois com `git config --global user.name`/`user.email` se
+> quiser um autor mais descritivo; não é bloqueante.
 
 ---
 
@@ -94,13 +93,13 @@ nginx), autenticação multi-tenant com roles, RLS desde o início.
 | **Testes automatizados** | ❌ | Nenhum framework de teste instalado. Toda validação até agora foi manual via `curl`/`psql`. Isso vira dívida técnica rápido. |
 | **Seed de dados formal** | ❌ | Dados de teste (`Empresa A`, `Empresa B`, técnico/parceiro seed) foram criados manualmente via `psql` em sessões anteriores — não há script de seed versionado. |
 | Frontend com login funcional | ❌ | `frontend/src/app/` só tem o scaffold padrão do `create-next-app`, sem nenhuma tela nem chamada de API |
-| Controle de versão (git) | ❌ | Ver risco crítico acima |
+| Controle de versão (git) | ✅ | Ver seção "Risco crítico resolvido" acima |
 
 **Checkpoint formal da Fase 1:** ainda não pode ser dado como concluída — os
-4 itens marcados ❌ acima são a régua. Proponho fechá-los antes de avançar
+3 itens marcados ❌ acima são a régua. Proponho fechá-los antes de avançar
 para a Fase 2 (Site Institucional), nesta ordem de prioridade:
 
-1. `git init` + primeiro commit (risco de perda de trabalho — resolver primeiro)
+1. ~~`git init` + primeiro commit~~ — ✅ feito (ver seção acima).
 2. Framework de testes no backend (Jest, que já vem com o `@nestjs/cli`) +
    pelo menos os testes de RLS que hoje são manuais (isolamento cross-tenant,
    bloqueio de role, 401/403/404 corretos)
@@ -128,9 +127,10 @@ real com upload de documentos** — é aqui que a regra de object storage
 
 ## Fase 5 — Dashboard Técnico (não iniciada)
 
-Carteira de clientes, agenda, relatórios de inspeção. Você mencionou que vai
-anexar modelos de relatório de referência — ainda não recebi esse anexo
-nesta conversa; quando enviar, uso como base do schema de relatórios.
+Carteira de clientes, agenda, relatórios de inspeção. Modelos de relatório
+de referência (EPI e visita técnica) já recebidos e preservados em
+`docs/reference/modelos-relatorios-sst.md` — usar como base do schema
+quando esta fase começar.
 
 ## Fase 6 — Fluxo de visita presencial + Dashboard Parceiro (não iniciada)
 
@@ -145,10 +145,11 @@ confirmado como regra não-negociável).
 
 ## Próxima ação recomendada
 
-1. Você confirma (ou não) a escolha de NestJS.
-2. Eu rodo `git init` + primeiro commit — vou te mostrar o comando exato
-   antes, já que envolve todo o histórico do projeto.
-3. A gente fecha os 4 itens do checkpoint da Fase 1 (testes, seed, git,
-   login no frontend) antes de abrir a Fase 2.
+1. Você confirma (ou não) a escolha de NestJS — ainda pendente.
+2. Fechar os 3 itens restantes do checkpoint da Fase 1 (testes, seed, login
+   no frontend) antes de abrir a Fase 2.
+3. Em paralelo, ver `docs/vision.md` seção 9-10 — specs de LGPD e de
+   Escala/Auditoria/Confiabilidade ainda por criar, fora do fluxo de fases
+   numeradas do MVP mas com prioridade equivalente antes de vender.
 
 Me diz se quer seguir nessa ordem ou priorizar diferente.
