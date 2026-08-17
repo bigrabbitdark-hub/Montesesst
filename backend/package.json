@@ -1,0 +1,34 @@
+{
+  "name": "montese-backend",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "build": "nest build",
+    "start": "node dist/src/main.js",
+    "start:dev": "nest start --watch",
+    "db:migrate": "tsx db/migrate.ts"
+  },
+  "dependencies": {
+    "@nestjs/common": "^10.4.15",
+    "@nestjs/core": "^10.4.15",
+    "@nestjs/platform-express": "^10.4.15",
+    "@nestjs/jwt": "^10.2.0",
+    "@nestjs/passport": "^10.0.3",
+    "passport": "^0.7.0",
+    "passport-jwt": "^4.0.1",
+    "pg": "^8.13.1",
+    "bcrypt": "^5.1.1",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.1",
+    "tsx": "^4.19.2"
+  },
+  "devDependencies": {
+    "@nestjs/cli": "^10.4.9",
+    "@types/express": "^4.17.21",
+    "@types/node": "^20.17.9",
+    "@types/passport-jwt": "^4.0.1",
+    "@types/bcrypt": "^5.0.2",
+    "@types/pg": "^8.11.10",
+    "typescript": "^5.6.3"
+  }
+}
