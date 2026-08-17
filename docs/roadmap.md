@@ -90,29 +90,33 @@ nginx), autenticação multi-tenant com roles, RLS desde o início.
 | CRUD `employees` (isolado por tenant) | ✅ | `backend/src/employees/` |
 | CRUD `technicians`/`partners` + vínculo com tenant (`assign`/`unassign`) | ✅ | `backend/src/technicians/`, `backend/src/partners/` |
 | Nginx como proxy único de entrada (`/api` → backend, `/` → frontend) | ✅ | `nginx/conf.d/default.conf` |
-| **Testes automatizados** | ❌ | Nenhum framework de teste instalado. Toda validação até agora foi manual via `curl`/`psql`. Isso vira dívida técnica rápido. |
-| **Seed de dados formal** | ❌ | Dados de teste (`Empresa A`, `Empresa B`, técnico/parceiro seed) foram criados manualmente via `psql` em sessões anteriores — não há script de seed versionado. |
-| Frontend com login funcional | ❌ | `frontend/src/app/` só tem o scaffold padrão do `create-next-app`, sem nenhuma tela nem chamada de API |
+| Testes automatizados | ✅ | `backend/test/*.e2e-spec.ts` — Jest+Supertest contra o Postgres real (não mock), 8 testes: login válido/inválido, isolamento RLS cross-tenant, 404 (não 403) em acesso indevido por id, bloqueio de role com 403. Rodar: ver comando no fim desta seção. |
+| Seed de dados formal | ✅ | `backend/db/seed.ts` (`npm run db:seed`), idempotente via `ON CONFLICT`. Cria 2 empresas, 1 técnico, 1 parceiro, 3 employees sob domínio `@seed.montese.local` — não toca nos registros manuais legados (`Empresa A`/`Empresa B`/`Empresa Login Teste`, criados via psql antes deste script existir e ainda pendentes de limpeza manual). |
+| Frontend com login funcional | ✅ | `frontend/src/app/login/page.tsx` → `POST /api/auth/login` → token em `localStorage` → redireciona. Testado via `curl` de ponta a ponta (login real retornou JWT) e build de produção (`next build`) passou com type-check. **Não testado clicando num navegador real** — sem ferramenta de browser disponível neste ambiente; recomendo você abrir `http://<vps>/login` manualmente para confirmar antes de considerar 100% fechado. |
 | Controle de versão (git) | ✅ | Ver seção "Risco crítico resolvido" acima |
 
-**Checkpoint formal da Fase 1:** ainda não pode ser dado como concluída — os
-3 itens marcados ❌ acima são a régua. Proponho fechá-los antes de avançar
-para a Fase 2 (Site Institucional), nesta ordem de prioridade:
+**Checkpoint formal da Fase 1: concluído**, com uma ressalva — o login do
+frontend não foi clicado num navegador de verdade (ambiente sem browser
+disponível), só validado via `curl` e build. Peço que você confirme
+manualmente antes de considerarmos 100% fechado.
 
-1. ~~`git init` + primeiro commit~~ — ✅ feito (ver seção acima).
-2. Framework de testes no backend (Jest, que já vem com o `@nestjs/cli`) +
-   pelo menos os testes de RLS que hoje são manuais (isolamento cross-tenant,
-   bloqueio de role, 401/403/404 corretos)
-3. Script de seed versionado (`backend/db/seed.ts` ou similar) substituindo
-   os inserts manuais
-4. Login funcional no frontend (formulário → `/api/auth/login` → guarda o
-   token) — o mínimo pra Fase 2 não começar do zero
+Comando para rodar os testes automatizados localmente (contra o Postgres do
+`docker-compose.dev.yml` ou o de produção, dados de teste são sempre
+isolados e limpos ao final):
+
+```bash
+docker run --rm --network montese_internal -v "$(pwd)/backend:/app" -w /app \
+  -e DATABASE_URL="postgresql://<POSTGRES_APP_USER>:<POSTGRES_APP_PASSWORD>@postgres:5432/<POSTGRES_DB>" \
+  -e TEST_SUPERUSER_DATABASE_URL="postgresql://<POSTGRES_SUPERUSER>:<POSTGRES_SUPERUSER_PASSWORD>@postgres:5432/<POSTGRES_DB>" \
+  -e JWT_SECRET="<JWT_SECRET>" -e JWT_EXPIRES_IN="8h" -e NODE_ENV=test \
+  node:20-alpine sh -c "npm install && npm run test:e2e"
+```
 
 ## Fase 2 — Site institucional (não iniciada)
 
-Home, Planos, Notícias, Contato, Cadastro (CNPJ + e-mail), Login. Depende do
-login funcional do frontend (item 4 do checkpoint da Fase 1). Quando
-chegarmos aqui, ganha plano de implementação próprio.
+Home, Planos, Notícias, Contato, Cadastro (CNPJ + e-mail), Login. Login
+funcional do frontend já está pronto (Fase 1). Quando chegarmos aqui, ganha
+plano de implementação próprio.
 
 ## Fase 3 — Onboarding (não iniciada)
 

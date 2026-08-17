@@ -6,7 +6,9 @@
     "build": "nest build",
     "start": "node dist/src/main.js",
     "start:dev": "nest start --watch",
-    "db:migrate": "tsx db/migrate.ts"
+    "db:migrate": "tsx db/migrate.ts",
+    "db:seed": "tsx db/seed.ts",
+    "test:e2e": "jest --config ./test/jest-e2e.json --runInBand"
   },
   "dependencies": {
     "@nestjs/common": "^10.4.15",
@@ -24,11 +26,17 @@
   },
   "devDependencies": {
     "@nestjs/cli": "^10.4.9",
+    "@nestjs/testing": "^10.4.15",
     "@types/express": "^4.17.21",
     "@types/node": "^20.17.9",
     "@types/passport-jwt": "^4.0.1",
     "@types/bcrypt": "^5.0.2",
     "@types/pg": "^8.11.10",
+    "@types/jest": "^29.5.14",
+    "@types/supertest": "^6.0.2",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.2.5",
+    "supertest": "^7.0.0",
     "typescript": "^5.6.3"
   }
 }
