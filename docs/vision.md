@@ -261,8 +261,7 @@ employees, technicians, partners) com Row-Level Security. Apresente para
 minha aprovação antes de criar os arquivos.
 ```
 
-> **Nota:** a escolha de NestJS já foi feita e implementada no código antes
-> deste registro existir, mas — como o próprio `docs/roadmap.md` sinaliza —
-> **ainda sem confirmação formal explícita do fundador**, que era o
-> checkpoint pedido no briefing original acima. Essa confirmação segue
-> pendente (ver seção "Decisão pendente" em `docs/roadmap.md`).
+> **Nota:** a escolha de NestJS foi implementada no código antes deste
+> registro existir e, em 2026-08-18, formalmente confirmada pelo fundador —
+> fechando o checkpoint pedido no briefing original acima (ver seção
+> "Decisão confirmada" em `docs/roadmap.md`).

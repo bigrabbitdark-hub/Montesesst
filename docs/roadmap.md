@@ -18,12 +18,12 @@ fundador, reproduzido na íntegra).
 
 ---
 
-## ⚠️ Decisão pendente de confirmação: por que NestJS e não FastAPI
+## ✅ Decisão confirmada: NestJS (não FastAPI)
 
-O briefing pedia para essa escolha ser feita e justificada **antes** de
-codificar. Isso não aconteceu formalmente — o backend já foi construído em
-NestJS ao longo desta sessão, antes deste roadmap existir. Registro a
-justificativa agora, para você confirmar ou barrar:
+Confirmado explicitamente pelo fundador em 2026-08-18. O briefing pedia essa
+escolha justificada **antes** de codificar; isso não aconteceu formalmente
+na época (o backend já tinha sido construído em NestJS antes deste roadmap
+existir), mas a justificativa foi registrada e agora está confirmada:
 
 - **TypeScript ponta a ponta** com o Next.js do frontend — mesmo tipo de
   linguagem, dá pra compartilhar DTOs/tipos entre os dois lados depois.
@@ -41,9 +41,6 @@ justificativa agora, para você confirmar ou barrar:
 bibliotecas Python fortes (ex: processamento de PDF/OCR mais pesado), esse
 pedaço específico pode virar um microsserviço Python à parte — não precisa
 reescrever o backend inteiro.
-
-👉 **Preciso da sua confirmação explícita** de que ficamos com NestJS, já que
-foi você quem pediu esse checkpoint antes de codificar.
 
 ---
 
@@ -149,11 +146,9 @@ confirmado como regra não-negociável).
 
 ## Próxima ação recomendada
 
-1. Você confirma (ou não) a escolha de NestJS — ainda pendente.
-2. Fechar os 3 itens restantes do checkpoint da Fase 1 (testes, seed, login
-   no frontend) antes de abrir a Fase 2.
-3. Em paralelo, ver `docs/vision.md` seção 9-10 — specs de LGPD e de
+1. ~~Confirmar a escolha de NestJS~~ — ✅ confirmado em 2026-08-18.
+2. ~~Fechar os 3 itens do checkpoint da Fase 1~~ — ✅ feito.
+3. Ver `docs/vision.md` seção 9-10 — specs de LGPD e de
    Escala/Auditoria/Confiabilidade ainda por criar, fora do fluxo de fases
-   numeradas do MVP mas com prioridade equivalente antes de vender.
-
-Me diz se quer seguir nessa ordem ou priorizar diferente.
+   numeradas do MVP mas com prioridade equivalente antes de vender. Em
+   andamento, começando por LGPD.
