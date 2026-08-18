@@ -172,7 +172,7 @@ de pronto para vender, não um polimento pós-lançamento.
 | `docs/vision.md` | Este documento — por quê e para quem | ✅ |
 | `docs/roadmap.md` | Fases do MVP, status técnico item a item | ✅ (existente, mantido por fase) |
 | `docs/reference/modelos-relatorios-sst.md` | Modelos reais de relatório de EPI e visita técnica, referência para schema das Fases 4/5 | ✅ |
-| Spec de LGPD/Compliance | Mapeamento de dados pessoais, base legal, retenção, direitos do titular | 🔜 próximo ciclo |
+| [`docs/compliance/lgpd-compliance.md`](compliance/lgpd-compliance.md) | Mapeamento de dados pessoais, base legal, retenção, direitos do titular | ✅ |
 | Spec de Escala + Auditoria + Confiabilidade | Pooling, observabilidade, rate limiting, trilha de auditoria, backups/DR | 🔜 próximo ciclo |
 | Documentação técnica de arquitetura (ADRs) | Decisões técnicas registradas conforme tomadas (ex.: por que NestJS) | 🔜 a estruturar |
 

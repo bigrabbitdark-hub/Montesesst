@@ -148,7 +148,10 @@ confirmado como regra não-negociável).
 
 1. ~~Confirmar a escolha de NestJS~~ — ✅ confirmado em 2026-08-18.
 2. ~~Fechar os 3 itens do checkpoint da Fase 1~~ — ✅ feito.
-3. Ver `docs/vision.md` seção 9-10 — specs de LGPD e de
-   Escala/Auditoria/Confiabilidade ainda por criar, fora do fluxo de fases
-   numeradas do MVP mas com prioridade equivalente antes de vender. Em
-   andamento, começando por LGPD.
+3. ~~Spec de LGPD/Compliance~~ — ✅ escrita em
+   [`docs/compliance/lgpd-compliance.md`](compliance/lgpd-compliance.md)
+   (2026-08-18). Tem pendências marcadas ⚠️ que dependem de revisão
+   jurídica e da Fase 2 (site institucional) — não é um "fechado" absoluto,
+   é o estado possível sem advogado envolvido.
+4. Falta: spec de Escala + Auditoria + Confiabilidade
+   (`docs/vision.md` seção 9).
