@@ -14,6 +14,7 @@ import { AuditInterceptor } from './common/interceptors/audit.interceptor';
 import { RequestLoggingInterceptor } from './common/interceptors/request-logging.interceptor';
 import { RequestIdMiddleware } from './common/middleware/request-id.middleware';
 import { RedisModule } from './common/redis/redis.module';
+import { EmailModule } from './common/email/email.module';
 import { RateLimitGuard } from './common/rate-limit/rate-limit.guard';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 
@@ -21,6 +22,7 @@ import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
   imports: [
     DatabaseModule,
     RedisModule,
+    EmailModule,
     AuditModule,
     HealthModule,
     AuthModule,
