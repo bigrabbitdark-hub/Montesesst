@@ -109,11 +109,40 @@ docker run --rm --network montese_internal -v "$(pwd)/backend:/app" -w /app \
   node:20-alpine sh -c "npm install && npm run test:e2e"
 ```
 
-## Fase 2 — Site institucional (não iniciada)
+## Fase 2 — Site institucional: status
 
-Home, Planos, Notícias, Contato, Cadastro (CNPJ + e-mail), Login. Login
-funcional do frontend já está pronto (Fase 1). Quando chegarmos aqui, ganha
-plano de implementação próprio.
+**Escopo original:** Home, Planos, Notícias, Contato, Cadastro (CNPJ +
+e-mail), Login. Spec em
+[`docs/specs/fase-2-site-institucional.md`](specs/fase-2-site-institucional.md),
+plano de implementação em
+[`docs/plans/fase-2-site-institucional.md`](plans/fase-2-site-institucional.md).
+
+| Item | Status | Onde |
+|---|---|---|
+| Home | ✅ | `frontend/src/app/(site)/page.tsx` |
+| Planos | ✅ | `frontend/src/app/(site)/planos/page.tsx` — placeholder "fale conosco", valores ainda não definidos pelo fundador |
+| Notícias | ✅ | `frontend/src/app/(site)/noticias/`, posts em `frontend/content/noticias/*.mdx`, sem CMS |
+| Contato | ✅ | `frontend/src/app/(site)/contato/page.tsx` → `POST /contact` (backend) |
+| Cadastro | ✅ código, ⚠️ **não testado de ponta a ponta com e-mail real** | `frontend/src/app/(site)/cadastro/`, `POST /auth/register` + `GET /auth/confirm` (backend). Cria tenant/user pendentes, mas o link de confirmação só chega de verdade quando `RESEND_API_KEY` for configurada — ver pendência abaixo. |
+| Login | ✅ | `frontend/src/app/login/page.tsx` — restyle Tailwind, mesmo comportamento da Fase 1 |
+| Tailwind CSS + tema de marca | ✅ | Tailwind **v4** (não v3, que o plano original previa — adaptado durante a implementação) |
+
+**Pendência bloqueante pra fechar 100%:** `RESEND_API_KEY` (Resend) e
+`EMAIL_FROM`/`CONTACT_EMAIL_TO`/domínio verificado ainda não existem —
+confirmado ao vivo que cadastro e contato falham *honestamente* (500 com
+log real) em vez de fingir sucesso, mas ninguém recebeu um e-mail de
+verdade ainda. Assim que a credencial existir: configurar no `.env`,
+reiniciar o backend, e rodar um cadastro real de ponta a ponta recebendo o
+e-mail de confirmação — só aí a Fase 2 fecha 100%.
+
+**Bugs reais pegos durante a implementação** (não em revisão de código —
+só apareceram testando contra Postgres/Redis/Resend reais), detalhados nos
+commits desta fase: RLS bloqueando as novas funções `SECURITY DEFINER`
+(faltava `GRANT` de tabela, `BYPASSRLS` não é suficiente), rate limit de
+`/auth/register` dividindo contador com o limite global genérico, e o SDK
+do Resend não lançando em erro de API (retorna `{error}` na resposta,
+promise resolvida) — um envio que falhasse passaria como sucesso
+silencioso sem essa checagem.
 
 ## Fase 3 — Onboarding (não iniciada)
 
@@ -161,6 +190,11 @@ confirmado como regra não-negociável).
    doc tem sua lista própria de pendências pontuais (cópia externa de
    backup, alerta automático, painel visual) — nenhuma delas bloqueia a
    Fase 2.
-5. Próximo passo natural: Fase 2 (site institucional) — primeira fase do
-   MVP ainda não iniciada. Ganha plano de implementação próprio quando
-   começar, seguindo a prática deste projeto.
+5. ~~Fase 2 (site institucional)~~ — ✅ código completo em 2026-08-18 (ver
+   seção "Fase 2 — Site institucional: status" acima), ⚠️ pendência
+   bloqueante: `RESEND_API_KEY` ainda não existe, então o fluxo de cadastro
+   nunca foi confirmado com um e-mail real chegando de ponta a ponta.
+6. Assim que a credencial da Resend existir: configurar
+   `RESEND_API_KEY`/`EMAIL_FROM`/`CONTACT_EMAIL_TO` no `.env`, reiniciar o
+   backend, rodar um cadastro real e confirmar o e-mail de verdade — aí sim
+   a Fase 2 fecha 100% e o próximo passo natural é a Fase 3 (Onboarding).

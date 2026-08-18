@@ -178,19 +178,27 @@ de pronto para vender, não um polimento pós-lançamento.
 
 ## 11. Estado atual e próximos passos
 
-Snapshot rápido — detalhes completos e sempre atualizados em
-`docs/roadmap.md`:
+Snapshot rápido (atualizado em 2026-08-18) — detalhes completos e sempre
+atualizados em `docs/roadmap.md`:
 
-- Fase 1 (Fundação) está **parcialmente concluída**: Docker Compose,
-  schema com RLS, auth JWT e CRUDs core (`employees`, `technicians`,
-  `partners`) funcionam. Faltam testes automatizados, seed versionado,
-  login funcional no frontend, e o projeto **ainda não está sob controle de
-  versão (git)** — risco crítico já identificado no roadmap.
-- Fases 2 a 8 (site institucional, onboarding, dashboards, IA) ainda não
-  iniciadas.
-- As frentes de LGPD e Escala/Auditoria/Confiabilidade descritas na seção 9
-  ainda não têm spec própria — são o próximo passo natural após este
-  documento, na ordem que o fundador priorizar.
+- **Fase 1 (Fundação): concluída.** Docker Compose, RLS, auth JWT, CRUDs
+  core, testes automatizados, seed versionado, login no frontend, git.
+- **Fase 2 (Site institucional): código completo, com uma pendência
+  bloqueante.** Home, Planos, Notícias, Contato, Cadastro e Login prontos
+  e testados contra os containers reais — mas o fluxo de confirmação de
+  cadastro por e-mail nunca foi validado de ponta a ponta com um envio
+  real, porque a credencial da Resend (`RESEND_API_KEY`) ainda não existe.
+  Ver `docs/roadmap.md` seção "Fase 2 — Site institucional: status".
+- **Fases 3 a 8** (onboarding, dashboards, visita presencial, admin, IA)
+  ainda não iniciadas.
+- Os quatro compromissos de confiança da seção 9 já têm spec e
+  implementação: LGPD ([`docs/compliance/lgpd-compliance.md`](compliance/lgpd-compliance.md)),
+  auditoria (`backend/db/migrations/0002_audit_log.sql`), backup
+  ([`docs/operations/backups.md`](operations/backups.md)) e
+  pooling/observabilidade/rate limiting
+  ([`docs/operations/reliability.md`](operations/reliability.md)). Cada
+  um tem pendências pontuais próprias (nenhuma bloqueia as fases
+  seguintes).
 
 ---
 
