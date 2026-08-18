@@ -93,8 +93,15 @@ enviado ao backend como os 14 dígitos (formato da coluna
   `sub` = user id, expira em 48h. Sem tabela nova só pra isso — mesma
   filosofia de "não introduzir infra pra algo que um token assinado já
   resolve" já aplicada no projeto.
-- Envia e-mail de confirmação via `EmailService` (seção 5) com link
-  `https://<domínio>/cadastro/confirmar?token=<jwt>`.
+- Envia e-mail de confirmação via `EmailService` (seção 5) com link pro
+  **endpoint do backend** (não uma página do frontend — é o backend que
+  processa o token e decide o redirect, seção 4.3):
+  `<PUBLIC_APP_URL>/api/auth/confirm?token=<jwt>`. `PUBLIC_APP_URL` é uma
+  env var nova (URL pública de onde o nginx atende, ex.
+  `http://<ip-da-vps>` até existir domínio próprio) — necessária porque um
+  link de e-mail precisa ser absoluto, diferente do redirect da seção 4.3
+  (que pode ser relativo porque acontece dentro do navegador, já na origem
+  certa).
 - Resposta: `201` com mensagem genérica ("verifique seu e-mail"), sem
   devolver token de sessão — usuário só loga depois de confirmar.
 
@@ -199,3 +206,7 @@ fase (escopo focado, sem refatoração não relacionada).
       identidade visual. Uso uma aproximação razoável da paleta verde
       descrita até o arquivo real chegar.
 - [ ] **Valores da página de Planos** — placeholder até o fundador definir.
+- [ ] **`PUBLIC_APP_URL`** — precisa apontar pro endereço público real desta
+      VPS (IP ou domínio, quando existir) em produção, senão o link de
+      confirmação no e-mail fica quebrado. Fica com um default de
+      desenvolvimento (`http://localhost`) até lá.
