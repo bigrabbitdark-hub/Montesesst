@@ -30,7 +30,7 @@ describe('Rate limiting em /auth/login (e2e)', () => {
 
   it(`bloqueia com 429 depois de ${AUTH_LIMIT} tentativas de login com o mesmo e-mail`, async () => {
     const email = `rate-limit-teste-${randomUUID()}@teste.montese.local`;
-    usedKeys.push(`ratelimit:auth:::ffff:127.0.0.1:${email.toLowerCase()}`);
+    usedKeys.push(`ratelimit:AuthController.login:::ffff:127.0.0.1:${email.toLowerCase()}`);
 
     const responses: request.Response[] = [];
     for (let i = 0; i < AUTH_LIMIT + 1; i++) {
@@ -56,8 +56,8 @@ describe('Rate limiting em /auth/login (e2e)', () => {
     const emailA = `rate-limit-a-${randomUUID()}@teste.montese.local`;
     const emailB = `rate-limit-b-${randomUUID()}@teste.montese.local`;
     usedKeys.push(
-      `ratelimit:auth:::ffff:127.0.0.1:${emailA.toLowerCase()}`,
-      `ratelimit:auth:::ffff:127.0.0.1:${emailB.toLowerCase()}`,
+      `ratelimit:AuthController.login:::ffff:127.0.0.1:${emailA.toLowerCase()}`,
+      `ratelimit:AuthController.login:::ffff:127.0.0.1:${emailB.toLowerCase()}`,
     );
 
     for (let i = 0; i < AUTH_LIMIT; i++) {

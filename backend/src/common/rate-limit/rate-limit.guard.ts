@@ -40,10 +40,17 @@ export class RateLimitGuard implements CanActivate {
 
     const request = context.switchToHttp().getRequest();
     const ip = request.ip ?? 'unknown';
+    // Rotas com @RateLimit(...) próprio (ex: /auth/login, /auth/register)
+    // usam um contador isolado por rota — sem isso, duas rotas com limites
+    // diferentes (ex: 10/15min no login vs 5/hora no cadastro) dividiriam o
+    // mesmo contador Redis, e o limite mais apertado seria consumido por
+    // tráfego de outra rota qualquer do mesmo IP. Só a rota SEM decorator
+    // (limite global genérico) usa o contador compartilhado "global".
+    const routeScope = custom ? `${context.getClass().name}.${context.getHandler().name}` : 'global';
     const key =
       options.keyBy === 'ip-email'
-        ? `ratelimit:auth:${ip}:${String(request.body?.email ?? '').toLowerCase()}`
-        : `ratelimit:global:${ip}`;
+        ? `ratelimit:${routeScope}:${ip}:${String(request.body?.email ?? '').toLowerCase()}`
+        : `ratelimit:${routeScope}:${ip}`;
 
     // Falha do Redis não pode derrubar a aplicação inteira nem bloquear
     // login legítimo — se o contador falhar, deixa passar e loga o erro
