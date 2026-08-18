@@ -183,14 +183,16 @@ atualizados em `docs/roadmap.md`:
 
 - **Fase 1 (Fundação): concluída.** Docker Compose, RLS, auth JWT, CRUDs
   core, testes automatizados, seed versionado, login no frontend, git.
-- **Fase 2 (Site institucional): código completo, com uma pendência
-  bloqueante.** Home, Planos, Notícias, Contato, Cadastro e Login prontos
-  e testados contra os containers reais — mas o fluxo de confirmação de
-  cadastro por e-mail nunca foi validado de ponta a ponta com um envio
-  real, porque a credencial da Resend (`RESEND_API_KEY`) ainda não existe.
-  Ver `docs/roadmap.md` seção "Fase 2 — Site institucional: status".
+- **Fase 2 (Site institucional): concluída**, incluindo teste real de
+  ponta a ponta (cadastro → e-mail de confirmação real via Resend → link
+  clicado → conta ativada → login). Ver `docs/roadmap.md` seção "Fase 2 —
+  Site institucional: status". Pendência não-bloqueante: domínio próprio
+  ainda não verificado na Resend (usa domínio de sandbox por enquanto).
 - **Fases 3 a 8** (onboarding, dashboards, visita presencial, admin, IA)
-  ainda não iniciadas.
+  ainda não iniciadas. Uma peça nova fora do roadmap original entrou na
+  frente: integração de pagamento (Mercado Pago), pedida pelo fundador,
+  decomposta em cadastro próprio de técnico + planos/assinatura recorrente
+  — em brainstorming em 2026-08-18.
 - Os quatro compromissos de confiança da seção 9 já têm spec e
   implementação: LGPD ([`docs/compliance/lgpd-compliance.md`](compliance/lgpd-compliance.md)),
   auditoria (`backend/db/migrations/0002_audit_log.sql`), backup

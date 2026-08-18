@@ -123,17 +123,21 @@ plano de implementação em
 | Planos | ✅ | `frontend/src/app/(site)/planos/page.tsx` — placeholder "fale conosco", valores ainda não definidos pelo fundador |
 | Notícias | ✅ | `frontend/src/app/(site)/noticias/`, posts em `frontend/content/noticias/*.mdx`, sem CMS |
 | Contato | ✅ | `frontend/src/app/(site)/contato/page.tsx` → `POST /contact` (backend) |
-| Cadastro | ✅ código, ⚠️ **não testado de ponta a ponta com e-mail real** | `frontend/src/app/(site)/cadastro/`, `POST /auth/register` + `GET /auth/confirm` (backend). Cria tenant/user pendentes, mas o link de confirmação só chega de verdade quando `RESEND_API_KEY` for configurada — ver pendência abaixo. |
+| Cadastro | ✅ **testado de ponta a ponta com e-mail real** | `frontend/src/app/(site)/cadastro/`, `POST /auth/register` + `GET /auth/confirm` (backend). Testado em 2026-08-18: cadastro real → e-mail de confirmação recebido (domínio sandbox da Resend, `onboarding@resend.dev`) → link clicado → tenant/user ativados no banco → login funcionando. |
 | Login | ✅ | `frontend/src/app/login/page.tsx` — restyle Tailwind, mesmo comportamento da Fase 1 |
 | Tailwind CSS + tema de marca | ✅ | Tailwind **v4** (não v3, que o plano original previa — adaptado durante a implementação) |
 
-**Pendência bloqueante pra fechar 100%:** `RESEND_API_KEY` (Resend) e
-`EMAIL_FROM`/`CONTACT_EMAIL_TO`/domínio verificado ainda não existem —
-confirmado ao vivo que cadastro e contato falham *honestamente* (500 com
-log real) em vez de fingir sucesso, mas ninguém recebeu um e-mail de
-verdade ainda. Assim que a credencial existir: configurar no `.env`,
-reiniciar o backend, e rodar um cadastro real de ponta a ponta recebendo o
-e-mail de confirmação — só aí a Fase 2 fecha 100%.
+**Fase 2: fechada 100% em 2026-08-18.** `RESEND_API_KEY` configurada
+(conta do fundador na Resend), fluxo completo de cadastro→e-mail→confirmação→login
+confirmado com evidência real (query no banco mostrando `status='ativo'`,
+login retornando `201`).
+
+**Pendência não-bloqueante:** domínio próprio ainda não verificado na
+Resend — `EMAIL_FROM` usa o domínio de sandbox (`onboarding@resend.dev`),
+que só entrega pro e-mail da própria conta Resend. Pra enviar confirmação
+pra qualquer cliente real (não só o fundador), falta verificar um domínio
+próprio (registro DNS) e atualizar `EMAIL_FROM`/`CONTACT_EMAIL_TO` no
+`.env` desta VPS.
 
 **Bugs reais pegos durante a implementação** (não em revisão de código —
 só apareceram testando contra Postgres/Redis/Resend reais), detalhados nos
@@ -190,11 +194,12 @@ confirmado como regra não-negociável).
    doc tem sua lista própria de pendências pontuais (cópia externa de
    backup, alerta automático, painel visual) — nenhuma delas bloqueia a
    Fase 2.
-5. ~~Fase 2 (site institucional)~~ — ✅ código completo em 2026-08-18 (ver
-   seção "Fase 2 — Site institucional: status" acima), ⚠️ pendência
-   bloqueante: `RESEND_API_KEY` ainda não existe, então o fluxo de cadastro
-   nunca foi confirmado com um e-mail real chegando de ponta a ponta.
-6. Assim que a credencial da Resend existir: configurar
-   `RESEND_API_KEY`/`EMAIL_FROM`/`CONTACT_EMAIL_TO` no `.env`, reiniciar o
-   backend, rodar um cadastro real e confirmar o e-mail de verdade — aí sim
-   a Fase 2 fecha 100% e o próximo passo natural é a Fase 3 (Onboarding).
+5. ~~Fase 2 (site institucional)~~ — ✅ **fechada 100% em 2026-08-18**,
+   incluindo teste real de cadastro→e-mail→confirmação→login (ver seção
+   "Fase 2 — Site institucional: status" acima).
+6. Próximo passo natural do roadmap original seria a Fase 3 (Onboarding),
+   mas o fundador pediu pra priorizar uma peça nova fora do roadmap
+   original: integração de pagamento (Mercado Pago), decomposta em duas
+   sub-entregas — cadastro próprio de técnico (pré-requisito) e planos +
+   assinatura recorrente. Em brainstorming em 2026-08-18, spec da primeira
+   ainda não escrita.
