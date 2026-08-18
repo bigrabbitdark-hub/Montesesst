@@ -9,8 +9,8 @@ export class AuthController {
 
   @Public()
   @Post('login')
-  login(@Body() dto: LoginDto) {
-    return this.authService.login(dto.email, dto.password);
+  login(@Body() dto: LoginDto, @Req() req: any) {
+    return this.authService.login(dto.email, dto.password, req.ip);
   }
 
   @Get('me')
