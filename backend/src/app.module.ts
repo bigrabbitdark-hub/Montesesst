@@ -1,5 +1,5 @@
-import { Module } from '@nestjs/common';
-import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
+import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
+import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { DatabaseModule } from './common/database/database.module';
 import { AuditModule } from './common/audit/audit.module';
 import { HealthModule } from './health/health.module';
@@ -11,10 +11,16 @@ import { JwtAuthGuard } from './auth/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 import { TenantContextInterceptor } from './common/interceptors/tenant-context.interceptor';
 import { AuditInterceptor } from './common/interceptors/audit.interceptor';
+import { RequestLoggingInterceptor } from './common/interceptors/request-logging.interceptor';
+import { RequestIdMiddleware } from './common/middleware/request-id.middleware';
+import { RedisModule } from './common/redis/redis.module';
+import { RateLimitGuard } from './common/rate-limit/rate-limit.guard';
+import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 
 @Module({
   imports: [
     DatabaseModule,
+    RedisModule,
     AuditModule,
     HealthModule,
     AuthModule,
@@ -23,11 +29,19 @@ import { AuditInterceptor } from './common/interceptors/audit.interceptor';
     PartnersModule,
   ],
   providers: [
-    // Ordem importa: JwtAuthGuard popula request.user antes do RolesGuard checar @Roles().
+    // Ordem importa: RateLimitGuard barra abuso antes de qualquer auth;
+    // JwtAuthGuard popula request.user antes do RolesGuard checar @Roles().
+    { provide: APP_GUARD, useClass: RateLimitGuard },
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: RolesGuard },
     { provide: APP_INTERCEPTOR, useClass: TenantContextInterceptor },
     { provide: APP_INTERCEPTOR, useClass: AuditInterceptor },
+    { provide: APP_INTERCEPTOR, useClass: RequestLoggingInterceptor },
+    { provide: APP_FILTER, useClass: AllExceptionsFilter },
   ],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer.apply(RequestIdMiddleware).forRoutes('*');
+  }
+}

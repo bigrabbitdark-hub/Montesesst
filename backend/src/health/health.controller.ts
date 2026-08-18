@@ -1,8 +1,10 @@
 import { Controller, Get } from '@nestjs/common';
 import { DatabaseService } from '../common/database/database.service';
 import { Public } from '../common/decorators/public.decorator';
+import { SkipRateLimit } from '../common/rate-limit/rate-limit.decorator';
 
 @Public()
+@SkipRateLimit()
 @Controller('health')
 export class HealthController {
   constructor(private readonly db: DatabaseService) {}

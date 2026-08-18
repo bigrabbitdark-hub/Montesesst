@@ -153,5 +153,14 @@ confirmado como regra não-negociável).
    (2026-08-18). Tem pendências marcadas ⚠️ que dependem de revisão
    jurídica e da Fase 2 (site institucional) — não é um "fechado" absoluto,
    é o estado possível sem advogado envolvido.
-4. Falta: spec de Escala + Auditoria + Confiabilidade
-   (`docs/vision.md` seção 9).
+4. ~~Spec de Escala + Auditoria + Confiabilidade~~ — ✅ completa em
+   2026-08-18: backup ([`docs/operations/backups.md`](operations/backups.md)),
+   trilha de auditoria (`backend/db/migrations/0002_audit_log.sql`) e
+   pooling/observabilidade/rate limiting
+   ([`docs/operations/reliability.md`](operations/reliability.md)). Cada
+   doc tem sua lista própria de pendências pontuais (cópia externa de
+   backup, alerta automático, painel visual) — nenhuma delas bloqueia a
+   Fase 2.
+5. Próximo passo natural: Fase 2 (site institucional) — primeira fase do
+   MVP ainda não iniciada. Ganha plano de implementação próprio quando
+   começar, seguindo a prática deste projeto.

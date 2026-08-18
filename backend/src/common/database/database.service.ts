@@ -1,5 +1,6 @@
-import { Injectable, OnModuleDestroy } from '@nestjs/common';
+import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
 import { Pool, PoolClient } from 'pg';
+import { envInt } from '../env';
 
 export interface TenantContext {
   userId?: string;
@@ -12,9 +13,37 @@ export interface TenantContext {
 // popular app.user_id / app.tenant_id / app.role, que as policies de RLS leem.
 // SET LOCAL expira sozinho no COMMIT/ROLLBACK, então não vaza entre requests
 // mesmo com conexões sendo reaproveitadas pelo pool.
+//
+// Limites configuráveis por env (spec de Escala/Confiabilidade, ver
+// docs/operations/reliability.md) — valores padrão pensados pra "dezenas de
+// empresas" numa única VPS pequena, não centenas de conexões simultâneas:
+// - DB_POOL_MAX: nº máximo de conexões simultâneas ao Postgres.
+// - DB_POOL_IDLE_TIMEOUT_MS: fecha conexão ociosa do pool após esse tempo.
+// - DB_POOL_CONN_TIMEOUT_MS: tempo máximo esperando uma conexão livre do
+//   pool antes de falhar (evita requests pendurados indefinidamente sob
+//   sobrecarga).
+// - DB_STATEMENT_TIMEOUT_MS: aborta no próprio Postgres qualquer query que
+//   passe desse tempo (protege contra query presa/travando conexões do pool).
 @Injectable()
 export class DatabaseService implements OnModuleDestroy {
-  private readonly pool = new Pool({ connectionString: process.env.DATABASE_URL });
+  private readonly logger = new Logger(DatabaseService.name);
+
+  private readonly pool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    max: envInt('DB_POOL_MAX', 10),
+    idleTimeoutMillis: envInt('DB_POOL_IDLE_TIMEOUT_MS', 30_000),
+    connectionTimeoutMillis: envInt('DB_POOL_CONN_TIMEOUT_MS', 5_000),
+    statement_timeout: envInt('DB_STATEMENT_TIMEOUT_MS', 10_000),
+  });
+
+  constructor() {
+    // Sem este handler, um erro de conexão ociosa (ex: Postgres reiniciou,
+    // rede caiu por um instante) é um evento não tratado do Node e derruba
+    // o processo inteiro do backend — não só a query que falhou.
+    this.pool.on('error', (err) => {
+      this.logger.error('Erro em conexão ociosa do pool do Postgres', err.stack);
+    });
+  }
 
   async withTenantContext<T>(
     ctx: TenantContext,

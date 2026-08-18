@@ -1,9 +1,11 @@
 import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
+import { Logger } from '@nestjs/common';
 import { AppModule } from './app.module';
+import { JsonLoggerService } from './common/logging/json-logger.service';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, { logger: new JsonLoggerService() });
   // Backend nunca é exposto direto (sem "ports:" no docker-compose) — só
   // nginx alcança essa porta, então confiar no proxy é seguro aqui. Sem
   // isso, req.ip fica com o IP interno do container nginx em vez do
@@ -12,7 +14,7 @@ async function bootstrap() {
   app.enableCors();
   const port = process.env.PORT ? parseInt(process.env.PORT, 10) : 4000;
   await app.listen(port);
-  console.log(`Backend Montese SST rodando na porta ${port}`);
+  new Logger('Bootstrap').log(`Backend Montese SST rodando na porta ${port}`);
 }
 
 bootstrap();
