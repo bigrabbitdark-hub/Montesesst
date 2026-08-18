@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@plugin "@tailwindcss/typography";
 
 /*
  * Aproximação da paleta verde descrita em docs/vision.md seção 4 — os
