@@ -1,0 +1,20 @@
+@import "tailwindcss";
+
+/*
+ * Aproximação da paleta verde descrita em docs/vision.md seção 4 — os
+ * valores hexadecimais exatos dependem do arquivo-fonte de identidade
+ * visual, ainda não enviado (docs/specs/fase-2-site-institucional.md
+ * seção 9). Trocar aqui quando o arquivo chegar — é o único lugar que
+ * precisa mudar. Tailwind v4 gera as classes utilitárias (bg-brand-500,
+ * text-brand-700 etc.) automaticamente a partir destas variáveis --color-*.
+ */
+@theme {
+  --color-brand-50: #f0f9f4;
+  --color-brand-100: #dbf0e3;
+  --color-brand-300: #7fcf9d;
+  --color-brand-500: #2f9e5c;
+  --color-brand-700: #1f6e40;
+  --color-brand-900: #123822;
+
+  --font-sans: var(--font-poppins), system-ui, sans-serif;
+}
