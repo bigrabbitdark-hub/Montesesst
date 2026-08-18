@@ -173,7 +173,7 @@ de pronto para vender, não um polimento pós-lançamento.
 | `docs/roadmap.md` | Fases do MVP, status técnico item a item | ✅ (existente, mantido por fase) |
 | `docs/reference/modelos-relatorios-sst.md` | Modelos reais de relatório de EPI e visita técnica, referência para schema das Fases 4/5 | ✅ |
 | [`docs/compliance/lgpd-compliance.md`](compliance/lgpd-compliance.md) | Mapeamento de dados pessoais, base legal, retenção, direitos do titular | ✅ |
-| Spec de Escala + Auditoria + Confiabilidade | Pooling, observabilidade, rate limiting, trilha de auditoria, backups/DR | 🔜 próximo ciclo |
+| Spec de Escala + Auditoria + Confiabilidade | Pooling, observabilidade, rate limiting, trilha de auditoria, backups/DR | 🚧 em andamento — backup feito ([`docs/operations/backups.md`](operations/backups.md)), resto pendente |
 | Documentação técnica de arquitetura (ADRs) | Decisões técnicas registradas conforme tomadas (ex.: por que NestJS) | 🔜 a estruturar |
 
 ## 11. Estado atual e próximos passos
