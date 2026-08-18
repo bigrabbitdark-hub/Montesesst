@@ -4,6 +4,7 @@ import { DatabaseModule } from './common/database/database.module';
 import { AuditModule } from './common/audit/audit.module';
 import { HealthModule } from './health/health.module';
 import { AuthModule } from './auth/auth.module';
+import { ContactModule } from './contact/contact.module';
 import { EmployeesModule } from './employees/employees.module';
 import { TechniciansModule } from './technicians/technicians.module';
 import { PartnersModule } from './partners/partners.module';
@@ -26,6 +27,7 @@ import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
     AuditModule,
     HealthModule,
     AuthModule,
+    ContactModule,
     EmployeesModule,
     TechniciansModule,
     PartnersModule,
