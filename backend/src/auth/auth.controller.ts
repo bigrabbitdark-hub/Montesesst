@@ -4,6 +4,7 @@ import { AuthService } from './auth.service';
 import { RegistrationService } from './registration.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
+import { RegisterTechnicianDto } from './dto/register-technician.dto';
 import { Public } from '../common/decorators/public.decorator';
 import { RateLimit } from '../common/rate-limit/rate-limit.decorator';
 import { envInt } from '../common/env';
@@ -41,6 +42,27 @@ export class AuthController {
       fullName: dto.full_name,
       email: dto.email,
       password: dto.password,
+      ip: req.ip,
+    });
+    return { message: 'Cadastro recebido — verifique seu e-mail para confirmar.' };
+  }
+
+  @Public()
+  @RateLimit({
+    limit: envInt('REGISTER_RATE_LIMIT_MAX', 5),
+    windowSeconds: envInt('REGISTER_RATE_LIMIT_WINDOW_SECONDS', 3600),
+    keyBy: 'ip',
+  })
+  @UsePipes(new ValidationPipe({ transform: true, whitelist: true, forbidNonWhitelisted: true }))
+  @Post('register-technician')
+  async registerTechnician(@Body() dto: RegisterTechnicianDto, @Req() req: any) {
+    await this.registrationService.registerTechnician({
+      email: dto.email,
+      password: dto.password,
+      fullName: dto.full_name,
+      phone: dto.phone,
+      registrationNumber: dto.registration_number,
+      specialization: dto.specialization,
       ip: req.ip,
     });
     return { message: 'Cadastro recebido — verifique seu e-mail para confirmar.' };

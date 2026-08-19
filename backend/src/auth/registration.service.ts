@@ -16,6 +16,16 @@ export interface RegisterInput {
   ip?: string;
 }
 
+export interface RegisterTechnicianInput {
+  email: string;
+  password: string;
+  fullName: string;
+  phone?: string;
+  registrationNumber?: string;
+  specialization?: string;
+  ip?: string;
+}
+
 // Claim distinto de token de sessão — garante que um token de confirmação
 // nunca seja confundido com outro tipo de JWT assinado com o mesmo
 // JWT_SECRET.
@@ -58,6 +68,48 @@ export class RegistrationService {
       ipAddress: input.ip,
     });
 
+    await this.sendConfirmationEmail(userId, input.email, input.fullName);
+  }
+
+  async registerTechnician(input: RegisterTechnicianInput): Promise<void> {
+    const passwordHash = await bcrypt.hash(input.password, 10);
+
+    const userId = await this.db.withoutTenantContext(async (client) => {
+      try {
+        const result = await client.query<{ user_id: string; technician_id: string }>(
+          'SELECT * FROM auth_register_technician($1, $2, $3, $4, $5, $6)',
+          [
+            input.email,
+            passwordHash,
+            input.fullName,
+            input.phone ?? null,
+            input.registrationNumber ?? null,
+            input.specialization ?? null,
+          ],
+        );
+        return result.rows[0].user_id;
+      } catch (err) {
+        mapPgError(err);
+      }
+    });
+
+    void this.audit.log({
+      actorUserId: userId,
+      actorRole: 'tecnico',
+      actorTenantId: null,
+      action: 'register_technician',
+      resourceType: 'auth',
+      resourceId: userId,
+      method: 'POST',
+      path: '/auth/register-technician',
+      statusCode: 201,
+      ipAddress: input.ip,
+    });
+
+    await this.sendConfirmationEmail(userId, input.email, input.fullName);
+  }
+
+  private async sendConfirmationEmail(userId: string, email: string, fullName: string): Promise<void> {
     const token = this.jwt.sign(
       { sub: userId, purpose: CONFIRMATION_TOKEN_PURPOSE },
       { expiresIn: '48h' },
@@ -65,9 +117,9 @@ export class RegistrationService {
     const confirmUrl = `${process.env.PUBLIC_APP_URL}/api/auth/confirm?token=${token}`;
 
     await this.email.send({
-      to: input.email,
+      to: email,
       subject: 'Confirme seu cadastro — Montese SST',
-      html: `<p>Olá, ${escapeHtml(input.fullName)}!</p>
+      html: `<p>Olá, ${escapeHtml(fullName)}!</p>
 <p>Confirme seu cadastro no Montese SST clicando no link abaixo (válido por 48 horas):</p>
 <p><a href="${confirmUrl}">Confirmar cadastro</a></p>`,
     });
@@ -83,7 +135,7 @@ export class RegistrationService {
     if (payload.purpose !== CONFIRMATION_TOKEN_PURPOSE) return 'erro';
 
     const result = await this.db.withoutTenantContext((client) =>
-      client.query<{ user_id: string; tenant_id: string | null }>(
+      client.query<{ user_id: string; tenant_id: string | null; role: string }>(
         'SELECT * FROM auth_confirm_email($1)',
         [payload.sub],
       ),
@@ -93,7 +145,7 @@ export class RegistrationService {
 
     void this.audit.log({
       actorUserId: activated.user_id,
-      actorRole: 'empresa',
+      actorRole: activated.role,
       actorTenantId: activated.tenant_id,
       action: 'email_confirmed',
       resourceType: 'auth',
