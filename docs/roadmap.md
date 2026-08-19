@@ -184,6 +184,66 @@ com um teste real rodado contra o código vulnerável antes da correção
 o app não tem `ValidationPipe` global nem `class-validator` nos DTOs de
 update existentes — hardening maior, fora do escopo deste fix urgente.
 
+## Planos + Assinaturas (Mercado Pago): status
+
+**Fora do roadmap original das 8 fases** — sub-projeto B da iniciativa de
+pagamento (Mercado Pago) pedida pelo fundador, decomposto em brainstorming
+de 2026-08-18/19 (sub-projeto A, cadastro próprio de técnico, era o
+pré-requisito e foi fechado antes). Spec em
+[`docs/specs/planos-assinaturas.md`](specs/planos-assinaturas.md), plano em
+[`docs/plans/planos-assinaturas.md`](plans/planos-assinaturas.md).
+
+**Implementação técnica fechada em 2026-08-19** — todas as 7 tasks de
+código concluídas e revisadas (SDD, uma revisão por task, sem findings
+Critical/Important pendentes):
+
+| Task | Entrega | Status |
+|---|---|---|
+| 1 | Migration `plans`/`subscriptions` + função `payments_update_subscription_status` (SECURITY DEFINER) | ✅ |
+| 2 | `MercadoPagoService` + `GET /api/plans?audience=` | ✅ |
+| 3 | `POST /api/subscriptions` (cria preapproval real no Mercado Pago) | ✅ |
+| 4 | Webhook `POST /api/payments/mercadopago/webhook` (validação HMAC + fonte de verdade real) | ✅ |
+| 5 | Página `/planos` (empresa) — planos reais + botão Assinar | ✅ |
+| 6 | Página `/tecnico/planos` — planos reais + botão Assinar | ✅ |
+| 7 | Página de resultado `/planos/assinatura-concluida` | ✅ |
+| 8 | Deploy real + migração em produção + smoke test | ✅ (parcial — ver pendência abaixo) |
+
+**Deploy e smoke test real (2026-08-19), evidência real:**
+- `docker compose build backend frontend` + `up -d` — `montese_backend` e
+  `montese_frontend` `Up`.
+- Migração `0006_plans_subscriptions.sql` já aplicada (confirmado
+  `[skip]` contra o Postgres real desta VPS).
+- Todas as páginas retornando `200`: `/`, `/planos`, `/tecnico/planos`,
+  `/planos/assinatura-concluida`, `/cadastro`, `/tecnico/cadastro`,
+  `/login`.
+- `GET /api/plans` retorna os 5 planos reais (4 `empresa` + 1 `tecnico`).
+
+**Pendência bloqueante — fase NÃO fechada 100%:** o teste real de ponta a
+ponta (assinar com cartão de teste do Mercado Pago, confirmar que o
+webhook chega e ativa a assinatura) não pôde acontecer. Dois motivos,
+ambos exigem ação do fundador:
+
+1. **`MERCADOPAGO_WEBHOOK_SECRET` não existe** — só é gerado depois que o
+   fundador configurar o webhook no painel do Mercado Pago (Suas
+   integrações → aplicação de teste → Webhooks → apontar pra
+   `http://187.127.54.72/api/payments/mercadopago/webhook`, evento
+   "Assinaturas"). Sem isso, a validação HMAC do endpoint (já
+   implementada e testada com segredo sintético) nunca vê tráfego real.
+2. **`PUBLIC_APP_URL` de produção (`http://187.127.54.72`) provavelmente
+   não é aceito pelo Mercado Pago como `back_url`** — descoberto durante
+   as Tasks 3 e 5: mesmo um `back_url` sobre `http://` com domínio real
+   (não IP) retornou erro inesperado do Mercado Pago nos testes; um IP
+   puro sem HTTPS tem alta chance de ser rejeitado do mesmo jeito. Isso
+   bloqueia a criação de uma assinatura real em produção, não só o
+   Step 5 do smoke test — **é preciso um domínio real + HTTPS/TLS
+   configurado no Nginx desta VPS antes que qualquer cliente real
+   consiga assinar um plano em produção.** Fora do escopo deste
+   sub-projeto (infra, não código de aplicação).
+
+Nenhuma das duas pendências foi "resolvida escondendo o problema" — ambas
+ficam registradas aqui como bloqueio real, mesmo critério já usado no
+teste de e-mail (Fase 2) e no cadastro de técnico.
+
 ## Fase 3 — Onboarding (não iniciada)
 
 Wizard de configuração inicial da empresa após primeiro login. Depende da
