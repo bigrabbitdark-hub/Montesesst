@@ -33,6 +33,14 @@ function randomDigits(length: number): string {
   return out;
 }
 
+// Remove acentos/diacríticos (ex.: "Técnico" -> "Tecnico") antes de gerar o
+// e-mail de fixture. Sem isso, prefixos acentuados produzem e-mails que
+// APIs externas estritas (ex.: Mercado Pago) rejeitam como payer_email
+// inválido.
+function stripDiacritics(value: string): string {
+  return value.normalize('NFD').replace(/[̀-ͯ]/g, '');
+}
+
 export class TestDb {
   private readonly client: Client;
   private tenantIds: string[] = [];
@@ -67,7 +75,7 @@ export class TestDb {
     const tenantId = tenantResult.rows[0].id;
     this.tenantIds.push(tenantId);
 
-    const email = `${namePrefix.toLowerCase().replace(/\s+/g, '-')}-${suffix}@teste.montese.local`;
+    const email = `${stripDiacritics(namePrefix).toLowerCase().replace(/\s+/g, '-')}-${suffix}@teste.montese.local`;
     const userResult = await this.client.query<{ id: string }>(
       `INSERT INTO users (tenant_id, role, email, password_hash, full_name, status)
        VALUES ($1, 'empresa', $2, $3, $4, 'ativo') RETURNING id`,
@@ -93,7 +101,7 @@ export class TestDb {
   async createUserWithRole(role: 'tecnico' | 'parceiro' | 'admin', namePrefix: string): Promise<TestUserFixture> {
     const passwordHash = await bcrypt.hash(TEST_PASSWORD, 10);
     const suffix = randomUUID().slice(0, 8);
-    const email = `${namePrefix.toLowerCase().replace(/\s+/g, '-')}-${suffix}@teste.montese.local`;
+    const email = `${stripDiacritics(namePrefix).toLowerCase().replace(/\s+/g, '-')}-${suffix}@teste.montese.local`;
 
     const result = await this.client.query<{ id: string }>(
       `INSERT INTO users (tenant_id, role, email, password_hash, full_name, status)
