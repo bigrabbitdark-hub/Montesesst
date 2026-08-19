@@ -148,6 +148,27 @@ do Resend não lançando em erro de API (retorna `{error}` na resposta,
 promise resolvida) — um envio que falhasse passaria como sucesso
 silencioso sem essa checagem.
 
+## Cadastro próprio de técnico: status
+
+**Fora do roadmap original das 8 fases** — sub-projeto A da iniciativa de
+pagamento (Mercado Pago) pedida pelo fundador, decomposta em
+brainstorming de 2026-08-18 (pré-requisito pro sub-projeto B, planos +
+assinatura, spec ainda não escrita). Spec em
+[`docs/specs/cadastro-tecnico.md`](specs/cadastro-tecnico.md), plano em
+[`docs/plans/cadastro-tecnico.md`](plans/cadastro-tecnico.md).
+
+**Fechado 100% em 2026-08-19**, incluindo teste real de ponta a ponta:
+cadastro de técnico via `/tecnico/cadastro` → e-mail de confirmação real
+recebido (domínio sandbox `onboarding@resend.dev`) → link clicado →
+`users`+`technicians` ativados no banco (confirmado via query real) →
+login retornando `201`. Dado de teste removido do banco de produção
+depois da validação.
+
+Implementado via `POST /auth/register-technician` + generalização do
+`GET /auth/confirm` já existente (Fase 2) — a mesma rota de confirmação
+agora ativa `tenants` (empresa) ou `technicians` (técnico) conforme o
+`role` do usuário, sem duplicar a lógica de token/idempotência.
+
 ## Fase 3 — Onboarding (não iniciada)
 
 Wizard de configuração inicial da empresa após primeiro login. Depende da
