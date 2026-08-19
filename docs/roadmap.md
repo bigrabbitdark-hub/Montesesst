@@ -169,6 +169,21 @@ Implementado via `POST /auth/register-technician` + generalização do
 agora ativa `tenants` (empresa) ou `technicians` (técnico) conforme o
 `role` do usuário, sem duplicar a lógica de token/idempotência.
 
+**Vulnerabilidade real encontrada e corrigida na revisão final desta
+entrega** (não uma falha desta feature em si — pré-existente desde a
+Fase 1, mas exposta de forma nova por abrir autocadastro anônimo de
+técnico): `PATCH /technicians/:id`, `/employees/:id` e `/partners/:id`
+montavam o `UPDATE ... SET` a partir das chaves do corpo da requisição
+sem allowlist — uma chave manipulada virava injeção de SQL no nome da
+coluna. Como `tenants` não tem RLS própria, isso vazava CNPJ/nome/plano
+de todas as empresas clientes através de um `RETURNING *` malicioso.
+Corrigido com allowlist explícita de colunas
+(`backend/src/common/safe-update.util.ts`) nos três services — provado
+com um teste real rodado contra o código vulnerável antes da correção
+(vazou os CNPJs de verdade) e depois (bloqueado). Pendência registrada:
+o app não tem `ValidationPipe` global nem `class-validator` nos DTOs de
+update existentes — hardening maior, fora do escopo deste fix urgente.
+
 ## Fase 3 — Onboarding (não iniciada)
 
 Wizard de configuração inicial da empresa após primeiro login. Depende da
