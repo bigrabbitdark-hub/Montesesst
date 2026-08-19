@@ -70,8 +70,8 @@ export class AuthController {
 
   @Public()
   @Get('confirm')
-  async confirm(@Query('token') token: string, @Res() res: Response) {
-    const status = await this.registrationService.confirm(token);
+  async confirm(@Query('token') token: string, @Req() req: any, @Res() res: Response) {
+    const status = await this.registrationService.confirm(token, req.ip);
     res.redirect(302, `/cadastro/confirmado?status=${status}`);
   }
 

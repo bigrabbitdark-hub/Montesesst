@@ -125,7 +125,7 @@ export class RegistrationService {
     });
   }
 
-  async confirm(token: string): Promise<'ok' | 'erro'> {
+  async confirm(token: string, ip?: string): Promise<'ok' | 'erro'> {
     let payload: { sub: string; purpose: string };
     try {
       payload = this.jwt.verify(token);
@@ -153,6 +153,7 @@ export class RegistrationService {
       method: 'GET',
       path: '/auth/confirm',
       statusCode: 200,
+      ipAddress: ip,
     });
 
     return 'ok';

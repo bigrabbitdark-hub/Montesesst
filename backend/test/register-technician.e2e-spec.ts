@@ -144,4 +144,18 @@ describe('Cadastro de técnico — POST /auth/register-technician (e2e)', () => 
     });
     expect(res.status).toBe(429);
   });
+
+  it('rejeita senha curta com 400 e não dispara e-mail', async () => {
+    const email = `senha-curta-${randomUUID()}@teste.montese.local`;
+    createdEmails.push(email);
+
+    const res = await request(app.getHttpServer()).post('/auth/register-technician').send({
+      email,
+      password: 'abc',
+      full_name: 'Técnico Senha Curta',
+    });
+
+    expect(res.status).toBe(400);
+    expect(fakeEmail.send).not.toHaveBeenCalled();
+  });
 });
