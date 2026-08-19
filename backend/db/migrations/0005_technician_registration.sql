@@ -34,10 +34,9 @@ REVOKE ALL ON FUNCTION auth_register_technician(TEXT, TEXT, TEXT, TEXT, TEXT, TE
 GRANT EXECUTE ON FUNCTION auth_register_technician(TEXT, TEXT, TEXT, TEXT, TEXT, TEXT) TO montese_app;
 
 -- montese_auth_bypass já tinha SELECT em technicians (0001_init.sql) —
--- falta INSERT (usado aqui) e UPDATE (usado pela versão generalizada de
--- auth_confirm_email, abaixo). SELECT também é necessário pra RETURNING.
-GRANT INSERT, UPDATE, SELECT ON technicians TO montese_auth_bypass;
-GRANT INSERT, SELECT ON users TO montese_auth_bypass;
+-- falta INSERT (usado para registrar técnico) e UPDATE (usado pela versão
+-- generalizada de auth_confirm_email, abaixo).
+GRANT INSERT, UPDATE ON technicians TO montese_auth_bypass;
 
 -- auth_confirm_email generalizada: a versão da Fase 2 (0004) só ativava
 -- 'empresa' (WHERE role = 'empresa' explícito) e devolvia
