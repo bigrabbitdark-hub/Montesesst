@@ -1,4 +1,4 @@
-import { INestApplication } from '@nestjs/common';
+import { INestApplication, Logger } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { createHmac } from 'crypto';
@@ -117,5 +117,41 @@ describe('POST /payments/mercadopago/webhook (e2e)', () => {
 
     expect(res.status).toBe(201);
     expect(fakeMercadoPago.getPreapproval).not.toHaveBeenCalled();
+  });
+
+  it('loga um warning (mas ainda responde 200/ok) quando o preapproval_id não corresponde a nenhuma assinatura', async () => {
+    // Finding 3 da revisão final: payments_update_subscription_status
+    // devolve zero linhas pra um preapproval_id desconhecido/desatualizado
+    // — antes disso era descartado silenciosamente, sem log nenhum.
+    const warnSpy = jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+
+    fakeMercadoPago.getPreapproval.mockResolvedValueOnce({
+      id: 'preapproval-sem-assinatura-correspondente',
+      status: 'authorized',
+    });
+
+    const ts = String(Date.now());
+    const requestId = 'req-sem-match';
+    const signature = buildSignature(
+      'preapproval-sem-assinatura-correspondente',
+      requestId,
+      ts,
+      WEBHOOK_SECRET,
+    );
+
+    const res = await request(app.getHttpServer())
+      .post('/payments/mercadopago/webhook')
+      .query({ 'data.id': 'preapproval-sem-assinatura-correspondente', type: 'subscription_preapproval' })
+      .set('x-signature', signature)
+      .set('x-request-id', requestId)
+      .send({});
+
+    expect(res.status).toBe(201);
+    expect(res.body).toEqual({ message: 'ok' });
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining('preapproval-sem-assinatura-correspondente'),
+    );
+
+    warnSpy.mockRestore();
   });
 });
