@@ -1,5 +1,17 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PoolClient } from 'pg';
+import { buildSafeSetClause } from '../common/safe-update.util';
+
+// Únicas colunas que update() pode alterar — nunca confiar nas chaves do
+// body pra montar o SET (ver common/safe-update.util.ts).
+const UPDATABLE_FIELDS = [
+  'full_name',
+  'cpf',
+  'birth_date',
+  'position',
+  'admission_date',
+  'status',
+] as const;
 
 export interface Employee {
   id: string;
@@ -65,11 +77,8 @@ export class EmployeesService {
   }
 
   async update(client: PoolClient, id: string, data: UpdateEmployeeData): Promise<Employee> {
-    const entries = Object.entries(data).filter(([, value]) => value !== undefined);
-    if (entries.length === 0) return this.findOne(client, id);
-
-    const setClauses = entries.map(([field], idx) => `${field} = $${idx + 2}`);
-    const values = entries.map(([, value]) => value);
+    const { setClauses, values } = buildSafeSetClause(data, UPDATABLE_FIELDS, 2);
+    if (setClauses.length === 0) return this.findOne(client, id);
 
     const result = await client.query<Employee>(
       `UPDATE employees SET ${setClauses.join(', ')} WHERE id = $1 RETURNING *`,

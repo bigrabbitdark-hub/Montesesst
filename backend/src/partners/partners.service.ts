@@ -2,6 +2,11 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { PoolClient } from 'pg';
 import * as bcrypt from 'bcrypt';
 import { mapPgError } from '../common/pg-error.util';
+import { buildSafeSetClause } from '../common/safe-update.util';
+
+// Únicas colunas que update() pode alterar — nunca confiar nas chaves do
+// body pra montar o SET (ver common/safe-update.util.ts).
+const UPDATABLE_FIELDS = ['service_region', 'status'] as const;
 
 export interface Partner {
   id: string;
@@ -58,11 +63,8 @@ export class PartnersService {
   }
 
   async update(client: PoolClient, id: string, data: UpdatePartnerData): Promise<Partner> {
-    const entries = Object.entries(data).filter(([, value]) => value !== undefined);
-    if (entries.length === 0) return this.findOne(client, id);
-
-    const setClauses = entries.map(([field], idx) => `${field} = $${idx + 2}`);
-    const values = entries.map(([, value]) => value);
+    const { setClauses, values } = buildSafeSetClause(data, UPDATABLE_FIELDS, 2);
+    if (setClauses.length === 0) return this.findOne(client, id);
 
     const result = await client.query<Partner>(
       `UPDATE partners SET ${setClauses.join(', ')} WHERE id = $1 RETURNING *`,
