@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PoolClient } from 'pg';
 import { buildSafeSetClause } from '../common/safe-update.util';
 
@@ -10,6 +10,7 @@ const UPDATABLE_FIELDS = [
   'birth_date',
   'position',
   'admission_date',
+  'company_unit_id',
   'status',
 ] as const;
 
@@ -22,6 +23,7 @@ export interface Employee {
   birth_date: string | null;
   position: string | null;
   admission_date: string | null;
+  company_unit_id: string | null;
   status: string;
   created_at: string;
   updated_at: string;
@@ -33,6 +35,7 @@ interface CreateEmployeeData {
   birth_date?: string;
   position?: string;
   admission_date?: string;
+  company_unit_id?: string;
 }
 
 interface UpdateEmployeeData {
@@ -41,15 +44,30 @@ interface UpdateEmployeeData {
   birth_date?: string;
   position?: string;
   admission_date?: string;
+  company_unit_id?: string;
   status?: string;
 }
 
 @Injectable()
 export class EmployeesService {
+  // Uma FK do Postgres sozinha não garante que a filial referenciada
+  // pertence ao mesmo tenant do funcionário (checagem de FK roda sem
+  // filtrar pela RLS da tabela referenciada) — por isso esta checagem
+  // explícita roda dentro do mesmo client com contexto de tenant já
+  // setado: a query já vem filtrada pela RLS de company_units sozinha,
+  // sem precisar repetir tenant_id aqui.
+  private async assertCompanyUnitBelongsToTenant(client: PoolClient, companyUnitId: string): Promise<void> {
+    const result = await client.query('SELECT id FROM company_units WHERE id = $1', [companyUnitId]);
+    if (result.rowCount === 0) throw new BadRequestException('Filial não encontrada');
+  }
+
   async create(client: PoolClient, tenantId: string, data: CreateEmployeeData): Promise<Employee> {
+    if (data.company_unit_id) {
+      await this.assertCompanyUnitBelongsToTenant(client, data.company_unit_id);
+    }
     const result = await client.query<Employee>(
-      `INSERT INTO employees (tenant_id, full_name, cpf, birth_date, position, admission_date)
-       VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+      `INSERT INTO employees (tenant_id, full_name, cpf, birth_date, position, admission_date, company_unit_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
       [
         tenantId,
         data.full_name,
@@ -57,6 +75,7 @@ export class EmployeesService {
         data.birth_date ?? null,
         data.position ?? null,
         data.admission_date ?? null,
+        data.company_unit_id ?? null,
       ],
     );
     return result.rows[0];
@@ -77,6 +96,9 @@ export class EmployeesService {
   }
 
   async update(client: PoolClient, id: string, data: UpdateEmployeeData): Promise<Employee> {
+    if (data.company_unit_id) {
+      await this.assertCompanyUnitBelongsToTenant(client, data.company_unit_id);
+    }
     const { setClauses, values } = buildSafeSetClause(data, UPDATABLE_FIELDS, 2);
     if (setClauses.length === 0) return this.findOne(client, id);
 

@@ -22,6 +22,7 @@ export class EmployeesController {
         birth_date: dto.birth_date,
         position: dto.position,
         admission_date: dto.admission_date,
+        company_unit_id: dto.company_unit_id,
       }),
     );
   }

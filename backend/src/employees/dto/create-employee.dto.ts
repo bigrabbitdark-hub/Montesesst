@@ -4,6 +4,7 @@ export class CreateEmployeeDto {
   birth_date?: string;
   position?: string;
   admission_date?: string;
+  company_unit_id?: string;
   // Só é lido quando quem cria é role admin (empresa usa sempre o próprio tenant_id do token).
   tenant_id?: string;
 }
