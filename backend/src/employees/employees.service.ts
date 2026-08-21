@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PoolClient } from 'pg';
 import { buildSafeSetClause } from '../common/safe-update.util';
+import { parseEmployeesCsv } from './csv-import.util';
 
 // Únicas colunas que update() pode alterar — nunca confiar nas chaves do
 // body pra montar o SET (ver common/safe-update.util.ts).
@@ -46,6 +47,16 @@ interface UpdateEmployeeData {
   admission_date?: string;
   company_unit_id?: string;
   status?: string;
+}
+
+export interface ImportRowError {
+  linha: number;
+  motivo: string;
+}
+
+export interface ImportResult {
+  importados: number;
+  erros: ImportRowError[];
 }
 
 @Injectable()
@@ -114,5 +125,60 @@ export class EmployeesService {
   async remove(client: PoolClient, id: string): Promise<void> {
     const result = await client.query('DELETE FROM employees WHERE id = $1', [id]);
     if (result.rowCount === 0) throw new NotFoundException('Funcionário não encontrado');
+  }
+
+  async importCsv(client: PoolClient, tenantId: string, csvContent: string): Promise<ImportResult> {
+    const { rows, formatError } = parseEmployeesCsv(csvContent);
+    if (formatError) throw new BadRequestException(formatError);
+
+    const unitsResult = await client.query<{ id: string; name: string }>(
+      'SELECT id, name FROM company_units WHERE tenant_id = $1',
+      [tenantId],
+    );
+    const unitsByName = new Map(unitsResult.rows.map((u) => [u.name, u.id]));
+
+    const erros: ImportRowError[] = [];
+    let importados = 0;
+
+    for (const row of rows) {
+      if (!row.full_name) {
+        erros.push({ linha: row.line, motivo: 'Nome é obrigatório' });
+        continue;
+      }
+      if (!/^\d{11}$/.test(row.cpf)) {
+        erros.push({ linha: row.line, motivo: 'CPF inválido (precisa ter 11 dígitos)' });
+        continue;
+      }
+      const unitId = unitsByName.get(row.company_unit_name);
+      if (!unitId) {
+        erros.push({ linha: row.line, motivo: `Filial "${row.company_unit_name}" não encontrada` });
+        continue;
+      }
+
+      // SAVEPOINT por linha: sem isso, o primeiro erro de INSERT (ex: CPF
+      // duplicado) deixa a transação inteira "aborted" no Postgres, e
+      // toda linha seguinte falharia com "current transaction is
+      // aborted", mesmo capturada pelo catch do lado do Node.
+      await client.query('SAVEPOINT import_row');
+      try {
+        await client.query(
+          `INSERT INTO employees (tenant_id, full_name, cpf, position, company_unit_id)
+           VALUES ($1, $2, $3, $4, $5)`,
+          [tenantId, row.full_name, row.cpf, row.position || null, unitId],
+        );
+        await client.query('RELEASE SAVEPOINT import_row');
+        importados++;
+      } catch (err) {
+        await client.query('ROLLBACK TO SAVEPOINT import_row');
+        const pgErr = err as { code?: string };
+        if (pgErr.code === '23505') {
+          erros.push({ linha: row.line, motivo: 'CPF já cadastrado nesta empresa' });
+        } else {
+          erros.push({ linha: row.line, motivo: 'Erro ao importar esta linha' });
+        }
+      }
+    }
+
+    return { importados, erros };
   }
 }
