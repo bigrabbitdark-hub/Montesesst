@@ -4,11 +4,13 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { DadosEmpresaForm, TenantData } from './DadosEmpresaForm';
 import { FiliaisForm, CompanyUnit } from './FiliaisForm';
+import { FuncionariosForm } from './FuncionariosForm';
 
 export default function OnboardingPage() {
   const router = useRouter();
   const [tenant, setTenant] = useState<TenantData | null>(null);
   const [units, setUnits] = useState<CompanyUnit[]>([]);
+  const [hasEmployees, setHasEmployees] = useState(false);
   const [loading, setLoading] = useState(true);
 
   async function loadAll() {
@@ -18,12 +20,17 @@ export default function OnboardingPage() {
       return;
     }
     const headers = { Authorization: `Bearer ${token}` };
-    const [tenantRes, unitsRes] = await Promise.all([
+    const [tenantRes, unitsRes, employeesRes] = await Promise.all([
       fetch('/api/tenants/me', { headers }),
       fetch('/api/company-units', { headers }),
+      fetch('/api/employees', { headers }),
     ]);
     if (tenantRes.ok) setTenant(await tenantRes.json());
     if (unitsRes.ok) setUnits(await unitsRes.json());
+    if (employeesRes.ok) {
+      const employees = await employeesRes.json();
+      setHasEmployees(Array.isArray(employees) && employees.length > 0);
+    }
     setLoading(false);
   }
 
@@ -36,7 +43,7 @@ export default function OnboardingPage() {
     return <div className="mx-auto max-w-2xl px-4 py-16 text-center text-brand-700">Carregando...</div>;
   }
 
-  const isComplete = !!tenant?.sector && units.length > 0;
+  const isComplete = !!tenant?.sector && units.length > 0 && hasEmployees;
 
   if (isComplete) {
     return (
@@ -60,6 +67,7 @@ export default function OnboardingPage() {
       <div className="mt-8 flex flex-col gap-8">
         {tenant && <DadosEmpresaForm tenant={tenant} onSaved={loadAll} />}
         <FiliaisForm units={units} onChanged={loadAll} />
+        <FuncionariosForm units={units} onChanged={loadAll} />
       </div>
     </div>
   );
