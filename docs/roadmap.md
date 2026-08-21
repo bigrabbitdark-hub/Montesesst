@@ -244,10 +244,56 @@ Nenhuma das duas pendências foi "resolvida escondendo o problema" — ambas
 ficam registradas aqui como bloqueio real, mesmo critério já usado no
 teste de e-mail (Fase 2) e no cadastro de técnico.
 
-## Fase 3 — Onboarding (não iniciada)
+## Fase 3 — Onboarding: status
 
-Wizard de configuração inicial da empresa após primeiro login. Depende da
-Fase 2.
+Wizard de configuração inicial da empresa após primeiro login — não um
+fluxo linear obrigatório, e sim um painel com três blocos independentes
+(dados da empresa, filiais, funcionários), preenchíveis em qualquer
+ordem, com progresso sempre derivado dos dados reais. Decisões
+confirmadas em brainstorming de 2026-08-20. Spec em
+[`docs/specs/fase-3-onboarding.md`](specs/fase-3-onboarding.md), plano em
+[`docs/plans/fase-3-onboarding.md`](plans/fase-3-onboarding.md).
+
+**Fechada em 2026-08-21** — todas as 9 tasks concluídas e revisadas
+(SDD, uma revisão por task, sem findings Critical/Important pendentes):
+
+| Task | Entrega | Status |
+|---|---|---|
+| 1 | Migration: `tenants.sector/contact_name/contact_phone`, tabela `company_units` (com RLS), `employees.company_unit_id` | ✅ |
+| 2 | `GET/PATCH /tenants/me` | ✅ |
+| 3 | CRUD `/company-units` (filiais) | ✅ |
+| 4 | Vínculo funcionário↔filial com checagem cross-tenant (FK do Postgres sozinha não bastaria — bypassa RLS na tabela referenciada) | ✅ |
+| 5 | `POST /employees/import` (CSV em massa, com `SAVEPOINT` por linha) | ✅ |
+| 6 | Primeira página autenticada do frontend (`/empresa/onboarding`) + bloco Dados da empresa | ✅ |
+| 7 | Bloco Filiais | ✅ |
+| 8 | Bloco Funcionários (manual + CSV) | ✅ |
+| 9 | Deploy real + migração em produção + smoke test | ✅ |
+
+**Deploy e verificação real (2026-08-21), evidência real:**
+- `docker compose build backend frontend` + `up -d` — `montese_backend` e
+  `montese_frontend` `Up`.
+- Migração `0007_onboarding.sql` já aplicada (confirmado `[skip]`
+  contra o Postgres real desta VPS).
+- Suíte e2e completa: **16/16 suites, 53/53 testes passando** contra o
+  Postgres real do Docker (5 suites novas desta fase: `tenants`,
+  `company-units`, `company-units-rls`, `employees-company-unit`,
+  `employees-import`).
+- Páginas novas retornando `200`: `/`, `/login`, `/empresa/onboarding`.
+  `GET /api/tenants/me` sem token retorna `401` (rota protegida,
+  confirmado).
+- Fluxo completo testado de ponta a ponta via `curl` contra os
+  containers reais (não só a suíte automatizada): login real, criação de
+  filial, cadastro manual de funcionário, importação de CSV com linha
+  válida e linha inválida (relatório de erro por linha confirmado), e
+  limpeza dos dados de teste depois.
+
+**Sem pendência bloqueante** — diferente da fase de pagamento anterior,
+esta fase não depende de nenhuma ação externa do fundador (sem
+credencial, sem configuração de painel de terceiro). Vínculo com técnico
+responsável foi deixado de fora do escopo (nenhum fluxo de
+solicitar/aceitar existe ainda entre empresa e técnico) — revisitar
+quando a Fase 4/5 (Dashboards) existirem, mesma decisão já registrada na
+spec desta fase.
 
 ## Fase 4 — Dashboard Empresa (não iniciada)
 
