@@ -12,6 +12,7 @@ export default function OnboardingPage() {
   const [units, setUnits] = useState<CompanyUnit[]>([]);
   const [hasEmployees, setHasEmployees] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [initialComplete, setInitialComplete] = useState<boolean | null>(null);
 
   async function loadAll() {
     const token = localStorage.getItem('montese_token');
@@ -25,11 +26,22 @@ export default function OnboardingPage() {
       fetch('/api/company-units', { headers }),
       fetch('/api/employees', { headers }),
     ]);
-    if (tenantRes.ok) setTenant(await tenantRes.json());
-    if (unitsRes.ok) setUnits(await unitsRes.json());
+    let tenantData: TenantData | null = null;
+    let unitsData: CompanyUnit[] = [];
+    let employeesNonEmpty = false;
+    if (tenantRes.ok) tenantData = await tenantRes.json();
+    if (unitsRes.ok) unitsData = await unitsRes.json();
     if (employeesRes.ok) {
       const employees = await employeesRes.json();
-      setHasEmployees(Array.isArray(employees) && employees.length > 0);
+      employeesNonEmpty = Array.isArray(employees) && employees.length > 0;
+    }
+    setTenant(tenantData);
+    setUnits(unitsData);
+    setHasEmployees(employeesNonEmpty);
+
+    const complete = !!tenantData?.sector && unitsData.length > 0 && employeesNonEmpty;
+    if (initialComplete === null) {
+      setInitialComplete(complete);
     }
     setLoading(false);
   }
@@ -43,9 +55,7 @@ export default function OnboardingPage() {
     return <div className="mx-auto max-w-2xl px-4 py-16 text-center text-brand-700">Carregando...</div>;
   }
 
-  const isComplete = !!tenant?.sector && units.length > 0 && hasEmployees;
-
-  if (isComplete) {
+  if (initialComplete) {
     return (
       <div className="mx-auto max-w-md px-4 py-16 text-center">
         <h1 className="text-2xl font-bold text-brand-900">Cadastro em dia</h1>
@@ -57,6 +67,8 @@ export default function OnboardingPage() {
     );
   }
 
+  const isComplete = !!tenant?.sector && units.length > 0 && hasEmployees;
+
   return (
     <div className="mx-auto max-w-2xl px-4 py-16">
       <h1 className="text-2xl font-bold text-brand-900">Complete o cadastro da sua empresa</h1>
@@ -64,6 +76,12 @@ export default function OnboardingPage() {
         Você pode preencher em qualquer ordem, e voltar quando quiser — nada aqui é obrigatório
         agora.
       </p>
+      {isComplete && (
+        <p className="mt-4 rounded-md bg-green-50 px-4 py-3 text-sm text-green-700">
+          Cadastro completo! Você pode continuar editando ou adicionando mais funcionários e
+          filiais quando quiser.
+        </p>
+      )}
       <div className="mt-8 flex flex-col gap-8">
         {tenant && <DadosEmpresaForm tenant={tenant} onSaved={loadAll} />}
         <FiliaisForm units={units} onChanged={loadAll} />

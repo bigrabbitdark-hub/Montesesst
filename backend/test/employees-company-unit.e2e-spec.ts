@@ -11,6 +11,7 @@ describe('employees.company_unit_id (e2e)', () => {
   let tokenB: string;
   let unitAId: string;
   let unitBId: string;
+  let tenantAId: string;
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
@@ -21,6 +22,7 @@ describe('employees.company_unit_id (e2e)', () => {
     await db.connect();
     const tenantA = await db.createTenantWithUser('Empresa Vinculo A');
     const tenantB = await db.createTenantWithUser('Empresa Vinculo B');
+    tenantAId = tenantA.tenantId;
 
     const loginA = await request(app.getHttpServer())
       .post('/auth/login')
@@ -78,6 +80,30 @@ describe('employees.company_unit_id (e2e)', () => {
       .post('/employees')
       .set('Authorization', `Bearer ${tokenA}`)
       .send({ full_name: 'Func Malicioso', cpf: '55566677788', company_unit_id: unitBId });
+
+    expect(res.status).toBe(400);
+  });
+
+  it('rejeita admin vinculando funcionário de um tenant à filial de outro tenant', async () => {
+    const adminUser = await db.createUserWithRole('admin', 'Admin Cross Tenant');
+    const loginAdmin = await request(app.getHttpServer())
+      .post('/auth/login')
+      .send({ email: adminUser.email, password: adminUser.password });
+    const tokenAdmin = loginAdmin.body.access_token;
+
+    // Admin tenta criar um funcionário para o tenant A, mas linkado à filial do tenant B.
+    // RLS sozinha não bloqueia isso pro role admin (bypass explícito na policy de
+    // company_units) — é exatamente o buraco que assertCompanyUnitBelongsToTenant
+    // precisa fechar comparando tenant_id explicitamente.
+    const res = await request(app.getHttpServer())
+      .post('/employees')
+      .set('Authorization', `Bearer ${tokenAdmin}`)
+      .send({
+        full_name: 'Func Cross Tenant Via Admin',
+        cpf: '99988877766',
+        tenant_id: tenantAId,
+        company_unit_id: unitBId,
+      });
 
     expect(res.status).toBe(400);
   });

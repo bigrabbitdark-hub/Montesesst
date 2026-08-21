@@ -47,30 +47,38 @@ function splitCsvLine(line: string): string[] {
 }
 
 export function parseEmployeesCsv(content: string): CsvParseResult {
-  const lines = content.split(/\r\n|\n|\r/).filter((l) => l.length > 0);
-  if (lines.length === 0) return { rows: [], formatError: 'Arquivo vazio' };
+  // Guarda a posição REAL de cada linha no arquivo original antes de filtrar
+  // linhas em branco — se filtrasse primeiro e numerasse depois, uma única
+  // linha em branco no meio do arquivo (comum em exports de planilha) faria
+  // o número reportado em `linha` desalinhar de todas as linhas seguintes.
+  const rawLines = content.split(/\r\n|\n|\r/);
+  const indexed = rawLines
+    .map((text, idx) => ({ text, lineNumber: idx + 1 }))
+    .filter((entry) => entry.text.length > 0);
 
-  const header = splitCsvLine(lines[0]).map((h) => h.toLowerCase());
+  if (indexed.length === 0) return { rows: [], formatError: 'Arquivo vazio' };
+
+  const header = splitCsvLine(indexed[0].text).map((h) => h.toLowerCase());
   const headerMatches = EXPECTED_HEADER.every((col, idx) => header[idx] === col);
   if (!headerMatches) {
     return {
       rows: [],
-      formatError: `Cabeçalho inválido — esperado "nome,cpf,cargo,filial", recebido "${lines[0]}"`,
+      formatError: `Cabeçalho inválido — esperado "nome,cpf,cargo,filial", recebido "${indexed[0].text}"`,
     };
   }
 
-  const dataLines = lines.slice(1);
-  if (dataLines.length > MAX_IMPORT_ROWS) {
+  const dataEntries = indexed.slice(1);
+  if (dataEntries.length > MAX_IMPORT_ROWS) {
     return {
       rows: [],
-      formatError: `Arquivo tem ${dataLines.length} linhas, o máximo permitido é ${MAX_IMPORT_ROWS}`,
+      formatError: `Arquivo tem ${dataEntries.length} linhas, o máximo permitido é ${MAX_IMPORT_ROWS}`,
     };
   }
 
-  const rows: ParsedCsvRow[] = dataLines.map((line, idx) => {
-    const fields = splitCsvLine(line);
+  const rows: ParsedCsvRow[] = dataEntries.map((entry) => {
+    const fields = splitCsvLine(entry.text);
     return {
-      line: idx + 2, // +1 pro índice 0-based, +1 pela linha de cabeçalho
+      line: entry.lineNumber,
       full_name: fields[0] ?? '',
       cpf: fields[1] ?? '',
       position: fields[2] ?? '',

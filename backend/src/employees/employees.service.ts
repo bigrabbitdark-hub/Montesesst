@@ -63,18 +63,27 @@ export interface ImportResult {
 export class EmployeesService {
   // Uma FK do Postgres sozinha não garante que a filial referenciada
   // pertence ao mesmo tenant do funcionário (checagem de FK roda sem
-  // filtrar pela RLS da tabela referenciada) — por isso esta checagem
-  // explícita roda dentro do mesmo client com contexto de tenant já
-  // setado: a query já vem filtrada pela RLS de company_units sozinha,
-  // sem precisar repetir tenant_id aqui.
-  private async assertCompanyUnitBelongsToTenant(client: PoolClient, companyUnitId: string): Promise<void> {
-    const result = await client.query('SELECT id FROM company_units WHERE id = $1', [companyUnitId]);
+  // filtrar pela RLS da tabela referenciada). Também não dá pra confiar só
+  // na RLS de company_units aqui: a policy dessa tabela tem um bypass pra
+  // role admin (`current_setting('app.role') = 'admin' OR tenant_id = ...`),
+  // então pra um caller admin o SELECT abaixo enxergaria filiais de
+  // QUALQUER tenant — por isso o tenant_id é comparado explicitamente na
+  // própria query, não deixado a cargo da visibilidade de RLS.
+  private async assertCompanyUnitBelongsToTenant(
+    client: PoolClient,
+    companyUnitId: string,
+    tenantId: string,
+  ): Promise<void> {
+    const result = await client.query('SELECT id FROM company_units WHERE id = $1 AND tenant_id = $2', [
+      companyUnitId,
+      tenantId,
+    ]);
     if (result.rowCount === 0) throw new BadRequestException('Filial não encontrada');
   }
 
   async create(client: PoolClient, tenantId: string, data: CreateEmployeeData): Promise<Employee> {
     if (data.company_unit_id) {
-      await this.assertCompanyUnitBelongsToTenant(client, data.company_unit_id);
+      await this.assertCompanyUnitBelongsToTenant(client, data.company_unit_id, tenantId);
     }
     const result = await client.query<Employee>(
       `INSERT INTO employees (tenant_id, full_name, cpf, birth_date, position, admission_date, company_unit_id)
@@ -108,7 +117,14 @@ export class EmployeesService {
 
   async update(client: PoolClient, id: string, data: UpdateEmployeeData): Promise<Employee> {
     if (data.company_unit_id) {
-      await this.assertCompanyUnitBelongsToTenant(client, data.company_unit_id);
+      // O tenant relevante aqui é o do funcionário ALVO (id), não necessariamente o do
+      // caller — um admin pode atualizar funcionário de qualquer tenant, então é preciso
+      // buscar a qual tenant o funcionário já pertence antes de validar a filial.
+      const existing = await client.query<{ tenant_id: string }>('SELECT tenant_id FROM employees WHERE id = $1', [
+        id,
+      ]);
+      if (existing.rowCount === 0) throw new NotFoundException('Funcionário não encontrado');
+      await this.assertCompanyUnitBelongsToTenant(client, data.company_unit_id, existing.rows[0].tenant_id);
     }
     const { setClauses, values } = buildSafeSetClause(data, UPDATABLE_FIELDS, 2);
     if (setClauses.length === 0) return this.findOne(client, id);

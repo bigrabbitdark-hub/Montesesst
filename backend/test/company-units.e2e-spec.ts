@@ -68,6 +68,39 @@ describe('CRUD /company-units (e2e)', () => {
     expect(res.body.name).toBe('Sede Renomeada');
   });
 
+  it('remover uma filial não apaga o funcionário vinculado, só desvincula (ON DELETE SET NULL)', async () => {
+    const unitRes = await request(app.getHttpServer())
+      .post('/company-units')
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        name: 'Filial Com Funcionário',
+        address_street: 'Rua Vínculo',
+        address_city: 'Criciúma',
+        address_state: 'SC',
+        address_zip: '88803000',
+      });
+    expect(unitRes.status).toBe(201);
+    const linkedUnitId = unitRes.body.id;
+
+    const employeeRes = await request(app.getHttpServer())
+      .post('/employees')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ full_name: 'Func Vinculado À Filial', cpf: '12312312399', company_unit_id: linkedUnitId });
+    expect(employeeRes.status).toBe(201);
+    const employeeId = employeeRes.body.id;
+
+    const deleteRes = await request(app.getHttpServer())
+      .delete(`/company-units/${linkedUnitId}`)
+      .set('Authorization', `Bearer ${token}`);
+    expect(deleteRes.status).toBe(200);
+
+    const getEmployeeRes = await request(app.getHttpServer())
+      .get(`/employees/${employeeId}`)
+      .set('Authorization', `Bearer ${token}`);
+    expect(getEmployeeRes.status).toBe(200);
+    expect(getEmployeeRes.body.company_unit_id).toBeNull();
+  });
+
   it('remove uma filial', async () => {
     const res = await request(app.getHttpServer())
       .delete(`/company-units/${unitId}`)

@@ -79,6 +79,27 @@ describe('POST /employees/import (e2e)', () => {
     expect(res.body.erros[0].motivo).toMatch(/já cadastrado/);
   });
 
+  it('não deixa linha em branco no meio do arquivo desalinhar o número de linha reportado', async () => {
+    const csv = [
+      'nome,cpf,cargo,filial', // linha 1
+      'Funcionário Válido,11122233306,Operador,Sede', // linha 2
+      '', // linha 3 — em branco, não deve contar como linha de dado
+      'Funcionário CPF Ruim,abc,Operador,Sede', // linha 4 — posição real no arquivo
+    ].join('\n');
+
+    const res = await request(app.getHttpServer())
+      .post('/employees/import')
+      .set('Authorization', `Bearer ${token}`)
+      .attach('file', Buffer.from(csv, 'utf-8'), 'com-linha-em-branco.csv');
+
+    expect(res.status).toBe(201);
+    expect(res.body.importados).toBe(1);
+    expect(res.body.erros).toHaveLength(1);
+    // Sem o fix, o número reportado viria como 3 (pós-filtro), não 4 (posição real no arquivo).
+    expect(res.body.erros[0].linha).toBe(4);
+    expect(res.body.erros[0].motivo).toMatch(/CPF inválido/);
+  });
+
   it('rejeita cabeçalho inválido', async () => {
     const csv = 'nome,cpf\nFulano,11122233305';
 
