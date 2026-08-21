@@ -287,6 +287,29 @@ confirmadas em brainstorming de 2026-08-20. Spec em
   válida e linha inválida (relatório de erro por linha confirmado), e
   limpeza dos dados de teste depois.
 
+**Vulnerabilidade real encontrada e corrigida na revisão final desta
+entrega** (não pega por nenhuma revisão de task individual — só apareceu
+olhando o diff inteiro com contexto cruzado entre tasks): a checagem
+cross-tenant que impede vincular um funcionário à filial de outra
+empresa (`assertCompanyUnitBelongsToTenant`, Task 4) dependia da
+visibilidade da RLS de `company_units` — mas a policy dessa tabela tem
+bypass explícito pra `role = 'admin'`, então pra um caller admin a
+checagem nunca filtrava por tenant de verdade. Um admin conseguia
+vincular o funcionário de uma empresa à filial de outra. Corrigido
+comparando `tenant_id` explicitamente na query (`WHERE id = $1 AND
+tenant_id = $2`) em vez de confiar só na visibilidade da RLS — provado
+com um teste real que reproduziu o bug antes do fix (retornava `201`
+quando deveria bloquear) e confirmou o bloqueio (`400`) depois. Mais 3
+achados "Important" (não-segurança) na mesma revisão final, também
+corrigidos: faltava teste provando que deletar uma filial não apaga o
+funcionário vinculado a ela (só reseta `company_unit_id`); a tela de
+onboarding trocava a página inteira pra "Cadastro em dia" no meio de uma
+interação (ex: destruía o resumo de erros de uma importação CSV assim
+que ela terminava, se fosse a última etapa) — corrigido pra só mostrar a
+tela cheia num carregamento novo com cadastro já completo, nunca como
+reação a uma ação da própria sessão; e uma linha em branco no meio de um
+CSV desalinhava o número de linha reportado nos erros de importação.
+
 **Sem pendência bloqueante** — diferente da fase de pagamento anterior,
 esta fase não depende de nenhuma ação externa do fundador (sem
 credencial, sem configuração de painel de terceiro). Vínculo com técnico
