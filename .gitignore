@@ -4,3 +4,7 @@ dist/
 .next/
 *.log
 .DS_Store
+
+# Certificados TLS reais (Let's Encrypt) — nunca no git, chave privada
+nginx/letsencrypt/
+nginx/certbot-webroot/
