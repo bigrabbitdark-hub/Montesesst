@@ -30,7 +30,10 @@ export default function LoginPage() {
       const data = await res.json();
       localStorage.setItem('montese_token', data.access_token);
       localStorage.setItem('montese_user', JSON.stringify(data.user));
-      router.push(data.user.role === 'empresa' ? '/empresa/onboarding' : '/');
+      const role = data.user.role;
+      router.push(
+        role === 'empresa' ? '/empresa/onboarding' : role === 'tecnico' ? '/tecnico/empresas' : '/',
+      );
     } catch {
       setError('Não foi possível conectar ao servidor.');
     } finally {
