@@ -34,7 +34,7 @@ no disco da VPS, conforme princípio não-negociável de arquitetura
 
 ## 2. Modelo de dados
 
-### 2.1 `tenant_technicians` — já existe, nunca usado
+### 2.1 `tenant_technicians` — já existe, endpoint de vínculo já existe (corrigido pra admin-only nesta sub-fase)
 
 ```sql
 CREATE TABLE tenant_technicians (
@@ -46,9 +46,20 @@ CREATE TABLE tenant_technicians (
 );
 ```
 
-Criada na migration `0001_init.sql`, nunca populada por nenhum
-endpoint/fluxo até agora. Esta sub-fase constrói o primeiro jeito de
-popular essa tabela.
+Criada na migration `0001_init.sql`. **Achado durante o desenho desta
+sub-fase, corrigindo uma suposição errada de uma versão anterior desta
+spec:** `POST/DELETE /technicians/:id/assign` já existe desde a Fase 1
+(`backend/src/technicians/technicians.controller.ts`,
+`TechniciansService.assign`/`unassign`) e já faz o INSERT/DELETE em
+`tenant_technicians` — mas nunca foi testado (nenhum e2e cobre esse
+endpoint) nem ligado a nenhuma tela, e hoje tem `@Roles('empresa',
+'admin')`, permitindo a própria empresa se auto-vincular a qualquer
+técnico sem intermediação humana — o que contradiz o diferencial de
+atendimento humano do `docs/vision.md` e a decisão tomada nesta mesma
+sessão de brainstorming. Corrigido: `assign`/`unassign` passam a ser
+`@Roles('admin')` apenas (remove `'empresa'` da lista). O resto do
+endpoint (lógica de `assign`/`unassign`, `AssignTechnicianDto`) já está
+correto e é reaproveitado como está — não precisa recriar do zero.
 
 ### 2.2 `documents` — tabela nova
 
@@ -113,18 +124,23 @@ vinculado (a query de `EXISTS` roda igual na hora do INSERT).
 
 ## 3. Backend
 
-### 3.1 Vínculo técnico↔empresa — módulo novo `tenant-technicians`
+### 3.1 Vínculo técnico↔empresa — corrige o endpoint existente, adiciona a listagem do técnico
 
-- `POST /tenant-technicians` (`@Roles('admin')`) — body `{tenant_id,
-  technician_id}`, cria o vínculo. Só admin usa isso por enquanto (sem
-  tela de Dashboard Admin — a Montese aciona via API diretamente, mesmo
-  padrão informal já usado pra outras operações administrativas pontuais
-  neste projeto).
-- `GET /tenant-technicians/me` (`@Roles('tecnico')`) — lista as empresas
-  vinculadas ao técnico autenticado (join `technicians.user_id =
-  req.user.id` → `tenant_technicians` → `tenants`, retorna `{tenant_id,
-  tenant_name, tenant_cnpj}` por linha). Alimenta a tela do técnico
-  escolher qual empresa ver (seção 4.2).
+- `backend/src/technicians/technicians.controller.ts`: `assign`/`unassign`
+  trocam `@Roles('empresa', 'admin')` por `@Roles('admin')` — única
+  mudança nesses dois métodos, resto do arquivo intacto. `AssignTechnicianDto`
+  e `TechniciansService.assign`/`unassign` não mudam (já fazem exatamente
+  o INSERT/DELETE certo em `tenant_technicians`). A Montese (admin) aciona
+  `POST /technicians/:id/assign` via API diretamente por enquanto — sem
+  tela de Dashboard Admin (Fase 7 ainda não existe).
+- `GET /tenant-technicians/me` (`@Roles('tecnico')`, módulo novo
+  `tenant-technicians`) — lista as empresas vinculadas ao técnico
+  autenticado (join `technicians.user_id = req.user.id` →
+  `tenant_technicians` → `tenants`, retorna `{tenant_id, tenant_name,
+  tenant_cnpj}` por linha). Alimenta a tela do técnico escolher qual
+  empresa ver (seção 4.2). Este é o único endpoint genuinamente novo
+  desta seção — a criação do vínculo em si já existe, só a listagem pro
+  lado do técnico que faltava.
 
 ### 3.2 Upload — `POST /documents`
 
@@ -254,7 +270,9 @@ Casos obrigatórios:
   nos dois sentidos, positivo e negativo).
 - `DELETE` por quem não subiu o documento (mesmo dentro do tenant
   autorizado) é rejeitado.
-- `POST /tenant-technicians` só admin consegue chamar.
+- `POST /technicians/:id/assign` rejeita chamada de role `empresa` com
+  403 (prova a correção da seção 3.1 — antes desta sub-fase, uma empresa
+  conseguia chamar isso).
 
 ## 6. Decisões confirmadas (brainstorming de 2026-08-23)
 
@@ -278,8 +296,12 @@ Casos obrigatórios:
 - [ ] **Catálogo relacional de EPI** (CA por equipamento, vínculo
       funcionário↔EPI) — fora de escopo, fica para quando a Fase 5
       (checklist de visita técnica) existir.
-- [ ] **Vínculo self-service empresa↔técnico** — fora de escopo desta
-      sub-fase, admin-only por enquanto.
+- [ ] **Vínculo self-service empresa↔técnico** — não é mais pendência
+      futura, é uma falha real de permissão já existente desde a Fase 1
+      (`POST /technicians/:id/assign` aceitava `role: 'empresa'`), sendo
+      corrigida dentro desta própria sub-fase (seção 3.1). Registrado
+      aqui só como referência histórica, não como trabalho a fazer
+      depois.
 - [ ] **Verificação de CA no CAEPI/consultaca.com** (mencionada em
       `docs/reference/modelos-relatorios-sst.md` como sugestão pro
       modelo de EPI) — não se aplica a esta sub-fase (aqui não existe
