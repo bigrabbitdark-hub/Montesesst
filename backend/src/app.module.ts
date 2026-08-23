@@ -11,6 +11,7 @@ import { TechniciansModule } from './technicians/technicians.module';
 import { PartnersModule } from './partners/partners.module';
 import { TenantsModule } from './tenants/tenants.module';
 import { CompanyUnitsModule } from './company-units/company-units.module';
+import { TenantTechniciansModule } from './tenant-technicians/tenant-technicians.module';
 import { JwtAuthGuard } from './auth/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 import { TenantContextInterceptor } from './common/interceptors/tenant-context.interceptor';
@@ -37,6 +38,7 @@ import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
     PartnersModule,
     TenantsModule,
     CompanyUnitsModule,
+    TenantTechniciansModule,
   ],
   providers: [
     // Ordem importa: RateLimitGuard barra abuso antes de qualquer auth;
