@@ -244,6 +244,16 @@ Nenhuma das duas pendências foi "resolvida escondendo o problema" — ambas
 ficam registradas aqui como bloqueio real, mesmo critério já usado no
 teste de e-mail (Fase 2) e no cadastro de técnico.
 
+**Atualização (2026-08-23):** o item 2 (domínio real + HTTPS) foi
+resolvido durante a Fase 4 sub-projeto A — `https://montesesst.com.br`
+está no ar com certificado real (Let's Encrypt, renovação automática
+agendada), e `PUBLIC_APP_URL` já aponta pra lá no `.env` real. O item 1
+(`MERCADOPAGO_WEBHOOK_SECRET`) continua pendente — o fundador ainda
+precisa configurar o webhook no painel do Mercado Pago, agora usando a
+URL real `https://montesesst.com.br/api/payments/mercadopago/webhook`
+em vez do IP. Só depois disso o teste real de ponta a ponta (assinatura
++ webhook) pode finalmente acontecer.
+
 ## Fase 3 — Onboarding: status
 
 Wizard de configuração inicial da empresa após primeiro login — não um
@@ -318,11 +328,69 @@ solicitar/aceitar existe ainda entre empresa e técnico) — revisitar
 quando a Fase 4/5 (Dashboards) existirem, mesma decisão já registrada na
 spec desta fase.
 
-## Fase 4 — Dashboard Empresa (não iniciada)
+## Fase 4 (sub-projeto A — Documentos): status
 
-Score de SST, pendências, documentos, agenda. **Primeiro ponto de contato
-real com upload de documentos** — é aqui que a regra de object storage
-(R2) precisa ser implementada e confirmada com você antes de codificar.
+Score de SST, pendências, documentos e agenda formam a Fase 4 completa —
+decidido em brainstorming de 2026-08-23 quebrar em sub-projetos,
+começando por Documentos (as outras três peças dependem dela: documento
+vencido = pendência, % de documentos em dia = score). Spec em
+[`docs/specs/fase-4-documentos.md`](specs/fase-4-documentos.md), plano em
+[`docs/plans/fase-4-documentos.md`](plans/fase-4-documentos.md).
+
+**Fechado em 2026-08-23** — 8 tasks concluídas e revisadas (SDD, uma
+revisão por task):
+
+| Task | Entrega | Status |
+|---|---|---|
+| 1 | Migration `documents` com RLS (empresa vê o próprio tenant; técnico vê tenants vinculados via `EXISTS` contra `tenant_technicians`) | ✅ |
+| 2 | Corrige `POST/DELETE /technicians/:id/assign` — permitia empresa se auto-vincular a qualquer técnico desde a Fase 1, nunca testado | ✅ |
+| 3 | `GET /tenant-technicians/me` — lista as empresas vinculadas ao técnico | ✅ |
+| 4 | `R2Service` + upload/listagem de documentos (Cloudflare R2 real) | ✅ |
+| 5 | Download (URL assinada) + exclusão de documentos | ✅ |
+| 6 | Página `/empresa/documentos` | ✅ |
+| 7 | Páginas do técnico (`/tecnico/empresas` + `/tecnico/empresas/[id]`) — primeira área autenticada do técnico | ✅ |
+| 8 | Deploy real + migração em produção + smoke test | ✅ |
+
+**Vulnerabilidade real encontrada e corrigida durante o desenho desta
+fase** (não na revisão final desta vez — descoberta ao checar o código
+antes de propor a Task 2, corrigindo uma suposição errada da primeira
+versão da spec): `POST/DELETE /technicians/:id/assign` já existia desde
+a Fase 1 com `@Roles('empresa', 'admin')` — permitindo que a própria
+empresa se auto-vinculasse a qualquer técnico, sem nenhuma
+intermediação humana, e nunca tinha sido testado. Contradizia o
+diferencial de atendimento humano descrito no `docs/vision.md`.
+Corrigido para `@Roles('admin')` apenas, com o primeiro teste real
+desse endpoint.
+
+**Achado na revisão final desta fase** (Important, corrigido): o upload
+gravava o objeto real no R2 antes do `INSERT` no Postgres — se o INSERT
+falhasse por qualquer motivo (ex: RLS rejeitando um técnico não
+vinculado tentando subir documento pra um tenant que não é dele), o
+objeto ficava órfão no bucket real pra sempre. Corrigido com limpeza
+automática (best-effort) do objeto quando o INSERT falha, provado com um
+teste real que reproduz a rejeição de RLS e confirma, via
+`HeadObjectCommand` real, que nenhum objeto fica pra trás.
+
+**Configuração de infraestrutura destravada durante esta fase**: HTTPS
+real via Let's Encrypt no domínio `montesesst.com.br` (com renovação
+automática agendada) — resolve a pendência de domínio/HTTPS registrada
+no fechamento da fase de pagamento (Planos + Assinaturas), que bloqueava
+o `back_url` do Mercado Pago em produção. `PUBLIC_APP_URL` já atualizado
+no `.env` real pra `https://montesesst.com.br`.
+
+**Deploy e verificação real (2026-08-23), evidência real:**
+- Suíte e2e completa: **21/21 suites, 68/68 testes passando** contra
+  Postgres real e o bucket R2 real (8 suites novas desta fase).
+- Páginas novas retornando `200` via **domínio real com HTTPS**
+  (`https://montesesst.com.br`): `/`, `/login`, `/empresa/documentos`,
+  `/tecnico/empresas`. `GET /api/documents` sem token retorna `401`.
+- Fluxo completo de upload/download/exclusão testado de ponta a ponta
+  contra o R2 real em múltiplas tasks (não só a suíte automatizada).
+
+**Sem pendência bloqueante.** Vínculo técnico↔empresa continua
+admin-only por decisão (sem tela de Dashboard Admin ainda — a Montese
+aciona via API diretamente). Score de SST, pendências e agenda ficam
+para os próximos sub-projetos da Fase 4.
 
 ## Fase 5 — Dashboard Técnico (não iniciada)
 
