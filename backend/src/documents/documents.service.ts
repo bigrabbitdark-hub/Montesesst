@@ -55,24 +55,37 @@ export class DocumentsService {
     const fileKey = `tenants/${data.tenantId}/documents/${id}/${data.file.originalname}`;
     await this.r2.putObject(fileKey, data.file.buffer, data.file.mimetype);
 
-    const result = await client.query<Document>(
-      `INSERT INTO documents (id, tenant_id, category, title, file_key, file_name, mime_type, size_bytes, expires_at, uploaded_by_user_id, uploaded_by_role)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *`,
-      [
-        id,
-        data.tenantId,
-        data.category,
-        data.title,
-        fileKey,
-        data.file.originalname,
-        data.file.mimetype,
-        data.file.size,
-        data.expiresAt ?? null,
-        data.uploadedByUserId,
-        data.uploadedByRole,
-      ],
-    );
-    return result.rows[0];
+    try {
+      const result = await client.query<Document>(
+        `INSERT INTO documents (id, tenant_id, category, title, file_key, file_name, mime_type, size_bytes, expires_at, uploaded_by_user_id, uploaded_by_role)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *`,
+        [
+          id,
+          data.tenantId,
+          data.category,
+          data.title,
+          fileKey,
+          data.file.originalname,
+          data.file.mimetype,
+          data.file.size,
+          data.expiresAt ?? null,
+          data.uploadedByUserId,
+          data.uploadedByRole,
+        ],
+      );
+      return result.rows[0];
+    } catch (err) {
+      // O objeto já foi gravado no R2 real antes do INSERT — se o INSERT
+      // falhar (ex: RLS rejeitando um técnico não vinculado ao tenant),
+      // sem isso o objeto ficaria órfão no bucket pra sempre.
+      try {
+        await this.r2.deleteObject(fileKey);
+      } catch {
+        // Best-effort: não deixa uma falha na limpeza mascarar o erro
+        // real do INSERT, que é o que o caller precisa ver.
+      }
+      throw err;
+    }
   }
 
   async findAll(client: PoolClient, tenantId?: string): Promise<Document[]> {

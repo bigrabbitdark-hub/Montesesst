@@ -1,7 +1,7 @@
 import { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
-import { S3Client, HeadObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, HeadObjectCommand, DeleteObjectCommand, ListObjectsV2Command } from '@aws-sdk/client-s3';
 import { AppModule } from '../src/app.module';
 import { TestDb } from './db-test-helper';
 
@@ -94,5 +94,45 @@ describe('POST/GET /documents — upload e listagem (e2e)', () => {
       });
 
     expect(res.status).toBe(400);
+  });
+
+  it('não deixa objeto órfão no R2 quando o INSERT é rejeitado pela RLS (técnico não vinculado)', async () => {
+    const tecnico = await db.createUserWithRole('tecnico', 'Tecnico Nao Vinculado');
+
+    const loginRes = await request(app.getHttpServer())
+      .post('/auth/login')
+      .send({ email: tecnico.email, password: tecnico.password });
+    const tecnicoToken = loginRes.body.access_token;
+
+    const prefix = `tenants/${tenantId}/documents/`;
+
+    // Nota: o teste do primeiro `it()` deste describe já fez um upload real
+    // bem-sucedido sob esse mesmo `tenantId` (só é limpo no `afterAll`), então
+    // o prefixo pode não estar vazio aqui — o que importa é que a contagem
+    // não aumenta com a tentativa rejeitada pela RLS, ou seja, nenhum objeto
+    // NOVO (órfão) fica para trás.
+    const before = await s3.send(
+      new ListObjectsV2Command({ Bucket: process.env.R2_BUCKET, Prefix: prefix }),
+    );
+    const beforeCount = before.KeyCount ?? before.Contents?.length ?? 0;
+
+    const res = await request(app.getHttpServer())
+      .post('/documents')
+      .set('Authorization', `Bearer ${tecnicoToken}`)
+      .field('tenant_id', tenantId)
+      .field('category', 'pgr')
+      .field('title', 'Tentativa de upload sem vínculo')
+      .attach('file', Buffer.from('%PDF-1.4 conteudo de teste', 'utf-8'), {
+        filename: 'pgr-sem-vinculo.pdf',
+        contentType: 'application/pdf',
+      });
+
+    expect(res.status).not.toBe(201);
+
+    const after = await s3.send(
+      new ListObjectsV2Command({ Bucket: process.env.R2_BUCKET, Prefix: prefix }),
+    );
+    const afterCount = after.KeyCount ?? after.Contents?.length ?? 0;
+    expect(afterCount).toBe(beforeCount);
   });
 });
