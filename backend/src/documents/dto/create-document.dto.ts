@@ -1,4 +1,4 @@
-import { IsIn, IsISO8601, IsOptional, IsString, MaxLength } from 'class-validator';
+import { IsIn, IsISO8601, IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
 
 export class CreateDocumentDto {
   @IsIn(['pgr', 'pcmso', 'laudo', 'ficha_epi', 'treinamento'])
@@ -15,6 +15,6 @@ export class CreateDocumentDto {
   // Só é lido quando quem envia é role 'tecnico' (empresa sempre usa o
   // próprio tenant_id do token).
   @IsOptional()
-  @IsString()
+  @IsUUID()
   tenant_id?: string;
 }

@@ -82,6 +82,25 @@ describe('POST/GET /documents — upload e listagem (e2e)', () => {
     ).toBeDefined();
   });
 
+  it('sanitiza o nome do arquivo na chave do R2, neutralizando tentativa de path traversal', async () => {
+    const fakePdf = Buffer.from('%PDF-1.4 conteudo de teste traversal', 'utf-8');
+
+    const uploadRes = await request(app.getHttpServer())
+      .post('/documents')
+      .set('Authorization', `Bearer ${token}`)
+      .field('category', 'pgr')
+      .field('title', 'PGR com nome malicioso')
+      .attach('file', fakePdf, { filename: '../../evil.pdf', contentType: 'application/pdf' });
+
+    expect(uploadRes.status).toBe(201);
+    expect(uploadRes.body.file_key).not.toContain('..');
+    expect(uploadRes.body.file_key).toMatch(new RegExp(`^tenants/${tenantId}/documents/`));
+
+    // Limpeza: objeto real no R2 + linha real no Postgres, mesmo padrão do teste acima
+    await s3.send(new DeleteObjectCommand({ Bucket: process.env.R2_BUCKET, Key: uploadRes.body.file_key }));
+    await (db as any).client.query('DELETE FROM documents WHERE id = $1', [uploadRes.body.id]);
+  });
+
   it('rejeita tipo de arquivo não permitido antes de tocar no R2', async () => {
     const res = await request(app.getHttpServer())
       .post('/documents')
@@ -127,7 +146,7 @@ describe('POST/GET /documents — upload e listagem (e2e)', () => {
         contentType: 'application/pdf',
       });
 
-    expect(res.status).not.toBe(201);
+    expect(res.status).toBe(403);
 
     const after = await s3.send(
       new ListObjectsV2Command({ Bucket: process.env.R2_BUCKET, Prefix: prefix }),

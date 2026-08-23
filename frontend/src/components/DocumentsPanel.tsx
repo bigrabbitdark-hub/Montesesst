@@ -29,6 +29,7 @@ export function DocumentsPanel({ tenantId }: { tenantId?: string }) {
   const [file, setFile] = useState<File | null>(null);
   const [status, setStatus] = useState<'idle' | 'loading' | 'erro'>('idle');
   const [errorMessage, setErrorMessage] = useState('');
+  const [listError, setListError] = useState('');
 
   function currentUserId(): string | null {
     const raw = localStorage.getItem('montese_user');
@@ -42,8 +43,17 @@ export function DocumentsPanel({ tenantId }: { tenantId?: string }) {
 
   async function loadDocuments() {
     const token = localStorage.getItem('montese_token');
-    const res = await fetch(listUrl(), { headers: { Authorization: `Bearer ${token}` } });
-    if (res.ok) setDocuments(await res.json());
+    try {
+      const res = await fetch(listUrl(), { headers: { Authorization: `Bearer ${token}` } });
+      if (res.ok) {
+        setDocuments(await res.json());
+        setListError('');
+      } else {
+        setListError('Não foi possível carregar os documentos.');
+      }
+    } catch {
+      setListError('Não foi possível conectar ao servidor.');
+    }
     setLoading(false);
   }
 
@@ -90,22 +100,36 @@ export function DocumentsPanel({ tenantId }: { tenantId?: string }) {
 
   async function handleDownload(id: string) {
     const token = localStorage.getItem('montese_token');
-    const res = await fetch(`/api/documents/${id}/download`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    if (res.ok) {
-      const { url } = await res.json();
-      window.open(url, '_blank');
+    try {
+      const res = await fetch(`/api/documents/${id}/download`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const { url } = await res.json();
+        window.open(url, '_blank');
+      } else {
+        setListError('Não foi possível baixar o documento.');
+      }
+    } catch {
+      setListError('Não foi possível conectar ao servidor.');
     }
   }
 
   async function handleDelete(id: string) {
     const token = localStorage.getItem('montese_token');
-    const res = await fetch(`/api/documents/${id}`, {
-      method: 'DELETE',
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    if (res.ok) loadDocuments();
+    try {
+      const res = await fetch(`/api/documents/${id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        loadDocuments();
+      } else {
+        setListError('Não foi possível apagar o documento.');
+      }
+    } catch {
+      setListError('Não foi possível conectar ao servidor.');
+    }
   }
 
   const userId = currentUserId();
@@ -174,6 +198,7 @@ export function DocumentsPanel({ tenantId }: { tenantId?: string }) {
 
       <section className="rounded-lg border border-brand-100 p-6">
         <h2 className="text-lg font-bold text-brand-900">Documentos</h2>
+        {listError && <p className="mt-2 text-sm text-red-600">{listError}</p>}
         {documents.length === 0 ? (
           <p className="mt-4 text-sm text-brand-700">Nenhum documento enviado ainda.</p>
         ) : (

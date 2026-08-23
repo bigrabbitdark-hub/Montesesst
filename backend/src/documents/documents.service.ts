@@ -2,9 +2,15 @@ import { BadRequestException, ForbiddenException, Injectable, NotFoundException 
 import { PoolClient } from 'pg';
 import { randomUUID } from 'crypto';
 import { R2Service } from './r2.service';
+import { mapPgError } from '../common/pg-error.util';
 
 const ALLOWED_MIME_TYPES = ['application/pdf', 'image/jpeg', 'image/png'];
 const ALLOWED_CATEGORIES = ['pgr', 'pcmso', 'laudo', 'ficha_epi', 'treinamento'];
+
+function sanitizeFileName(name: string): string {
+  const base = name.split(/[/\\]/).pop() || 'arquivo';
+  return base.replace(/[^a-zA-Z0-9._-]/g, '_');
+}
 
 export interface Document {
   id: string;
@@ -52,7 +58,7 @@ export class DocumentsService {
     }
 
     const id = randomUUID();
-    const fileKey = `tenants/${data.tenantId}/documents/${id}/${data.file.originalname}`;
+    const fileKey = `tenants/${data.tenantId}/documents/${id}/${sanitizeFileName(data.file.originalname)}`;
     await this.r2.putObject(fileKey, data.file.buffer, data.file.mimetype);
 
     try {
@@ -84,7 +90,7 @@ export class DocumentsService {
         // Best-effort: não deixa uma falha na limpeza mascarar o erro
         // real do INSERT, que é o que o caller precisa ver.
       }
-      throw err;
+      mapPgError(err);
     }
   }
 
