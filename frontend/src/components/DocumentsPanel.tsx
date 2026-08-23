@@ -1,0 +1,212 @@
+'use client';
+
+import { FormEvent, useEffect, useState } from 'react';
+
+interface DocumentRow {
+  id: string;
+  category: string;
+  title: string;
+  file_name: string;
+  expires_at: string | null;
+  uploaded_by_user_id: string;
+  created_at: string;
+}
+
+const CATEGORY_LABELS: Record<string, string> = {
+  pgr: 'PGR',
+  pcmso: 'PCMSO',
+  laudo: 'Laudo',
+  ficha_epi: 'Ficha de EPI',
+  treinamento: 'Treinamento',
+};
+
+export function DocumentsPanel({ tenantId }: { tenantId?: string }) {
+  const [documents, setDocuments] = useState<DocumentRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [category, setCategory] = useState('pgr');
+  const [title, setTitle] = useState('');
+  const [expiresAt, setExpiresAt] = useState('');
+  const [file, setFile] = useState<File | null>(null);
+  const [status, setStatus] = useState<'idle' | 'loading' | 'erro'>('idle');
+  const [errorMessage, setErrorMessage] = useState('');
+
+  function currentUserId(): string | null {
+    const raw = localStorage.getItem('montese_user');
+    if (!raw) return null;
+    return JSON.parse(raw).id;
+  }
+
+  function listUrl(): string {
+    return tenantId ? `/api/documents?tenant_id=${tenantId}` : '/api/documents';
+  }
+
+  async function loadDocuments() {
+    const token = localStorage.getItem('montese_token');
+    const res = await fetch(listUrl(), { headers: { Authorization: `Bearer ${token}` } });
+    if (res.ok) setDocuments(await res.json());
+    setLoading(false);
+  }
+
+  useEffect(() => {
+    loadDocuments();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  async function handleUpload(event: FormEvent) {
+    event.preventDefault();
+    if (!file) return;
+    setStatus('loading');
+    setErrorMessage('');
+    const token = localStorage.getItem('montese_token');
+    const formData = new FormData();
+    formData.append('category', category);
+    formData.append('title', title);
+    if (expiresAt) formData.append('expires_at', expiresAt);
+    if (tenantId) formData.append('tenant_id', tenantId);
+    formData.append('file', file);
+
+    try {
+      const res = await fetch('/api/documents', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      });
+      if (res.ok) {
+        setTitle('');
+        setExpiresAt('');
+        setFile(null);
+        setStatus('idle');
+        loadDocuments();
+        return;
+      }
+      const body = await res.json().catch(() => null);
+      setErrorMessage(body?.message ?? 'Não foi possível enviar o documento.');
+      setStatus('erro');
+    } catch {
+      setErrorMessage('Não foi possível conectar ao servidor.');
+      setStatus('erro');
+    }
+  }
+
+  async function handleDownload(id: string) {
+    const token = localStorage.getItem('montese_token');
+    const res = await fetch(`/api/documents/${id}/download`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (res.ok) {
+      const { url } = await res.json();
+      window.open(url, '_blank');
+    }
+  }
+
+  async function handleDelete(id: string) {
+    const token = localStorage.getItem('montese_token');
+    const res = await fetch(`/api/documents/${id}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (res.ok) loadDocuments();
+  }
+
+  const userId = currentUserId();
+
+  if (loading) {
+    return <p className="text-brand-700">Carregando documentos...</p>;
+  }
+
+  return (
+    <div className="flex flex-col gap-8">
+      <section className="rounded-lg border border-brand-100 p-6">
+        <h2 className="text-lg font-bold text-brand-900">Enviar documento</h2>
+        <form onSubmit={handleUpload} className="mt-4 flex flex-col gap-4">
+          <label className="flex flex-col gap-1 text-sm text-brand-900">
+            Categoria
+            <select
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              className="rounded-md border border-brand-100 px-3 py-2"
+            >
+              {Object.entries(CATEGORY_LABELS).map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="flex flex-col gap-1 text-sm text-brand-900">
+            Título
+            <input
+              required
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              className="rounded-md border border-brand-100 px-3 py-2"
+            />
+          </label>
+          <label className="flex flex-col gap-1 text-sm text-brand-900">
+            Vencimento (opcional)
+            <input
+              type="date"
+              value={expiresAt}
+              onChange={(e) => setExpiresAt(e.target.value)}
+              className="rounded-md border border-brand-100 px-3 py-2"
+            />
+          </label>
+          <label className="flex flex-col gap-1 text-sm text-brand-900">
+            Arquivo (PDF, JPG ou PNG, até 10MB)
+            <input
+              type="file"
+              required
+              accept=".pdf,.jpg,.jpeg,.png"
+              onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+              className="text-sm text-brand-900"
+            />
+          </label>
+          {status === 'erro' && <p className="text-sm text-red-600">{errorMessage}</p>}
+          <button
+            type="submit"
+            disabled={status === 'loading'}
+            className="self-start rounded-md bg-brand-500 px-6 py-2 font-medium text-white hover:bg-brand-700 disabled:opacity-50"
+          >
+            {status === 'loading' ? 'Enviando...' : 'Enviar documento'}
+          </button>
+        </form>
+      </section>
+
+      <section className="rounded-lg border border-brand-100 p-6">
+        <h2 className="text-lg font-bold text-brand-900">Documentos</h2>
+        {documents.length === 0 ? (
+          <p className="mt-4 text-sm text-brand-700">Nenhum documento enviado ainda.</p>
+        ) : (
+          <ul className="mt-4 flex flex-col gap-3">
+            {documents.map((doc) => (
+              <li
+                key={doc.id}
+                className="flex items-center justify-between rounded-md border border-brand-100 px-4 py-3 text-sm"
+              >
+                <div>
+                  <strong className="text-brand-900">{CATEGORY_LABELS[doc.category]}</strong>{' '}
+                  <span className="text-brand-700">— {doc.title}</span>
+                  {doc.expires_at && (
+                    <span className="ml-2 text-brand-700">
+                      (vence em {new Date(doc.expires_at).toLocaleDateString('pt-BR')})
+                    </span>
+                  )}
+                </div>
+                <div className="flex gap-3">
+                  <button onClick={() => handleDownload(doc.id)} className="text-brand-500 hover:underline">
+                    Baixar
+                  </button>
+                  {doc.uploaded_by_user_id === userId && (
+                    <button onClick={() => handleDelete(doc.id)} className="text-red-600 hover:underline">
+                      Apagar
+                    </button>
+                  )}
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+    </div>
+  );
+}
