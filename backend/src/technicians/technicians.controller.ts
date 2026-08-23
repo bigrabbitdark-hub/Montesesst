@@ -33,7 +33,7 @@ export class TechniciansController {
     return req.withTenantContext((client: any) => this.technicians.update(client, id, dto));
   }
 
-  @Roles('empresa', 'admin')
+  @Roles('admin')
   @Post(':id/assign')
   assign(@Param('id') id: string, @Body() dto: AssignTechnicianDto, @Req() req: any) {
     const user = req.user;
@@ -42,7 +42,7 @@ export class TechniciansController {
     return req.withTenantContext((client: any) => this.technicians.assign(client, id, tenantId));
   }
 
-  @Roles('empresa', 'admin')
+  @Roles('admin')
   @Delete(':id/assign')
   unassign(@Param('id') id: string, @Body() dto: AssignTechnicianDto, @Req() req: any) {
     const user = req.user;
