@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PoolClient } from 'pg';
 import { randomUUID } from 'crypto';
 import { R2Service } from './r2.service';
@@ -107,5 +107,21 @@ export class DocumentsService {
     const document = result.rows[0];
     if (!document) throw new NotFoundException('Documento não encontrado');
     return document;
+  }
+
+  async getDownloadUrl(client: PoolClient, id: string): Promise<{ url: string; file_name: string }> {
+    const document = await this.findOne(client, id);
+    const url = await this.r2.getPresignedDownloadUrl(document.file_key);
+    return { url, file_name: document.file_name };
+  }
+
+  async remove(client: PoolClient, id: string, userId: string, isAdmin: boolean): Promise<void> {
+    const document = await this.findOne(client, id);
+    if (!isAdmin && document.uploaded_by_user_id !== userId) {
+      throw new ForbiddenException('Só quem subiu o documento pode apagá-lo');
+    }
+    await this.r2.deleteObject(document.file_key);
+    const result = await client.query('DELETE FROM documents WHERE id = $1', [id]);
+    if (result.rowCount === 0) throw new NotFoundException('Documento não encontrado');
   }
 }

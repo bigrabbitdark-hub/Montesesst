@@ -2,7 +2,9 @@ import {
   BadRequestException,
   Body,
   Controller,
+  Delete,
   Get,
+  Param,
   Post,
   Query,
   Req,
@@ -54,5 +56,19 @@ export class DocumentsController {
       throw new BadRequestException('tenant_id é obrigatório');
     }
     return req.withTenantContext((client: any) => this.documents.findAll(client, tenantId));
+  }
+
+  @Get(':id/download')
+  download(@Param('id') id: string, @Req() req: any) {
+    return req.withTenantContext((client: any) => this.documents.getDownloadUrl(client, id));
+  }
+
+  @Roles('empresa', 'tecnico', 'admin')
+  @Delete(':id')
+  remove(@Param('id') id: string, @Req() req: any) {
+    const user = req.user;
+    return req.withTenantContext((client: any) =>
+      this.documents.remove(client, id, user.id, user.role === 'admin'),
+    );
   }
 }
