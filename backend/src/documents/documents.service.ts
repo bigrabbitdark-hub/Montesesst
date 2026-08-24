@@ -28,6 +28,21 @@ export interface Document {
   updated_at: string;
 }
 
+export interface ComplianceItem {
+  id: string;
+  category: string;
+  title: string;
+  expires_at: string;
+  dias_vencido?: number;
+  dias_restantes?: number;
+}
+
+export interface ComplianceResult {
+  score: number | null;
+  pendencias: ComplianceItem[];
+  avisos: ComplianceItem[];
+}
+
 interface UploadFile {
   buffer: Buffer;
   mimetype: string;
@@ -106,6 +121,50 @@ export class DocumentsService {
     // tenant, técnico vê tenants vinculados via EXISTS).
     const result = await client.query<Document>('SELECT * FROM documents ORDER BY created_at DESC');
     return result.rows;
+  }
+
+  async getCompliance(client: PoolClient, tenantId?: string): Promise<ComplianceResult> {
+    const rows = tenantId
+      ? (
+          await client.query<ComplianceItem>(
+            `SELECT id, category, title, expires_at FROM documents
+             WHERE expires_at IS NOT NULL AND tenant_id = $1
+             ORDER BY expires_at ASC`,
+            [tenantId],
+          )
+        ).rows
+      : (
+          await client.query<ComplianceItem>(
+            `SELECT id, category, title, expires_at FROM documents
+             WHERE expires_at IS NOT NULL
+             ORDER BY expires_at ASC`,
+          )
+        ).rows;
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const pendencias: ComplianceItem[] = [];
+    const avisos: ComplianceItem[] = [];
+    let emDiaCount = 0;
+
+    for (const row of rows) {
+      const expiresAt = new Date(row.expires_at);
+      expiresAt.setHours(0, 0, 0, 0);
+      const diffDays = Math.round((expiresAt.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+
+      if (diffDays < 0) {
+        pendencias.push({ ...row, dias_vencido: -diffDays });
+      } else if (diffDays <= 30) {
+        avisos.push({ ...row, dias_restantes: diffDays });
+        emDiaCount++;
+      } else {
+        emDiaCount++;
+      }
+    }
+
+    const score = rows.length === 0 ? null : Math.round((emDiaCount / rows.length) * 100);
+    return { score, pendencias, avisos };
   }
 
   async findOne(client: PoolClient, id: string): Promise<Document> {

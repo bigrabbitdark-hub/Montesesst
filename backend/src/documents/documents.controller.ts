@@ -58,6 +58,14 @@ export class DocumentsController {
     return req.withTenantContext((client: any) => this.documents.findAll(client, tenantId));
   }
 
+  @Get('compliance')
+  compliance(@Query('tenant_id') tenantId: string | undefined, @Req() req: any) {
+    if (req.user.role === 'tecnico' && !tenantId) {
+      throw new BadRequestException('tenant_id é obrigatório');
+    }
+    return req.withTenantContext((client: any) => this.documents.getCompliance(client, tenantId));
+  }
+
   @Get(':id/download')
   download(@Param('id') id: string, @Req() req: any) {
     return req.withTenantContext((client: any) => this.documents.getDownloadUrl(client, id));
