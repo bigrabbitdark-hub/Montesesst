@@ -12,6 +12,21 @@ interface DocumentRow {
   created_at: string;
 }
 
+interface ComplianceItem {
+  id: string;
+  category: string;
+  title: string;
+  expires_at: string;
+  dias_vencido?: number;
+  dias_restantes?: number;
+}
+
+interface ComplianceResult {
+  score: number | null;
+  pendencias: ComplianceItem[];
+  avisos: ComplianceItem[];
+}
+
 const CATEGORY_LABELS: Record<string, string> = {
   pgr: 'PGR',
   pcmso: 'PCMSO',
@@ -30,6 +45,7 @@ export function DocumentsPanel({ tenantId }: { tenantId?: string }) {
   const [status, setStatus] = useState<'idle' | 'loading' | 'erro'>('idle');
   const [errorMessage, setErrorMessage] = useState('');
   const [listError, setListError] = useState('');
+  const [compliance, setCompliance] = useState<ComplianceResult | null>(null);
 
   function currentUserId(): string | null {
     const raw = localStorage.getItem('montese_user');
@@ -39,6 +55,24 @@ export function DocumentsPanel({ tenantId }: { tenantId?: string }) {
 
   function listUrl(): string {
     return tenantId ? `/api/documents?tenant_id=${tenantId}` : '/api/documents';
+  }
+
+  function complianceUrl(): string {
+    return tenantId ? `/api/documents/compliance?tenant_id=${tenantId}` : '/api/documents/compliance';
+  }
+
+  async function loadCompliance() {
+    const token = localStorage.getItem('montese_token');
+    try {
+      const res = await fetch(complianceUrl(), { headers: { Authorization: `Bearer ${token}` } });
+      if (res.ok) {
+        setCompliance(await res.json());
+      } else {
+        setListError('Não foi possível carregar o score de conformidade.');
+      }
+    } catch {
+      setListError('Não foi possível conectar ao servidor.');
+    }
   }
 
   async function loadDocuments() {
@@ -59,6 +93,7 @@ export function DocumentsPanel({ tenantId }: { tenantId?: string }) {
 
   useEffect(() => {
     loadDocuments();
+    loadCompliance();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -87,6 +122,7 @@ export function DocumentsPanel({ tenantId }: { tenantId?: string }) {
         setFile(null);
         setStatus('idle');
         loadDocuments();
+        loadCompliance();
         return;
       }
       const body = await res.json().catch(() => null);
@@ -124,6 +160,7 @@ export function DocumentsPanel({ tenantId }: { tenantId?: string }) {
       });
       if (res.ok) {
         loadDocuments();
+        loadCompliance();
       } else {
         setListError('Não foi possível apagar o documento.');
       }
@@ -140,6 +177,41 @@ export function DocumentsPanel({ tenantId }: { tenantId?: string }) {
 
   return (
     <div className="flex flex-col gap-8">
+      {compliance && (
+        <section className="rounded-lg border border-brand-100 p-6">
+          <h2 className="text-lg font-bold text-brand-900">Conformidade</h2>
+          <p className="mt-2 text-3xl font-bold text-brand-900">
+            {compliance.score === null ? 'Sem dados ainda' : `${compliance.score}%`}
+          </p>
+          {compliance.pendencias.length > 0 && (
+            <div className="mt-4">
+              <h3 className="text-sm font-bold text-red-600">Pendências</h3>
+              <ul className="mt-2 flex flex-col gap-1 text-sm text-red-600">
+                {compliance.pendencias.map((item) => (
+                  <li key={item.id}>
+                    {CATEGORY_LABELS[item.category]} — {item.title} (venceu há {item.dias_vencido} dia(s))
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {compliance.avisos.length > 0 && (
+            <div className="mt-4">
+              <h3 className="text-sm font-bold text-yellow-700">Vencendo em breve</h3>
+              <ul className="mt-2 flex flex-col gap-1 text-sm text-yellow-700">
+                {compliance.avisos.map((item) => (
+                  <li key={item.id}>
+                    {CATEGORY_LABELS[item.category]} — {item.title} (vence em {item.dias_restantes} dia(s))
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {compliance.score !== null && compliance.pendencias.length === 0 && compliance.avisos.length === 0 && (
+            <p className="mt-4 text-sm text-green-700">Tudo em dia.</p>
+          )}
+        </section>
+      )}
       <section className="rounded-lg border border-brand-100 p-6">
         <h2 className="text-lg font-bold text-brand-900">Enviar documento</h2>
         <form onSubmit={handleUpload} className="mt-4 flex flex-col gap-4">
