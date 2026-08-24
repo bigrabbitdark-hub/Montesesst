@@ -67,6 +67,7 @@ export function DocumentsPanel({ tenantId }: { tenantId?: string }) {
       const res = await fetch(complianceUrl(), { headers: { Authorization: `Bearer ${token}` } });
       if (res.ok) {
         setCompliance(await res.json());
+        setListError('');
       } else {
         setListError('Não foi possível carregar o score de conformidade.');
       }
