@@ -379,7 +379,7 @@ o `back_url` do Mercado Pago em produção. `PUBLIC_APP_URL` já atualizado
 no `.env` real pra `https://montesesst.com.br`.
 
 **Deploy e verificação real (2026-08-23), evidência real:**
-- Suíte e2e completa: **21/21 suites, 68/68 testes passando** contra
+- Suíte e2e completa: **21/21 suites, 69/69 testes passando** contra
   Postgres real e o bucket R2 real (5 suites novas desta fase).
 - Páginas novas retornando `200` via **domínio real com HTTPS**
   (`https://montesesst.com.br`): `/`, `/login`, `/empresa/documentos`,
