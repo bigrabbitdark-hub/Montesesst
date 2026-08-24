@@ -404,8 +404,8 @@ documentos, não uma tela nova; técnico também vê. Spec em
 [`docs/specs/fase-4-score-pendencias.md`](specs/fase-4-score-pendencias.md),
 plano em [`docs/plans/fase-4-score-pendencias.md`](plans/fase-4-score-pendencias.md).
 
-**Fechado em 2026-08-24** — 2 tasks concluídas e revisadas (SDD, uma
-revisão por task):
+**Fechado em 2026-08-24** — 3 tasks concluídas (Tasks 1 e 2 via SDD, uma
+revisão por task; Task 3 é deploy/documentação, executada direto):
 
 | Task | Entrega | Status |
 |---|---|---|
