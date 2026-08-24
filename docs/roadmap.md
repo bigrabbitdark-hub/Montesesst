@@ -392,6 +392,37 @@ admin-only por decisão (sem tela de Dashboard Admin ainda — a Montese
 aciona via API diretamente). Score de SST, pendências e agenda ficam
 para os próximos sub-projetos da Fase 4.
 
+## Fase 4 (sub-projeto B — Score de SST + Pendências): status
+
+Indicador de conformidade (score em % + lista de vencidos/perto de
+vencer), calculado em cima dos documentos que o sub-projeto A já criou —
+sem tabela nova, sem migration. Decisões confirmadas em brainstorming de
+2026-08-24: só documentos com vencimento definido entram na conta;
+`null` (não 0%/100%) quando não há nenhum; vencido = pendência real,
+até 30 dias antes = aviso; aparece dentro da própria página de
+documentos, não uma tela nova; técnico também vê. Spec em
+[`docs/specs/fase-4-score-pendencias.md`](specs/fase-4-score-pendencias.md),
+plano em [`docs/plans/fase-4-score-pendencias.md`](plans/fase-4-score-pendencias.md).
+
+**Fechado em 2026-08-24** — 2 tasks concluídas e revisadas (SDD, uma
+revisão por task):
+
+| Task | Entrega | Status |
+|---|---|---|
+| 1 | `GET /documents/compliance` — cálculo de score/pendências/avisos | ✅ |
+| 2 | Bloco de conformidade no `DocumentsPanel` (empresa e técnico) | ✅ |
+| 3 | Deploy real + smoke test | ✅ |
+
+**Deploy e verificação real (2026-08-24), evidência real:**
+- Suíte e2e completa: **22/22 suites, 72/72 testes passando** contra o
+  Postgres real desta VPS (1 suite nova desta fase).
+- `/empresa/documentos` retornando `200` via domínio real com HTTPS
+  (`https://montesesst.com.br`); `GET /api/documents/compliance` sem
+  token retorna `401`.
+
+**Sem pendência bloqueante.** Agenda (a última peça da Fase 4) fica
+para um terceiro sub-projeto, spec própria.
+
 ## Fase 5 — Dashboard Técnico (não iniciada)
 
 Carteira de clientes, agenda, relatórios de inspeção. Modelos de relatório
