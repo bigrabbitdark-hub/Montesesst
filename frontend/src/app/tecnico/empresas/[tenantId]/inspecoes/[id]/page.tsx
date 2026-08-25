@@ -52,13 +52,17 @@ export default function InspecaoPage() {
 
   async function loadInspection() {
     const token = localStorage.getItem('montese_token');
-    const res = await fetch(`/api/inspections/${params.id}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    if (res.ok) {
-      setInspection(await res.json());
-    } else {
-      setError('Não foi possível carregar a inspeção.');
+    try {
+      const res = await fetch(`/api/inspections/${params.id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        setInspection(await res.json());
+      } else {
+        setError('Não foi possível carregar a inspeção.');
+      }
+    } catch {
+      setError('Não foi possível conectar ao servidor.');
     }
     setLoading(false);
   }
@@ -76,35 +80,43 @@ export default function InspecaoPage() {
 
   async function saveHeaderField(field: string, value: string | number) {
     const token = localStorage.getItem('montese_token');
-    const res = await fetch(`/api/inspections/${params.id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ [field]: value }),
-    });
-    if (res.ok) {
-      const updated = await res.json();
-      setInspection((prev) => (prev ? { ...prev, ...updated } : prev));
-    } else {
-      setError('Não foi possível salvar a alteração.');
+    try {
+      const res = await fetch(`/api/inspections/${params.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ [field]: value }),
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        setInspection((prev) => (prev ? { ...prev, ...updated } : prev));
+      } else {
+        setError('Não foi possível salvar a alteração.');
+      }
+    } catch {
+      setError('Não foi possível conectar ao servidor.');
     }
   }
 
   async function saveItem(itemId: string, patch: { status?: string; notes?: string }) {
     const token = localStorage.getItem('montese_token');
-    const res = await fetch(`/api/inspections/${params.id}/items/${itemId}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify(patch),
-    });
-    if (res.ok) {
-      const updatedItem = await res.json();
-      setInspection((prev) =>
-        prev
-          ? { ...prev, items: prev.items.map((i) => (i.id === itemId ? updatedItem : i)) }
-          : prev,
-      );
-    } else {
-      setError('Não foi possível salvar o item.');
+    try {
+      const res = await fetch(`/api/inspections/${params.id}/items/${itemId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify(patch),
+      });
+      if (res.ok) {
+        const updatedItem = await res.json();
+        setInspection((prev) =>
+          prev
+            ? { ...prev, items: prev.items.map((i) => (i.id === itemId ? updatedItem : i)) }
+            : prev,
+        );
+      } else {
+        setError('Não foi possível salvar o item.');
+      }
+    } catch {
+      setError('Não foi possível conectar ao servidor.');
     }
   }
 
@@ -113,14 +125,18 @@ export default function InspecaoPage() {
     setConcluding(true);
     setError('');
     const token = localStorage.getItem('montese_token');
-    const res = await fetch(`/api/inspections/${params.id}/concluir`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    if (res.ok) {
-      setInspection(await res.json());
-    } else {
-      setError('Não foi possível concluir a inspeção.');
+    try {
+      const res = await fetch(`/api/inspections/${params.id}/concluir`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        setInspection(await res.json());
+      } else {
+        setError('Não foi possível concluir a inspeção.');
+      }
+    } catch {
+      setError('Não foi possível conectar ao servidor.');
     }
     setConcluding(false);
   }
