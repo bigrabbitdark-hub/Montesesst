@@ -52,9 +52,8 @@ export class DocumentsController {
 
   @Get()
   findAll(@Query('tenant_id') tenantId: string | undefined, @Req() req: any) {
-    if (req.user.role === 'tecnico' && !tenantId) {
-      throw new BadRequestException('tenant_id é obrigatório');
-    }
+    // Técnico sem tenant_id: RLS já restringe a query às empresas vinculadas
+    // (EXISTS contra tenant_technicians) — usado pela agenda agregada da carteira.
     return req.withTenantContext((client: any) => this.documents.findAll(client, tenantId));
   }
 
@@ -64,6 +63,12 @@ export class DocumentsController {
       throw new BadRequestException('tenant_id é obrigatório');
     }
     return req.withTenantContext((client: any) => this.documents.getCompliance(client, tenantId));
+  }
+
+  @Roles('tecnico')
+  @Get('compliance/portfolio')
+  portfolioCompliance(@Req() req: any) {
+    return req.withTenantContext((client: any) => this.documents.getPortfolioCompliance(client, req.user.id));
   }
 
   @Get(':id/download')

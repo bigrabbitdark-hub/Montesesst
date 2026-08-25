@@ -43,6 +43,14 @@ export interface ComplianceResult {
   avisos: ComplianceItem[];
 }
 
+export interface PortfolioComplianceItem {
+  tenant_id: string;
+  tenant_name: string;
+  score: number | null;
+  pendencias_count: number;
+  avisos_count: number;
+}
+
 interface UploadFile {
   buffer: Buffer;
   mimetype: string;
@@ -165,6 +173,66 @@ export class DocumentsService {
 
     const score = rows.length === 0 ? null : Math.round((emDiaCount / rows.length) * 100);
     return { score, pendencias, avisos };
+  }
+
+  async getPortfolioCompliance(client: PoolClient, userId: string): Promise<PortfolioComplianceItem[]> {
+    const result = await client.query<{
+      tenant_id: string;
+      tenant_name: string;
+      document_id: string | null;
+      expires_at: string | null;
+    }>(
+      `SELECT t.id AS tenant_id, t.name AS tenant_name, d.id AS document_id, d.expires_at
+       FROM tenant_technicians tt
+       JOIN technicians tech ON tech.id = tt.technician_id
+       JOIN tenants t ON t.id = tt.tenant_id
+       LEFT JOIN documents d ON d.tenant_id = t.id AND d.expires_at IS NOT NULL
+       WHERE tech.user_id = $1
+       ORDER BY t.name`,
+      [userId],
+    );
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const order: string[] = [];
+    const groups = new Map<
+      string,
+      { tenant_name: string; total: number; emDia: number; pendencias: number; avisos: number }
+    >();
+
+    for (const row of result.rows) {
+      if (!groups.has(row.tenant_id)) {
+        groups.set(row.tenant_id, { tenant_name: row.tenant_name, total: 0, emDia: 0, pendencias: 0, avisos: 0 });
+        order.push(row.tenant_id);
+      }
+      if (!row.expires_at) continue;
+
+      const group = groups.get(row.tenant_id)!;
+      group.total++;
+      const expiresAt = new Date(row.expires_at);
+      expiresAt.setHours(0, 0, 0, 0);
+      const diffDays = Math.round((expiresAt.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+      if (diffDays < 0) {
+        group.pendencias++;
+      } else if (diffDays <= 30) {
+        group.avisos++;
+        group.emDia++;
+      } else {
+        group.emDia++;
+      }
+    }
+
+    return order.map((tenantId) => {
+      const g = groups.get(tenantId)!;
+      return {
+        tenant_id: tenantId,
+        tenant_name: g.tenant_name,
+        score: g.total === 0 ? null : Math.round((g.emDia / g.total) * 100),
+        pendencias_count: g.pendencias,
+        avisos_count: g.avisos,
+      };
+    });
   }
 
   async findOne(client: PoolClient, id: string): Promise<Document> {
