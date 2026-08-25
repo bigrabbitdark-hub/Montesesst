@@ -7,7 +7,7 @@ export class ActionPlansController {
 
   @Get()
   findAll(@Query('tenant_id') tenantId: string | undefined, @Req() req: any) {
-    if (req.user.role === 'tecnico' && !tenantId) {
+    if ((req.user.role === 'tecnico' || req.user.role === 'parceiro') && !tenantId) {
       throw new BadRequestException('tenant_id é obrigatório');
     }
     return req.withTenantContext((client: any) => this.inspections.findActionPlans(client, tenantId));

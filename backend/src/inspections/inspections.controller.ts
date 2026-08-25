@@ -21,7 +21,7 @@ import { UpdateChecklistItemDto } from './dto/update-checklist-item.dto';
 export class InspectionsController {
   constructor(private readonly inspections: InspectionsService) {}
 
-  @Roles('tecnico')
+  @Roles('tecnico', 'parceiro')
   @UsePipes(new ValidationPipe({ transform: true, whitelist: true, forbidNonWhitelisted: true }))
   @Post()
   create(@Body() dto: CreateInspectionDto, @Req() req: any) {
@@ -32,7 +32,7 @@ export class InspectionsController {
 
   @Get()
   findAll(@Query('tenant_id') tenantId: string | undefined, @Req() req: any) {
-    if (req.user.role === 'tecnico' && !tenantId) {
+    if ((req.user.role === 'tecnico' || req.user.role === 'parceiro') && !tenantId) {
       throw new BadRequestException('tenant_id é obrigatório');
     }
     return req.withTenantContext((client: any) => this.inspections.findAll(client, tenantId));
@@ -43,14 +43,14 @@ export class InspectionsController {
     return req.withTenantContext((client: any) => this.inspections.findOne(client, id));
   }
 
-  @Roles('tecnico')
+  @Roles('tecnico', 'parceiro')
   @UsePipes(new ValidationPipe({ transform: true, whitelist: true, forbidNonWhitelisted: true }))
   @Patch(':id')
   update(@Param('id') id: string, @Body() dto: UpdateInspectionDto, @Req() req: any) {
     return req.withTenantContext((client: any) => this.inspections.update(client, id, dto));
   }
 
-  @Roles('tecnico')
+  @Roles('tecnico', 'parceiro')
   @UsePipes(new ValidationPipe({ transform: true, whitelist: true, forbidNonWhitelisted: true }))
   @Patch(':id/items/:itemId')
   updateItem(
@@ -62,7 +62,7 @@ export class InspectionsController {
     return req.withTenantContext((client: any) => this.inspections.updateItem(client, id, itemId, dto));
   }
 
-  @Roles('tecnico')
+  @Roles('tecnico', 'parceiro')
   @Post(':id/concluir')
   conclude(@Param('id') id: string, @Req() req: any) {
     return req.withTenantContext((client: any) => this.inspections.conclude(client, id));
