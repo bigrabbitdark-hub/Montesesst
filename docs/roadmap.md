@@ -457,12 +457,42 @@ desse deploy conjunto fica pra quando o fundador decidir o timing.
 **Fase 4 completa** — score de SST, pendências, documentos e agenda,
 as quatro peças do Dashboard Empresa, todas fechadas.
 
-## Fase 5 — Dashboard Técnico (não iniciada)
+## Fase 5 — Dashboard Técnico: status
 
 Carteira de clientes, agenda, relatórios de inspeção. Modelos de relatório
-de referência (EPI e visita técnica) já recebidos e preservados em
-`docs/reference/modelos-relatorios-sst.md` — usar como base do schema
-quando esta fase começar.
+de referência (EPI e visita técnica) recebidos e preservados em
+`docs/reference/modelos-relatorios-sst.md`.
+
+Decisões confirmadas em brainstorming de 2026-08-25: o checklist completo
+de visita técnica (9 blocos C/NC/N.A.) já é escopo da Fase 6 — "relatórios
+de inspeção" fica de fora desta fase, evitando construir o schema de
+relatório duas vezes. Fase 5 vira só carteira + agenda, e as duas
+reaproveitam dados que já existiam (score/pendências por documento, RLS
+via `tenant_technicians`) — por isso reclassificada de arquitetural pra
+*bounded* (design curto no chat, sem spec/plano formais).
+
+**Fechado em 2026-08-25** — um endpoint novo e três arquivos de frontend
+alterados/criados (commit `0bb6587`):
+- `GET /documents/compliance/portfolio` — score/pendências/avisos por
+  empresa vinculada ao técnico, numa query só.
+- `GET /documents` sem `tenant_id`, pra técnico, agora permitido (RLS já
+  restringe às empresas vinculadas) — usado pela agenda agregada.
+- `/tecnico/empresas` mostra score/pendências por empresa da carteira.
+- Nova página `/tecnico/agenda` — vencimentos de toda a carteira,
+  agrupados por mês, com o nome da empresa em cada item.
+
+**Verificação:** suíte e2e completa rodada em container isolado (sem
+tocar no `montese_backend` em produção) — **24 suítes, todas passando**
+(3 novas desta fase, cobrindo agregação por empresa, isolamento RLS
+entre empresas não vinculadas, e negação de acesso pra quem não é
+técnico). Build isolado do frontend também passou, incluindo as duas
+páginas novas/alteradas. Teste visual ao vivo no navegador não foi
+feito — mesmo motivo da Fase 4C (container de produção compartilhado
+com trabalho visual não commitado de uma sessão paralela).
+
+**Pendência fora do escopo desta fase:** relatórios de inspeção (o
+checklist completo) ficam pra Fase 6, junto do fluxo de visita
+presencial.
 
 ## Fase 6 — Fluxo de visita presencial + Dashboard Parceiro (não iniciada)
 
