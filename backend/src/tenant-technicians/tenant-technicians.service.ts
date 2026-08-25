@@ -9,13 +9,21 @@ export interface LinkedTenant {
 
 @Injectable()
 export class TenantTechniciansService {
-  async findMyTenants(client: PoolClient, userId: string): Promise<LinkedTenant[]> {
+  async findMyTenants(
+    client: PoolClient,
+    userId: string,
+    role: 'tecnico' | 'parceiro',
+  ): Promise<LinkedTenant[]> {
+    const linkTable = role === 'tecnico' ? 'tenant_technicians' : 'tenant_partners';
+    const linkColumn = role === 'tecnico' ? 'technician_id' : 'partner_id';
+    const personTable = role === 'tecnico' ? 'technicians' : 'partners';
+
     const result = await client.query<LinkedTenant>(
       `SELECT t.id AS tenant_id, t.name AS tenant_name, t.cnpj AS tenant_cnpj
-       FROM tenant_technicians tt
-       JOIN technicians tech ON tech.id = tt.technician_id
-       JOIN tenants t ON t.id = tt.tenant_id
-       WHERE tech.user_id = $1
+       FROM ${linkTable} lt
+       JOIN ${personTable} p ON p.id = lt.${linkColumn}
+       JOIN tenants t ON t.id = lt.tenant_id
+       WHERE p.user_id = $1
        ORDER BY t.name`,
       [userId],
     );

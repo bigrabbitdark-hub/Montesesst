@@ -6,11 +6,11 @@ import { TenantTechniciansService } from './tenant-technicians.service';
 export class TenantTechniciansController {
   constructor(private readonly tenantTechnicians: TenantTechniciansService) {}
 
-  @Roles('tecnico')
+  @Roles('tecnico', 'parceiro')
   @Get('me')
   findMyTenants(@Req() req: any) {
     return req.withTenantContext((client: any) =>
-      this.tenantTechnicians.findMyTenants(client, req.user.id),
+      this.tenantTechnicians.findMyTenants(client, req.user.id, req.user.role),
     );
   }
 }
