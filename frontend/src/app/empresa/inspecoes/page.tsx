@@ -64,7 +64,7 @@ export default function EmpresaInspecoesPage() {
           return;
         }
         setInspections(await inspectionsRes.json());
-        setActionPlans(await actionPlansRes.json());
+        setActionPlans((await actionPlansRes.json()).filter((p: ActionPlan) => p.status === 'pendente'));
         setLoading(false);
       })
       .catch(() => {
