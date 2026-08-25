@@ -35,6 +35,42 @@ const CATEGORY_LABELS: Record<string, string> = {
   treinamento: 'Treinamento',
 };
 
+interface AgendaItem {
+  id: string;
+  category: string;
+  title: string;
+  expires_at: string;
+}
+
+interface AgendaGroup {
+  label: string;
+  items: AgendaItem[];
+}
+
+function capitalize(text: string): string {
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
+function groupAgendaByMonth(documents: DocumentRow[]): AgendaGroup[] {
+  const items = documents
+    .filter((doc): doc is DocumentRow & { expires_at: string } => doc.expires_at !== null)
+    .sort((a, b) => a.expires_at.localeCompare(b.expires_at));
+
+  const groups: AgendaGroup[] = [];
+  for (const item of items) {
+    const label = capitalize(
+      new Date(item.expires_at).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }),
+    );
+    const lastGroup = groups[groups.length - 1];
+    if (lastGroup && lastGroup.label === label) {
+      lastGroup.items.push(item);
+    } else {
+      groups.push({ label, items: [item] });
+    }
+  }
+  return groups;
+}
+
 export function DocumentsPanel({ tenantId }: { tenantId?: string }) {
   const [documents, setDocuments] = useState<DocumentRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -171,6 +207,7 @@ export function DocumentsPanel({ tenantId }: { tenantId?: string }) {
   }
 
   const userId = currentUserId();
+  const agendaGroups = groupAgendaByMonth(documents);
 
   if (loading) {
     return <p className="text-brand-700">Carregando documentos...</p>;
@@ -213,6 +250,30 @@ export function DocumentsPanel({ tenantId }: { tenantId?: string }) {
           )}
         </section>
       )}
+
+      <section className="rounded-lg border border-brand-100 p-6">
+        <h2 className="text-lg font-bold text-brand-900">Agenda de vencimentos</h2>
+        {agendaGroups.length === 0 ? (
+          <p className="mt-4 text-sm text-brand-700">Nenhum vencimento cadastrado.</p>
+        ) : (
+          <div className="mt-4 flex flex-col gap-5">
+            {agendaGroups.map((group) => (
+              <div key={group.label}>
+                <h3 className="text-sm font-bold text-brand-900">{group.label}</h3>
+                <ul className="mt-2 flex flex-col gap-1 text-sm text-brand-700">
+                  {group.items.map((item) => (
+                    <li key={item.id}>
+                      {CATEGORY_LABELS[item.category]} — {item.title} (
+                      {new Date(item.expires_at).toLocaleDateString('pt-BR')})
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
       <section className="rounded-lg border border-brand-100 p-6">
         <h2 className="text-lg font-bold text-brand-900">Enviar documento</h2>
         <form onSubmit={handleUpload} className="mt-4 flex flex-col gap-4">
