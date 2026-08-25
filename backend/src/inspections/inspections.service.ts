@@ -107,7 +107,8 @@ export class InspectionsService {
       return result.rows;
     }
     // Sem filtro: RLS já restringe (admin vê tudo, empresa vê o próprio
-    // tenant, técnico vê tenants vinculados via EXISTS).
+    // tenant, técnico vê tenants vinculados via EXISTS contra tenant_technicians,
+    // parceiro vê tenants vinculados via EXISTS contra tenant_partners).
     const result = await client.query<Inspection>('SELECT * FROM inspections ORDER BY visited_at DESC');
     return result.rows;
   }

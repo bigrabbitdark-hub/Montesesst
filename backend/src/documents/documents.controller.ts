@@ -52,8 +52,9 @@ export class DocumentsController {
 
   @Get()
   findAll(@Query('tenant_id') tenantId: string | undefined, @Req() req: any) {
-    // Técnico sem tenant_id: RLS já restringe a query às empresas vinculadas
-    // (EXISTS contra tenant_technicians) — usado pela agenda agregada da carteira.
+    // Técnico ou parceiro sem tenant_id: RLS já restringe a query às empresas
+    // vinculadas (EXISTS contra tenant_technicians ou tenant_partners,
+    // respectivamente) — usado pela agenda agregada da carteira.
     return req.withTenantContext((client: any) => this.documents.findAll(client, tenantId));
   }
 

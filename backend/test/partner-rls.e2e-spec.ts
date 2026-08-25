@@ -1,11 +1,9 @@
 import { Client } from 'pg';
-import { randomUUID } from 'crypto';
 import { TestDb } from './db-test-helper';
 
 describe('Isolamento multi-tenant via RLS para o papel parceiro (e2e)', () => {
   let db: TestDb;
   let tenantAId: string;
-  let tenantBId: string;
   let docAId: string;
   let inspectionAId: string;
   let itemAId: string;
@@ -19,9 +17,7 @@ describe('Isolamento multi-tenant via RLS para o papel parceiro (e2e)', () => {
     db = new TestDb();
     await db.connect();
     const tenantA = await db.createTenantWithUser('Empresa Parceiro RLS A');
-    const tenantB = await db.createTenantWithUser('Empresa Parceiro RLS B');
     tenantAId = tenantA.tenantId;
-    tenantBId = tenantB.tenantId;
 
     const linkedPartner = await db.createUserWithRole('parceiro', 'Parceiro Vinculado RLS');
     const unlinkedPartner = await db.createUserWithRole('parceiro', 'Parceiro Nao Vinculado RLS');

@@ -65,7 +65,7 @@ interface UploadData {
   expiresAt?: string;
   file: UploadFile;
   uploadedByUserId: string;
-  uploadedByRole: 'empresa' | 'tecnico';
+  uploadedByRole: 'empresa' | 'tecnico' | 'parceiro';
 }
 
 @Injectable()
@@ -126,7 +126,8 @@ export class DocumentsService {
       return result.rows;
     }
     // Sem filtro: RLS já restringe (admin vê tudo, empresa vê o próprio
-    // tenant, técnico vê tenants vinculados via EXISTS).
+    // tenant, técnico vê tenants vinculados via EXISTS contra tenant_technicians,
+    // parceiro vê tenants vinculados via EXISTS contra tenant_partners).
     const result = await client.query<Document>('SELECT * FROM documents ORDER BY created_at DESC');
     return result.rows;
   }
