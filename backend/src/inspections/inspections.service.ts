@@ -217,4 +217,16 @@ export class InspectionsService {
 
     return this.findOne(client, id);
   }
+
+  async findActionPlans(client: PoolClient, tenantId?: string): Promise<ActionPlan[]> {
+    if (tenantId) {
+      const result = await client.query<ActionPlan>(
+        'SELECT * FROM action_plans WHERE tenant_id = $1 ORDER BY created_at DESC',
+        [tenantId],
+      );
+      return result.rows;
+    }
+    const result = await client.query<ActionPlan>('SELECT * FROM action_plans ORDER BY created_at DESC');
+    return result.rows;
+  }
 }
