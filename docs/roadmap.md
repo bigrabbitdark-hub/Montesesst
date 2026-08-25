@@ -548,7 +548,8 @@ Teste visual ao vivo no navegador não foi feito — mesmo motivo das Fases
 commitado de uma sessão paralela).
 
 **Pendências registradas, não bloqueantes:**
-- [ ] **Acesso do técnico parceiro** — sub-projeto seguinte da Fase 6.
+- [x] **Acesso do técnico parceiro** — sub-projeto B da Fase 6, ver seção
+      seguinte. Fechado em 2026-08-25.
 - [ ] **Catálogo de EPI** — sub-projeto seguinte da Fase 6, spec própria.
 - [ ] **Acompanhamento de planos de ação** (mudar status, prazo) —
       trabalho futuro, fora desta entrega.
@@ -562,6 +563,77 @@ commitado de uma sessão paralela).
       planos de ação, `Number('')` viraria `0` em vez de vazio no campo
       de participantes do DDS, desempate de ordenação por data) — nenhum
       bloqueante, registrados no ledger da SDD antes de ser apagado.
+
+## Fase 6 (sub-projeto B — Acesso do técnico parceiro): status
+
+Segundo sub-projeto da Fase 6. O papel `parceiro` existe no banco desde
+a Fase 1 (`partners`/`tenant_partners`) mas nunca teve acesso a nenhuma
+tela — login redirecionava pra `/`, nenhum endpoint de
+documentos/conformidade/agenda/inspeções reconhecia esse papel. Decisão
+confirmada em brainstorming de 2026-08-25: reaproveitar 100% das telas
+`/tecnico/*` já existentes (sem rotas `/parceiro/*` separadas), com
+paridade completa de permissão em relação ao técnico responsável — não
+só inspeções, também documentos/conformidade/agenda. Spec em
+[`docs/specs/fase-6-acesso-parceiro.md`](specs/fase-6-acesso-parceiro.md),
+plano em [`docs/plans/fase-6-acesso-parceiro.md`](plans/fase-6-acesso-parceiro.md).
+
+**Fechado em 2026-08-25** — 5 tasks concluídas via SDD (revisão por
+task + revisão final de todo o branch):
+
+| Task | Entrega | Status |
+|---|---|---|
+| 1 | RLS de `documents`/`inspections`/`action_plans` estendida (`ALTER POLICY`, branch `parceiro` via `tenant_partners`) | ✅ |
+| 2 | `GET /tenant-technicians/me` bifurcado por papel | ✅ |
+| 3 | `documents` reconhece parceiro (upload, conformidade, portfólio, exclusão) | ✅ |
+| 4 | `inspections`/`action-plans` reconhecem parceiro | ✅ |
+| 5 | Redirect de login inclui parceiro | ✅ |
+
+**Descoberta real durante a Task 3, corrigida no mesmo escopo:** o
+`CHECK` de `documents.uploaded_by_role` só aceitava `'empresa'`/
+`'tecnico'` — nem a spec nem a migration do Task 1 tinham previsto isso
+(é um gap de schema de `documents`, não de RLS). Corrigido com a
+migration `0012_partner_upload_role.sql`, sem migração de dado
+necessária.
+
+**Revisão final de todo o branch fez verificação ao vivo contra o
+Postgres real** (não só leitura de diff) — sondou `pg_policy` real,
+tentou INSERT como parceiro sem vínculo (confirmou `42501` → 403 em
+`documents` e `inspections`), conferiu que as telas `/tecnico/*` são
+genuinamente agnósticas de papel (nenhuma leitura de `role` no cliente)
+e que não sobrou nenhum ponto `tecnico`-only nas telas compartilhadas.
+Encontrou 1 problema Important real — o tipo TypeScript
+`uploadedByRole` em `documents.service.ts` não tinha sido ampliado pra
+`'parceiro'` quando a Task 3 corrigiu a constraint do banco (mesma
+classe de gap, agora na camada de tipos) — corrigido junto com 2 achados
+Minor (comentários desatualizados, fixture morta em teste), revalidado
+limpo.
+
+**Verificação:** suíte e2e completa rodada em container isolado (sem
+tocar no `montese_backend`/`montese_frontend` de produção) — **32
+suítes, 106 testes, todos passando** (5 suítes novas desta fase). Build
+isolado do frontend passou (a Task 5 alterou
+`frontend/src/app/(site)/login/page.tsx`, que estava sem commit ainda —
+o fundador aprovou explicitamente que esse commit incluísse o arquivo
+inteiro, redesign visual não commitado de outra sessão junto).
+
+**Pendências registradas, não bloqueantes** (nenhuma delas afeta
+segurança ou corretude hoje, segundo verificação da revisão final):
+- [ ] **Catálogo de EPI** — último sub-projeto pendente da Fase 6, spec
+      própria.
+- [ ] Duplicação do ternário `linkTable`/`linkColumn`/`personTable`
+      entre `tenant-technicians.service.ts` e `documents.service.ts` —
+      extrair pra um helper compartilhado se aparecer uma terceira
+      cópia.
+- [ ] Cobertura de teste negativo assimétrica entre `documents` e
+      `inspections`/`action_plans` (o comportamento foi verificado
+      manualmente contra o Postgres real na revisão final e está
+      correto — falta só a rede de proteção contra regressão futura).
+- [ ] Onboarding de parceiro é só via API (`POST /partners`,
+      `@Roles('admin')`) — sem auto-cadastro nem tela de admin, mesma
+      lacuna que já existia para técnico antes da Fase 4A.
+- [ ] `plans`/`subscriptions` continuam `tecnico`-only — parceiro não
+      assina plano ainda; decisão de produto a confirmar, não bloqueia
+      o acesso entregue aqui (documentos/inspeções não têm paywall).
 
 ## Fase 7 — Dashboard Admin (não iniciada)
 
