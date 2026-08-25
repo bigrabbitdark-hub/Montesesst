@@ -13,6 +13,7 @@ import { TenantsModule } from './tenants/tenants.module';
 import { CompanyUnitsModule } from './company-units/company-units.module';
 import { TenantTechniciansModule } from './tenant-technicians/tenant-technicians.module';
 import { DocumentsModule } from './documents/documents.module';
+import { InspectionsModule } from './inspections/inspections.module';
 import { JwtAuthGuard } from './auth/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 import { TenantContextInterceptor } from './common/interceptors/tenant-context.interceptor';
@@ -41,6 +42,7 @@ import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
     CompanyUnitsModule,
     TenantTechniciansModule,
     DocumentsModule,
+    InspectionsModule,
   ],
   providers: [
     // Ordem importa: RateLimitGuard barra abuso antes de qualquer auth;
