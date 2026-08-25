@@ -116,13 +116,20 @@ seguem exatamente o padrão de assinatura eletrônica simples já usado em
 `inspections.technician_signature_name`/`_at` — nome digitado por quem
 está confirmando a entrega, sem canvas.
 
-### 2.4 RLS — mesmo padrão de `documents`/`inspections`
+### 2.4 RLS — usa a função helper já existente desde a Fase 1
 
-`tenant_epis` e `employee_epi_deliveries` usam a policy idêntica em
-forma à `documents_isolation` (já estendida pra `parceiro` na Fase 6
-sub-projeto B — `docs/specs/fase-6-acesso-parceiro.md`, seção 2):
-`admin` vê tudo; `empresa` vê o próprio `tenant_id`; `tecnico`/`parceiro`
-veem tenants vinculados via `tenant_technicians`/`tenant_partners`.
+**Descoberta durante o planejamento (2026-08-25):** `documents_isolation`/
+`inspections_isolation`/`action_plans_isolation` (Fases 4A e 6A, depois
+estendidas pra parceiro na Fase 6B) duplicam manualmente dois `EXISTS`
+(um pra `tenant_technicians`, um pra `tenant_partners`) em cada policy.
+Isso nunca precisou ser duplicado: `0001_init.sql` já criava uma função
+`assigned_tenant_ids_for_current_user()` — `SECURITY DEFINER`, une os
+dois vínculos numa `SETOF UUID` — usada desde a Fase 1 pela policy de
+`employees` (`employees_isolation`). Não vale reabrir/tocar as policies
+já fechadas e revisadas de fases anteriores (fora de escopo desta
+entrega), mas as duas tabelas novas desta entrega usam a função
+existente, mais simples e já testada, em vez de repetir o padrão de
+dois `EXISTS`:
 
 ```sql
 ALTER TABLE tenant_epis ENABLE ROW LEVEL SECURITY;
@@ -130,20 +137,7 @@ ALTER TABLE tenant_epis FORCE ROW LEVEL SECURITY;
 CREATE POLICY tenant_epis_isolation ON tenant_epis USING (
   current_setting('app.role', true) = 'admin'
   OR tenant_id = NULLIF(current_setting('app.tenant_id', true), '')::UUID
-  OR EXISTS (
-    SELECT 1 FROM tenant_technicians tt
-    JOIN technicians t ON t.id = tt.technician_id
-    WHERE tt.tenant_id = tenant_epis.tenant_id
-      AND t.user_id = NULLIF(current_setting('app.user_id', true), '')::UUID
-      AND current_setting('app.role', true) = 'tecnico'
-  )
-  OR EXISTS (
-    SELECT 1 FROM tenant_partners tp
-    JOIN partners p ON p.id = tp.partner_id
-    WHERE tp.tenant_id = tenant_epis.tenant_id
-      AND p.user_id = NULLIF(current_setting('app.user_id', true), '')::UUID
-      AND current_setting('app.role', true) = 'parceiro'
-  )
+  OR tenant_id IN (SELECT assigned_tenant_ids_for_current_user())
 );
 ```
 
@@ -173,6 +167,20 @@ CREATE POLICY tenant_epis_isolation ON tenant_epis USING (
   `delivered_at`, `signed_by_name`.
 - `GET /epis/:id/deliveries` (sem `@Roles`) — lista as entregas de um
   EPI específico.
+
+**Descoberta durante o planejamento (2026-08-25) — gap real em código
+já existente, não desta entrega:** `GET /employees` (Fase 3) não aceita
+`?tenant_id=` — não tem filtro nenhum, só depende de RLS. Isso nunca
+foi problema até agora porque nenhuma tela de técnico/parceiro
+precisava listar funcionários. O formulário de "Registrar entrega"
+desta entrega precisa disso: um técnico/parceiro vinculado a mais de
+uma empresa precisa escolher o funcionário de uma empresa específica,
+não ver todos os funcionários de todas as empresas vinculadas
+misturados numa lista só. Corrigido como parte desta entrega:
+`backend/src/employees/employees.controller.ts`'s `findAll` ganha
+`@Query('tenant_id')`, com o mesmo guard já padrão no projeto (`tecnico`/
+`parceiro` exigem `tenant_id`, empresa não precisa). Endpoint continua
+`GET /employees`, mesma URL — só ganha um parâmetro opcional.
 
 ## 4. Frontend
 
