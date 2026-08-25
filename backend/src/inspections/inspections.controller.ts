@@ -61,4 +61,10 @@ export class InspectionsController {
   ) {
     return req.withTenantContext((client: any) => this.inspections.updateItem(client, id, itemId, dto));
   }
+
+  @Roles('tecnico')
+  @Post(':id/concluir')
+  conclude(@Param('id') id: string, @Req() req: any) {
+    return req.withTenantContext((client: any) => this.inspections.conclude(client, id));
+  }
 }

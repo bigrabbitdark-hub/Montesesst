@@ -187,4 +187,34 @@ export class InspectionsService {
     if (!item) throw new NotFoundException('Item de checklist não encontrado');
     return item;
   }
+
+  async conclude(client: PoolClient, id: string): Promise<InspectionDetail> {
+    await this.assertDraft(client, id);
+
+    await client.query(
+      `UPDATE inspections SET status = 'concluida', concluded_at = now() WHERE id = $1`,
+      [id],
+    );
+
+    const tenantResult = await client.query<{ tenant_id: string }>(
+      'SELECT tenant_id FROM inspections WHERE id = $1',
+      [id],
+    );
+    const tenantId = tenantResult.rows[0].tenant_id;
+
+    const ncItemsResult = await client.query<ChecklistItem>(
+      `SELECT * FROM inspection_checklist_items WHERE inspection_id = $1 AND status = 'NC'`,
+      [id],
+    );
+
+    for (const item of ncItemsResult.rows) {
+      await client.query(
+        `INSERT INTO action_plans (tenant_id, inspection_id, checklist_item_id, description)
+         VALUES ($1, $2, $3, $4)`,
+        [tenantId, id, item.id, item.item_label],
+      );
+    }
+
+    return this.findOne(client, id);
+  }
 }
