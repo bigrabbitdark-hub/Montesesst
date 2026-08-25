@@ -37,16 +37,27 @@ usado na conclusão de inspeção).
 
 ### 2.1 `epi_catalog_items` — tabela de referência global, fixa
 
+**Correção feita durante o planejamento (2026-08-25):** a versão original
+desta seção tinha `code UNIQUE`. Isso está errado contra o dado real —
+`code` (ex. `A.1`, `F.1`) identifica uma *subcategoria* do Anexo I, não
+uma linha: `A.1` aparece 3 vezes (capacete contra impacto, contra
+choque elétrico, contra agentes térmicos), `F.1` aparece 9 vezes só
+para variações de luva. A unicidade real de cada linha é `id` (UUID);
+`code` sozinho nunca foi único nos dados de origem. Corrigido abaixo
+para `UNIQUE (code, description)` — impede duplicar a mesma linha exata
+na semeadura, sem impor uma restrição que os dados não cumprem.
+
 ```sql
 CREATE TABLE epi_catalog_items (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   category TEXT NOT NULL CHECK (category IN ('A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I')),
-  code TEXT NOT NULL UNIQUE,
+  code TEXT NOT NULL,
   equipment_group TEXT NOT NULL,
   description TEXT NOT NULL,
   risk_protected TEXT NOT NULL,
   related_nr TEXT,
-  legal_basis TEXT NOT NULL DEFAULT 'NR-06, Anexo I'
+  legal_basis TEXT NOT NULL DEFAULT 'NR-06, Anexo I',
+  UNIQUE (code, description)
 );
 ```
 
@@ -55,8 +66,10 @@ vale pra qualquer empresa), igual em espírito a uma tabela de enum
 estendida. Semeada uma vez via `INSERT` na própria migration, com os 93
 itens de
 [`docs/reference/catalogo-epi-nr06.md`](../reference/catalogo-epi-nr06.md)
-— `code` é o identificador estável (`A.1`, `F.3`, etc.) usado pelo
-frontend pra popular o seletor de EPI ao cadastrar.
+— o frontend agrupa o seletor por `category` e depois por `code`
+(`A.1`, `F.3`, etc.), mas cada opção selecionável é uma linha
+individual (`id`), já que `code` sozinho pode cobrir várias descrições
+diferentes dentro do mesmo grupo.
 
 ### 2.2 `tenant_epis` — EPI real que a empresa possui
 
