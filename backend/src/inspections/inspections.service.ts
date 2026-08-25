@@ -1,5 +1,6 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { PoolClient } from 'pg';
+import { buildSafeSetClause } from '../common/safe-update.util';
 import { CHECKLIST_ITEMS, ChecklistBlock } from './checklist-items.const';
 
 export interface Inspection {
@@ -48,6 +49,18 @@ export interface InspectionDetail extends Inspection {
   items: ChecklistItem[];
   action_plans: ActionPlan[];
 }
+
+const INSPECTION_UPDATABLE_FIELDS = [
+  'company_contact',
+  'dds_topic',
+  'dds_participants_count',
+  'dds_notes',
+  'general_recommendations',
+  'technician_signature_name',
+  'company_signature_name',
+] as const;
+
+const CHECKLIST_ITEM_UPDATABLE_FIELDS = ['status', 'notes'] as const;
 
 @Injectable()
 export class InspectionsService {
@@ -109,5 +122,69 @@ export class InspectionsService {
     );
 
     return { ...inspection, items: itemsResult.rows, action_plans: actionPlansResult.rows };
+  }
+
+  private async assertDraft(client: PoolClient, id: string): Promise<void> {
+    const result = await client.query<{ status: string }>(
+      'SELECT status FROM inspections WHERE id = $1',
+      [id],
+    );
+    const inspection = result.rows[0];
+    if (!inspection) throw new NotFoundException('Inspeção não encontrada');
+    if (inspection.status !== 'rascunho') {
+      throw new ConflictException('Inspeção já concluída — não pode mais ser editada');
+    }
+  }
+
+  async update(client: PoolClient, id: string, data: Partial<Inspection>): Promise<Inspection> {
+    await this.assertDraft(client, id);
+
+    const { setClauses, values } = buildSafeSetClause(data, INSPECTION_UPDATABLE_FIELDS, 2);
+    if ((data as any).technician_signature_name !== undefined) {
+      setClauses.push('technician_signature_at = now()');
+    }
+    if ((data as any).company_signature_name !== undefined) {
+      setClauses.push('company_signature_at = now()');
+    }
+
+    if (setClauses.length === 0) {
+      const result = await client.query<Inspection>('SELECT * FROM inspections WHERE id = $1', [id]);
+      return result.rows[0];
+    }
+
+    const result = await client.query<Inspection>(
+      `UPDATE inspections SET ${setClauses.join(', ')} WHERE id = $1 RETURNING *`,
+      [id, ...values],
+    );
+    return result.rows[0];
+  }
+
+  async updateItem(
+    client: PoolClient,
+    inspectionId: string,
+    itemId: string,
+    data: Partial<ChecklistItem>,
+  ): Promise<ChecklistItem> {
+    await this.assertDraft(client, inspectionId);
+
+    const { setClauses, values } = buildSafeSetClause(data, CHECKLIST_ITEM_UPDATABLE_FIELDS, 3);
+    if (setClauses.length === 0) {
+      const result = await client.query<ChecklistItem>(
+        'SELECT * FROM inspection_checklist_items WHERE id = $1 AND inspection_id = $2',
+        [itemId, inspectionId],
+      );
+      const item = result.rows[0];
+      if (!item) throw new NotFoundException('Item de checklist não encontrado');
+      return item;
+    }
+
+    const result = await client.query<ChecklistItem>(
+      `UPDATE inspection_checklist_items SET ${setClauses.join(', ')}
+       WHERE id = $1 AND inspection_id = $2 RETURNING *`,
+      [itemId, inspectionId, ...values],
+    );
+    const item = result.rows[0];
+    if (!item) throw new NotFoundException('Item de checklist não encontrado');
+    return item;
   }
 }

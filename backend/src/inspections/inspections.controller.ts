@@ -4,6 +4,7 @@ import {
   Controller,
   Get,
   Param,
+  Patch,
   Post,
   Query,
   Req,
@@ -13,6 +14,8 @@ import {
 import { Roles } from '../common/decorators/roles.decorator';
 import { InspectionsService } from './inspections.service';
 import { CreateInspectionDto } from './dto/create-inspection.dto';
+import { UpdateInspectionDto } from './dto/update-inspection.dto';
+import { UpdateChecklistItemDto } from './dto/update-checklist-item.dto';
 
 @Controller('inspections')
 export class InspectionsController {
@@ -38,5 +41,24 @@ export class InspectionsController {
   @Get(':id')
   findOne(@Param('id') id: string, @Req() req: any) {
     return req.withTenantContext((client: any) => this.inspections.findOne(client, id));
+  }
+
+  @Roles('tecnico')
+  @UsePipes(new ValidationPipe({ transform: true, whitelist: true, forbidNonWhitelisted: true }))
+  @Patch(':id')
+  update(@Param('id') id: string, @Body() dto: UpdateInspectionDto, @Req() req: any) {
+    return req.withTenantContext((client: any) => this.inspections.update(client, id, dto));
+  }
+
+  @Roles('tecnico')
+  @UsePipes(new ValidationPipe({ transform: true, whitelist: true, forbidNonWhitelisted: true }))
+  @Patch(':id/items/:itemId')
+  updateItem(
+    @Param('id') id: string,
+    @Param('itemId') itemId: string,
+    @Body() dto: UpdateChecklistItemDto,
+    @Req() req: any,
+  ) {
+    return req.withTenantContext((client: any) => this.inspections.updateItem(client, id, itemId, dto));
   }
 }
