@@ -38,6 +38,11 @@ const BLOCK_LABELS: Record<ChecklistItem['block'], string> = {
 
 const BLOCK_ORDER: ChecklistItem['block'][] = ['documentacao', 'epis', 'instalacoes', 'maquinas'];
 
+function formatDate(isoDate: string): string {
+  const [year, month, day] = isoDate.slice(0, 10).split('-');
+  return `${day}/${month}/${year}`;
+}
+
 export default function EmpresaInspecoesPage() {
   const router = useRouter();
   const [inspections, setInspections] = useState<InspectionRow[]>([]);
@@ -100,7 +105,7 @@ export default function EmpresaInspecoesPage() {
         </button>
         <div className="mt-4 flex items-center justify-between">
           <h1 className="text-2xl font-bold text-brand-900">
-            Inspeção — {new Date(selected.visited_at).toLocaleDateString('pt-BR')}
+            Inspeção — {formatDate(selected.visited_at)}
           </h1>
           <span className={selected.status === 'concluida' ? 'text-green-700' : 'text-yellow-700'}>
             {selected.status === 'concluida' ? 'Concluída' : 'Rascunho'}
@@ -167,9 +172,7 @@ export default function EmpresaInspecoesPage() {
                   onClick={() => openInspection(inspection.id)}
                   className="flex w-full items-center justify-between rounded-md border border-brand-100 px-4 py-3 text-sm hover:bg-brand-100"
                 >
-                  <span className="text-brand-900">
-                    {new Date(inspection.visited_at).toLocaleDateString('pt-BR')}
-                  </span>
+                  <span className="text-brand-900">{formatDate(inspection.visited_at)}</span>
                   <span className={inspection.status === 'concluida' ? 'text-green-700' : 'text-yellow-700'}>
                     {inspection.status === 'concluida' ? 'Concluída' : 'Rascunho'}
                   </span>

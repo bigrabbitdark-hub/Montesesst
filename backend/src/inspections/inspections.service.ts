@@ -1,5 +1,6 @@
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { PoolClient } from 'pg';
+import { mapPgError } from '../common/pg-error.util';
 import { buildSafeSetClause } from '../common/safe-update.util';
 import { CHECKLIST_ITEMS, ChecklistBlock } from './checklist-items.const';
 
@@ -70,27 +71,31 @@ export class InspectionsService {
     technicianUserId: string,
     visitedAt: string,
   ): Promise<InspectionDetail> {
-    const inspectionResult = await client.query<Inspection>(
-      `INSERT INTO inspections (tenant_id, technician_user_id, visited_at)
-       VALUES ($1, $2, $3) RETURNING *`,
-      [tenantId, technicianUserId, visitedAt],
-    );
-    const inspection = inspectionResult.rows[0];
+    try {
+      const inspectionResult = await client.query<Inspection>(
+        `INSERT INTO inspections (tenant_id, technician_user_id, visited_at)
+         VALUES ($1, $2, $3) RETURNING *`,
+        [tenantId, technicianUserId, visitedAt],
+      );
+      const inspection = inspectionResult.rows[0];
 
-    const values: string[] = [];
-    const params: unknown[] = [];
-    let i = 1;
-    for (const { block, item_key, item_label } of CHECKLIST_ITEMS) {
-      values.push(`($${i++}, $${i++}, $${i++}, $${i++})`);
-      params.push(inspection.id, block, item_key, item_label);
+      const values: string[] = [];
+      const params: unknown[] = [];
+      let i = 1;
+      for (const { block, item_key, item_label } of CHECKLIST_ITEMS) {
+        values.push(`($${i++}, $${i++}, $${i++}, $${i++})`);
+        params.push(inspection.id, block, item_key, item_label);
+      }
+      const itemsResult = await client.query<ChecklistItem>(
+        `INSERT INTO inspection_checklist_items (inspection_id, block, item_key, item_label)
+         VALUES ${values.join(', ')} RETURNING *`,
+        params,
+      );
+
+      return { ...inspection, items: itemsResult.rows, action_plans: [] };
+    } catch (err) {
+      mapPgError(err);
     }
-    const itemsResult = await client.query<ChecklistItem>(
-      `INSERT INTO inspection_checklist_items (inspection_id, block, item_key, item_label)
-       VALUES ${values.join(', ')} RETURNING *`,
-      params,
-    );
-
-    return { ...inspection, items: itemsResult.rows, action_plans: [] };
   }
 
   async findAll(client: PoolClient, tenantId?: string): Promise<Inspection[]> {
@@ -126,7 +131,7 @@ export class InspectionsService {
 
   private async assertDraft(client: PoolClient, id: string): Promise<void> {
     const result = await client.query<{ status: string }>(
-      'SELECT status FROM inspections WHERE id = $1',
+      'SELECT status FROM inspections WHERE id = $1 FOR UPDATE',
       [id],
     );
     const inspection = result.rows[0];
@@ -191,16 +196,11 @@ export class InspectionsService {
   async conclude(client: PoolClient, id: string): Promise<InspectionDetail> {
     await this.assertDraft(client, id);
 
-    await client.query(
-      `UPDATE inspections SET status = 'concluida', concluded_at = now() WHERE id = $1`,
+    const updateResult = await client.query<{ tenant_id: string }>(
+      `UPDATE inspections SET status = 'concluida', concluded_at = now() WHERE id = $1 RETURNING tenant_id`,
       [id],
     );
-
-    const tenantResult = await client.query<{ tenant_id: string }>(
-      'SELECT tenant_id FROM inspections WHERE id = $1',
-      [id],
-    );
-    const tenantId = tenantResult.rows[0].tenant_id;
+    const tenantId = updateResult.rows[0].tenant_id;
 
     const ncItemsResult = await client.query<ChecklistItem>(
       `SELECT * FROM inspection_checklist_items WHERE inspection_id = $1 AND status = 'NC'`,

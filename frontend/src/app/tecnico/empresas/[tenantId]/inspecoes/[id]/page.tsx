@@ -42,6 +42,11 @@ const BLOCK_LABELS: Record<ChecklistItem['block'], string> = {
 
 const BLOCK_ORDER: ChecklistItem['block'][] = ['documentacao', 'epis', 'instalacoes', 'maquinas'];
 
+function formatDate(isoDate: string): string {
+  const [year, month, day] = isoDate.slice(0, 10).split('-');
+  return `${day}/${month}/${year}`;
+}
+
 export default function InspecaoPage() {
   const router = useRouter();
   const params = useParams<{ tenantId: string; id: string }>();
@@ -151,7 +156,7 @@ export default function InspecaoPage() {
   return (
     <div className="mx-auto max-w-2xl px-4 py-16">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-brand-900">Inspeção — {new Date(inspection.visited_at).toLocaleDateString('pt-BR')}</h1>
+        <h1 className="text-2xl font-bold text-brand-900">Inspeção — {formatDate(inspection.visited_at)}</h1>
         <span className={inspection.status === 'concluida' ? 'text-green-700' : 'text-yellow-700'}>
           {inspection.status === 'concluida' ? 'Concluída' : 'Rascunho'}
         </span>

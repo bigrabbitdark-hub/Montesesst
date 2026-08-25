@@ -133,4 +133,43 @@ describe('POST /inspections/:id/concluir (e2e)', () => {
 
     expect(secondRes.status).toBe(409);
   });
+
+  it('duas conclusões simultâneas na mesma inspeção: exatamente uma 201, uma 409, e action_plans sem duplicação (regressão de race condition)', async () => {
+    const createRes = await request(app.getHttpServer())
+      .post('/inspections')
+      .set('Authorization', `Bearer ${technicianToken}`)
+      .send({ tenant_id: tenantId, visited_at: '2026-08-25' });
+    const inspectionId = createRes.body.id;
+    const items = createRes.body.items;
+
+    // Marca dois itens como NC para que a conclusão gere action_plans —
+    // se o lock de assertDraft não estiver funcionando, uma corrida entre
+    // as duas conclusões simultâneas pode gerar dois conjuntos de planos.
+    await request(app.getHttpServer())
+      .patch(`/inspections/${inspectionId}/items/${items[0].id}`)
+      .set('Authorization', `Bearer ${technicianToken}`)
+      .send({ status: 'NC', notes: 'Não conforme concorrência 1' });
+    await request(app.getHttpServer())
+      .patch(`/inspections/${inspectionId}/items/${items[1].id}`)
+      .set('Authorization', `Bearer ${technicianToken}`)
+      .send({ status: 'NC', notes: 'Não conforme concorrência 2' });
+
+    const [resA, resB] = await Promise.all([
+      request(app.getHttpServer())
+        .post(`/inspections/${inspectionId}/concluir`)
+        .set('Authorization', `Bearer ${technicianToken}`),
+      request(app.getHttpServer())
+        .post(`/inspections/${inspectionId}/concluir`)
+        .set('Authorization', `Bearer ${technicianToken}`),
+    ]);
+
+    const statuses = [resA.status, resB.status].sort();
+    expect(statuses).toEqual([201, 409]);
+
+    const actionPlansResult = await (db as any).client.query(
+      'SELECT count(*)::int AS count FROM action_plans WHERE inspection_id = $1',
+      [inspectionId],
+    );
+    expect(actionPlansResult.rows[0].count).toBe(2);
+  });
 });

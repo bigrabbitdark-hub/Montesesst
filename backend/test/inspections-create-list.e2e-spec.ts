@@ -12,6 +12,7 @@ describe('POST/GET /inspections — criação, semeadura de itens, listagem (e2e
   let technicianToken: string;
   let empresaToken: string;
   let createdInspectionId: string | undefined;
+  let unlinkedTenantId: string;
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
@@ -43,6 +44,9 @@ describe('POST/GET /inspections — criação, semeadura de itens, listagem (e2e
       .post('/auth/login')
       .send({ email: tenant.email, password: tenant.password });
     empresaToken = loginEmpresa.body.access_token;
+
+    const unlinkedTenant = await db.createTenantWithUser('Empresa Inspection Nao Vinculada Teste');
+    unlinkedTenantId = unlinkedTenant.tenantId;
   });
 
   afterAll(async () => {
@@ -101,5 +105,14 @@ describe('POST/GET /inspections — criação, semeadura de itens, listagem (e2e
       .set('Authorization', `Bearer ${technicianToken}`);
 
     expect(res.status).toBe(400);
+  });
+
+  it('técnico tentando criar em tenant ao qual não está vinculado recebe 403, não 500 (RLS mapeada)', async () => {
+    const res = await request(app.getHttpServer())
+      .post('/inspections')
+      .set('Authorization', `Bearer ${technicianToken}`)
+      .send({ tenant_id: unlinkedTenantId, visited_at: '2026-08-25' });
+
+    expect(res.status).toBe(403);
   });
 });

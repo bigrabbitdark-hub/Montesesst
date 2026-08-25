@@ -11,6 +11,11 @@ interface InspectionRow {
   visited_at: string;
 }
 
+function formatDate(isoDate: string): string {
+  const [year, month, day] = isoDate.slice(0, 10).split('-');
+  return `${day}/${month}/${year}`;
+}
+
 export default function TecnicoEmpresaDocumentosPage() {
   const router = useRouter();
   const params = useParams<{ tenantId: string }>();
@@ -21,10 +26,18 @@ export default function TecnicoEmpresaDocumentosPage() {
 
   async function loadInspections() {
     const token = localStorage.getItem('montese_token');
-    const res = await fetch(`/api/inspections?tenant_id=${params.tenantId}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    if (res.ok) setInspections(await res.json());
+    try {
+      const res = await fetch(`/api/inspections?tenant_id=${params.tenantId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        setInspections(await res.json());
+      } else {
+        setError('Não foi possível carregar as inspeções.');
+      }
+    } catch {
+      setError('Não foi possível conectar ao servidor.');
+    }
   }
 
   useEffect(() => {
@@ -95,9 +108,7 @@ export default function TecnicoEmpresaDocumentosPage() {
                   href={`/tecnico/empresas/${params.tenantId}/inspecoes/${inspection.id}`}
                   className="flex items-center justify-between rounded-md border border-brand-100 px-4 py-3 text-sm hover:bg-brand-100"
                 >
-                  <span className="text-brand-900">
-                    {new Date(inspection.visited_at).toLocaleDateString('pt-BR')}
-                  </span>
+                  <span className="text-brand-900">{formatDate(inspection.visited_at)}</span>
                   <span className={inspection.status === 'concluida' ? 'text-green-700' : 'text-yellow-700'}>
                     {inspection.status === 'concluida' ? 'Concluída' : 'Rascunho'}
                   </span>
