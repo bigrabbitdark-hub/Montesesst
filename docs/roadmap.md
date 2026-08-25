@@ -421,7 +421,41 @@ revisão por task; Task 3 é deploy/documentação, executada direto):
   token retorna `401`.
 
 **Sem pendência bloqueante.** Agenda (a última peça da Fase 4) fica
-para um terceiro sub-projeto, spec própria.
+para um terceiro sub-projeto, spec própria — ver seção seguinte.
+
+## Fase 4 (sub-projeto C — Agenda): status
+
+Agenda de vencimentos, a quarta e última peça do Dashboard Empresa.
+Decisões confirmadas em brainstorming de 2026-08-25: escopo é o
+calendário de vencimentos de documentos (não agendamento de visita
+técnica, que fica pra Fase 6; não compromissos genéricos); lista todos
+os vencimentos, não só pendências/avisos já em alerta; formato lista
+cronológica agrupada por mês (não calendário em grade); aparece dentro
+do próprio `DocumentsPanel`, entre Conformidade e Enviar documento;
+técnico também vê.
+
+Durante o brainstorming, ficou claro que o dado já vinha pronto — o
+`GET /documents` que o `DocumentsPanel` já busca inclui `expires_at` de
+todo documento, então a agenda é só reordenar/agrupar esse array no
+front, sem endpoint novo, sem tabela nova. Por isso a tarefa foi
+reclassificada de arquitetural pra *bounded* (design curto no chat,
+sem spec/plano formais) e implementada direto, com aprovação do
+fundador.
+
+**Fechado em 2026-08-25** — um único arquivo alterado,
+[`frontend/src/components/DocumentsPanel.tsx`](../frontend/src/components/DocumentsPanel.tsx)
+(commit `0f071bd`).
+
+**Verificação:** build isolado (`docker build --target builder`, sem
+tocar no container `montese_frontend` em produção) — compilou e passou
+type-check normalmente, incluindo `/empresa/documentos` e
+`/tecnico/empresas/[tenantId]`. Teste visual ao vivo no navegador não
+foi feito nesta rodada — o container de produção também carrega
+trabalho visual não commitado de uma sessão paralela, e o fechamento
+desse deploy conjunto fica pra quando o fundador decidir o timing.
+
+**Fase 4 completa** — score de SST, pendências, documentos e agenda,
+as quatro peças do Dashboard Empresa, todas fechadas.
 
 ## Fase 5 — Dashboard Técnico (não iniciada)
 
