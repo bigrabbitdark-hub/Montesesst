@@ -22,14 +22,14 @@ import { CreateDocumentDto } from './dto/create-document.dto';
 export class DocumentsController {
   constructor(private readonly documents: DocumentsService) {}
 
-  @Roles('empresa', 'tecnico')
+  @Roles('empresa', 'tecnico', 'parceiro')
   @UsePipes(new ValidationPipe({ transform: true, whitelist: true, forbidNonWhitelisted: true }))
   @Post()
   @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 10 * 1024 * 1024 } }))
   upload(@UploadedFile() file: Express.Multer.File, @Body() dto: CreateDocumentDto, @Req() req: any) {
     if (!file) throw new BadRequestException('Nenhum arquivo enviado');
     const user = req.user;
-    const tenantId = user.role === 'tecnico' ? dto.tenant_id : user.tenantId;
+    const tenantId = user.role === 'tecnico' || user.role === 'parceiro' ? dto.tenant_id : user.tenantId;
     if (!tenantId) throw new BadRequestException('tenant_id é obrigatório');
 
     return req.withTenantContext((client: any) =>
@@ -59,16 +59,18 @@ export class DocumentsController {
 
   @Get('compliance')
   compliance(@Query('tenant_id') tenantId: string | undefined, @Req() req: any) {
-    if (req.user.role === 'tecnico' && !tenantId) {
+    if ((req.user.role === 'tecnico' || req.user.role === 'parceiro') && !tenantId) {
       throw new BadRequestException('tenant_id é obrigatório');
     }
     return req.withTenantContext((client: any) => this.documents.getCompliance(client, tenantId));
   }
 
-  @Roles('tecnico')
+  @Roles('tecnico', 'parceiro')
   @Get('compliance/portfolio')
   portfolioCompliance(@Req() req: any) {
-    return req.withTenantContext((client: any) => this.documents.getPortfolioCompliance(client, req.user.id));
+    return req.withTenantContext((client: any) =>
+      this.documents.getPortfolioCompliance(client, req.user.id, req.user.role),
+    );
   }
 
   @Get(':id/download')
@@ -76,7 +78,7 @@ export class DocumentsController {
     return req.withTenantContext((client: any) => this.documents.getDownloadUrl(client, id));
   }
 
-  @Roles('empresa', 'tecnico', 'admin')
+  @Roles('empresa', 'tecnico', 'parceiro', 'admin')
   @Delete(':id')
   remove(@Param('id') id: string, @Req() req: any) {
     const user = req.user;

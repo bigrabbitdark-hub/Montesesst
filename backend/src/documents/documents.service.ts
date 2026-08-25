@@ -175,7 +175,15 @@ export class DocumentsService {
     return { score, pendencias, avisos };
   }
 
-  async getPortfolioCompliance(client: PoolClient, userId: string): Promise<PortfolioComplianceItem[]> {
+  async getPortfolioCompliance(
+    client: PoolClient,
+    userId: string,
+    role: 'tecnico' | 'parceiro',
+  ): Promise<PortfolioComplianceItem[]> {
+    const linkTable = role === 'tecnico' ? 'tenant_technicians' : 'tenant_partners';
+    const linkColumn = role === 'tecnico' ? 'technician_id' : 'partner_id';
+    const personTable = role === 'tecnico' ? 'technicians' : 'partners';
+
     const result = await client.query<{
       tenant_id: string;
       tenant_name: string;
@@ -183,11 +191,11 @@ export class DocumentsService {
       expires_at: string | null;
     }>(
       `SELECT t.id AS tenant_id, t.name AS tenant_name, d.id AS document_id, d.expires_at
-       FROM tenant_technicians tt
-       JOIN technicians tech ON tech.id = tt.technician_id
-       JOIN tenants t ON t.id = tt.tenant_id
+       FROM ${linkTable} lt
+       JOIN ${personTable} p ON p.id = lt.${linkColumn}
+       JOIN tenants t ON t.id = lt.tenant_id
        LEFT JOIN documents d ON d.tenant_id = t.id AND d.expires_at IS NOT NULL
-       WHERE tech.user_id = $1
+       WHERE p.user_id = $1
        ORDER BY t.name`,
       [userId],
     );

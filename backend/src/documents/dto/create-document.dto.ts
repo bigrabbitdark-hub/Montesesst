@@ -12,8 +12,8 @@ export class CreateDocumentDto {
   @IsISO8601()
   expires_at?: string;
 
-  // Só é lido quando quem envia é role 'tecnico' (empresa sempre usa o
-  // próprio tenant_id do token).
+  // Só é lido quando quem envia é role 'tecnico' ou 'parceiro' (empresa
+  // sempre usa o próprio tenant_id do token).
   @IsOptional()
   @IsUUID()
   tenant_id?: string;
