@@ -36,6 +36,25 @@ interface CreateEpiData {
   createdByUserId: string;
 }
 
+export interface EmployeeEpiDelivery {
+  id: string;
+  tenant_id: string;
+  tenant_epi_id: string;
+  employee_id: string;
+  delivered_at: string;
+  signed_by_name: string;
+  signed_at: string;
+  created_by_user_id: string;
+  created_at: string;
+}
+
+interface CreateDeliveryData {
+  employeeId: string;
+  deliveredAt: string;
+  signedByName: string;
+  createdByUserId: string;
+}
+
 const EPI_SELECT = `
   SELECT te.id, te.tenant_id, te.epi_catalog_item_id, te.ca_number, te.ca_valid_until,
          te.created_by_user_id, te.created_at, te.updated_at,
@@ -92,5 +111,31 @@ export class EpiService {
   async remove(client: PoolClient, id: string): Promise<void> {
     const result = await client.query('DELETE FROM tenant_epis WHERE id = $1', [id]);
     if (result.rowCount === 0) throw new NotFoundException('EPI não encontrado');
+  }
+
+  async createDelivery(
+    client: PoolClient,
+    tenantEpiId: string,
+    data: CreateDeliveryData,
+  ): Promise<EmployeeEpiDelivery> {
+    const epi = await this.findOne(client, tenantEpiId);
+    try {
+      const result = await client.query<EmployeeEpiDelivery>(
+        `INSERT INTO employee_epi_deliveries (tenant_id, tenant_epi_id, employee_id, delivered_at, signed_by_name, created_by_user_id)
+         VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+        [epi.tenant_id, tenantEpiId, data.employeeId, data.deliveredAt, data.signedByName, data.createdByUserId],
+      );
+      return result.rows[0];
+    } catch (err) {
+      mapPgError(err);
+    }
+  }
+
+  async findDeliveries(client: PoolClient, tenantEpiId: string): Promise<EmployeeEpiDelivery[]> {
+    const result = await client.query<EmployeeEpiDelivery>(
+      'SELECT * FROM employee_epi_deliveries WHERE tenant_epi_id = $1 ORDER BY delivered_at DESC',
+      [tenantEpiId],
+    );
+    return result.rows;
   }
 }

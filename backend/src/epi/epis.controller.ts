@@ -14,6 +14,7 @@ import {
 import { Roles } from '../common/decorators/roles.decorator';
 import { EpiService } from './epi.service';
 import { CreateEpiDto } from './dto/create-epi.dto';
+import { CreateEpiDeliveryDto } from './dto/create-epi-delivery.dto';
 
 @Controller('epis')
 export class EpisController {
@@ -47,5 +48,24 @@ export class EpisController {
   @Delete(':id')
   remove(@Param('id') id: string, @Req() req: any) {
     return req.withTenantContext((client: any) => this.epi.remove(client, id));
+  }
+
+  @Roles('empresa', 'tecnico', 'parceiro')
+  @UsePipes(new ValidationPipe({ transform: true, whitelist: true, forbidNonWhitelisted: true }))
+  @Post(':id/deliveries')
+  createDelivery(@Param('id') id: string, @Body() dto: CreateEpiDeliveryDto, @Req() req: any) {
+    return req.withTenantContext((client: any) =>
+      this.epi.createDelivery(client, id, {
+        employeeId: dto.employee_id,
+        deliveredAt: dto.delivered_at,
+        signedByName: dto.signed_by_name,
+        createdByUserId: req.user.id,
+      }),
+    );
+  }
+
+  @Get(':id/deliveries')
+  findDeliveries(@Param('id') id: string, @Req() req: any) {
+    return req.withTenantContext((client: any) => this.epi.findDeliveries(client, id));
   }
 }
