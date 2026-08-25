@@ -494,7 +494,74 @@ com trabalho visual não commitado de uma sessão paralela).
 checklist completo) ficam pra Fase 6, junto do fluxo de visita
 presencial.
 
-## Fase 6 — Fluxo de visita presencial + Dashboard Parceiro (não iniciada)
+## Fase 6 (sub-projeto A — Fluxo de inspeção): status
+
+Primeiro sub-projeto da Fase 6 (Fluxo de visita presencial + Dashboard
+Parceiro). Checklist estruturado de visita técnica presencial — 9 blocos
+do modelo de referência real (`docs/reference/modelos-relatorios-sst.md`,
+seção 2) — com geração automática de plano de ação a partir de item não
+conforme. Decisões confirmadas em brainstorming de 2026-08-25: só o
+técnico responsável cria/edita inspeções nesta entrega (acesso do
+técnico parceiro fica para sub-projeto seguinte); empresa vê a inspeção
+completa em tempo real, mesmo em rascunho; itens de checklist fixos no
+código (não configuráveis); assinatura por nome digitado (não canvas);
+planos de ação só criados na conclusão, sem tela de acompanhamento
+ainda. Spec em
+[`docs/specs/fase-6-inspecoes.md`](specs/fase-6-inspecoes.md), plano em
+[`docs/plans/fase-6-inspecoes.md`](plans/fase-6-inspecoes.md).
+
+**Fechado em 2026-08-25** — 7 tasks concluídas via SDD (revisão por
+task + revisão final de todo o branch):
+
+| Task | Entrega | Status |
+|---|---|---|
+| 1 | Migration `inspections`/`inspection_checklist_items`/`action_plans` + RLS | ✅ |
+| 2 | Constante de checklist + criação/listagem/detalhe de inspeção | ✅ |
+| 3 | Edição de cabeçalho e item de checklist (só em rascunho) | ✅ |
+| 4 | Conclusão com geração automática de planos de ação | ✅ |
+| 5 | Listagem de planos de ação | ✅ |
+| 6 | Frontend técnico — lista + formulário de 9 blocos | ✅ |
+| 7 | Frontend empresa — lista + visão somente-leitura + planos de ação | ✅ |
+
+**Revisão final de todo o branch encontrou 3 problemas Important reais**
+(comprovados por sondagem direta contra o Postgres real, não só leitura
+de código) **e corrigidos numa única rodada, depois revalidados**:
+- Corrida em `conclude`/`assertDraft` sem lock de linha — duas
+  conclusões simultâneas podiam gerar planos de ação duplicados, ou uma
+  edição de item concorrente com a conclusão podia perder um item NC
+  silenciosamente. Corrigido com `SELECT ... FOR UPDATE`, provado com
+  teste de concorrência real (`Promise.all` de duas chamadas HTTP
+  simultâneas).
+- `POST /inspections` não mapeava erro de RLS/FK — rejeição de técnico
+  não vinculado virava 500 genérico em vez de 403. Corrigido com
+  `mapPgError`, mesmo padrão já usado em `documents.service.ts`.
+- `visited_at` aparecia um dia antes em qualquer fuso horário do Brasil
+  (coluna `DATE` vira meia-noite UTC, `toLocaleDateString` desloca pro
+  dia anterior) — corrigido nos 4 pontos de exibição.
+
+**Verificação:** suíte e2e completa rodada em container isolado (sem
+tocar no `montese_backend`/`montese_frontend` de produção) — **28
+suítes, 96 testes, todos passando** (9 suítes novas desta fase, incluindo
+o teste de concorrência real). Build isolado do frontend também passou.
+Teste visual ao vivo no navegador não foi feito — mesmo motivo das Fases
+4C/5 (containers de produção compartilhados com trabalho visual não
+commitado de uma sessão paralela).
+
+**Pendências registradas, não bloqueantes:**
+- [ ] **Acesso do técnico parceiro** — sub-projeto seguinte da Fase 6.
+- [ ] **Catálogo de EPI** — sub-projeto seguinte da Fase 6, spec própria.
+- [ ] **Acompanhamento de planos de ação** (mudar status, prazo) —
+      trabalho futuro, fora desta entrega.
+- [ ] **Navegação para `/empresa/inspecoes`** — a página existe mas
+      nenhum link no app aponta para ela ainda (lacuna do shell
+      autenticado da empresa, pré-existente, não introduzida por esta
+      fase — `/empresa/documentos` tem a mesma lacuna).
+- [ ] Achados menores adiados nas revisões de cada task (casts
+      desnecessários, teste de concorrência de item entre inspeções,
+      `@MaxLength` em campos de texto livre, loop N+1 na geração de
+      planos de ação, `Number('')` viraria `0` em vez de vazio no campo
+      de participantes do DDS, desempate de ordenação por data) — nenhum
+      bloqueante, registrados no ledger da SDD antes de ser apagado.
 
 ## Fase 7 — Dashboard Admin (não iniciada)
 
