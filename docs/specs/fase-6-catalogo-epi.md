@@ -154,9 +154,13 @@ CREATE POLICY tenant_epis_isolation ON tenant_epis USING (
   `ca_valid_until` (opcional), e `tenant_id` (só lido quando quem envia
   é `tecnico`/`parceiro`, mesmo padrão já estabelecido em
   `documents`/`inspections`).
-- `GET /epis` (sem `@Roles`) — `tenant_id` obrigatório pra
-  `tecnico`/`parceiro` (mesmo guard já usado em `GET /documents`, `GET
-  /inspections`), opcional pra empresa (RLS decide).
+- `GET /epis` (sem `@Roles`) — `tenant_id` **opcional pra todo mundo**,
+  igual a `GET /documents` hoje (não igual a `GET /inspections`, que
+  ainda exige). Sem `tenant_id`, RLS já restringe (empresa vê o próprio
+  tenant; técnico/parceiro vê tenants vinculados via
+  `assigned_tenant_ids_for_current_user()`) — necessário pra seção 4.3
+  (agenda agregada da carteira) funcionar sem N chamadas, uma por
+  empresa vinculada.
 - `DELETE /epis/:id` (`@Roles('empresa', 'tecnico', 'parceiro', 'admin')`)
   — sem checagem de "só quem cadastrou apaga" (diferente de
   `documents`): qualquer usuário com acesso ao tenant pode remover um
