@@ -85,46 +85,52 @@ para cobrança recorrente de assinatura — `subscription_authorized_payment`
 distinto de um `payment` genérico.
 
 O `data.id` recebido nesse webhook é o id de um recurso "authorized
-payment" (também chamado de invoice), buscável via
-`GET /authorized_payments/{id}`. A documentação oficial de referência
-desse endpoint (consultada em 2026-08-26) lista o seguinte schema de
-resposta:
+payment" (também chamado de invoice). A documentação web oficial
+(consultada em 2026-08-26) já apontava o schema abaixo — e essa leitura
+foi **confirmada por uma fonte mais forte**: o SDK oficial `mercadopago`
+(pacote npm já instalado neste projeto, usado desde a Fase 2 pra
+`PreApproval`) tem um client `Invoice` dedicado a esse recurso, com
+`InvoiceResponse` tipado em `node_modules/mercadopago/dist/clients/invoice/commonTypes.d.ts`:
 
 | Campo | Conteúdo |
 |---|---|
 | `id` | id da cobrança/invoice (o mesmo `data.id` do webhook) |
 | `preapproval_id` | **id da assinatura** — bate com `subscriptions.mercadopago_preapproval_id` |
-| `transaction_amount` | valor cobrado, como string em reais (ex.: `"24.50"`) — **não em centavos**, precisa multiplicar por 100 e arredondar pra gravar em `amount_cents` |
+| `transaction_amount` | valor cobrado — **tipado como `number` no SDK** (documentação web mostrava como string em reais, ex. `"24.50"`; de qualquer forma, não vem em centavos — precisa multiplicar por 100 e arredondar pra gravar em `amount_cents`) |
 | `currency_id` | moeda (ex.: `"BRL"`) |
 | `debit_date` | data em que a cobrança ocorreu |
 | `status` / `summarized` | status do agendamento da cobrança (ex.: `"scheduled"`/`"pending"`) — **não confundir com sucesso do pagamento em si** |
 | `payment.id`, `payment.status`, `payment.status_detail` | objeto aninhado com o pagamento de fato — `payment.status` (ex.: `"approved"`) é o sinal confiável de que o dinheiro foi capturado, não o `status` de nível superior |
 
-Existe também `GET /authorized_payments/search?preapproval_id=...`
-pra buscar todas as cobranças de uma assinatura de uma vez (útil pra
-reconciliação futura, não necessário pro fluxo do webhook em si, que já
-recebe o id direto).
+O SDK expõe `Invoice.get({id})` (busca individual) e
+`Invoice.search({options: {preapproval_id}})` (busca por assinatura,
+útil pra reconciliação futura, não necessário pro fluxo do webhook em
+si, que já recebe o id direto).
 
-Fonte:
+Fontes: o próprio pacote instalado
+(`backend/node_modules/mercadopago/dist/clients/invoice/`), e
+documentação web —
 [Get authorized payment — Mercado Pago API Reference](https://www.mercadopago.com.br/developers/en/reference/online-payments/subscriptions/get-authorized-payment/get),
 [Subscriptions with authorized payment](https://www.mercadopago.com.co/developers/en/docs/subscriptions/integration-configuration/subscription-no-associated-plan/authorized-payments),
 [Webhooks - Notifications](https://www.mercadopago.com.mx/developers/en/docs/your-integrations/notifications/webhooks).
 
 **O que ainda não foi verificado ao vivo, e por quê isso tem um
-limite real:** este schema vem da documentação oficial, não de uma
-chamada real. Não existe hoje nenhuma assinatura real no banco (0
+limite real:** o schema acima vem de dois níveis de documentação (web +
+tipos do SDK instalado), não de uma chamada real feita durante este
+brainstorming. Não existe hoje nenhuma assinatura real no banco (0
 linhas em `subscriptions`), e confirmar o schema de uma cobrança
 populada de verdade exigiria aprovar um checkout no navegador
 manualmente e esperar ~1h pela primeira cobrança (conforme a própria
 documentação do Mercado Pago) — não automatizável numa task de
 subagente. Decisão confirmada com o fundador em 2026-08-26: a Task 1
-faz **verificação parcial** — chamadas reais de API confirmando que os
-endpoints existem, autenticam e respondem no formato esperado (busca
-vazia, erro 404 em id inexistente) — e o webhook é escrito de forma
-defensiva, registrando o payload bruto recebido em log. A confirmação
-final do schema populado acontece organicamente quando a primeira
-cobrança real (de teste ou de produção) chegar, sem travar esta
-entrega por isso.
+faz **verificação parcial** — chamadas reais via o próprio SDK
+(`PreApproval.create`, `Invoice.search`, `Invoice.get`) confirmando que
+os endpoints existem, autenticam e respondem no formato esperado (busca
+vazia, erro previsível em id inexistente) — e o webhook é escrito de
+forma defensiva, registrando o payload bruto recebido em log. A
+confirmação final do schema populado acontece organicamente quando a
+primeira cobrança real (de teste ou de produção) chegar, sem travar
+esta entrega por isso.
 
 ## 4. Backend
 
