@@ -815,11 +815,13 @@ tree *commitado*, que não foi testado por nenhuma fase anterior desta
 sessão até agora). Teste visual ao vivo no navegador não foi feito —
 mesma ressalva de sempre.
 
-**Pendências registradas, não bloqueantes** (nenhuma de segurança, além
-do Critical de build já detalhado acima):
-- [ ] **Rota `/login` duplicada impede build de produção** — ver
-      achado Critical acima. Bloqueia deploy até alguém decidir
-      commitar (ou não) a remoção de `frontend/src/app/login/page.tsx`.
+**Pendências registradas, não bloqueantes:**
+- [x] **Rota `/login` duplicada impedia build de produção** — ver
+      achado Critical acima. Resolvido em 2026-08-26 (commit `4942889`)
+      após o fundador autorizar explicitamente a remoção do arquivo
+      antigo (`frontend/src/app/login/page.tsx`); build isolado contra
+      a árvore commitada confirmado limpo, `/login` resolve pra uma
+      única rota, as 3 páginas `/admin/*` presentes no output.
 - [ ] Planos/assinaturas e visão geral/métricas — sub-projetos
       seguintes da Fase 7, spec própria.
 - [ ] Desvincular/desativar empresa, técnico ou parceiro pela tela —
