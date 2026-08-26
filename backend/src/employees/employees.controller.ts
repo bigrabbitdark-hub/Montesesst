@@ -59,8 +59,11 @@ export class EmployeesController {
   }
 
   @Get()
-  findAll(@Req() req: any) {
-    return req.withTenantContext((client: any) => this.employees.findAll(client));
+  findAll(@Query('tenant_id') tenantId: string | undefined, @Req() req: any) {
+    if ((req.user.role === 'tecnico' || req.user.role === 'parceiro') && !tenantId) {
+      throw new BadRequestException('tenant_id é obrigatório');
+    }
+    return req.withTenantContext((client: any) => this.employees.findAll(client, tenantId));
   }
 
   @Get(':id')

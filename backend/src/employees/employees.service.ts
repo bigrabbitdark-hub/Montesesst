@@ -101,9 +101,15 @@ export class EmployeesService {
     return result.rows[0];
   }
 
-  async findAll(client: PoolClient): Promise<Employee[]> {
-    // Sem WHERE tenant_id: a RLS já filtra pelo contexto (app.tenant_id / app.role)
-    // populado pelo TenantContextInterceptor.
+  async findAll(client: PoolClient, tenantId?: string): Promise<Employee[]> {
+    if (tenantId) {
+      const result = await client.query<Employee>(
+        'SELECT * FROM employees WHERE tenant_id = $1 ORDER BY full_name',
+        [tenantId],
+      );
+      return result.rows;
+    }
+    // Sem filtro: RLS já restringe pelo contexto (app.tenant_id / app.role).
     const result = await client.query<Employee>('SELECT * FROM employees ORDER BY full_name');
     return result.rows;
   }
