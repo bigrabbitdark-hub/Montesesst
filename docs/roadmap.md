@@ -550,7 +550,8 @@ commitado de uma sessão paralela).
 **Pendências registradas, não bloqueantes:**
 - [x] **Acesso do técnico parceiro** — sub-projeto B da Fase 6, ver seção
       seguinte. Fechado em 2026-08-25.
-- [ ] **Catálogo de EPI** — sub-projeto seguinte da Fase 6, spec própria.
+- [x] **Catálogo de EPI** — sub-projeto seguinte da Fase 6, spec própria.
+      Fechado em 2026-08-26.
 - [ ] **Acompanhamento de planos de ação** (mudar status, prazo) —
       trabalho futuro, fora desta entrega.
 - [ ] **Navegação para `/empresa/inspecoes`** — a página existe mas
@@ -618,8 +619,8 @@ inteiro, redesign visual não commitado de outra sessão junto).
 
 **Pendências registradas, não bloqueantes** (nenhuma delas afeta
 segurança ou corretude hoje, segundo verificação da revisão final):
-- [ ] **Catálogo de EPI** — último sub-projeto pendente da Fase 6, spec
-      própria.
+- [x] **Catálogo de EPI** — último sub-projeto pendente da Fase 6, spec
+      própria. Fechado em 2026-08-26.
 - [ ] Duplicação do ternário `linkTable`/`linkColumn`/`personTable`
       entre `tenant-technicians.service.ts` e `documents.service.ts` —
       extrair pra um helper compartilhado se aparecer uma terceira
@@ -634,6 +635,101 @@ segurança ou corretude hoje, segundo verificação da revisão final):
 - [ ] `plans`/`subscriptions` continuam `tecnico`-only — parceiro não
       assina plano ainda; decisão de produto a confirmar, não bloqueia
       o acesso entregue aqui (documentos/inspeções não têm paywall).
+
+## Fase 6 (sub-projeto C — Catálogo de EPI): status
+
+Terceiro e último sub-projeto da Fase 6, adiado três vezes (Fase 4A,
+Fase 5, sub-projeto A da própria Fase 6) pra manter escopo controlado.
+Modelo 1 do documento de referência original
+(`docs/reference/modelos-relatorios-sst.md`, seção 1) — catálogo de EPIs
+por empresa com CA (Certificado de Aprovação), vínculo funcionário↔EPI
+com data de entrega e assinatura. Decisão de design que mudou o rascunho
+original: o fundador anexou em 2026-08-25 o catálogo oficial completo do
+Anexo I da NR-06 (93 itens reais, 9 categorias A-I), transcrito em
+[`docs/reference/catalogo-epi-nr06.md`](reference/catalogo-epi-nr06.md).
+Isso substituiu a ideia original de campo de texto livre por tenant por
+uma tabela de referência global fixa (`epi_catalog_items`, seedada uma
+vez com os 93 itens, mesmo padrão dos itens fixos de checklist do
+sub-projeto A) — cada EPI real de uma empresa referencia um desses 93
+itens oficiais + o CA do produto físico específico (CA é do
+produto/fabricante, não da categoria do Anexo I). Decisões confirmadas
+em brainstorming de 2026-08-25/26: catálogo global fixo; vínculo
+funcionário↔EPI e catálogo entregues juntos; assinatura por nome
+digitado (mesmo padrão de inspeções); empresa e técnico/parceiro podem
+gerenciar; página própria na UI; verificação de CA/rastreio de desgaste
+adiados; validade do CA opcional, com agenda. Spec em
+[`docs/specs/fase-6-catalogo-epi.md`](specs/fase-6-catalogo-epi.md),
+plano em [`docs/plans/fase-6-catalogo-epi.md`](plans/fase-6-catalogo-epi.md).
+
+**Fechado em 2026-08-26** — 7 tasks concluídas via SDD (revisão por
+task + revisão final de todo o branch):
+
+| Task | Entrega | Status |
+|---|---|---|
+| 1 | Migration `epi_catalog_items` (93 itens seedados) / `tenant_epis` / `employee_epi_deliveries` + RLS | ✅ |
+| 2 | `EpiModule` — CRUD de EPI (criar/listar/detalhe/excluir) + catálogo | ✅ |
+| 3 | Registro e listagem de entregas (`employee_epi_deliveries`) | ✅ |
+| 4 | `GET /employees` ganha filtro `tenant_id` (lacuna pré-existente da Fase 3) | ✅ |
+| 5 | Frontend — `EpisPanel` compartilhado + `/empresa/epis` | ✅ |
+| 6 | Frontend técnico — seção EPI na página da empresa | ✅ |
+| 7 | Agenda de vencimentos estendida pra incluir `ca_valid_until` do EPI | ✅ |
+
+**Descoberta real durante a Task 3, corrigida no mesmo escopo:** o
+registro de entrega não validava que `employee_id` pertencia ao mesmo
+tenant do EPI — como `FOREIGN KEY` não é filtrada por RLS na tabela
+referenciada, um técnico vinculado a um tenant podia registrar uma
+entrega apontando pra um funcionário de outro tenant. Corrigido com uma
+checagem de existência escopada por tenant antes do INSERT, mesma classe
+de bug já vista duas vezes em revisões finais de sub-projetos anteriores
+desta fase.
+
+**Revisão final de todo o branch encontrou 2 problemas Important reais**
+(comprovados por verificação ao vivo contra o Postgres real, não só
+leitura de código) **e corrigidos numa única rodada de fix, depois
+revalidados**:
+- `employee_epi_deliveries.tenant_epi_id` tinha `ON DELETE CASCADE`,
+  combinado com a ausência intencional de checagem de dono em
+  `DELETE /epis/:id` e um botão "Apagar" sem confirmação — qualquer
+  integrante do tenant podia destruir silenciosa e irreversivelmente o
+  histórico de entregas assinadas (o registro legalmente exigido pela
+  NR-06/CLT art. 166 que esta funcionalidade existe pra produzir).
+  Confirmado ao vivo: apagar um EPI com 1 entrega zerou o contador de
+  entregas. Corrigido trocando a FK pra `ON DELETE RESTRICT`
+  (`backend/db/migrations/0014_epi_delivery_delete_restrict.sql`) e
+  mapeando o erro `23503` resultante pra `ConflictException` (409) em
+  vez do `mapPgError` genérico (que daria 400, semanticamente errado
+  aqui).
+- A spec exigia explicitamente testes HTTP de técnico/parceiro pra
+  `POST`/`DELETE /epis` (o único caminho de escrita que aceita
+  `tenant_id` vindo do cliente) — nenhum existia, só `empresa` tinha
+  cobertura. Corrigido com 3 novos testes (técnico vinculado cria →
+  201; técnico não vinculado → 403; técnico apaga EPI criado pela
+  empresa → 200).
+
+**Verificação:** suíte e2e completa — **36 suítes, 121 testes, todos
+passando** (4 suítes novas desta fase). Build isolado do frontend
+passou. Teste visual ao vivo no navegador não foi feito — mesmo motivo
+das fases anteriores (containers de produção compartilhados com
+trabalho visual não commitado de uma sessão paralela).
+
+**Pendências registradas, não bloqueantes** (nenhuma delas afeta
+segurança ou corretude hoje):
+- [ ] Lista de entregas do EPI só carrega ao clicar, não junto da lista
+      de EPIs.
+- [ ] `/empresa/epis` inalcançável por navegação — mesma lacuna
+      pré-existente de `/empresa/documentos` e `/empresa/inspecoes`.
+- [ ] Helpers de agenda (`formatDate`/`formatMonthLabel`/agrupamento)
+      duplicados em 4 arquivos — candidato a extração pra
+      `frontend/src/lib/agenda.ts`, não bloqueante.
+- [ ] Fetch duplicado de `/api/epis?tenant_id=` entre `DocumentsPanel` e
+      `EpisPanel` na mesma página do técnico.
+- [ ] Campos do formulário de entrega não resetam ao cancelar ou trocar
+      de EPI (herdado do brief da Task 5).
+- [ ] `DATE`→JSON depende do fuso do servidor — latente, idêntico ao
+      comportamento pré-existente de `documents.expires_at`.
+
+**Fase 6 fechada por completo em 2026-08-26** (sub-projetos A, B e C
+todos concluídos).
 
 ## Fase 7 — Dashboard Admin (não iniciada)
 
