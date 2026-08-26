@@ -69,6 +69,9 @@ export function SiteFooter() {
             <Link href="/termos" className="text-xs text-brand-100 hover:text-white">
               Termos de Uso
             </Link>
+            <Link href="/compromisso-sst" className="text-xs text-brand-100 hover:text-white">
+              Compromisso SST
+            </Link>
             <p className="text-xs text-brand-100">montesesst.com.br</p>
           </div>
         </div>
