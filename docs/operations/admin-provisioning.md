@@ -46,9 +46,11 @@ VALUES (NULL, 'admin', 'EMAIL_DO_ADMIN_AQUI', 'HASH_GERADO_NO_PASSO_1', 'NOME_DO
 "
 ```
 
-`tenant_id = NULL` é obrigatório — a constraint em `0001_init.sql:41`
-só permite `tenant_id NOT NULL` pra `role = 'empresa'`;
-`tecnico`/`parceiro`/`admin` são sempre `NULL`.
+`tenant_id = NULL` é a convenção do projeto pra essas roles — a
+constraint em `0001_init.sql:41` só EXIGE `tenant_id NOT NULL` pra
+`role = 'empresa'`; ela não proíbe um valor não-nulo pra
+`tecnico`/`parceiro`/`admin`, mas por convenção essas roles sempre usam
+`NULL` (documentado no comentário da coluna em `0001_init.sql:30`).
 
 ## Passo 3 — verificar
 
