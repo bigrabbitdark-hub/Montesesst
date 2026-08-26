@@ -119,6 +119,15 @@ export class EpiService {
     data: CreateDeliveryData,
   ): Promise<EmployeeEpiDelivery> {
     const epi = await this.findOne(client, tenantEpiId);
+
+    const employeeCheck = await client.query('SELECT id FROM employees WHERE id = $1 AND tenant_id = $2', [
+      data.employeeId,
+      epi.tenant_id,
+    ]);
+    if (employeeCheck.rowCount === 0) {
+      throw new NotFoundException('Funcionário não encontrado');
+    }
+
     try {
       const result = await client.query<EmployeeEpiDelivery>(
         `INSERT INTO employee_epi_deliveries (tenant_id, tenant_epi_id, employee_id, delivered_at, signed_by_name, created_by_user_id)
