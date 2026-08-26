@@ -107,7 +107,7 @@ hospedagem confirmada.
 
 | Item | Onde vive / Status | Evidência | Observação |
 |---|---|---|---|
-| Compromisso Montese com Segurança do Trabalho (texto público) | **Pendente** — ver rascunho do fundador nesta conversa | — | Frase-chave já esboçada: "a plataforma não substitui a avaliação profissional quando a situação exigir análise técnica, responsabilidade legal ou emissão de documento por profissional habilitado" |
+| Compromisso Montese com Segurança do Trabalho (texto público) | **✅ Publicada** — `/compromisso-sst`, fechado em 2026-08-26 | `frontend/content/legal/compromisso-sst.mdx` | Inclui a frase-chave do fundador ("a plataforma não substitui a avaliação profissional...") e nota explícita de que a mesma regra vai valer pra futuros assistentes automatizados (Fase 8/categoria G) |
 | Checklists/modelos de NR reais no produto | **Existe parcialmente** — checklist de inspeção (Fase 6A, 9 blocos do modelo de referência real), catálogo de EPI (Fase 6C, 93 itens do Anexo I da NR-06) | `docs/reference/modelos-relatorios-sst.md`, `docs/reference/catalogo-epi-nr06.md` | Isso já É conformidade SST em código, só falta virar texto institucional que explique isso pro cliente |
 
 ## G — Responsabilidades dos agentes (IA)
@@ -158,7 +158,12 @@ decompostas. Ordem confirmada pelo fundador em 2026-08-26:
    rodada seguinte, sem bloquear nada.
 2. ~~**Auditoria consultável (C/J)**~~ — ✅ fechado em 2026-08-26
    (`GET /audit-log` + `/admin/auditoria`).
-3. **Categoria F (Compromisso SST)** — próximo da fila, conteúdo
-   institucional, sem dependência técnica nova.
+3. ~~**Categoria F (Compromisso SST)**~~ — ✅ fechado em 2026-08-26
+   (`/compromisso-sst`).
 4. **Categoria G (agentes)** — continua deliberadamente parado até a
-   Fase 8 existir.
+   Fase 8 existir. Nenhum item pendente restante desta rodada — as
+   quatro frentes priorizadas em 2026-08-26 foram concluídas (G por
+   decisão deliberada de adiamento). Os 8 itens restantes da categoria
+   A (segurança, cookies, retenção, incidentes, fornecedores, FAQ) e as
+   categorias B/D/H/I seguem no inventário para uma próxima rodada de
+   priorização.
