@@ -1,0 +1,213 @@
+# Fase 7 (sub-projeto B) — Financeiro (planos, assinaturas, histórico de pagamento)
+
+> Segundo sub-projeto da Fase 7 (Dashboard Admin). Decisão confirmada em
+> brainstorming de 2026-08-26: entre as frentes possíveis (gestão de
+> tenants/vínculos, planos/assinaturas, visão geral/métricas), "gestão
+> de tenants e vínculos" (sub-projeto A) veio primeiro; "financeiro"
+> vem em seguida.
+
+## 1. Objetivo e escopo
+
+Hoje não existe **nenhuma** forma de listar assinaturas — `POST
+/subscriptions` é o único endpoint do módulo `payments`, sem
+equivalente `GET`. Editar preço de plano só é possível via SQL direto
+(comentário na própria migration `0006_plans_subscriptions.sql`:
+"ajustar depois via SQL direto ou futuramente uma tela de admin (Fase
+7)"). E o webhook do Mercado Pago hoje **descarta** qualquer evento
+que não seja `subscription_preapproval` — cobrança individual de uma
+assinatura (evento `subscription_authorized_payment`, ver seção 6)
+nunca é processada, então não existe histórico de pagamento nenhum.
+
+Esta entrega dá à Montese uma tela `/admin/financeiro` pra:
+- listar todas as assinaturas (empresa/técnico, plano, status atual);
+- ver o histórico de cobranças de uma assinatura específica;
+- editar o preço de um plano pela tela.
+
+**Não é objetivo desta entrega:**
+- Cancelar ou pausar assinatura pela tela — decisão confirmada em
+  brainstorming: só leitura + editar preço. Cancelamento continua
+  tratado diretamente com o time (`Contato`), como já documentado nos
+  Termos de Uso publicados em 2026-08-26.
+- Mudar o fluxo de criação de assinatura (`POST /subscriptions`
+  permanece como está).
+- "Gargalo da VPS" (infraestrutura, domínio separado), "visão
+  geral/métricas" e "clientes" (visão mais rica de empresa) — outras
+  frentes identificadas na mesma rodada de brainstorming, não
+  escolhidas para esta entrega.
+
+## 2. Modelo de dados (`payment_events`)
+
+```sql
+CREATE TABLE payment_events (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  subscription_id UUID REFERENCES subscriptions(id) ON DELETE CASCADE,
+  mercadopago_payment_id TEXT NOT NULL UNIQUE,
+  amount_cents INTEGER NOT NULL,
+  status TEXT NOT NULL,
+  occurred_at TIMESTAMPTZ NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+ALTER TABLE payment_events ENABLE ROW LEVEL SECURITY;
+ALTER TABLE payment_events FORCE ROW LEVEL SECURITY;
+
+CREATE POLICY payment_events_isolation ON payment_events USING (
+  current_setting('app.role', true) = 'admin'
+  OR EXISTS (
+    SELECT 1 FROM subscriptions s
+    WHERE s.id = payment_events.subscription_id
+      AND (
+        s.tenant_id = NULLIF(current_setting('app.tenant_id', true), '')::uuid
+        OR s.technician_user_id = NULLIF(current_setting('app.user_id', true), '')::uuid
+      )
+  )
+);
+```
+
+- `mercadopago_payment_id UNIQUE` garante idempotência — o Mercado Pago
+  pode reenviar o mesmo webhook.
+- `subscription_id` é **nullable**: se o webhook não conseguir casar o
+  evento a uma assinatura nossa, ainda grava o evento (auditoria), sem
+  vínculo — mesmo espírito tolerante que `handleWebhook` já tem hoje
+  pro caso de `subscription_preapproval` sem assinatura correspondente.
+- RLS espelha `subscriptions_isolation`, mas via `EXISTS` (a tabela não
+  tem `tenant_id`/`technician_user_id` própria) — isso já deixa o
+  design pronto pra empresa/técnico um dia verem o próprio histórico,
+  mesmo que esta entrega só construa a tela do admin.
+
+## 3. Correção de entendimento sobre a API do Mercado Pago
+
+O design original deste sub-projeto assumia um evento de webhook
+genérico `type=payment`. **Isso está errado.** Pesquisa feita em
+2026-08-26 confirma: o Mercado Pago tem um tópico de webhook **dedicado**
+para cobrança recorrente de assinatura — `subscription_authorized_payment`
+— distinto de `subscription_preapproval` (que `handleWebhook` já trata) e
+distinto de um `payment` genérico.
+
+Confirmado com confiança: existe `GET
+/authorized_payments/search?preapproval_id=...`, que busca as cobranças
+de uma assinatura específica pelo `preapproval_id`.
+
+**Não confirmado por documentação pública** — e a Task 1 do plano de
+implementação existe justamente para resolver isso empiricamente, não
+por suposição: o formato exato da resposta ao buscar uma cobrança
+individual pelo id recebido no webhook (`data.id`), e se esse formato
+inclui `preapproval_id` diretamente ou exige sempre passar pela busca.
+Referências consultadas:
+[Subscriptions with authorized payment](https://www.mercadopago.com.co/developers/en/docs/subscriptions/integration-configuration/subscription-no-associated-plan/authorized-payments),
+[Webhooks - Notifications](https://www.mercadopago.com.mx/developers/en/docs/your-integrations/notifications/webhooks),
+[Search authorized payments](https://www.mercadopago.com.mx/developers/en/reference/subscriptions/_authorized_payments_search/get).
+
+## 4. Backend
+
+**`GET /subscriptions`** (`@Roles('admin')`, novo):
+
+```sql
+SELECT s.id, s.status, s.created_at,
+  p.id AS plan_id, p.name AS plan_name, p.price_cents,
+  s.tenant_id, t.name AS tenant_name,
+  s.technician_user_id, u.full_name AS technician_name
+FROM subscriptions s
+JOIN plans p ON p.id = s.plan_id
+LEFT JOIN tenants t ON t.id = s.tenant_id
+LEFT JOIN users u ON u.id = s.technician_user_id
+ORDER BY s.created_at DESC
+```
+
+`LEFT JOIN` deliberado com `tenants`/`users` — mesma lição já aplicada
+na Fase 7A (`JOIN` vira `INNER` e derruba linha silenciosamente quando
+o lado direito é invisível por RLS a um caller não-admin; aqui o
+caller é sempre admin, mas o padrão correto é usado por consistência e
+porque `tenant_id`/`technician_user_id` são mutuamente exclusivos por
+constraint — sempre um dos dois é `NULL`, então um `INNER JOIN`
+descartaria metade das linhas por design).
+
+**`PATCH /plans/:id`** (`@Roles('admin')`, novo) — só `price_cents`
+editável, mesmo padrão `buildSafeSetClause` de `TenantsService`. Extrai
+a lógica hoje inline em `PlansController` pra um `PlansService` novo,
+seguindo o padrão do resto do projeto (controller fino, lógica no
+service) — `PlansController.findAll` (`GET /plans`, `@Public()`)
+permanece como está.
+
+**Webhook estendido** — `WebhookController.handleWebhook` ganha um
+branch pra `type === 'subscription_authorized_payment'` (não `payment`,
+ver seção 3): busca a cobrança via um método novo em
+`MercadoPagoService` (nome e assinatura exata a definir na Task 1,
+depois da verificação empírica), e grava o evento chamando uma função
+SQL nova `payments_record_payment_event(...)` (`SECURITY DEFINER`,
+mesmo padrão de `payments_update_subscription_status` que já existe
+exatamente pra esse problema — webhook chega sem contexto de
+tenant/role, RLS bloquearia um INSERT anônimo). A função tenta casar o
+evento a uma assinatura via `mercadopago_preapproval_id`; se não achar,
+grava com `subscription_id NULL` mesmo assim (auditoria).
+
+**`GET /subscriptions/:id/payment-events`** (`@Roles('admin')`, novo) —
+lista os eventos de uma assinatura, mais recente primeiro.
+
+## 5. Frontend
+
+**`/admin/financeiro`**, mesmo padrão "lista + ação inline" das outras
+telas admin, duas seções na mesma página:
+
+- **Planos**: tabela com nome, público (empresa/técnico), preço atual
+  (formatado em R$) e limite de funcionários. Cada linha tem "Editar
+  preço" — campo inline, confirma com `PATCH /plans/:id`.
+- **Assinaturas**: tabela com empresa/técnico, plano, status atual.
+  Cada linha tem "Ver histórico" — expande (mesmo padrão de "Registrar
+  entrega" do `EpisPanel`) e carrega `GET
+  /subscriptions/:id/payment-events`. Sem paginação nesta primeira
+  versão — volume de assinaturas é baixo hoje (zero clientes pagantes
+  reais), diferente do `audit_log` da Fase 7A (que já tinha 5.651
+  linhas antes de qualquer cliente pagante).
+
+`AdminNav` ganha um 5º link ("Financeiro").
+
+## 6. Testes
+
+Mesmo padrão rigoroso do projeto — e2e reais contra Postgres real, sem
+mock:
+
+- `GET /subscriptions`: admin vê todas as assinaturas com dados
+  agregados corretos; `empresa`/`tecnico`/`parceiro` recebem 403.
+- `PATCH /plans/:id`: admin edita `price_cents`; outros campos
+  (`slug`, `audience`, etc.) permanecem fora da allowlist; roles
+  não-admin recebem 403.
+- `GET /subscriptions/:id/payment-events`: lista eventos corretos pra
+  uma assinatura, vazio pra assinatura sem cobrança ainda.
+- **Webhook `subscription_authorized_payment`**: só pode ser escrito
+  com confiança depois da Task 1 (verificação empírica contra o
+  sandbox do Mercado Pago) — o formato exato do payload ainda não está
+  confirmado (seção 3). Cobertura mínima esperada: evento válido grava
+  `payment_events` vinculado à assinatura certa; evento com
+  `preapproval_id` desconhecido grava sem vínculo (`subscription_id
+  NULL`) em vez de falhar; reenvio do mesmo evento não duplica
+  (`ON CONFLICT DO NOTHING` via `mercadopago_payment_id UNIQUE`).
+- Build isolado do frontend.
+
+## 7. Decisões confirmadas (brainstorming de 2026-08-26)
+
+- Frente escolhida como sub-projeto B da Fase 7: financeiro (planos +
+  assinaturas + histórico de pagamento).
+- Histórico de pagamento faz parte do escopo (não adiado) — decisão
+  que introduziu a necessidade de `payment_events` e da correção sobre
+  a API do Mercado Pago (seção 3).
+- Captura de eventos: armazenamento local (`payment_events`), não
+  consulta ao vivo na API do Mercado Pago a cada carregamento de tela
+  — recomendação aceita por não depender da disponibilidade externa a
+  cada acesso à tela.
+- Sem cancelar/pausar assinatura pela tela nesta entrega — só leitura +
+  editar preço.
+
+## 8. Pendências
+
+- **Verificação empírica da API do Mercado Pago** (seção 3) — vira
+  Task 1 do plano de implementação, antes de qualquer código de
+  webhook ser escrito.
+- Cancelar/pausar assinatura pela tela — fica para um sub-projeto
+  seguinte.
+- Consulta ao vivo de status via `MercadoPagoService.getPreapproval`
+  como fallback de reconciliação (hoje só o webhook atualiza status) —
+  não avaliado nesta rodada.
+- Placeholders dos Termos de Uso (`[RAZÃO SOCIAL/CNPJ]`,
+  `[CIDADE/ESTADO]`, já registrados na frente de conformidade) não têm
+  relação com este sub-projeto, mas seguem pendentes do fundador.
