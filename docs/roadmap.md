@@ -731,7 +731,117 @@ segurança ou corretude hoje):
 **Fase 6 fechada por completo em 2026-08-26** (sub-projetos A, B e C
 todos concluídos).
 
-## Fase 7 — Dashboard Admin (não iniciada)
+## Fase 7 (sub-projeto A — Gestão de tenants e vínculos): status
+
+Primeiro sub-projeto da Fase 7 (Dashboard Admin). O papel `admin` existe
+no banco desde a Fase 1 (RLS bypass em toda tabela multi-tenant) mas
+nunca teve conta real nem tela própria — em 2026-08-26,
+`SELECT COUNT(*) FROM users WHERE role='admin'` retornava `0`, e toda
+ação administrativa (criar técnico/parceiro, vincular a empresa) era
+feita chamando a API diretamente. "Dashboard Admin" era um título amplo
+demais pra uma spec só; decomposto em brainstorming de 2026-08-26 —
+gestão de tenants e vínculos veio primeiro (planos/assinaturas e
+visão geral/métricas ficam pra sub-projetos seguintes). Spec em
+[`docs/specs/fase-7-gestao-tenants.md`](specs/fase-7-gestao-tenants.md),
+plano em [`docs/plans/fase-7-gestao-tenants.md`](plans/fase-7-gestao-tenants.md).
+
+**Fechado em 2026-08-26** — 6 tasks concluídas via SDD (revisão por
+task + revisão final de todo o branch):
+
+| Task | Entrega | Status |
+|---|---|---|
+| 1 | `GET /tenants` admin-only, vínculos técnico/parceiro agregados | ✅ |
+| 2 | `GET /technicians`/`GET /partners` passam a incluir `full_name`/`email` | ✅ |
+| 3 | `AdminNav`, `/admin/empresas` (somente leitura), redirect de login | ✅ |
+| 4 | `/admin/tecnicos` (criar + vincular) | ✅ |
+| 5 | `/admin/parceiros` (criar + vincular) | ✅ |
+| 6 | Runbook de provisionamento manual da primeira conta admin | ✅ |
+
+**Descoberta real durante a Task 6, corrigida no mesmo escopo:** o
+runbook afirmava que a constraint `chk_tenant_role` *exige* `tenant_id
+NULL` pra `tecnico`/`parceiro`/`admin` — na verdade ela só exige
+`tenant_id NOT NULL` pra `empresa` e não proíbe valor não-nulo pras
+outras roles; "sempre NULL" é convenção do projeto (comentário de
+coluna), não enforcement de constraint. A instrução operacional em si
+(inserir com `tenant_id = NULL`) sempre esteve correta — só a
+justificativa estava errada. Corrigido e revalidado.
+
+**Revisão final de todo o branch fez verificação ao vivo contra o
+Postgres real** (não só leitura de diff) — confirmou que `tenants` não
+tem RLS própria e que `@Roles('admin')` é de fato a única barreira
+(sondou `pg_class.relrowsecurity`, simulou sessão `empresa` contra
+`tenants` sem filtro, confirmou 403 pros três papéis não-admin);
+auditou os outros pontos do backend que tocam `tenants` confirmando
+ausência de vazamento; rodou o runbook passo a passo contra o banco
+real (hash bcrypt, contagem de contas admin, checagem de RLS forçada em
+`users`). Encontrou 3 problemas:
+
+- **Critical (pré-existente, fora do branch, não corrigido
+  autonomamente):** o HEAD deste branch não compila de um checkout
+  limpo — `frontend/src/app/login/page.tsx` (arquivo antigo) e
+  `frontend/src/app/(site)/login/page.tsx` (novo, com o redirect admin
+  desta fase) resolvem pra mesma rota `/login`. O arquivo antigo está
+  deletado só no working tree, nunca commitado — é o mesmo `D
+  frontend/src/app/login/page.tsx` que aparece em `git status` desde o
+  início de toda a sessão, pertencente a trabalho visual não commitado
+  de uma sessão paralela (redesign do site). Raiz 21 commits antes da
+  base deste plano — todo build de verificação de fases anteriores
+  desta sessão rodou contra o working tree (onde o arquivo já estava
+  ausente), o que mascarou isso sistematicamente até esta revisão
+  buildar contra o tree commitado de verdade. **Não corrigido nesta
+  entrega** — resolver exige commitar a deleção de um arquivo de
+  trabalho em andamento de outra sessão, decisão que cabe ao fundador,
+  não a uma correção autônoma da SDD. Registrado aqui como pendência
+  explícita, não escondida.
+- Two Important corrigidos numa única rodada de fix, revalidados: (1)
+  o `JOIN users` adicionado na Task 2 virou `INNER JOIN` e derrubava
+  silenciosamente linhas de `technicians`/`partners` visíveis a um
+  chamador `empresa` (a linha de `users` do técnico tem `tenant_id
+  NULL`, invisível pra RLS de `empresa`) — endpoint sem `@Roles()`,
+  regressão real sem nenhum teste cobrindo o caminho não-admin.
+  Corrigido trocando pra `LEFT JOIN` + tipos `full_name`/`email` como
+  `string | null` + 2 novos testes de regressão com token empresa,
+  reproduzido ao vivo (INNER JOIN 0 linhas -> LEFT JOIN 1 linha). (2)
+  `/admin/tecnicos` nunca renderizava `specialization`/`status`
+  (defeito herdado do próprio texto do plano, não desvio do
+  implementador); `/admin/parceiros` nunca renderizava `status`.
+  Corrigido com ~4 linhas por arquivo.
+
+**Verificação:** suíte e2e completa — **38 suítes, 131 testes, todos
+passando** (2 suítes novas desta fase + 2 testes de regressão
+adicionados na fix wave). Build isolado do frontend passou (contra o
+working tree — a ressalva do Critical acima é especificamente sobre o
+tree *commitado*, que não foi testado por nenhuma fase anterior desta
+sessão até agora). Teste visual ao vivo no navegador não foi feito —
+mesma ressalva de sempre.
+
+**Pendências registradas, não bloqueantes** (nenhuma de segurança, além
+do Critical de build já detalhado acima):
+- [ ] **Rota `/login` duplicada impede build de produção** — ver
+      achado Critical acima. Bloqueia deploy até alguém decidir
+      commitar (ou não) a remoção de `frontend/src/app/login/page.tsx`.
+- [ ] Planos/assinaturas e visão geral/métricas — sub-projetos
+      seguintes da Fase 7, spec própria.
+- [ ] Desvincular/desativar empresa, técnico ou parceiro pela tela —
+      decisão consciente de escopo mínimo desta entrega.
+- [ ] Criar empresa manualmente pela tela do admin — idem.
+- [ ] `create()`/`update()` de técnico/parceiro tipados com
+      `full_name`/`email` que `RETURNING *` não populariza de fato —
+      sem impacto em runtime (as telas recarregam a lista após criar),
+      mas é mentira de tipo latente.
+- [ ] Convenções de erro divergentes entre as 3 telas admin
+      (`error` vs `listError`, proteção de empty-state inconsistente).
+- [ ] Sem rota índice `/admin` (só `/admin/empresas`, `/admin/tecnicos`,
+      `/admin/parceiros`) — digitar `/admin` dá 404.
+- [ ] `POST /technicians`/`POST /partners` sem `class-validator` nos
+      DTOs — pré-existente, mas esta é a primeira UI que exercita esses
+      endpoints rotineiramente.
+- [ ] Assimetria pré-existente: `POST /technicians/:id/assign` é
+      `@Roles('admin')`, `POST /partners/:id/assign` é
+      `@Roles('empresa','admin')` — as duas telas de admin funcionam
+      igual, mas a superfície de API não é simétrica.
+
+## Fase 7 — Dashboard Admin (demais sub-projetos não iniciados)
 
 ## Fase 8 — Copiloto de IA (não iniciada)
 
