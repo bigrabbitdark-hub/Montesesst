@@ -73,7 +73,7 @@ construir do zero.
 | Controle de acesso (RBAC) | **Existe** — `RolesGuard` global (`backend/src/app.module.ts`), `@Roles()` por endpoint | Testado em toda suíte e2e | — |
 | Segregação entre empresas (multi-tenant) | **Existe** — RLS `FORCE ROW LEVEL SECURITY` em toda tabela multi-tenant | `backend/test/rls-isolation.e2e-spec.ts` | Único caso deliberado sem RLS própria é `tenants` (raiz do isolamento) — ver `docs/specs/fase-7-gestao-tenants.md` |
 | Logs | **Existe** — logging estruturado por request (`docs/operations/reliability.md` §2) | — | Log de aplicação, não confundir com `audit_log` (linha abaixo) — são dois sistemas diferentes |
-| Auditoria | **Existe o dado, falta a tela** — `audit_log` (`0002_audit_log.sql`), append-only, protegido até contra `UPDATE`/`DELETE`/`TRUNCATE` da própria role da aplicação | Migration + RLS | **Nenhum endpoint lê essa tabela hoje** — dado existe, zero visibilidade. Candidato natural a sub-projeto do Dashboard Admin |
+| Auditoria | **✅ Existe, com tela** — `audit_log` (`0002_audit_log.sql`), append-only, protegido até contra `UPDATE`/`DELETE`/`TRUNCATE` da própria role da aplicação, agora consultável via `/admin/auditoria` (fechado em 2026-08-26) | Migration + RLS + `backend/src/audit-log/` | Ver categoria J pro detalhe do fechamento |
 | Gestão de permissões | **Existe, sem tela** — papéis (`empresa`/`tecnico`/`parceiro`/`admin`) fixos no schema, vínculo tenant↔pessoa via `tenant_technicians`/`tenant_partners` | — | "Gestão" aqui é binária hoje (vinculado ou não) — não há granularidade de permissão dentro de um papel |
 | Histórico de alterações | **Parcial** — `audit_log` registra create/update/delete, mas não guarda valor antes/depois do campo (escopo confirmado com o fundador na Fase 1) | `0002_audit_log.sql` comentário de topo | Se precisar de "o que mudou exatamente", é um redesenho de escopo, não uma tela nova |
 | Controle de documentos | **Existe** — módulo `documents` (Fase 4), versionamento não existe (upload substitui, não empilha versão) | `backend/src/documents/` | Se "controle de versão de documento" for requisito real, é gap técnico, não só de exibição |
@@ -139,7 +139,7 @@ substitutos de profissionais legalmente habilitados."**
 
 | Item | Onde vive / Status | Evidência | Observação |
 |---|---|---|---|
-| Trilha de auditoria consultável | **Dado existe, tela não** | `audit_log` (categoria C) | Mesmo item da categoria C, repetido aqui porque é literalmente o que uma auditoria externa pediria primeiro |
+| Trilha de auditoria consultável | **✅ Existe, com tela** — `GET /audit-log` admin-only + `/admin/auditoria`, paginado, filtro por tipo de recurso — 5.651 eventos reais confirmados na base em 2026-08-26 | `backend/src/audit-log/`, `backend/test/audit-log.e2e-spec.ts`, `frontend/src/app/admin/auditoria/page.tsx` | Fechado em 2026-08-26. `LEFT JOIN` deliberado com `users`/`tenants` (não `INNER`) — evita repetir a classe de bug de RLS já corrigida na Fase 7A |
 | Testes automatizados como evidência de controle | **Existe, crescente** — 38 suítes / 131 testes e2e reais (não mockados) na Fase 7A, mesma disciplina desde a Fase 1 | `backend/test/*.e2e-spec.ts` | Esta matriz cita arquivo de teste específico em cada linha "Existe" — decisão deliberada, evidência sem caminho verificável não conta |
 | Relatório de auditoria formal (interno ou externo) | **Pendente** — nunca foi feito | — | Fora de escopo até essa matriz virar sub-projetos concluídos — não faz sentido auditar o que ainda não existe |
 
@@ -147,22 +147,18 @@ substitutos de profissionais legalmente habilitados."**
 
 ## Próximos passos
 
-Este documento não implementa nada — é o inventário que a próxima rodada
-de brainstorming vai decompor em sub-projetos, exatamente como a Fase 6 e
-a Fase 7 foram decompostas. Candidatos claros, pela quantidade de
-"Pendente" concentrado:
+Este documento não implementa nada sozinho — é o inventário que guia a
+decomposição em sub-projetos, exatamente como a Fase 6 e a Fase 7 foram
+decompostas. Ordem confirmada pelo fundador em 2026-08-26:
 
-1. **Categoria A (páginas públicas do site)** — o gap mais visível e o
-   único que o `lgpd-compliance.md` já chamava de bloqueante desde
-   2026-08-18. Maior parte é redação (com pontos ⚠️ para jurídico), não
-   engenharia nova.
-2. **Auditoria consultável (C/J)** — dado já existe, é "só" um endpoint
-   `GET /audit-log` admin-only + uma tela — mesmo padrão de todo
-   sub-projeto de Dashboard Admin já entregue (Fase 7A).
-3. **Categoria F (Compromisso SST)** — conteúdo institucional, sem
-   dependência técnica nova, pode andar em paralelo com qualquer um dos
-   dois acima.
-4. **Categoria G (agentes)** — deliberadamente parado até a Fase 8
-   existir.
-
-Nenhuma ordem aqui é decisão tomada — fica para o fundador priorizar.
+1. ~~**Categoria A (páginas públicas do site, núcleo bloqueante)**~~ —
+   ✅ fechado em 2026-08-26 (Política de Privacidade, Termos de Uso,
+   canal de contato). Os demais 8 itens da categoria A (segurança,
+   cookies, retenção, incidentes, fornecedores, FAQ) ficam para uma
+   rodada seguinte, sem bloquear nada.
+2. ~~**Auditoria consultável (C/J)**~~ — ✅ fechado em 2026-08-26
+   (`GET /audit-log` + `/admin/auditoria`).
+3. **Categoria F (Compromisso SST)** — próximo da fila, conteúdo
+   institucional, sem dependência técnica nova.
+4. **Categoria G (agentes)** — continua deliberadamente parado até a
+   Fase 8 existir.
