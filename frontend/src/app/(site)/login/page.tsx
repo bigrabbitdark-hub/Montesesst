@@ -35,7 +35,9 @@ export default function LoginPage() {
           ? '/empresa/onboarding'
           : role === 'tecnico' || role === 'parceiro'
             ? '/tecnico/empresas'
-            : '/',
+            : role === 'admin'
+              ? '/admin/empresas'
+              : '/',
       );
     } catch {
       setError('Não foi possível conectar ao servidor.');
