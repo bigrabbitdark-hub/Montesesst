@@ -84,19 +84,42 @@ para cobrança recorrente de assinatura — `subscription_authorized_payment`
 — distinto de `subscription_preapproval` (que `handleWebhook` já trata) e
 distinto de um `payment` genérico.
 
-Confirmado com confiança: existe `GET
-/authorized_payments/search?preapproval_id=...`, que busca as cobranças
-de uma assinatura específica pelo `preapproval_id`.
+O `data.id` recebido nesse webhook é o id de um recurso "authorized
+payment" (também chamado de invoice), buscável via
+`GET /authorized_payments/{id}`. A documentação oficial de referência
+desse endpoint (consultada em 2026-08-26) lista o seguinte schema de
+resposta:
 
-**Não confirmado por documentação pública** — e a Task 1 do plano de
-implementação existe justamente para resolver isso empiricamente, não
-por suposição: o formato exato da resposta ao buscar uma cobrança
-individual pelo id recebido no webhook (`data.id`), e se esse formato
-inclui `preapproval_id` diretamente ou exige sempre passar pela busca.
-Referências consultadas:
+| Campo | Conteúdo |
+|---|---|
+| `id` | id da cobrança/invoice (o mesmo `data.id` do webhook) |
+| `preapproval_id` | **id da assinatura** — bate com `subscriptions.mercadopago_preapproval_id` |
+| `transaction_amount` | valor cobrado, como string em reais (ex.: `"24.50"`) — **não em centavos**, precisa multiplicar por 100 e arredondar pra gravar em `amount_cents` |
+| `currency_id` | moeda (ex.: `"BRL"`) |
+| `debit_date` | data em que a cobrança ocorreu |
+| `status` / `summarized` | status do agendamento da cobrança (ex.: `"scheduled"`/`"pending"`) — **não confundir com sucesso do pagamento em si** |
+| `payment.id`, `payment.status`, `payment.status_detail` | objeto aninhado com o pagamento de fato — `payment.status` (ex.: `"approved"`) é o sinal confiável de que o dinheiro foi capturado, não o `status` de nível superior |
+
+Existe também `GET /authorized_payments/search?preapproval_id=...`
+pra buscar todas as cobranças de uma assinatura de uma vez (útil pra
+reconciliação futura, não necessário pro fluxo do webhook em si, que já
+recebe o id direto).
+
+Fonte:
+[Get authorized payment — Mercado Pago API Reference](https://www.mercadopago.com.br/developers/en/reference/online-payments/subscriptions/get-authorized-payment/get),
 [Subscriptions with authorized payment](https://www.mercadopago.com.co/developers/en/docs/subscriptions/integration-configuration/subscription-no-associated-plan/authorized-payments),
-[Webhooks - Notifications](https://www.mercadopago.com.mx/developers/en/docs/your-integrations/notifications/webhooks),
-[Search authorized payments](https://www.mercadopago.com.mx/developers/en/reference/subscriptions/_authorized_payments_search/get).
+[Webhooks - Notifications](https://www.mercadopago.com.mx/developers/en/docs/your-integrations/notifications/webhooks).
+
+**O que ainda não foi verificado ao vivo:** este schema vem da
+documentação oficial, não de uma chamada real feita durante este
+brainstorming. A Task 1 do plano de implementação faz uma chamada real
+contra o sandbox do Mercado Pago (token `TEST-...` já configurado no
+`.env`) pra confirmar que a resposta real bate com o documentado antes
+do código de produção depender disso — mesmo princípio de validar
+contra o sistema real antes de finalizar, só que mais leve agora
+(confirmar o schema documentado, não simular uma cobrança completa via
+checkout no navegador, que exigiria interação manual e ~1h de espera
+segundo a própria documentação do Mercado Pago).
 
 ## 4. Backend
 
@@ -132,14 +155,20 @@ permanece como está.
 **Webhook estendido** — `WebhookController.handleWebhook` ganha um
 branch pra `type === 'subscription_authorized_payment'` (não `payment`,
 ver seção 3): busca a cobrança via um método novo em
-`MercadoPagoService` (nome e assinatura exata a definir na Task 1,
-depois da verificação empírica), e grava o evento chamando uma função
-SQL nova `payments_record_payment_event(...)` (`SECURITY DEFINER`,
-mesmo padrão de `payments_update_subscription_status` que já existe
-exatamente pra esse problema — webhook chega sem contexto de
-tenant/role, RLS bloquearia um INSERT anônimo). A função tenta casar o
-evento a uma assinatura via `mercadopago_preapproval_id`; se não achar,
-grava com `subscription_id NULL` mesmo assim (auditoria).
+`MercadoPagoService`, `getAuthorizedPayment(id)` (`GET
+/authorized_payments/{id}`, espelhando `getPreapproval` já existente),
+retornando `{ id, preapprovalId, amountCents, status, occurredAt }` —
+`amountCents` já convertido de `transaction_amount` (string em reais)
+multiplicando por 100 e arredondando; `status` lido de `payment.status`
+(não do `status`/`summarized` de nível superior, que reflete
+agendamento, não sucesso de cobrança — ver seção 3). O controller grava
+o evento chamando uma função SQL nova
+`payments_record_payment_event(...)` (`SECURITY DEFINER`, mesmo padrão
+de `payments_update_subscription_status` que já existe exatamente pra
+esse problema — webhook chega sem contexto de tenant/role, RLS
+bloquearia um INSERT anônimo). A função tenta casar o evento a uma
+assinatura via `preapproval_id` = `subscriptions.mercadopago_preapproval_id`;
+se não achar, grava com `subscription_id NULL` mesmo assim (auditoria).
 
 **`GET /subscriptions/:id/payment-events`** (`@Roles('admin')`, novo) —
 lista os eventos de uma assinatura, mais recente primeiro.
@@ -174,14 +203,14 @@ mock:
   não-admin recebem 403.
 - `GET /subscriptions/:id/payment-events`: lista eventos corretos pra
   uma assinatura, vazio pra assinatura sem cobrança ainda.
-- **Webhook `subscription_authorized_payment`**: só pode ser escrito
-  com confiança depois da Task 1 (verificação empírica contra o
-  sandbox do Mercado Pago) — o formato exato do payload ainda não está
-  confirmado (seção 3). Cobertura mínima esperada: evento válido grava
-  `payment_events` vinculado à assinatura certa; evento com
-  `preapproval_id` desconhecido grava sem vínculo (`subscription_id
+- **Webhook `subscription_authorized_payment`**: cobertura mínima
+  esperada, usando o schema confirmado na Task 1 (seção 3): evento
+  válido grava `payment_events` vinculado à assinatura certa, com
+  `amount_cents` convertido corretamente de reais pra centavos; evento
+  com `preapproval_id` desconhecido grava sem vínculo (`subscription_id
   NULL`) em vez de falhar; reenvio do mesmo evento não duplica
-  (`ON CONFLICT DO NOTHING` via `mercadopago_payment_id UNIQUE`).
+  (`ON CONFLICT DO NOTHING` via `mercadopago_payment_id UNIQUE`);
+  `payment.status !== 'approved'` não é tratado como sucesso.
 - Build isolado do frontend.
 
 ## 7. Decisões confirmadas (brainstorming de 2026-08-26)
@@ -200,9 +229,10 @@ mock:
 
 ## 8. Pendências
 
-- **Verificação empírica da API do Mercado Pago** (seção 3) — vira
-  Task 1 do plano de implementação, antes de qualquer código de
-  webhook ser escrito.
+- **Verificação empírica do schema documentado da API do Mercado
+  Pago** (seção 3) — vira Task 1 do plano de implementação, antes de
+  qualquer código de webhook ser escrito. Schema já levantado por
+  pesquisa; falta só confirmar contra uma chamada real do sandbox.
 - Cancelar/pausar assinatura pela tela — fica para um sub-projeto
   seguinte.
 - Consulta ao vivo de status via `MercadoPagoService.getPreapproval`
