@@ -32,23 +32,23 @@
 
 ## A — Políticas públicas do site
 
-O núcleo bloqueante (Privacidade, Termos, canal de contato) foi
-**fechado em 2026-08-26** — o restante da categoria ainda está pendente,
-decisão confirmada de fatiar em sub-projetos (ver "Próximos passos").
+**Categoria inteira fechada em 2026-08-26** — todos os 11 itens
+publicados, em duas rodadas (núcleo bloqueante primeiro, depois o
+restante).
 
 | Item | Onde vive / Status | Evidência | Observação |
 |---|---|---|---|
 | Política de Privacidade | **✅ Publicada** — `/privacidade`, conteúdo em `frontend/content/legal/privacidade.mdx`, traduzido de `lgpd-compliance.md` §3-6 | Build isolado confirmado, rota estática gerada | Marcada como "documento inicial, sem revisão jurídica formal" no topo da própria página — nenhum prazo de retenção específico foi publicado (ainda ⚠️ no doc interno) |
 | Termos de Uso | **✅ Publicado** — `/termos`, conteúdo em `frontend/content/legal/termos.mdx` | Build isolado confirmado, rota estática gerada | Inclui a cláusula operador/controlador, a frase "não substitui avaliação profissional habilitado", e dois placeholders explícitos (`[RAZÃO SOCIAL/CNPJ — PREENCHER]`, `[CIDADE/ESTADO — PREENCHER]`) aguardando dado real do fundador |
-| Política de Segurança da Informação | **Pendente** — controles técnicos já existem e estão listados em `lgpd-compliance.md` §8, mas nunca viraram uma política redigida pro público | RLS testada (`rls-isolation.e2e-spec.ts`), senha com hash, segredos fora do git | Pode ser em grande parte "tradução" do §8 pra linguagem acessível, não pesquisa nova |
-| Política de Cookies | **Não se aplica como está** — o site não usa cookie nenhum hoje, autenticação é 100% via `localStorage` (`montese_token`) | Busca no código: zero ocorrências de `document.cookie`/`cookie()` em frontend ou backend | Se algum dia entrar analytics/marketing com cookie, isso muda. Por ora, nota mínima ("não usamos cookies") é mais honesta que uma política cheia de cláusulas que não se aplicam |
-| Política de Tratamento de Dados | **Pendente** — se sobrepõe fortemente com Política de Privacidade | — | Decidir na hora de redigir se vira seção da Política de Privacidade ou documento separado — redação, não modelagem |
-| Política de Retenção e Exclusão de Dados | **Pendente como página pública** — regra técnica já em `lgpd-compliance.md` §5, com ⚠️ explícito pro prazo de ASO/PCMSO (~20 anos, prática de setor, não confirmação jurídica) | — | Não publicar prazo de retenção de dado de saúde sem validar com jurídico/especialista em medicina do trabalho primeiro (⚠️ já registrado) |
-| Política de Incidentes de Segurança | **Pendente** — nem o processo interno existe ainda (ver categoria B) | — | Escrever o processo interno primeiro (B), a política pública depois — não pode prometer um SLA de resposta que não existe |
-| Política de Subcontratação/Parceiros | **Pendente** — fornecedores reais já identificados: Resend (e-mail), Mercado Pago (pagamento), Cloudflare R2 (storage de documentos, credenciais ainda não configuradas) | `backend/package.json`, `.env.example` | Nomear fornecedor real é mais forte que texto genérico — mas confirmar com cada um se tem certificação/compliance próprio antes de citar |
-| Compromisso de Conformidade SST | **Pendente** — ver categoria F | — | — |
-| Canal de contato de privacidade | **✅ Publicado** — `privacidade@montesesst.com.br`, referenciado nas duas páginas acima | `/privacidade`, `/termos` | Endereço ainda não verificado como caixa de e-mail real recebendo mensagens — confirmar operacionalmente |
-| FAQ de Segurança e Privacidade | **Pendente** — depende das políticas acima existirem primeiro | — | Último item natural desta categoria, não o primeiro |
+| Política de Segurança da Informação | **✅ Publicada** — `/seguranca`, tradução de `lgpd-compliance.md` §8 pra linguagem acessível, com seção honesta de limitações conhecidas | `frontend/content/legal/seguranca.mdx` | Fechada em 2026-08-26 |
+| Política de Cookies | **✅ Resolvida como seção**, não página própria — nota no topo de `/privacidade` ("não usamos cookies hoje") | `frontend/content/legal/privacidade.mdx` | Decisão confirmada: página própria seria promessa vazia, já que não há cookie nenhum hoje |
+| Política de Tratamento de Dados | **✅ Resolvida como o mesmo documento** que a Política de Privacidade, com nota explícita no topo de `/privacidade` explicando a equivalência | `frontend/content/legal/privacidade.mdx` | Decisão confirmada: evita duplicar texto que podia dessincronizar |
+| Política de Retenção e Exclusão de Dados | **✅ Expandida dentro de `/privacidade`** — seção "Por quanto tempo mantemos os dados", por categoria de dado, sem publicar o prazo de ASO/PCMSO ainda não confirmado juridicamente | `frontend/content/legal/privacidade.mdx` | ⚠️ mantido explícito na própria página — prazo de dado de saúde continua pendente de validação jurídica/especializada |
+| Política de Incidentes de Segurança | **✅ Publicada** — `/incidentes`, referenciando um processo interno novo (`docs/compliance/processo-incidentes.md`, categoria B) escrito primeiro | `frontend/content/legal/incidentes.mdx`, `docs/compliance/processo-incidentes.md` | Não promete prazo de comunicação específico — ⚠️ mantido até confirmação jurídica do Art. 48 LGPD |
+| Política de Subcontratação/Parceiros | **✅ Publicada** — `/fornecedores`, nomeando os 3 fornecedores reais (Resend, Mercado Pago, Cloudflare R2) sem alegar certificação de nenhum deles | `frontend/content/legal/fornecedores.mdx` | ⚠️ cláusula contratual de proteção de dados com cada fornecedor ainda não confirmada — registrado na própria página |
+| Compromisso de Conformidade SST | **✅ Publicada** — mesmo item da categoria F, ver `/compromisso-sst` | `frontend/content/legal/compromisso-sst.mdx` | Linha duplicada entre A e F no desenho original desta matriz — mantida aqui só como referência cruzada |
+| Canal de contato de privacidade | **✅ Publicado** — `privacidade@montesesst.com.br`, referenciado em todas as páginas desta categoria | `/privacidade`, `/termos`, `/seguranca`, `/incidentes`, `/faq-privacidade` | Endereço ainda não verificado como caixa de e-mail real recebendo mensagens — confirmar operacionalmente |
+| FAQ de Segurança e Privacidade | **✅ Publicada** — `/faq-privacidade`, escrita por último, sintetizando as demais páginas em formato de pergunta/resposta | `frontend/content/legal/faq.mdx` | Fechada em 2026-08-26 |
 
 ## B — Políticas internas da empresa (processo, não produto)
 
@@ -58,7 +58,7 @@ privacidade/segurança acontece — distinto de A (o que o público lê).
 | Item | Onde vive / Status | Evidência | Observação |
 |---|---|---|---|
 | Processo de atendimento a direito do titular (LGPD) | **Existe, manual** — `lgpd-compliance.md` §6 já documenta o processo passo a passo | — | Funciona pro volume atual (zero clientes pagantes); vira risco operacional se o número de clientes crescer sem virar tela |
-| Processo de resposta a incidente de segurança | **Pendente** — nenhum processo formal, nem informal, documentado | — | Pré-requisito da Política de Incidentes pública (A) |
+| Processo de resposta a incidente de segurança | **✅ Existe, documentado** — `docs/compliance/processo-incidentes.md` (detecção, triagem, contenção, comunicação, registro, pós-incidente), honesto sobre a ausência de equipe dedicada e de SLA formal | `docs/compliance/processo-incidentes.md` | Fechado em 2026-08-26, junto da Política de Incidentes pública (A) |
 | Processo de avaliação de fornecedor novo | **Pendente** — hoje a escolha de fornecedor (Resend, Mercado Pago, R2) foi decisão técnica direta, sem checklist formal de segurança/compliance do fornecedor | — | Baixa prioridade — só 3 fornecedores hoje, mas vale existir antes do 4º |
 | Papel de Encarregado (DPO) | **Existe, informal** — fundador assume o papel provisoriamente (`lgpd-compliance.md` §2) | — | Formalizar quando o canal de contato (A) for publicado |
 
@@ -149,21 +149,32 @@ substitutos de profissionais legalmente habilitados."**
 
 Este documento não implementa nada sozinho — é o inventário que guia a
 decomposição em sub-projetos, exatamente como a Fase 6 e a Fase 7 foram
-decompostas. Ordem confirmada pelo fundador em 2026-08-26:
+decompostas.
 
-1. ~~**Categoria A (páginas públicas do site, núcleo bloqueante)**~~ —
-   ✅ fechado em 2026-08-26 (Política de Privacidade, Termos de Uso,
-   canal de contato). Os demais 8 itens da categoria A (segurança,
-   cookies, retenção, incidentes, fornecedores, FAQ) ficam para uma
-   rodada seguinte, sem bloquear nada.
-2. ~~**Auditoria consultável (C/J)**~~ — ✅ fechado em 2026-08-26
-   (`GET /audit-log` + `/admin/auditoria`).
-3. ~~**Categoria F (Compromisso SST)**~~ — ✅ fechado em 2026-08-26
-   (`/compromisso-sst`).
-4. **Categoria G (agentes)** — continua deliberadamente parado até a
-   Fase 8 existir. Nenhum item pendente restante desta rodada — as
-   quatro frentes priorizadas em 2026-08-26 foram concluídas (G por
-   decisão deliberada de adiamento). Os 8 itens restantes da categoria
-   A (segurança, cookies, retenção, incidentes, fornecedores, FAQ) e as
-   categorias B/D/H/I seguem no inventário para uma próxima rodada de
-   priorização.
+**Rodada de 2026-08-26 — concluída:**
+
+1. ~~Categoria A completa (11/11 itens: Privacidade, Termos, Segurança,
+   Cookies, Tratamento de Dados, Retenção, Incidentes, Fornecedores,
+   Compromisso SST, canal de contato, FAQ)~~ ✅
+2. ~~Auditoria consultável (C/J)~~ ✅ (`GET /audit-log` +
+   `/admin/auditoria`)
+3. ~~Categoria F (Compromisso SST)~~ ✅ (mesmo item de A, `/compromisso-sst`)
+4. ~~Processo interno de incidentes (B)~~ ✅
+   (`docs/compliance/processo-incidentes.md`)
+
+**Ainda em aberto, sem data:**
+
+- **Categoria G (agentes de IA)** — deliberadamente parado até a Fase 8
+  existir.
+- **Dois placeholders nos Termos de Uso** (`[RAZÃO SOCIAL/CNPJ —
+  PREENCHER]`, `[CIDADE/ESTADO — PREENCHER]`) — precisam do dado real
+  do fundador antes do documento ser considerado final.
+- **Categorias B (restante), D, H, I** — avaliação de fornecedor
+  formal, controles de segurança adicionais, cláusulas de
+  responsabilidade de cliente/parceiro — nenhuma delas foi solicitada
+  ainda nesta rodada.
+- **Pontos ⚠️ que dependem de validação jurídica**, espalhados por
+  `lgpd-compliance.md` e pelas páginas publicadas hoje (prazo de
+  retenção de dado de saúde, prazo de comunicação de incidente,
+  cláusula contratual com fornecedor) — nenhum vira compromisso
+  definitivo sem essa revisão.
