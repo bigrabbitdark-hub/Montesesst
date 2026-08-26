@@ -32,14 +32,14 @@
 
 ## A — Políticas públicas do site
 
-Nenhuma destas existe como página publicada hoje — o site (Fase 2) foi
-marcado fechado no roadmap sem elas, apesar do `lgpd-compliance.md`
-(seção 9) já ter sinalizado isso como bloqueio desde 2026-08-18.
+O núcleo bloqueante (Privacidade, Termos, canal de contato) foi
+**fechado em 2026-08-26** — o restante da categoria ainda está pendente,
+decisão confirmada de fatiar em sub-projetos (ver "Próximos passos").
 
 | Item | Onde vive / Status | Evidência | Observação |
 |---|---|---|---|
-| Política de Privacidade | **Pendente** — conteúdo-base já existe em `lgpd-compliance.md` §3-6 (inventário de dados, base legal, retenção, direitos do titular), nunca virou página | — | Maior gap isolado desta matriz — o próprio doc de LGPD já tratava isso como bloqueante da Fase 2 |
-| Termos de Uso | **Pendente** — cláusula operador/controlador já especificada em `lgpd-compliance.md` §2 | — | Precisa incluir a distinção Montese-operador (dado de funcionário) vs. Montese-controlador (dado de conta) |
+| Política de Privacidade | **✅ Publicada** — `/privacidade`, conteúdo em `frontend/content/legal/privacidade.mdx`, traduzido de `lgpd-compliance.md` §3-6 | Build isolado confirmado, rota estática gerada | Marcada como "documento inicial, sem revisão jurídica formal" no topo da própria página — nenhum prazo de retenção específico foi publicado (ainda ⚠️ no doc interno) |
+| Termos de Uso | **✅ Publicado** — `/termos`, conteúdo em `frontend/content/legal/termos.mdx` | Build isolado confirmado, rota estática gerada | Inclui a cláusula operador/controlador, a frase "não substitui avaliação profissional habilitado", e dois placeholders explícitos (`[RAZÃO SOCIAL/CNPJ — PREENCHER]`, `[CIDADE/ESTADO — PREENCHER]`) aguardando dado real do fundador |
 | Política de Segurança da Informação | **Pendente** — controles técnicos já existem e estão listados em `lgpd-compliance.md` §8, mas nunca viraram uma política redigida pro público | RLS testada (`rls-isolation.e2e-spec.ts`), senha com hash, segredos fora do git | Pode ser em grande parte "tradução" do §8 pra linguagem acessível, não pesquisa nova |
 | Política de Cookies | **Não se aplica como está** — o site não usa cookie nenhum hoje, autenticação é 100% via `localStorage` (`montese_token`) | Busca no código: zero ocorrências de `document.cookie`/`cookie()` em frontend ou backend | Se algum dia entrar analytics/marketing com cookie, isso muda. Por ora, nota mínima ("não usamos cookies") é mais honesta que uma política cheia de cláusulas que não se aplicam |
 | Política de Tratamento de Dados | **Pendente** — se sobrepõe fortemente com Política de Privacidade | — | Decidir na hora de redigir se vira seção da Política de Privacidade ou documento separado — redação, não modelagem |
@@ -47,7 +47,7 @@ marcado fechado no roadmap sem elas, apesar do `lgpd-compliance.md`
 | Política de Incidentes de Segurança | **Pendente** — nem o processo interno existe ainda (ver categoria B) | — | Escrever o processo interno primeiro (B), a política pública depois — não pode prometer um SLA de resposta que não existe |
 | Política de Subcontratação/Parceiros | **Pendente** — fornecedores reais já identificados: Resend (e-mail), Mercado Pago (pagamento), Cloudflare R2 (storage de documentos, credenciais ainda não configuradas) | `backend/package.json`, `.env.example` | Nomear fornecedor real é mais forte que texto genérico — mas confirmar com cada um se tem certificação/compliance próprio antes de citar |
 | Compromisso de Conformidade SST | **Pendente** — ver categoria F | — | — |
-| Canal de contato de privacidade | **Pendente** — `lgpd-compliance.md` §2 já sinalizava isso como dependente da Fase 2 existir (agora existe) | — | Ex.: `privacidade@montesesst.com.br` — decisão simples, só falta escolher o endereço e publicar |
+| Canal de contato de privacidade | **✅ Publicado** — `privacidade@montesesst.com.br`, referenciado nas duas páginas acima | `/privacidade`, `/termos` | Endereço ainda não verificado como caixa de e-mail real recebendo mensagens — confirmar operacionalmente |
 | FAQ de Segurança e Privacidade | **Pendente** — depende das políticas acima existirem primeiro | — | Último item natural desta categoria, não o primeiro |
 
 ## B — Políticas internas da empresa (processo, não produto)
