@@ -18,6 +18,14 @@ interface DocumentRow {
   expires_at: string | null;
 }
 
+interface EpiRow {
+  id: string;
+  tenant_id: string;
+  ca_number: string;
+  ca_valid_until: string | null;
+  equipment_group: string;
+}
+
 interface AgendaItem {
   id: string;
   tenant_name: string;
@@ -37,16 +45,28 @@ const CATEGORY_LABELS: Record<string, string> = {
   laudo: 'Laudo',
   ficha_epi: 'Ficha de EPI',
   treinamento: 'Treinamento',
+  epi: 'EPI',
 };
 
 function capitalize(text: string): string {
   return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
-function groupAgendaByMonth(documents: DocumentRow[], tenantNames: Record<string, string>): AgendaGroup[] {
-  const items: AgendaItem[] = documents
+function formatDate(isoDate: string): string {
+  const [year, month, day] = isoDate.slice(0, 10).split('-');
+  return `${day}/${month}/${year}`;
+}
+
+function formatMonthLabel(isoDate: string): string {
+  const [year, month] = isoDate.slice(0, 10).split('-').map(Number);
+  return capitalize(
+    new Date(year, month - 1, 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }),
+  );
+}
+
+function documentsToAgendaItems(documents: DocumentRow[], tenantNames: Record<string, string>): AgendaItem[] {
+  return documents
     .filter((doc): doc is DocumentRow & { expires_at: string } => doc.expires_at !== null)
-    .sort((a, b) => a.expires_at.localeCompare(b.expires_at))
     .map((doc) => ({
       id: doc.id,
       tenant_name: tenantNames[doc.tenant_id] ?? 'Empresa',
@@ -54,12 +74,25 @@ function groupAgendaByMonth(documents: DocumentRow[], tenantNames: Record<string
       title: doc.title,
       expires_at: doc.expires_at,
     }));
+}
 
+function episToAgendaItems(epis: EpiRow[], tenantNames: Record<string, string>): AgendaItem[] {
+  return epis
+    .filter((epi): epi is EpiRow & { ca_valid_until: string } => epi.ca_valid_until !== null)
+    .map((epi) => ({
+      id: epi.id,
+      tenant_name: tenantNames[epi.tenant_id] ?? 'Empresa',
+      category: 'epi',
+      title: `CA ${epi.ca_number} — ${epi.equipment_group}`,
+      expires_at: epi.ca_valid_until,
+    }));
+}
+
+function groupAgendaByMonth(items: AgendaItem[]): AgendaGroup[] {
+  const sorted = [...items].sort((a, b) => a.expires_at.localeCompare(b.expires_at));
   const groups: AgendaGroup[] = [];
-  for (const item of items) {
-    const label = capitalize(
-      new Date(item.expires_at).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }),
-    );
+  for (const item of sorted) {
+    const label = formatMonthLabel(item.expires_at);
     const lastGroup = groups[groups.length - 1];
     if (lastGroup && lastGroup.label === label) {
       lastGroup.items.push(item);
@@ -73,6 +106,7 @@ function groupAgendaByMonth(documents: DocumentRow[], tenantNames: Record<string
 export default function TecnicoAgendaPage() {
   const router = useRouter();
   const [documents, setDocuments] = useState<DocumentRow[]>([]);
+  const [epis, setEpis] = useState<EpiRow[]>([]);
   const [tenantNames, setTenantNames] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -87,17 +121,20 @@ export default function TecnicoAgendaPage() {
     Promise.all([
       fetch('/api/tenant-technicians/me', { headers: { Authorization: `Bearer ${token}` } }),
       fetch('/api/documents', { headers: { Authorization: `Bearer ${token}` } }),
+      fetch('/api/epis', { headers: { Authorization: `Bearer ${token}` } }),
     ])
-      .then(async ([tenantsRes, documentsRes]) => {
-        if (!tenantsRes.ok || !documentsRes.ok) {
+      .then(async ([tenantsRes, documentsRes, episRes]) => {
+        if (!tenantsRes.ok || !documentsRes.ok || !episRes.ok) {
           setError('Não foi possível carregar a agenda.');
           setLoading(false);
           return;
         }
         const tenants: LinkedTenant[] = await tenantsRes.json();
         const docs: DocumentRow[] = await documentsRes.json();
+        const epiRows: EpiRow[] = await episRes.json();
         setTenantNames(Object.fromEntries(tenants.map((t) => [t.tenant_id, t.tenant_name])));
         setDocuments(docs);
+        setEpis(epiRows);
         setLoading(false);
       })
       .catch(() => {
@@ -111,7 +148,10 @@ export default function TecnicoAgendaPage() {
     return <div className="mx-auto max-w-2xl px-4 py-16 text-center text-brand-700">Carregando...</div>;
   }
 
-  const agendaGroups = groupAgendaByMonth(documents, tenantNames);
+  const agendaGroups = groupAgendaByMonth([
+    ...documentsToAgendaItems(documents, tenantNames),
+    ...episToAgendaItems(epis, tenantNames),
+  ]);
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-16">
@@ -133,8 +173,7 @@ export default function TecnicoAgendaPage() {
                 {group.items.map((item) => (
                   <li key={item.id}>
                     <span className="font-medium text-brand-900">{item.tenant_name}</span> —{' '}
-                    {CATEGORY_LABELS[item.category]} — {item.title} (
-                    {new Date(item.expires_at).toLocaleDateString('pt-BR')})
+                    {CATEGORY_LABELS[item.category]} — {item.title} ({formatDate(item.expires_at)})
                   </li>
                 ))}
               </ul>

@@ -33,6 +33,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   laudo: 'Laudo',
   ficha_epi: 'Ficha de EPI',
   treinamento: 'Treinamento',
+  epi: 'EPI',
 };
 
 interface AgendaItem {
@@ -47,20 +48,51 @@ interface AgendaGroup {
   items: AgendaItem[];
 }
 
+interface EpiRow {
+  id: string;
+  ca_number: string;
+  ca_valid_until: string | null;
+  equipment_group: string;
+}
+
 function capitalize(text: string): string {
   return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
-function groupAgendaByMonth(documents: DocumentRow[]): AgendaGroup[] {
-  const items = documents
-    .filter((doc): doc is DocumentRow & { expires_at: string } => doc.expires_at !== null)
-    .sort((a, b) => a.expires_at.localeCompare(b.expires_at));
+function formatDate(isoDate: string): string {
+  const [year, month, day] = isoDate.slice(0, 10).split('-');
+  return `${day}/${month}/${year}`;
+}
 
+function formatMonthLabel(isoDate: string): string {
+  const [year, month] = isoDate.slice(0, 10).split('-').map(Number);
+  return capitalize(
+    new Date(year, month - 1, 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }),
+  );
+}
+
+function documentsToAgendaItems(documents: DocumentRow[]): AgendaItem[] {
+  return documents
+    .filter((doc): doc is DocumentRow & { expires_at: string } => doc.expires_at !== null)
+    .map((doc) => ({ id: doc.id, category: doc.category, title: doc.title, expires_at: doc.expires_at }));
+}
+
+function episToAgendaItems(epis: EpiRow[]): AgendaItem[] {
+  return epis
+    .filter((epi): epi is EpiRow & { ca_valid_until: string } => epi.ca_valid_until !== null)
+    .map((epi) => ({
+      id: epi.id,
+      category: 'epi',
+      title: `CA ${epi.ca_number} — ${epi.equipment_group}`,
+      expires_at: epi.ca_valid_until,
+    }));
+}
+
+function groupAgendaByMonth(items: AgendaItem[]): AgendaGroup[] {
+  const sorted = [...items].sort((a, b) => a.expires_at.localeCompare(b.expires_at));
   const groups: AgendaGroup[] = [];
-  for (const item of items) {
-    const label = capitalize(
-      new Date(item.expires_at).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }),
-    );
+  for (const item of sorted) {
+    const label = formatMonthLabel(item.expires_at);
     const lastGroup = groups[groups.length - 1];
     if (lastGroup && lastGroup.label === label) {
       lastGroup.items.push(item);
@@ -82,6 +114,7 @@ export function DocumentsPanel({ tenantId }: { tenantId?: string }) {
   const [errorMessage, setErrorMessage] = useState('');
   const [listError, setListError] = useState('');
   const [compliance, setCompliance] = useState<ComplianceResult | null>(null);
+  const [epis, setEpis] = useState<EpiRow[]>([]);
 
   function currentUserId(): string | null {
     const raw = localStorage.getItem('montese_user');
@@ -95,6 +128,23 @@ export function DocumentsPanel({ tenantId }: { tenantId?: string }) {
 
   function complianceUrl(): string {
     return tenantId ? `/api/documents/compliance?tenant_id=${tenantId}` : '/api/documents/compliance';
+  }
+
+  function episUrl(): string {
+    return tenantId ? `/api/epis?tenant_id=${tenantId}` : '/api/epis';
+  }
+
+  async function loadEpis() {
+    const token = localStorage.getItem('montese_token');
+    try {
+      const res = await fetch(episUrl(), { headers: { Authorization: `Bearer ${token}` } });
+      if (res.ok) {
+        setEpis(await res.json());
+      }
+    } catch {
+      // agenda mescla documentos+EPI; falha aqui só deixa a parte de EPI
+      // de fora, sem sobrescrever o listError já usado por loadDocuments.
+    }
   }
 
   async function loadCompliance() {
@@ -131,6 +181,7 @@ export function DocumentsPanel({ tenantId }: { tenantId?: string }) {
   useEffect(() => {
     loadDocuments();
     loadCompliance();
+    loadEpis();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -207,7 +258,7 @@ export function DocumentsPanel({ tenantId }: { tenantId?: string }) {
   }
 
   const userId = currentUserId();
-  const agendaGroups = groupAgendaByMonth(documents);
+  const agendaGroups = groupAgendaByMonth([...documentsToAgendaItems(documents), ...episToAgendaItems(epis)]);
 
   if (loading) {
     return <p className="text-brand-700">Carregando documentos...</p>;
@@ -264,7 +315,7 @@ export function DocumentsPanel({ tenantId }: { tenantId?: string }) {
                   {group.items.map((item) => (
                     <li key={item.id}>
                       {CATEGORY_LABELS[item.category]} — {item.title} (
-                      {new Date(item.expires_at).toLocaleDateString('pt-BR')})
+                      {formatDate(item.expires_at)})
                     </li>
                   ))}
                 </ul>
