@@ -214,6 +214,7 @@ export default function AdminParceirosPage() {
                     <strong className="text-brand-900">{partner.full_name}</strong>
                     <span className="ml-2 text-brand-700">{partner.email}</span>
                     <span className="ml-2 text-brand-700">({partner.service_region})</span>
+                    <span className="ml-2 text-brand-700">{partner.status}</span>
                   </div>
                   <button
                     onClick={() => {

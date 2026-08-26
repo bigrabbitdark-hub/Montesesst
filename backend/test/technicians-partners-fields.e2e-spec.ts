@@ -105,4 +105,54 @@ describe('GET /technicians e GET /partners incluem full_name/email (e2e)', () =>
     expect(res.body.full_name).toBe(partnerFullName);
     expect(res.body.email).toBe(partnerEmail);
   });
+
+  // Regressão: technicians/partners JOIN users é INNER; users tem RLS
+  // própria (users_isolation) e a linha do usuário do técnico/parceiro tem
+  // tenant_id NULL, invisível pra um caller 'empresa'. Com INNER JOIN a
+  // linha inteira de technicians/partners (que a RLS de
+  // technicians_isolation/partners_isolation já deixaria a empresa ver, por
+  // estar vinculada via tenant_technicians/tenant_partners) sumia do
+  // resultado. Por isso o LEFT JOIN: precisa sobreviver pra um caller
+  // não-admin vinculado.
+  it('GET /technicians ainda retorna o técnico vinculado quando chamado por uma empresa (não-admin)', async () => {
+    const tenant = await db.createTenantWithUser('Empresa Fields Teste');
+    await (db as any).client.query(
+      `INSERT INTO tenant_technicians (tenant_id, technician_id) VALUES ($1, $2)`,
+      [tenant.tenantId, technicianId],
+    );
+
+    const loginEmpresa = await request(app.getHttpServer())
+      .post('/auth/login')
+      .send({ email: tenant.email, password: tenant.password });
+    const tokenEmpresa = loginEmpresa.body.access_token;
+
+    const res = await request(app.getHttpServer())
+      .get('/technicians')
+      .set('Authorization', `Bearer ${tokenEmpresa}`);
+
+    expect(res.status).toBe(200);
+    const found = res.body.find((t: any) => t.id === technicianId);
+    expect(found).toBeDefined();
+  });
+
+  it('GET /partners ainda retorna o parceiro vinculado quando chamado por uma empresa (não-admin)', async () => {
+    const tenant = await db.createTenantWithUser('Empresa Partners Fields Teste');
+    await (db as any).client.query(
+      `INSERT INTO tenant_partners (tenant_id, partner_id) VALUES ($1, $2)`,
+      [tenant.tenantId, partnerId],
+    );
+
+    const loginEmpresa = await request(app.getHttpServer())
+      .post('/auth/login')
+      .send({ email: tenant.email, password: tenant.password });
+    const tokenEmpresa = loginEmpresa.body.access_token;
+
+    const res = await request(app.getHttpServer())
+      .get('/partners')
+      .set('Authorization', `Bearer ${tokenEmpresa}`);
+
+    expect(res.status).toBe(200);
+    const found = res.body.find((p: any) => p.id === partnerId);
+    expect(found).toBeDefined();
+  });
 });

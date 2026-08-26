@@ -16,8 +16,8 @@ export interface Technician {
   status: string;
   created_at: string;
   updated_at: string;
-  full_name: string;
-  email: string;
+  full_name: string | null;
+  email: string | null;
 }
 
 interface CreateTechnicianData {
@@ -56,11 +56,16 @@ export class TechniciansService {
     }
   }
 
+  // LEFT JOIN (não JOIN): users tem RLS própria (users_isolation) e a linha
+  // de um técnico costuma ter tenant_id NULL, invisível pra um caller
+  // 'empresa'. Com INNER JOIN isso derrubava silenciosamente a linha inteira
+  // de technicians (que a RLS de technicians_isolation já deixaria ver) —
+  // ver backend/test/technicians-partners-fields.e2e-spec.ts.
   async findAll(client: PoolClient): Promise<Technician[]> {
     const result = await client.query<Technician>(
       `SELECT technicians.*, users.full_name, users.email
        FROM technicians
-       JOIN users ON users.id = technicians.user_id
+       LEFT JOIN users ON users.id = technicians.user_id
        ORDER BY technicians.created_at DESC`,
     );
     return result.rows;
@@ -70,7 +75,7 @@ export class TechniciansService {
     const result = await client.query<Technician>(
       `SELECT technicians.*, users.full_name, users.email
        FROM technicians
-       JOIN users ON users.id = technicians.user_id
+       LEFT JOIN users ON users.id = technicians.user_id
        WHERE technicians.id = $1`,
       [id],
     );

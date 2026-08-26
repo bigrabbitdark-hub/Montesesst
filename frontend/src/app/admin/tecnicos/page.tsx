@@ -224,6 +224,10 @@ export default function AdminTecnicosPage() {
                   <div>
                     <strong className="text-brand-900">{tech.full_name}</strong>
                     <span className="ml-2 text-brand-700">{tech.email}</span>
+                    {tech.specialization && (
+                      <span className="ml-2 text-brand-700">({tech.specialization})</span>
+                    )}
+                    <span className="ml-2 text-brand-700">{tech.status}</span>
                   </div>
                   <button
                     onClick={() => {
