@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { DocumentsPanel } from '@/components/DocumentsPanel';
+import { EpisPanel } from '@/components/EpisPanel';
 
 interface InspectionRow {
   id: string;
@@ -117,6 +118,13 @@ export default function TecnicoEmpresaDocumentosPage() {
             ))}
           </ul>
         )}
+      </section>
+
+      <section className="mt-10 rounded-lg border border-brand-100 p-6">
+        <h2 className="text-lg font-bold text-brand-900">Catálogo de EPI</h2>
+        <div className="mt-4">
+          <EpisPanel tenantId={params.tenantId} />
+        </div>
       </section>
     </div>
   );
