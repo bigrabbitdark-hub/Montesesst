@@ -82,9 +82,18 @@ ORDER BY t.created_at DESC
 duplicar linhas de `tenants` quando um tenant tem vários vínculos, sem
 precisar de `DISTINCT`/agregação sobre colunas não agregadas.)
 
-`admin` já tem bypass de RLS em `tenants` desde a Fase 1
-(`0001_init.sql`), então nenhuma policy nova é necessária — o endpoint só
-precisa existir e estar atrás de `@Roles('admin')`.
+**Correção importante descoberta ao detalhar o plano:** `tenants` não tem
+RLS nenhuma — é a "raiz do isolamento, sem RLS própria" por design
+(comentário em `0001_init.sql`). `GET /tenants/me` hoje só é seguro porque
+o controller nunca aceita um `id` vindo do cliente: sempre usa
+`req.user.tenantId` extraído do JWT. Isso significa que `GET /tenants`
+(sem filtro, todos os tenants) depende inteiramente do
+`@Roles('admin')` do NestJS como única barreira — não há defesa em
+profundidade de RLS por trás, diferente de toda outra tabela
+multi-tenant do projeto. Isso não muda o design (o endpoint já nasce
+`@Roles('admin')`-only), mas os testes da seção 5 devem cobrir
+explicitamente que `empresa`/`tecnico`/`parceiro` batem 403 no guard —
+não há uma segunda camada (RLS) para pegar um lapso aqui.
 
 ### `GET /technicians` e `GET /partners` ganham `full_name`/`email`
 
