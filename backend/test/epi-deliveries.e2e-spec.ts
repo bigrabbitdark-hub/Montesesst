@@ -45,6 +45,9 @@ describe('POST/GET /epis/:id/deliveries (e2e)', () => {
   });
 
   afterAll(async () => {
+    // employee_epi_deliveries.tenant_epi_id agora é ON DELETE RESTRICT (ver
+    // migração 0014) — precisa apagar as entregas antes do próprio EPI.
+    await (db as any).client.query('DELETE FROM employee_epi_deliveries WHERE tenant_epi_id = $1', [tenantEpiId]);
     await (db as any).client.query('DELETE FROM tenant_epis WHERE id = $1', [tenantEpiId]);
     await db.cleanup();
     await db.disconnect();

@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { PoolClient } from 'pg';
 import { mapPgError } from '../common/pg-error.util';
 
@@ -109,8 +109,17 @@ export class EpiService {
   }
 
   async remove(client: PoolClient, id: string): Promise<void> {
-    const result = await client.query('DELETE FROM tenant_epis WHERE id = $1', [id]);
-    if (result.rowCount === 0) throw new NotFoundException('EPI não encontrado');
+    try {
+      const result = await client.query('DELETE FROM tenant_epis WHERE id = $1', [id]);
+      if (result.rowCount === 0) throw new NotFoundException('EPI não encontrado');
+    } catch (err) {
+      if (err instanceof NotFoundException) throw err;
+      const pgErr = err as { code?: string };
+      if (pgErr.code === '23503') {
+        throw new ConflictException('Não é possível apagar um EPI com entregas registradas');
+      }
+      mapPgError(err);
+    }
   }
 
   async createDelivery(
