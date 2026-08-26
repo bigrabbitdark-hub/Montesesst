@@ -1,3 +1,4 @@
+import { Client } from 'pg';
 import { TestDb } from './db-test-helper';
 
 describe('payment_events RLS (via SQL direto)', () => {
@@ -59,28 +60,30 @@ describe('payment_events RLS (via SQL direto)', () => {
     await db.disconnect();
   });
 
-  it('empresa A só vê o próprio payment_event, não o de empresa B', async () => {
-    await (db as any).client.query('BEGIN');
-    await (db as any).client.query(`SET LOCAL app.role = 'empresa'`);
-    await (db as any).client.query(`SET LOCAL app.tenant_id = '${tenantAId}'`);
-    const result = await (db as any).client.query('SELECT subscription_id FROM payment_events');
-    await (db as any).client.query('ROLLBACK');
+  async function queryAsContext(role: string, tenantId: string | null): Promise<string[]> {
+    const appClient = new Client({ connectionString: process.env.DATABASE_URL });
+    await appClient.connect();
+    try {
+      await appClient.query('BEGIN');
+      await appClient.query('SELECT set_config($1, $2, true)', ['app.user_id', '']);
+      await appClient.query('SELECT set_config($1, $2, true)', ['app.tenant_id', tenantId ?? '']);
+      await appClient.query('SELECT set_config($1, $2, true)', ['app.role', role]);
+      const result = await appClient.query('SELECT subscription_id FROM payment_events');
+      await appClient.query('ROLLBACK');
+      return result.rows.map((r) => r.subscription_id);
+    } finally {
+      await appClient.end();
+    }
+  }
 
-    const ids = result.rows.map((r: any) => r.subscription_id);
+  it('empresa A só vê o próprio payment_event, não o de empresa B', async () => {
+    const ids = await queryAsContext('empresa', tenantAId);
     expect(ids).toContain(subscriptionAId);
     expect(ids).not.toContain(subscriptionBId);
   });
 
   it('admin vê os dois payment_events', async () => {
-    await (db as any).client.query('BEGIN');
-    await (db as any).client.query(`SET LOCAL app.role = 'admin'`);
-    const result = await (db as any).client.query(
-      'SELECT subscription_id FROM payment_events WHERE subscription_id = ANY($1)',
-      [[subscriptionAId, subscriptionBId]],
-    );
-    await (db as any).client.query('ROLLBACK');
-
-    const ids = result.rows.map((r: any) => r.subscription_id);
+    const ids = await queryAsContext('admin', null);
     expect(ids).toContain(subscriptionAId);
     expect(ids).toContain(subscriptionBId);
   });
