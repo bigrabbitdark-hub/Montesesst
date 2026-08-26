@@ -16,6 +16,8 @@ export interface Technician {
   status: string;
   created_at: string;
   updated_at: string;
+  full_name: string;
+  email: string;
 }
 
 interface CreateTechnicianData {
@@ -56,13 +58,22 @@ export class TechniciansService {
 
   async findAll(client: PoolClient): Promise<Technician[]> {
     const result = await client.query<Technician>(
-      'SELECT * FROM technicians ORDER BY created_at DESC',
+      `SELECT technicians.*, users.full_name, users.email
+       FROM technicians
+       JOIN users ON users.id = technicians.user_id
+       ORDER BY technicians.created_at DESC`,
     );
     return result.rows;
   }
 
   async findOne(client: PoolClient, id: string): Promise<Technician> {
-    const result = await client.query<Technician>('SELECT * FROM technicians WHERE id = $1', [id]);
+    const result = await client.query<Technician>(
+      `SELECT technicians.*, users.full_name, users.email
+       FROM technicians
+       JOIN users ON users.id = technicians.user_id
+       WHERE technicians.id = $1`,
+      [id],
+    );
     const technician = result.rows[0];
     if (!technician) throw new NotFoundException('Técnico não encontrado');
     return technician;

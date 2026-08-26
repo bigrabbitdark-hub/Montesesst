@@ -15,6 +15,8 @@ export interface Partner {
   status: string;
   created_at: string;
   updated_at: string;
+  full_name: string;
+  email: string;
 }
 
 interface CreatePartnerData {
@@ -51,12 +53,23 @@ export class PartnersService {
   }
 
   async findAll(client: PoolClient): Promise<Partner[]> {
-    const result = await client.query<Partner>('SELECT * FROM partners ORDER BY created_at DESC');
+    const result = await client.query<Partner>(
+      `SELECT partners.*, users.full_name, users.email
+       FROM partners
+       JOIN users ON users.id = partners.user_id
+       ORDER BY partners.created_at DESC`,
+    );
     return result.rows;
   }
 
   async findOne(client: PoolClient, id: string): Promise<Partner> {
-    const result = await client.query<Partner>('SELECT * FROM partners WHERE id = $1', [id]);
+    const result = await client.query<Partner>(
+      `SELECT partners.*, users.full_name, users.email
+       FROM partners
+       JOIN users ON users.id = partners.user_id
+       WHERE partners.id = $1`,
+      [id],
+    );
     const partner = result.rows[0];
     if (!partner) throw new NotFoundException('Parceiro não encontrado');
     return partner;
