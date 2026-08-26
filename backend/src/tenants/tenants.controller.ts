@@ -7,9 +7,10 @@ import { UpdateTenantDto } from './dto/update-tenant.dto';
 export class TenantsController {
   constructor(private readonly tenants: TenantsService) {}
 
-  // Só 'empresa' — 'admin' não tem um tenant "próprio" (req.user.tenantId
-  // é null pra admin), gerenciar tenant arbitrário fica pra Fase 7
-  // (Dashboard Admin), fora de escopo aqui.
+  // Lista completa (todos os tenants, com vínculos agregados) — só admin,
+  // ver findAll() abaixo. findMe/updateMe seguem exclusivos de 'empresa',
+  // sempre resolvendo o próprio tenantId do JWT, nunca um id vindo do
+  // cliente.
   @Roles('empresa')
   @Get('me')
   findMe(@Req() req: any) {
@@ -23,5 +24,14 @@ export class TenantsController {
     return req.withTenantContext((client: any) =>
       this.tenants.update(client, req.user.tenantId, dto),
     );
+  }
+
+  // 'tenants' não tem RLS própria — @Roles('admin') é a única barreira
+  // pra esta lista completa, sem filtro nenhum. Ver Global Constraints do
+  // plano da Fase 7 sub-projeto A.
+  @Roles('admin')
+  @Get()
+  findAll(@Req() req: any) {
+    return req.withTenantContext((client: any) => this.tenants.findAllWithLinks(client));
   }
 }
