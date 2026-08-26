@@ -1,0 +1,75 @@
+---
+title: "Política de Segurança da Informação"
+updatedAt: "2026-08-26"
+---
+
+> **Este é um documento inicial**, elaborado pela equipe da Montese SST
+> sem revisão jurídica formal até o momento. Descreve, sem revelar
+> detalhe técnico explorável, os princípios de segurança que já estão
+> implementados e testados hoje.
+
+Segurança do Trabalho também começa pela segurança da informação. Esta
+página resume como protegemos os dados cadastrados na plataforma Montese
+SST — sem entrar em detalhe técnico que possa ser usado por má-fé
+contra nós ou contra você.
+
+## Isolamento entre empresas
+
+Cada empresa cliente tem seu próprio ambiente lógico dentro da
+plataforma. Uma empresa não acessa, por desenho técnico, informações de
+outra empresa — esse isolamento é verificado automaticamente a cada
+mudança no sistema, não é uma promessa sem verificação.
+
+## Controle de acesso
+
+Cada pessoa que usa a plataforma — empresa, técnico responsável,
+técnico parceiro — só acessa o que sua função exige. Um técnico
+parceiro vinculado a uma empresa vê as informações daquela empresa; não
+vê informações de empresas às quais não está vinculado.
+
+## Autenticação
+
+Login exige e-mail e senha. Senhas nunca são armazenadas em texto
+puro — usamos uma técnica de hash (transformação irreversível) desde a
+criação da conta.
+
+## Rastreabilidade
+
+Ações relevantes realizadas na plataforma (criação, edição, exclusão de
+registros; tentativas de login) ficam registradas de forma que não pode
+ser apagada nem alterada, nem por um erro de programação — essa trilha
+existe justamente para servir de evidência em caso de dúvida ou
+investigação.
+
+## Cópias de segurança
+
+Fazemos cópias de segurança regulares dos dados, com processo de
+restauração testado de ponta a ponta — não é uma rotina só configurada
+e nunca verificada.
+
+## Segredos e credenciais
+
+Credenciais de acesso a sistemas internos nunca ficam junto do código
+da plataforma nem em locais publicamente acessíveis.
+
+## Infraestrutura
+
+Componentes internos do sistema (banco de dados, cache) não ficam
+expostos diretamente à internet — só a aplicação em si é acessível
+publicamente, pelo endereço do site.
+
+## Limitações que reconhecemos
+
+Sendo transparentes: hoje não temos monitoramento automático de
+anomalias em tempo real (alertas são principalmente reativos), e nossa
+cópia de segurança fica na mesma infraestrutura que os dados originais
+— uma cópia externa independente ainda está em planejamento. Nenhuma
+dessas limitações compromete o isolamento entre empresas ou a proteção
+de senha descritos acima, mas preferimos registrar honestamente onde
+ainda estamos evoluindo em vez de sugerir uma maturidade que ainda não
+temos.
+
+## Saiba mais
+
+Veja também nossa [Política de Privacidade](/privacidade) e o
+[Compromisso com Segurança do Trabalho](/compromisso-sst).
