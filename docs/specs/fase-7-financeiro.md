@@ -110,16 +110,21 @@ Fonte:
 [Subscriptions with authorized payment](https://www.mercadopago.com.co/developers/en/docs/subscriptions/integration-configuration/subscription-no-associated-plan/authorized-payments),
 [Webhooks - Notifications](https://www.mercadopago.com.mx/developers/en/docs/your-integrations/notifications/webhooks).
 
-**O que ainda não foi verificado ao vivo:** este schema vem da
-documentação oficial, não de uma chamada real feita durante este
-brainstorming. A Task 1 do plano de implementação faz uma chamada real
-contra o sandbox do Mercado Pago (token `TEST-...` já configurado no
-`.env`) pra confirmar que a resposta real bate com o documentado antes
-do código de produção depender disso — mesmo princípio de validar
-contra o sistema real antes de finalizar, só que mais leve agora
-(confirmar o schema documentado, não simular uma cobrança completa via
-checkout no navegador, que exigiria interação manual e ~1h de espera
-segundo a própria documentação do Mercado Pago).
+**O que ainda não foi verificado ao vivo, e por quê isso tem um
+limite real:** este schema vem da documentação oficial, não de uma
+chamada real. Não existe hoje nenhuma assinatura real no banco (0
+linhas em `subscriptions`), e confirmar o schema de uma cobrança
+populada de verdade exigiria aprovar um checkout no navegador
+manualmente e esperar ~1h pela primeira cobrança (conforme a própria
+documentação do Mercado Pago) — não automatizável numa task de
+subagente. Decisão confirmada com o fundador em 2026-08-26: a Task 1
+faz **verificação parcial** — chamadas reais de API confirmando que os
+endpoints existem, autenticam e respondem no formato esperado (busca
+vazia, erro 404 em id inexistente) — e o webhook é escrito de forma
+defensiva, registrando o payload bruto recebido em log. A confirmação
+final do schema populado acontece organicamente quando a primeira
+cobrança real (de teste ou de produção) chegar, sem travar esta
+entrega por isso.
 
 ## 4. Backend
 
