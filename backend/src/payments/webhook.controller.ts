@@ -33,6 +33,46 @@ export class WebhookController {
     });
     if (!valid) throw new UnauthorizedException('Assinatura inválida');
 
+    // Cobrança recorrente de assinatura tem tópico próprio — distinto de
+    // subscription_preapproval (mudança de status da assinatura em si) e
+    // de um "payment" genérico (que o Mercado Pago também pode notificar
+    // na mesma URL pra outros fluxos, sem relação com assinatura).
+    if (type === 'subscription_authorized_payment') {
+      let authorizedPayment;
+      try {
+        authorizedPayment = await this.mercadoPago.getAuthorizedPayment(dataId);
+      } catch (err) {
+        // Payload bruto do erro fica no log — confirmação final do schema
+        // populado acontece organicamente na primeira cobrança real
+        // (ver docs/specs/fase-7-financeiro.md secao 3), não trava o
+        // webhook: melhor logar e seguir do que derrubar a notificação
+        // com um 500 que o Mercado Pago reinterpretaria como falha de
+        // entrega e tentaria de novo indefinidamente.
+        this.logger.error(
+          `Erro ao processar subscription_authorized_payment ${dataId}: ${(err as Error).message}`,
+        );
+        return { message: 'erro ao processar, ver log' };
+      }
+
+      if (!authorizedPayment.preapprovalId) {
+        this.logger.warn(
+          `authorized_payment ${dataId} sem preapproval_id no payload — gravando sem vínculo`,
+        );
+      }
+
+      await this.db.withoutTenantContext((client) =>
+        client.query('SELECT * FROM payments_record_payment_event($1, $2, $3, $4, $5)', [
+          authorizedPayment.id,
+          authorizedPayment.preapprovalId,
+          authorizedPayment.amountCents,
+          authorizedPayment.status,
+          authorizedPayment.occurredAt,
+        ]),
+      );
+
+      return { message: 'ok' };
+    }
+
     // Só tratamos eventos de assinatura — outros tipos (pagamento avulso,
     // etc.) o Mercado Pago também pode notificar na mesma URL se
     // configurado; devolver 200 evita retry infinito pra evento que não

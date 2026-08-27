@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { MercadoPagoConfig, PreApproval } from 'mercadopago';
+import { MercadoPagoConfig, PreApproval, Invoice } from 'mercadopago';
 
 export interface CreatePreapprovalInput {
   reason: string;
@@ -13,6 +13,14 @@ export interface PreapprovalResult {
   id: string;
   initPoint: string;
   status: string;
+}
+
+export interface AuthorizedPaymentResult {
+  id: string;
+  preapprovalId: string | null;
+  amountCents: number;
+  status: string;
+  occurredAt: string;
 }
 
 // Única porta de saída pra API do Mercado Pago. Preço sempre chega já
@@ -64,6 +72,28 @@ export class MercadoPagoService {
       return { id: result.id as string, status: result.status as string };
     } catch (err) {
       this.logger.error(`Falha ao buscar assinatura ${id} no Mercado Pago`, (err as Error).stack);
+      throw err;
+    }
+  }
+
+  async getAuthorizedPayment(id: string): Promise<AuthorizedPaymentResult> {
+    try {
+      const invoice = new Invoice(this.client);
+      const result = await invoice.get({ id });
+      // transaction_amount vem em reais — converte pra centavos. status de
+      // sucesso real é payment.status (aninhado), não o status/summarized
+      // de nível superior, que reflete agendamento do débito, não se o
+      // dinheiro foi capturado — ver docs/specs/fase-7-financeiro.md secao 3.
+      const amountCents = Math.round((result.transaction_amount ?? 0) * 100);
+      return {
+        id: result.id ?? id,
+        preapprovalId: result.preapproval_id ?? null,
+        amountCents,
+        status: result.payment?.status ?? result.status ?? 'desconhecido',
+        occurredAt: result.debit_date ?? result.date_created ?? new Date().toISOString(),
+      };
+    } catch (err) {
+      this.logger.error(`Falha ao buscar authorized_payment ${id} no Mercado Pago`, (err as Error).stack);
       throw err;
     }
   }
