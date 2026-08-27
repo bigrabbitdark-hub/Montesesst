@@ -983,6 +983,36 @@ todas já detalhadas no ledger da SDD antes de ser apagado):
       "gargalo da VPS", visão mais rica de "clientes" — outras
       frentes já identificadas, não escolhidas ainda.
 
+## Fase 7 (sub-projeto C — Visão geral / métricas): status
+
+Terceiro sub-projeto da Fase 7. Classificado como **bounded** em
+brainstorming de 2026-08-27 (extensão bem definida de uma área que já
+existe, `/admin/*` já com 5 páginas) — sem spec/plano formais, design
+curto aprovado em chat, implementado direto via TDD.
+
+**Fechado em 2026-08-27:**
+- `GET /overview` (`@Roles('admin')`, novo) — uma query com subqueries
+  escalares juntando `tenants`, `tenant_technicians`/`tenant_partners`,
+  `inspections`, `documents`, `tenant_epis`, `subscriptions`+`plans`,
+  `action_plans`. Nenhuma tabela nova, nenhuma RLS nova — todas as
+  tabelas consultadas já tinham bypass de admin desde a fase em que
+  foram criadas.
+- `/admin/overview` — grid de 9 cartões (empresas ativas, técnicos e
+  parceiros vinculados, inspeções no mês, documentos/EPIs vencendo em
+  30 dias, assinaturas ativas, receita mensal recorrente aproximada,
+  planos de ação pendentes). Vira a nova página de destino do login de
+  admin (antes `/admin/empresas`) e o primeiro link do `AdminNav`.
+
+**Verificação:** suíte e2e completa — **44 suítes, 151 testes, todos
+passando** (1 suíte nova, teste por delta: mede a métrica antes e
+depois de criar um fixture de cada tipo, evitando depender de contagem
+absoluta numa base compartilhada com outros testes). Build isolado do
+frontend passou.
+
+**Pendências:** nenhuma registrada — escopo fechado exatamente como
+aprovado, sem achado de revisão pendente (task bounded, sem ciclo de
+revisão formal de todo o branch).
+
 ## Fase 7 — Dashboard Admin (demais sub-projetos não iniciados)
 
 ## Fase 8 — Copiloto de IA (não iniciada)
