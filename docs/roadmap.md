@@ -843,6 +843,146 @@ mesma ressalva de sempre.
       `@Roles('empresa','admin')` — as duas telas de admin funcionam
       igual, mas a superfície de API não é simétrica.
 
+## Fase 7 (sub-projeto B — Financeiro): status
+
+Segundo sub-projeto da Fase 7. Antes desta entrega não existia nenhuma
+forma de listar assinaturas (só `POST /subscriptions`), editar preço de
+plano só era possível via SQL direto, e o webhook do Mercado Pago
+descartava todo evento de cobrança individual — sem histórico de
+pagamento nenhum. Spec em
+[`docs/specs/fase-7-financeiro.md`](specs/fase-7-financeiro.md), plano
+em [`docs/plans/fase-7-financeiro.md`](plans/fase-7-financeiro.md).
+
+**Fechado em 2026-08-27** — 6 tasks concluídas via SDD (revisão por
+task + revisão final de todo o branch):
+
+| Task | Entrega | Status |
+|---|---|---|
+| 1 | Verificação empírica da API do Mercado Pago (spike de pesquisa, sem código) | ✅ |
+| 2 | Migration `payment_events` + RLS + função `payments_record_payment_event` | ✅ |
+| 3 | Webhook trata `subscription_authorized_payment` + `MercadoPagoService.getAuthorizedPayment` | ✅ |
+| 4 | `PATCH /plans/:id` admin-only, extração de `PlansService` | ✅ |
+| 5 | `GET /subscriptions` e `GET /subscriptions/:id/payment-events` admin-only | ✅ |
+| 6 | `/admin/financeiro` (planos + assinaturas + histórico de pagamento) | ✅ |
+
+**Correção real feita durante o brainstorming, antes de qualquer
+código:** o desenho original assumia um evento de webhook genérico
+`type=payment` — pesquisa confirmou que o Mercado Pago tem um tópico
+dedicado (`subscription_authorized_payment`), e o SDK oficial já
+instalado no projeto (`mercadopago`) tem um client `Invoice` tipado que
+confirmou o schema real com mais confiança que a documentação web
+sozinha.
+
+**Task 2 passou por dois fix rounds reais, ambos revalidados ao vivo
+contra o Postgres real:**
+- O teste de RLS que o próprio plano especificou usava a conexão
+  superuser do `TestDb` — que ignora RLS incondicionalmente, então o
+  teste nunca testava RLS de verdade. Corrigido pra usar uma conexão
+  separada como `montese_app`, mesmo padrão já estabelecido em
+  `epi-catalog-rls.e2e-spec.ts`.
+- `payments_record_payment_event` chamava
+  `set_config('app.role', 'admin', false)` — desnecessário (o dono da
+  função já tem `BYPASSRLS`) e perigoso: por ser session-scoped (não
+  transaction-scoped) numa função chamada via `withoutTenantContext`
+  (que reusa conexão do pool sem resetar estado de sessão), isso
+  vazava `app.role='admin'` permanentemente numa conexão do pool,
+  disponível pra qualquer requisição futura não relacionada que
+  puxasse essa mesma conexão (ex.: visibilidade indevida em
+  `audit_log`). Corrigido via migration nova
+  (`0016_fix_payment_events_admin_leak.sql`), revalidado ao vivo:
+  conexão como `montese_app`, sem transação, chamando a função —
+  `app.role` continuou vazio depois (antes do fix teria ficado
+  `'admin'`). Uma entrada órfã de migration intermediária ficou no
+  `_migrations` real durante a iteração do próprio fix — identificada
+  e limpa manualmente pelo controller da sessão pra restaurar a
+  garantia de que todo item do ledger de migrations corresponde a um
+  arquivo real commitado.
+
+**Revisão final de todo o branch (verificação ao vivo extensa +
+suíte completa + build isolado + `tsc --noEmit`) encontrou 7 Important
++ 11 Minor, nenhum Critical** — o trabalho de segurança dos fix rounds
+anteriores foi revalidado limpo de forma independente, com varredura
+de todo o repo por variantes do mesmo padrão de vazamento (nenhuma
+encontrada). **6 dos 7 Important corrigidos numa única fix wave,
+revalidada limpa:**
+- `ON CONFLICT DO NOTHING` congelava o status de um pagamento
+  permanentemente no primeiro valor reportado quando o Mercado Pago
+  reenvia notificação pro mesmo invoice (cobrança reciclada/tentada de
+  novo) — reproduzido ao vivo pelo revisor. Corrigido pra
+  `DO UPDATE`, mantendo idempotência de reenvio literal.
+- `payments_record_payment_event` e `payments_update_subscription_status`
+  ganharam `SET search_path = public, pg_temp` (hardening já padrão em
+  7 das 11 funções `SECURITY DEFINER` do banco, faltava nessas duas).
+- Caminho de sucesso do webhook novo não tinha teste nenhum — a razão
+  registrada ("exigiria cobrança real no Mercado Pago") estava errada,
+  já existe um padrão de mock (`overrideProvider(MercadoPagoService)`)
+  usado pro tópico irmão no mesmo arquivo de teste. Adicionados 3
+  testes novos cobrindo vínculo correto, evento sem vínculo (com log),
+  e reenvio com status diferente atualizando em vez de duplicar.
+- Tratamento de erro do webhook divergia sem motivo declarado: erro em
+  `getAuthorizedPayment` sempre virava 200 (sem retry do Mercado
+  Pago), erro em `getPreapproval` (branch irmã) sempre propagava pra
+  500 (com retry). Corrigido pra distinguir 4xx (permanente, engole)
+  de 5xx/transiente (propaga, deixa o Mercado Pago tentar de novo).
+- Evento com `preapproval_id` presente mas sem assinatura
+  correspondente ficava silencioso na branch nova — a branch irmã já
+  loga esse caso desde uma revisão final anterior deste mesmo
+  projeto. Corrigido pra logar simetricamente.
+- Spec atualizada com nota explícita: eventos sem vínculo
+  (`subscription_id NULL`) não são visíveis em nenhuma tela/endpoint
+  hoje, só via acesso direto ao banco com `app.role='admin'` manual —
+  "auditoria" significa preservado pra investigação manual, não
+  exibido em tela.
+- O 7º achado (linha de teste fabricada deixada na tabela real por uma
+  re-revisão anterior) foi resolvido diretamente pelo controller da
+  sessão, fora da fix wave — a checagem anterior que a declarou
+  ausente foi um falso negativo (consultou a tabela sem
+  `app.role='admin'`, RLS escondeu a linha em vez dela não existir).
+
+**Verificação:** suíte e2e completa — **43 suítes, 149 testes, todos
+passando** (4 suítes novas desta fase + testes de regressão
+adicionados na fix wave). Build isolado do frontend passou.
+
+**Pendências registradas, não bloqueantes** (nenhuma de segurança,
+todas já detalhadas no ledger da SDD antes de ser apagado):
+- [ ] `mercadopago_payment_id` guarda id de invoice, não de payment —
+      perde `payment.id`/`status_detail`/`retry_attempt`, úteis pra
+      reconciliação futura.
+- [ ] `occurred_at` vem de `debit_date` (agendado), não
+      necessariamente de quando o dinheiro mudou de mãos.
+- [ ] `status` mistura vocabulário de invoice e de payment sem
+      indicar qual — `/admin/financeiro` pode exibir um estado de
+      agendamento como se fosse resultado de pagamento.
+- [ ] Falha ao carregar histórico de pagamento na tela renderiza como
+      "nenhuma cobrança" em vez de erro — pior modo de falha possível
+      numa tela financeira.
+- [ ] Botão "Salvar" do editor de preço não desabilita durante
+      loading (double-submit possível); erro de editar preço não
+      mostra a mensagem real do backend.
+- [ ] `GET /plans` ficou mais lento sem necessidade (mudou pra
+      `withTenantContext` numa tabela que não tem RLS nenhuma).
+- [ ] `payment_events` não tem `REVOKE UPDATE/DELETE/TRUNCATE` de
+      `montese_app` como `audit_log` tem — e agora tem `UPDATE`
+      genuinamente necessário pro upsert, então replicar o padrão de
+      `audit_log` exigiria mudar o dono da tabela, não é trivial.
+- [ ] `ON DELETE CASCADE` em `payment_events` (via `subscriptions` via
+      `tenants`) pode apagar histórico de pagamento silenciosamente ao
+      apagar uma empresa — decisão oposta à já tomada pra
+      `employee_epi_deliveries` (Fase 6C), vale revisar.
+- [ ] Só plano ativo aparece em `/admin/financeiro`, mas um plano
+      inativo continua editável por id sem nenhum aviso na tela.
+- [ ] Teste de 403 do `PATCH /plans/:id` só cobre `empresa`, não
+      `tecnico`/`parceiro`.
+- [ ] `payments_record_payment_event` recalcula `subscription_id` a
+      cada chamada mas não persiste essa coluna no `DO UPDATE` — um
+      evento reenviado cujo `preapproval_id` passa a bater com uma
+      assinatura que não existia na gravação original relataria
+      vínculo sem persistir de fato. Padrão pré-existente desde a
+      Task 2, não introduzido pela fix wave.
+- [ ] Cancelar/pausar assinatura pela tela, visão geral/métricas,
+      "gargalo da VPS", visão mais rica de "clientes" — outras
+      frentes já identificadas, não escolhidas ainda.
+
 ## Fase 7 — Dashboard Admin (demais sub-projetos não iniciados)
 
 ## Fase 8 — Copiloto de IA (não iniciada)
