@@ -246,22 +246,47 @@ Regras obrigatórias:
 
 ## 6. Frontend
 
-Tela de checklist da inspeção (`frontend/src/app/tecnico/.../inspecoes/[id]`
-e a equivalente de parceiro) ganha uma seção "Copiloto de IA" no topo:
-textarea pro relato + botão "Gerar rascunho com IA". Ao clicar:
+**Correção importante descoberta ao ler o código real (não estava
+óbvio antes de abrir o arquivo):** a tela de checklist
+(`frontend/src/app/tecnico/empresas/[tenantId]/inspecoes/[id]/page.tsx`
+— único arquivo, serve tanto técnico responsável quanto parceiro, os
+dois entram pela mesma rota `/tecnico/...` após login, não existe uma
+árvore `/parceiro/...` separada) **já salva cada campo imediatamente**:
+o rádio de status chama `saveItem` no `onChange`, a observação chama
+`saveItem` no `onBlur` do textarea — não existe um botão de "salvar"
+em lote, cada interação já é uma gravação via
+`PATCH /inspections/:id/items/:itemId`.
 
-1. Chama `POST /api/inspections/:id/ai-draft`.
-2. Pré-preenche, no estado do formulário já existente, `status`/`notes`
-   dos itens sugeridos — sem chamar nenhum endpoint de salvar ainda.
-3. Cada campo pré-preenchido pela IA ganha um indicador visual (ex.:
-   borda/badge "sugestão da IA") até o técnico interagir com aquele
-   campo — depois disso vira um campo normal, sem diferença visual do
-   preenchimento manual.
+Isso descarta a ideia original de "pré-preencher visualmente sem
+salvar até o técnico mexer": se um item sugerido pela IA nunca for
+tocado pelo técnico, ele pareceria preenchido na tela mas nunca teria
+sido salvo — e "Concluir inspeção" lê o estado do banco, não da tela,
+então esse item ficaria silenciosamente vazio apesar de parecer
+preenchido. Design corrigido pra nunca deixar esse estado existir:
+
+1. Ganha uma seção "Copiloto de IA" no topo: textarea pro relato +
+   botão "Gerar rascunho com IA".
+2. Ao clicar, chama `POST /api/inspections/:id/ai-draft` e guarda o
+   resultado num estado local novo, separado dos itens reais
+   (`aiSuggestions: Record<string /* item_key */, { status, notes }>`)
+   — **não** mexe em `inspection.items` ainda.
+3. Cada item do checklist cuja `item_key` está em `aiSuggestions` ganha
+   um card de sugestão logo acima dos controles normais: "IA sugere:
+   `<status>` — `<notes>`", com dois botões, **Aplicar** e Descartar.
+   - **Aplicar** chama exatamente o mesmo `saveItem(item.id, { status,
+     notes })` que o clique manual num rádio já chama hoje — grava de
+     verdade na hora, sem estado intermediário novo — e remove a
+     sugestão de `aiSuggestions`.
+   - **Descartar** só remove de `aiSuggestions`, sem tocar no item.
+   - Os controles normais (rádio C/NC/NA, textarea de observação)
+     continuam do jeito que já são hoje, totalmente utilizáveis mesmo
+     com uma sugestão pendente ali do lado — o técnico pode ignorar o
+     card e preencher manualmente se preferir.
 4. Se o endpoint devolver `503` (não configurado): mostra
    "Copiloto de IA ainda não está disponível nesta conta." Se devolver
    `502`: "Não foi possível gerar o rascunho agora, tente novamente."
-5. Salvar continua 100% pelo fluxo já existente — nenhum novo botão de
-   "salvar com IA".
+5. Nenhum novo endpoint de salvar — `Aplicar` reusa `saveItem`, que já
+   existe.
 
 **Aviso obrigatório, fixo, não removível**, acima da textarea — regra
 confirmada pelo fundador e já registrada na categoria G da
