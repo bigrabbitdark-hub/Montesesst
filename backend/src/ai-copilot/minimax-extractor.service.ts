@@ -99,6 +99,7 @@ export class MiniMaxExtractorService implements FieldReportExtractor {
           tools: [TOOL_SCHEMA],
           tool_choice: { type: 'function', function: { name: 'structure_checklist_items' } },
         }),
+        signal: AbortSignal.timeout(45_000),
       });
     } catch (err) {
       this.logger.error('Falha de rede ao chamar o MiniMax', (err as Error).stack);
@@ -110,7 +111,13 @@ export class MiniMaxExtractorService implements FieldReportExtractor {
       throw new BadGatewayException('Não foi possível gerar o rascunho agora');
     }
 
-    const body = await response.json();
+    let body: any;
+    try {
+      body = await response.json();
+    } catch (err) {
+      this.logger.error('Resposta do MiniMax não é JSON válido', (err as Error).stack);
+      throw new BadGatewayException('Não foi possível gerar o rascunho agora');
+    }
     const toolCall = body?.choices?.[0]?.message?.tool_calls?.[0];
     if (!toolCall) {
       this.logger.error('Resposta do MiniMax sem tool_call');

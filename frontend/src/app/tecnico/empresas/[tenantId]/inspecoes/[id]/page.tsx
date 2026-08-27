@@ -63,6 +63,7 @@ export default function InspecaoPage() {
   const [generatingDraft, setGeneratingDraft] = useState(false);
   const [aiError, setAiError] = useState('');
   const [aiSuggestions, setAiSuggestions] = useState<Record<string, AiSuggestion>>({});
+  const [noSuggestionsFound, setNoSuggestionsFound] = useState(false);
 
   async function loadInspection() {
     const token = localStorage.getItem('montese_token');
@@ -111,7 +112,7 @@ export default function InspecaoPage() {
     }
   }
 
-  async function saveItem(itemId: string, patch: { status?: string; notes?: string }) {
+  async function saveItem(itemId: string, patch: { status?: string; notes?: string }): Promise<boolean> {
     const token = localStorage.getItem('montese_token');
     try {
       const res = await fetch(`/api/inspections/${params.id}/items/${itemId}`, {
@@ -126,17 +127,21 @@ export default function InspecaoPage() {
             ? { ...prev, items: prev.items.map((i) => (i.id === itemId ? updatedItem : i)) }
             : prev,
         );
+        return true;
       } else {
         setError('Não foi possível salvar o item.');
+        return false;
       }
     } catch {
       setError('Não foi possível conectar ao servidor.');
+      return false;
     }
   }
 
   async function handleGenerateDraft() {
     setGeneratingDraft(true);
     setAiError('');
+    setNoSuggestionsFound(false);
     const token = localStorage.getItem('montese_token');
     try {
       const res = await fetch(`/api/inspections/${params.id}/ai-draft`, {
@@ -151,6 +156,7 @@ export default function InspecaoPage() {
           byItemKey[s.item_key] = { status: s.status, notes: s.notes };
         }
         setAiSuggestions(byItemKey);
+        setNoSuggestionsFound(suggestions.length === 0);
       } else if (res.status === 503) {
         setAiError('Copiloto de IA ainda não está disponível nesta conta.');
       } else {
@@ -162,15 +168,17 @@ export default function InspecaoPage() {
     setGeneratingDraft(false);
   }
 
-  function applySuggestion(item: ChecklistItem) {
+  async function applySuggestion(item: ChecklistItem) {
     const suggestion = aiSuggestions[item.item_key];
     if (!suggestion) return;
-    saveItem(item.id, { status: suggestion.status, notes: suggestion.notes });
-    setAiSuggestions((prev) => {
-      const next = { ...prev };
-      delete next[item.item_key];
-      return next;
-    });
+    const saved = await saveItem(item.id, { status: suggestion.status, notes: suggestion.notes });
+    if (saved) {
+      setAiSuggestions((prev) => {
+        const next = { ...prev };
+        delete next[item.item_key];
+        return next;
+      });
+    }
   }
 
   function discardSuggestion(itemKey: string) {
@@ -242,6 +250,12 @@ export default function InspecaoPage() {
             {generatingDraft ? 'Gerando...' : 'Gerar rascunho com IA'}
           </button>
           {aiError && <p className="mt-2 text-sm text-red-600">{aiError}</p>}
+          {noSuggestionsFound && (
+            <p className="mt-2 text-sm text-brand-700">
+              A IA não identificou itens do checklist neste relato — descreva com mais detalhe o que
+              você observou.
+            </p>
+          )}
         </section>
       )}
 
