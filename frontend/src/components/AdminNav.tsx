@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
 const LINKS = [
+  { href: '/admin/overview', label: 'Visão Geral' },
   { href: '/admin/empresas', label: 'Empresas' },
   { href: '/admin/tecnicos', label: 'Técnicos' },
   { href: '/admin/parceiros', label: 'Parceiros' },

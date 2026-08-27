@@ -36,7 +36,7 @@ export default function LoginPage() {
           : role === 'tecnico' || role === 'parceiro'
             ? '/tecnico/empresas'
             : role === 'admin'
-              ? '/admin/empresas'
+              ? '/admin/overview'
               : '/',
       );
     } catch {
