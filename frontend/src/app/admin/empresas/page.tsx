@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { AdminNav } from '@/components/AdminNav';
 
 interface TenantLink {
@@ -65,6 +66,7 @@ export default function AdminEmpresasPage() {
                 <th className="py-2">Status</th>
                 <th className="py-2">Técnicos</th>
                 <th className="py-2">Parceiros</th>
+                <th className="py-2"></th>
               </tr>
             </thead>
             <tbody>
@@ -83,6 +85,11 @@ export default function AdminEmpresasPage() {
                     {tenant.partners.length === 0
                       ? '—'
                       : tenant.partners.map((p) => p.name).join(', ')}
+                  </td>
+                  <td className="py-2">
+                    <Link href={`/admin/empresas/${tenant.id}`} className="text-brand-500 hover:underline">
+                      Ver detalhes
+                    </Link>
                   </td>
                 </tr>
               ))}
