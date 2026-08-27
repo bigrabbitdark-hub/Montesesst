@@ -54,6 +54,11 @@ export default function AdminFinanceiroPage() {
     Record<string, PaymentEventRow[]>
   >({});
 
+  const [statusUpdateState, setStatusUpdateState] = useState<
+    Record<string, 'idle' | 'loading' | 'erro'>
+  >({});
+  const [confirmingCancelId, setConfirmingCancelId] = useState<string | null>(null);
+
   async function loadPlans() {
     const token = localStorage.getItem('montese_token');
     try {
@@ -136,6 +141,28 @@ export default function AdminFinanceiroPage() {
       }
     } catch {
       // histórico fica vazio pra essa assinatura; sem estado de erro dedicado
+    }
+  }
+
+  async function handleUpdateStatus(subscriptionId: string, newStatus: 'authorized' | 'paused' | 'cancelled') {
+    setStatusUpdateState((prev) => ({ ...prev, [subscriptionId]: 'loading' }));
+    const token = localStorage.getItem('montese_token');
+    try {
+      const res = await fetch(`/api/subscriptions/${subscriptionId}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      if (res.ok) {
+        const updated: SubscriptionRow = await res.json();
+        setSubscriptions((prev) => prev.map((sub) => (sub.id === subscriptionId ? updated : sub)));
+        setStatusUpdateState((prev) => ({ ...prev, [subscriptionId]: 'idle' }));
+        setConfirmingCancelId(null);
+        return;
+      }
+      setStatusUpdateState((prev) => ({ ...prev, [subscriptionId]: 'erro' }));
+    } catch {
+      setStatusUpdateState((prev) => ({ ...prev, [subscriptionId]: 'erro' }));
     }
   }
 
@@ -229,10 +256,62 @@ export default function AdminFinanceiroPage() {
                     <span className="ml-2 text-brand-700">{sub.plan_name}</span>
                     <span className="ml-2 text-brand-700">({sub.status})</span>
                   </div>
-                  <button onClick={() => toggleHistory(sub.id)} className="text-brand-500 hover:underline">
-                    {expandedSubscriptionId === sub.id ? 'Ocultar histórico' : 'Ver histórico'}
-                  </button>
+                  <div className="flex items-center gap-3">
+                    {sub.status === 'authorized' && (
+                      <button
+                        onClick={() => handleUpdateStatus(sub.id, 'paused')}
+                        disabled={statusUpdateState[sub.id] === 'loading'}
+                        className="text-brand-500 hover:underline disabled:opacity-50"
+                      >
+                        Pausar
+                      </button>
+                    )}
+                    {sub.status === 'paused' && (
+                      <button
+                        onClick={() => handleUpdateStatus(sub.id, 'authorized')}
+                        disabled={statusUpdateState[sub.id] === 'loading'}
+                        className="text-brand-500 hover:underline disabled:opacity-50"
+                      >
+                        Reativar
+                      </button>
+                    )}
+                    {(sub.status === 'authorized' || sub.status === 'paused') &&
+                      confirmingCancelId !== sub.id && (
+                        <button
+                          onClick={() => setConfirmingCancelId(sub.id)}
+                          disabled={statusUpdateState[sub.id] === 'loading'}
+                          className="text-red-600 hover:underline disabled:opacity-50"
+                        >
+                          Cancelar
+                        </button>
+                      )}
+                    {confirmingCancelId === sub.id && (
+                      <span className="flex items-center gap-2 text-xs">
+                        <span className="text-brand-700">Cancelar de vez?</span>
+                        <button
+                          onClick={() => handleUpdateStatus(sub.id, 'cancelled')}
+                          disabled={statusUpdateState[sub.id] === 'loading'}
+                          className="font-medium text-red-600 hover:underline disabled:opacity-50"
+                        >
+                          Sim, cancelar
+                        </button>
+                        <button
+                          onClick={() => setConfirmingCancelId(null)}
+                          className="text-brand-700 hover:underline"
+                        >
+                          Não
+                        </button>
+                      </span>
+                    )}
+                    <button onClick={() => toggleHistory(sub.id)} className="text-brand-500 hover:underline">
+                      {expandedSubscriptionId === sub.id ? 'Ocultar histórico' : 'Ver histórico'}
+                    </button>
+                  </div>
                 </div>
+
+                {statusUpdateState[sub.id] === 'erro' && (
+                  <p className="mt-2 text-xs text-red-600">Não foi possível atualizar o status da assinatura.</p>
+                )}
 
                 {expandedSubscriptionId === sub.id && (
                   <div className="mt-3 border-t border-brand-100 pt-3">
