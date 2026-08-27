@@ -8,6 +8,7 @@ const LINKS = [
   { href: '/admin/tecnicos', label: 'Técnicos' },
   { href: '/admin/parceiros', label: 'Parceiros' },
   { href: '/admin/auditoria', label: 'Auditoria' },
+  { href: '/admin/financeiro', label: 'Financeiro' },
 ];
 
 export function AdminNav() {
