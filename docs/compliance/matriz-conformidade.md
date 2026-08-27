@@ -60,7 +60,7 @@ privacidade/segurança acontece — distinto de A (o que o público lê).
 | Processo de atendimento a direito do titular (LGPD) | **Existe, manual** — `lgpd-compliance.md` §6 já documenta o processo passo a passo | — | Funciona pro volume atual (zero clientes pagantes); vira risco operacional se o número de clientes crescer sem virar tela |
 | Processo de resposta a incidente de segurança | **✅ Existe, documentado** — `docs/compliance/processo-incidentes.md` (detecção, triagem, contenção, comunicação, registro, pós-incidente), honesto sobre a ausência de equipe dedicada e de SLA formal | `docs/compliance/processo-incidentes.md` | Fechado em 2026-08-26, junto da Política de Incidentes pública (A) |
 | Processo de avaliação de fornecedor novo | **Pendente** — hoje a escolha de fornecedor (Resend, Mercado Pago, R2) foi decisão técnica direta, sem checklist formal de segurança/compliance do fornecedor | — | Baixa prioridade — só 3 fornecedores hoje, mas vale existir antes do 4º |
-| Papel de Encarregado (DPO) | **Existe, informal** — fundador assume o papel provisoriamente (`lgpd-compliance.md` §2) | — | Formalizar quando o canal de contato (A) for publicado |
+| Papel de Encarregado (DPO) | **✅ Formalizado em 2026-08-27** — fundador assume o papel (`lgpd-compliance.md` §2), canal `privacidade@montesesst.com.br` publicado desde o fechamento da categoria A | `lgpd-compliance.md` §2 | Falta só confirmar operacionalmente que a caixa recebe mensagens de verdade (mesma pendência da categoria A) |
 
 ## C — Controles técnicos do sistema
 
@@ -92,8 +92,8 @@ construir do zero.
 | Segredos fora do controle de versão | **Existe** — `.env` nunca versionado | `.gitignore` | — |
 | Banco/Redis não expostos publicamente | **Existe** — só rede Docker interna | `docker-compose.yml` | — |
 | Rate limiting | **Existe** — Redis, por rota sensível (login, cadastro, contato) | `docs/operations/reliability.md` §3 | — |
-| Regra "documento nunca em disco da VPS" | **Decisão registrada, aguardando R2** | `docs/vision.md` §8 | Credenciais R2 ainda vazias no `.env` — bloqueia a regra virar realidade em produção |
-| Transferência internacional de dado | **Pendente de verificação** — região de hospedagem do VPS/R2 não confirmada | `lgpd-compliance.md` §8 ⚠️ | Se dado sair do Brasil, precisa de base legal própria (Art. 33 LGPD) — não é automático |
+| Regra "documento nunca em disco da VPS" | **✅ Existe** — Cloudflare R2 em produção desde 2026-08-23 (linha desatualizada até 2026-08-27, credenciais já estavam preenchidas) | `backend/test/documents-upload.e2e-spec.ts`, `documents-download-delete.e2e-spec.ts`, `documents-partner.e2e-spec.ts` — upload/download/delete reais contra o bucket | — |
+| Transferência internacional de dado | **Parcialmente confirmado em 2026-08-27** — VPS confirmado no Brasil (Hostinger, Campinas/SP, via geolocalização do IP público); bucket R2 ainda não | `lgpd-compliance.md` §8 ⚠️ | Falta checar Location/Jurisdiction do bucket `montese-documentos` no painel Cloudflare — o token disponível no `.env` só tem escopo de objeto, não dá pra consultar isso via API |
 
 ## E — LGPD
 
@@ -125,15 +125,15 @@ substitutos de profissionais legalmente habilitados."**
 
 | Item | Onde vive / Status | Evidência | Observação |
 |---|---|---|---|
-| Cláusula de controlador (dado de funcionário) | **Especificada, não publicada** — `lgpd-compliance.md` §2 | — | Vira cláusula dos Termos de Uso (categoria A) |
-| Veracidade dos dados inseridos | **Pendente de texto formal** | — | Comum em Termos de Uso — a empresa responde pela exatidão do que cadastra |
+| Cláusula de controlador (dado de funcionário) | **✅ Publicada** — `/termos` §4 ("Empresa cliente: é a controladora dos dados de seus funcionários perante a LGPD...") — linha desatualizada até 2026-08-27, o texto já existia desde 2026-08-26 | `frontend/content/legal/termos.mdx` §4 | — |
+| Veracidade dos dados inseridos | **✅ Publicada** — `/termos` §3 ("Os dados informados no cadastro... precisam ser verdadeiros") e §4 | `frontend/content/legal/termos.mdx` §3-4 | — |
 
 ## I — Responsabilidades do técnico/parceiro
 
 | Item | Onde vive / Status | Evidência | Observação |
 |---|---|---|---|
-| Responsabilidade técnica por inspeção/relatório assinado | **Implícita no fluxo, não formalizada em texto** — assinatura por nome digitado já existe (Fase 6A) | `backend/db/migrations/0010_inspections.sql` | Vira cláusula própria dos Termos de Uso — o sistema já registra quem assinou, falta o texto legal em cima disso |
-| Acesso a múltiplas empresas (parceiro) | **Existe tecnicamente, sem cláusula de confidencialidade formal** | Fase 6B (`tenant_partners`) | Um parceiro vê dados de N empresas — vale cláusula explícita de sigilo entre clientes diferentes |
+| Responsabilidade técnica por inspeção/relatório assinado | **✅ Publicada** — `/termos` §4 ("Técnico responsável: assina, sob sua responsabilidade profissional...") e §5 (seção própria de Assinatura eletrônica) — linha desatualizada até 2026-08-27 | `frontend/content/legal/termos.mdx` §4-5 | — |
+| Acesso a múltiplas empresas (parceiro) | **✅ Publicada** — `/termos` §4, cláusula explícita: parceiro vinculado a mais de uma empresa "não pode usar ou divulgar informações de uma empresa para outra" — linha desatualizada até 2026-08-27 | `frontend/content/legal/termos.mdx` §4 | — |
 
 ## J — Auditoria e evidências
 
@@ -162,6 +162,23 @@ decompostas.
 4. ~~Processo interno de incidentes (B)~~ ✅
    (`docs/compliance/processo-incidentes.md`)
 
+**Rodada de 2026-08-27 — concluída:**
+
+5. ~~Categorias H e I (responsabilidades de cliente e técnico/parceiro)~~
+   ✅ — na revisão, as duas categorias já estavam cobertas em
+   `termos.mdx` desde 2026-08-26 (cláusula de controlador, veracidade
+   dos dados, responsabilidade técnica por assinatura, confidencialidade
+   do parceiro entre empresas) — a matriz só não tinha sido atualizada
+   pra refletir isso. Nenhum texto novo precisou ser escrito.
+6. ~~Categoria D — regra de object storage externo~~ ✅ — linha também
+   desatualizada, R2 já estava em produção desde 2026-08-23.
+7. ~~Categoria B — papel de Encarregado (DPO)~~ ✅ formalizado, canal já
+   publicado.
+8. **Categoria D — transferência internacional de dado** — parcialmente
+   resolvido: VPS confirmado no Brasil (Hostinger/Campinas-SP). Bucket
+   R2 ainda pendente — precisa checagem manual no painel Cloudflare
+   (token disponível não alcança config de bucket via API).
+
 **Ainda em aberto, sem data:**
 
 - **Categoria G (agentes de IA)** — deliberadamente parado até a Fase 8
@@ -169,10 +186,12 @@ decompostas.
 - **Dois placeholders nos Termos de Uso** (`[RAZÃO SOCIAL/CNPJ —
   PREENCHER]`, `[CIDADE/ESTADO — PREENCHER]`) — precisam do dado real
   do fundador antes do documento ser considerado final.
-- **Categorias B (restante), D, H, I** — avaliação de fornecedor
-  formal, controles de segurança adicionais, cláusulas de
-  responsabilidade de cliente/parceiro — nenhuma delas foi solicitada
-  ainda nesta rodada.
+- **Categoria B — processo de avaliação de fornecedor novo** — único
+  item genuinamente pendente que sobrou de B/D/H/I; baixa prioridade
+  registrada (só 3 fornecedores hoje), deixado de fora desta rodada
+  por decisão do fundador.
+- **Categoria D — Location/Jurisdiction do bucket R2** — aguardando o
+  fundador checar no painel Cloudflare (ver item 8 acima).
 - **Pontos ⚠️ que dependem de validação jurídica**, espalhados por
   `lgpd-compliance.md` e pelas páginas publicadas hoje (prazo de
   retenção de dado de saúde, prazo de comunicação de incidente,

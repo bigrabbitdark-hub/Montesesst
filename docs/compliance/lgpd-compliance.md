@@ -25,11 +25,14 @@ documento sinaliza isso explicitamente em vez de decidir por conta própria.
 
 ### Encarregado (DPO)
 
-O fundador assume o papel de Encarregado (Art. 41 da LGPD) provisoriamente.
-⚠️ **Pendência:** a LGPD exige um canal de contato público e claro para o
-Encarregado (normalmente um e-mail tipo `privacidade@montesesst.com.br`
-divulgado no site institucional). Isso depende da Fase 2 (site) existir —
-ver seção 9.
+O fundador assume o papel de Encarregado (Art. 41 da LGPD), provisoriamente.
+**✅ Canal de contato formalizado em 2026-08-27** —
+`privacidade@montesesst.com.br`, publicado em `/privacidade`, `/termos`,
+`/seguranca`, `/incidentes` e `/faq-privacidade` desde o fechamento da
+categoria A da [matriz de conformidade](matriz-conformidade.md) em
+2026-08-26. Continua pendente apenas confirmar operacionalmente que essa
+caixa de e-mail está recebendo mensagens de verdade (mesma pendência já
+registrada na matriz).
 
 ### Controlador vs. operador — distinção que muda quem responde pelo quê
 
@@ -50,8 +53,9 @@ Esta é a decisão estrutural mais importante desta spec:
 dados de funcionários dentro do que a empresa cliente autorizou/instruiu,
 (b) garantir segurança técnica compatível (RLS, backup, controle de acesso —
 já em vigor, ver seção 8), e (c) ter isso **registrado em contrato** com
-cada empresa cliente (cláusula de tratamento de dados nos Termos de Uso da
-Fase 2 — ⚠️ ainda não escrita, apenas sinalizada aqui como dependência).
+cada empresa cliente — **✅ escrito** na cláusula "Papéis e responsabilidades"
+dos [Termos de Uso](../../frontend/content/legal/termos.mdx) (§4), publicada
+em `/termos` desde 2026-08-26.
 
 ## 3. Inventário de dados pessoais
 
@@ -168,31 +172,41 @@ de base para qualquer alegação de segurança em auditoria futura:
 - Senha nunca em texto puro — hash bcrypt.
 - Segredos (`.env`) nunca versionados em git.
 - Postgres e Redis nunca expostos publicamente, só rede Docker interna.
-- Regra de object storage externo para documentos (ainda não implementada
-  porque upload ainda não existe, mas já é decisão registrada antes de
-  codificar — `docs/vision.md` seção 8).
+- Regra de object storage externo para documentos — **✅ implementada**,
+  Cloudflare R2 em produção desde 2026-08-23, testado de ponta a ponta
+  (`backend/test/documents-upload.e2e-spec.ts`,
+  `documents-download-delete.e2e-spec.ts`, `documents-partner.e2e-spec.ts`
+  fazem upload/download/delete reais contra o bucket, não mockado).
 
-⚠️ **Pendência não relacionada a código:** verificar em qual região/país o
-VPS atual e o futuro bucket R2 estão fisicamente hospedados. Se dado pessoal
-sair do Brasil, isso é "transferência internacional de dados" (Art. 33 da
-LGPD) e precisa de uma base legal própria — não é automático só porque o
-provedor é confiável.
+**Região de hospedagem — parcialmente confirmado em 2026-08-27:**
+- **VPS:** confirmado — Hostinger International Limited, datacenter em
+  Campinas/SP, Brasil (`ipinfo.io` contra o IP público do servidor). Todo
+  o banco de dados e os containers da aplicação ficam no Brasil.
+- **Bucket R2:** ⚠️ ainda não confirmado — o token disponível no `.env`
+  (`R2_ACCESS_KEY_ID`/`R2_SECRET_ACCESS_KEY`) só tem escopo de
+  leitura/escrita de objeto, não dá pra consultar a configuração de
+  Location/Jurisdiction do bucket via API. Precisa checar manualmente no
+  painel Cloudflare (R2 → bucket `montese-documentos` → Settings →
+  Location). Se o bucket não tiver jurisdição fixada em "EU" ou hint de
+  região que garanta permanência no Brasil/América Latina, isso é
+  "transferência internacional de dados" (Art. 33 da LGPD) e precisa de
+  base legal própria — não é automático só porque o provedor é confiável.
 
-## 9. Dependência com a Fase 2 (site institucional)
+## 9. Dependência com a Fase 2 (site institucional) — ✅ resolvida
 
-Dois artefatos legais precisam existir no site institucional antes de captar
-o primeiro cliente pagante:
+Dois artefatos legais precisavam existir no site institucional antes de
+captar o primeiro cliente pagante:
 
-- **Política de Privacidade** — publicada, linkada no rodapé, cobrindo o
-  inventário da seção 3 em linguagem acessível ao titular.
-- **Termos de Uso** — incluindo a cláusula de operador/controlador da seção
-  2 (o que o Montese faz com o dado do funcionário em nome da empresa
-  cliente).
+- **Política de Privacidade** — ✅ publicada em `/privacidade` desde
+  2026-08-26, linkada no rodapé, cobrindo o inventário da seção 3 em
+  linguagem acessível ao titular.
+- **Termos de Uso** — ✅ publicados em `/termos` desde 2026-08-26,
+  incluindo a cláusula de operador/controlador da seção 2 (o que o
+  Montese faz com o dado do funcionário em nome da empresa cliente).
 
-Nenhum dos dois existe ainda porque a Fase 2 não começou. Registrado aqui
-como bloqueio explícito: **a Fase 2 não deveria ser considerada concluída
-sem esses dois documentos publicados**, mesmo que o roadmap técnico da Fase
-2 não os liste originalmente.
+Registrado aqui como bloqueio histórico, já superado — ver a
+[matriz de conformidade](matriz-conformidade.md), categoria A, pro
+inventário completo das páginas publicadas.
 
 ## 10. Checklist priorizado
 
@@ -201,15 +215,20 @@ sem esses dois documentos publicados**, mesmo que o roadmap técnico da Fase
 - [x] Senhas com hash, nunca texto puro
 - [x] Segredos fora do git
 - [x] Banco/Redis não expostos publicamente
+- [x] Definir e publicar canal de contato do Encarregado — ✅ 2026-08-26
+      (ver seção 2)
+- [x] Escrever e publicar Política de Privacidade — ✅ 2026-08-26 (ver
+      seção 9)
+- [x] Escrever e publicar Termos de Uso com cláusula operador/controlador
+      — ✅ 2026-08-26 (ver seção 9)
+- [x] Object storage externo (R2) pra documentos — ✅ 2026-08-23 (ver
+      seção 8)
 
 **Antes de vender para o primeiro cliente pagante:**
-- [ ] Definir e publicar canal de contato do Encarregado (depende da Fase 2)
-- [ ] Escrever e publicar Política de Privacidade (depende da Fase 2)
-- [ ] Escrever e publicar Termos de Uso com cláusula operador/controlador
-      (depende da Fase 2)
 - [ ] Confirmar com jurídico: prazo de retenção de dados de conta/cadastro
       (seção 5)
-- [ ] Confirmar região de hospedagem do VPS e do futuro bucket R2 (seção 8)
+- [ ] Confirmar Location/Jurisdiction do bucket R2 no painel Cloudflare —
+      VPS já confirmado no Brasil, só o bucket falta (seção 8)
 
 **Antes de processar dado de saúde ocupacional (Fase 4/5):**
 - [ ] Validar com especialista em SST/jurídico o prazo real de retenção de
