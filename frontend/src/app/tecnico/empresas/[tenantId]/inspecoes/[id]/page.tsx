@@ -12,6 +12,11 @@ interface ChecklistItem {
   notes: string | null;
 }
 
+interface AiSuggestion {
+  status: 'C' | 'NC' | 'NA';
+  notes: string;
+}
+
 interface ActionPlan {
   id: string;
   description: string;
@@ -54,6 +59,10 @@ export default function InspecaoPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [concluding, setConcluding] = useState(false);
+  const [reportText, setReportText] = useState('');
+  const [generatingDraft, setGeneratingDraft] = useState(false);
+  const [aiError, setAiError] = useState('');
+  const [aiSuggestions, setAiSuggestions] = useState<Record<string, AiSuggestion>>({});
 
   async function loadInspection() {
     const token = localStorage.getItem('montese_token');
@@ -125,6 +134,53 @@ export default function InspecaoPage() {
     }
   }
 
+  async function handleGenerateDraft() {
+    setGeneratingDraft(true);
+    setAiError('');
+    const token = localStorage.getItem('montese_token');
+    try {
+      const res = await fetch(`/api/inspections/${params.id}/ai-draft`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ report_text: reportText }),
+      });
+      if (res.ok) {
+        const suggestions: { item_key: string; status: 'C' | 'NC' | 'NA'; notes: string }[] = await res.json();
+        const byItemKey: Record<string, AiSuggestion> = {};
+        for (const s of suggestions) {
+          byItemKey[s.item_key] = { status: s.status, notes: s.notes };
+        }
+        setAiSuggestions(byItemKey);
+      } else if (res.status === 503) {
+        setAiError('Copiloto de IA ainda não está disponível nesta conta.');
+      } else {
+        setAiError('Não foi possível gerar o rascunho agora, tente novamente.');
+      }
+    } catch {
+      setAiError('Não foi possível conectar ao servidor.');
+    }
+    setGeneratingDraft(false);
+  }
+
+  function applySuggestion(item: ChecklistItem) {
+    const suggestion = aiSuggestions[item.item_key];
+    if (!suggestion) return;
+    saveItem(item.id, { status: suggestion.status, notes: suggestion.notes });
+    setAiSuggestions((prev) => {
+      const next = { ...prev };
+      delete next[item.item_key];
+      return next;
+    });
+  }
+
+  function discardSuggestion(itemKey: string) {
+    setAiSuggestions((prev) => {
+      const next = { ...prev };
+      delete next[itemKey];
+      return next;
+    });
+  }
+
   async function handleConcluir(event: FormEvent) {
     event.preventDefault();
     setConcluding(true);
@@ -163,6 +219,32 @@ export default function InspecaoPage() {
       </div>
       {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
 
+      {isDraft && (
+        <section className="mt-6 rounded-lg border border-brand-100 p-6">
+          <h2 className="text-lg font-bold text-brand-900">Copiloto de IA</h2>
+          <p className="mt-2 text-xs text-brand-700">
+            Sugestão gerada por IA — revise e confirme. Não substitui a avaliação do profissional
+            habilitado.
+          </p>
+          <textarea
+            value={reportText}
+            onChange={(e) => setReportText(e.target.value)}
+            placeholder="Descreva o que você observou na visita..."
+            className="mt-3 w-full rounded-md border border-brand-100 px-3 py-2 text-sm"
+            rows={4}
+          />
+          <button
+            type="button"
+            onClick={handleGenerateDraft}
+            disabled={generatingDraft || reportText.trim() === ''}
+            className="mt-3 rounded-md bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50"
+          >
+            {generatingDraft ? 'Gerando...' : 'Gerar rascunho com IA'}
+          </button>
+          {aiError && <p className="mt-2 text-sm text-red-600">{aiError}</p>}
+        </section>
+      )}
+
       <section className="mt-6 rounded-lg border border-brand-100 p-6">
         <h2 className="text-lg font-bold text-brand-900">Identificação</h2>
         <label className="mt-3 flex flex-col gap-1 text-sm text-brand-900">
@@ -185,6 +267,30 @@ export default function InspecaoPage() {
               .map((item) => (
                 <div key={item.id} className="border-b border-brand-100 pb-4 last:border-0 last:pb-0">
                   <p className="text-sm font-medium text-brand-900">{item.item_label}</p>
+                  {aiSuggestions[item.item_key] && (
+                    <div className="mt-2 rounded-md bg-brand-50 p-3 text-xs">
+                      <p className="text-brand-900">
+                        IA sugere: <strong>{aiSuggestions[item.item_key].status}</strong> —{' '}
+                        {aiSuggestions[item.item_key].notes}
+                      </p>
+                      <div className="mt-2 flex gap-3">
+                        <button
+                          type="button"
+                          onClick={() => applySuggestion(item)}
+                          className="font-medium text-brand-500 hover:underline"
+                        >
+                          Aplicar
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => discardSuggestion(item.item_key)}
+                          className="text-brand-700 hover:underline"
+                        >
+                          Descartar
+                        </button>
+                      </div>
+                    </div>
+                  )}
                   <div className="mt-2 flex gap-3 text-sm">
                     {(['C', 'NC', 'NA'] as const).map((option) => (
                       <label key={option} className="flex items-center gap-1">
