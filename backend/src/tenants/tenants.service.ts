@@ -14,6 +14,46 @@ export interface TenantWithLinks extends Tenant {
   partners: TenantLink[];
 }
 
+export interface TenantDetailDocument {
+  id: string;
+  category: string;
+  title: string;
+  expires_at: string | null;
+  created_at: string;
+}
+
+export interface TenantDetailEpi {
+  id: string;
+  ca_number: string;
+  ca_valid_until: string | null;
+  category: string;
+  code: string;
+  description: string;
+}
+
+export interface TenantDetailInspection {
+  id: string;
+  status: string;
+  visited_at: string;
+  concluded_at: string | null;
+}
+
+export interface TenantDetailSubscription {
+  id: string;
+  status: string;
+  created_at: string;
+  plan_name: string;
+  price_cents: number;
+}
+
+export interface TenantDetail {
+  tenant: TenantWithLinks;
+  documents: TenantDetailDocument[];
+  epis: TenantDetailEpi[];
+  inspections: TenantDetailInspection[];
+  subscriptions: TenantDetailSubscription[];
+}
+
 export interface Tenant {
   id: string;
   name: string;
@@ -63,6 +103,78 @@ export class TenantsService {
        ORDER BY t.created_at DESC`,
     );
     return result.rows;
+  }
+
+  // Agrega tudo que hoje está espalhado entre /admin/empresas,
+  // /admin/financeiro e as próprias telas de empresa/técnico/parceiro
+  // numa única resposta pra uma empresa — mesmo estilo do /overview
+  // (query direto contra as tabelas, sem injetar outros services): cada
+  // tabela consultada já tem bypass de RLS pra admin desde a fase em que
+  // foi criada.
+  async findDetail(client: PoolClient, tenantId: string): Promise<TenantDetail> {
+    const tenantResult = await client.query<TenantWithLinks>(
+      `SELECT
+         t.id, t.name, t.cnpj, t.plan, t.status, t.sector, t.contact_name,
+         t.contact_phone, t.created_at, t.updated_at,
+         COALESCE(
+           (SELECT json_agg(jsonb_build_object('id', tech.id, 'name', tu.full_name))
+            FROM tenant_technicians tt
+            JOIN technicians tech ON tech.id = tt.technician_id
+            JOIN users tu ON tu.id = tech.user_id
+            WHERE tt.tenant_id = t.id AND tt.status = 'ativo'),
+           '[]'
+         ) AS technicians,
+         COALESCE(
+           (SELECT json_agg(jsonb_build_object('id', p.id, 'name', pu.full_name))
+            FROM tenant_partners tp
+            JOIN partners p ON p.id = tp.partner_id
+            JOIN users pu ON pu.id = p.user_id
+            WHERE tp.tenant_id = t.id AND tp.status = 'ativo'),
+           '[]'
+         ) AS partners
+       FROM tenants t
+       WHERE t.id = $1`,
+      [tenantId],
+    );
+    const tenant = tenantResult.rows[0];
+    if (!tenant) throw new NotFoundException('Empresa não encontrada');
+
+    // Sequencial, não Promise.all: são 4 queries no mesmo PoolClient, que
+    // processa uma consulta por vez — disparar em paralelo gera um warning
+    // de depreciação do driver `pg` (removido em pg@9) sem ganhar nada,
+    // já que a conexão é serializada de qualquer forma.
+    const documents = await client.query<TenantDetailDocument>(
+      `SELECT id, category, title, expires_at, created_at FROM documents
+       WHERE tenant_id = $1 ORDER BY created_at DESC`,
+      [tenantId],
+    );
+    const epis = await client.query<TenantDetailEpi>(
+      `SELECT te.id, te.ca_number, te.ca_valid_until, eci.category, eci.code, eci.description
+       FROM tenant_epis te
+       JOIN epi_catalog_items eci ON eci.id = te.epi_catalog_item_id
+       WHERE te.tenant_id = $1 ORDER BY te.created_at DESC`,
+      [tenantId],
+    );
+    const inspections = await client.query<TenantDetailInspection>(
+      `SELECT id, status, visited_at, concluded_at FROM inspections
+       WHERE tenant_id = $1 ORDER BY visited_at DESC`,
+      [tenantId],
+    );
+    const subscriptions = await client.query<TenantDetailSubscription>(
+      `SELECT s.id, s.status, s.created_at, p.name AS plan_name, p.price_cents
+       FROM subscriptions s
+       JOIN plans p ON p.id = s.plan_id
+       WHERE s.tenant_id = $1 ORDER BY s.created_at DESC`,
+      [tenantId],
+    );
+
+    return {
+      tenant,
+      documents: documents.rows,
+      epis: epis.rows,
+      inspections: inspections.rows,
+      subscriptions: subscriptions.rows,
+    };
   }
 
   async findOne(client: PoolClient, id: string): Promise<Tenant> {

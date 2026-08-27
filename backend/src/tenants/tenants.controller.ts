@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Patch, Req, UsePipes, ValidationPipe } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Req, UsePipes, ValidationPipe } from '@nestjs/common';
 import { Roles } from '../common/decorators/roles.decorator';
 import { TenantsService } from './tenants.service';
 import { UpdateTenantDto } from './dto/update-tenant.dto';
@@ -33,5 +33,11 @@ export class TenantsController {
   @Get()
   findAll(@Req() req: any) {
     return req.withTenantContext((client: any) => this.tenants.findAllWithLinks(client));
+  }
+
+  @Roles('admin')
+  @Get(':id/detail')
+  findDetail(@Param('id') id: string, @Req() req: any) {
+    return req.withTenantContext((client: any) => this.tenants.findDetail(client, id));
   }
 }
