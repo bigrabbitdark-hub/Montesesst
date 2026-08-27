@@ -979,8 +979,12 @@ todas já detalhadas no ledger da SDD antes de ser apagado):
       assinatura que não existia na gravação original relataria
       vínculo sem persistir de fato. Padrão pré-existente desde a
       Task 2, não introduzido pela fix wave.
-- [ ] Cancelar/pausar assinatura pela tela, visão geral/métricas,
-      "gargalo da VPS", visão mais rica de "clientes" — outras
+- [x] ~~Cancelar/pausar assinatura pela tela~~ — ✅ fechado em
+      2026-08-27 (ver seção "Fase 7 (sub-projeto D — Pausar/cancelar
+      assinatura): status" abaixo).
+- [x] ~~Visão geral/métricas~~ — ✅ fechada como sub-projeto C (ver
+      seção acima).
+- [ ] "Gargalo da VPS", visão mais rica de "clientes" — outras
       frentes já identificadas, não escolhidas ainda.
 
 ## Fase 7 (sub-projeto C — Visão geral / métricas): status
@@ -1008,6 +1012,49 @@ passando** (1 suíte nova, teste por delta: mede a métrica antes e
 depois de criar um fixture de cada tipo, evitando depender de contagem
 absoluta numa base compartilhada com outros testes). Build isolado do
 frontend passou.
+
+**Pendências:** nenhuma registrada — escopo fechado exatamente como
+aprovado, sem achado de revisão pendente (task bounded, sem ciclo de
+revisão formal de todo o branch).
+
+## Fase 7 (sub-projeto D — Pausar/cancelar assinatura): status
+
+Quarto sub-projeto da Fase 7. Classificado como **bounded** em
+brainstorming de 2026-08-27 (extensão de uma tela e um service que já
+existem, `/admin/financeiro` e `subscriptions.service.ts` da Fase 7B)
+— sem spec/plano formais, design curto aprovado em chat (as três ações
+pedidas pelo fundador — pausar, cancelar, reativar — com confirmação
+só na ação irreversível, cancelar), implementado direto via TDD.
+
+**Fechado em 2026-08-27:**
+- `MercadoPagoService.updatePreapprovalStatus(id, status)` — usa
+  `PreApproval.update` do SDK pra mudar o status da assinatura no
+  Mercado Pago (`authorized`/`paused`/`cancelled`).
+- `PATCH /subscriptions/:id/status` (`@Roles('admin')`, novo) — segue
+  o mesmo padrão de duas transações curtas em volta da chamada de rede
+  já usado em `create()` (Fase 7B): lê o `preapproval_id`, chama o
+  Mercado Pago fora de qualquer conexão do pool, e só então grava —
+  usando o status CONFIRMADO pela resposta do Mercado Pago, não o
+  status pedido pelo admin. Reusa
+  `payments_update_subscription_status` (mesma função SQL que o
+  webhook já chama), herdando sua sincronização de `tenants.plan`
+  quando o novo status é `authorized` — não foi estendida pra também
+  limpar `tenants.plan` no cancelamento, é uma limitação herdada da
+  Fase 7B, não um gap novo introduzido aqui.
+- `/admin/financeiro` — botões condicionais Pausar/Reativar/Cancelar
+  por assinatura, com confirmação inline só pra cancelar ("Cancelar de
+  vez? Sim, cancelar/Não"), seguindo a lição da revisão final de uma
+  fase anterior desta sessão (apagar EPI sem confirmação foi um achado
+  de revisão) — aqui a confirmação foi decisão de design prévia, não
+  achado corrigido depois.
+
+**Verificação:** suíte e2e completa — **45 suítes, 156 testes, todos
+passando** (1 suíte nova — `subscriptions-update-status.e2e-spec.ts`,
+5 testes: pausar, reativar, cancelar, status fora da allowlist rejeitado
+com 400, papel `empresa` rejeitado com 403 — mocka
+`MercadoPagoService` via `overrideProvider`, sem tocar a API real).
+Build isolado do frontend passou (`/admin/financeiro` presente, 2.58
+kB).
 
 **Pendências:** nenhuma registrada — escopo fechado exatamente como
 aprovado, sem achado de revisão pendente (task bounded, sem ciclo de
