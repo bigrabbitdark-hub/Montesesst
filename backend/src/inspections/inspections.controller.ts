@@ -3,6 +3,7 @@ import {
   Body,
   Controller,
   Get,
+  Inject,
   Param,
   Patch,
   Post,
@@ -16,10 +17,15 @@ import { InspectionsService } from './inspections.service';
 import { CreateInspectionDto } from './dto/create-inspection.dto';
 import { UpdateInspectionDto } from './dto/update-inspection.dto';
 import { UpdateChecklistItemDto } from './dto/update-checklist-item.dto';
+import { AiDraftDto } from './dto/ai-draft.dto';
+import { FIELD_REPORT_EXTRACTOR, FieldReportExtractor } from '../ai-copilot/field-report-extractor.interface';
 
 @Controller('inspections')
 export class InspectionsController {
-  constructor(private readonly inspections: InspectionsService) {}
+  constructor(
+    private readonly inspections: InspectionsService,
+    @Inject(FIELD_REPORT_EXTRACTOR) private readonly extractor: FieldReportExtractor,
+  ) {}
 
   @Roles('tecnico', 'parceiro')
   @UsePipes(new ValidationPipe({ transform: true, whitelist: true, forbidNonWhitelisted: true }))
@@ -60,6 +66,14 @@ export class InspectionsController {
     @Req() req: any,
   ) {
     return req.withTenantContext((client: any) => this.inspections.updateItem(client, id, itemId, dto));
+  }
+
+  @Roles('tecnico', 'parceiro')
+  @UsePipes(new ValidationPipe({ transform: true, whitelist: true, forbidNonWhitelisted: true }))
+  @Post(':id/ai-draft')
+  async aiDraft(@Param('id') id: string, @Body() dto: AiDraftDto, @Req() req: any) {
+    await req.withTenantContext((client: any) => this.inspections.findOne(client, id));
+    return this.extractor.extract(dto.report_text);
   }
 
   @Roles('tecnico', 'parceiro')
