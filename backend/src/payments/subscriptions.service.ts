@@ -120,6 +120,55 @@ export class SubscriptionsService {
     return result.rows;
   }
 
+  async updateStatus(
+    withTenantContext: WithTenantContext,
+    subscriptionId: string,
+    status: 'authorized' | 'paused' | 'cancelled',
+  ): Promise<SubscriptionAdminRow> {
+    // Fase 1 (transação curta nº 1): só leitura — preapproval_id da
+    // assinatura. Não segura conexão do pool durante a chamada de rede ao
+    // Mercado Pago abaixo (mesmo motivo de create() acima).
+    const preapprovalId = await withTenantContext(async (client) => {
+      const result = await client.query<{ mercadopago_preapproval_id: string }>(
+        'SELECT mercadopago_preapproval_id FROM subscriptions WHERE id = $1',
+        [subscriptionId],
+      );
+      const id = result.rows[0]?.mercadopago_preapproval_id;
+      if (!id) throw new NotFoundException('Assinatura não encontrada');
+      return id;
+    });
+
+    // Chamada de rede ao Mercado Pago FORA de qualquer transação/conexão
+    // do pool — só acontece entre as duas fases.
+    const confirmed = await this.mercadoPago.updatePreapprovalStatus(preapprovalId, status);
+
+    // Fase 2 (transação curta nº 2): grava o status CONFIRMADO pelo
+    // Mercado Pago (não o pedido) — mesmo princípio de "nunca confia,
+    // busca o estado real" já usado no webhook. Reusa
+    // payments_update_subscription_status (mesma função SQL que o
+    // webhook já chama), incluindo sua sincronização de tenants.plan
+    // quando o novo status é 'authorized'.
+    return withTenantContext(async (client) => {
+      await client.query('SELECT * FROM payments_update_subscription_status($1, $2)', [
+        preapprovalId,
+        confirmed.status,
+      ]);
+      const result = await client.query<SubscriptionAdminRow>(
+        `SELECT s.id, s.status, s.created_at,
+           p.id AS plan_id, p.name AS plan_name, p.price_cents,
+           s.tenant_id, t.name AS tenant_name,
+           s.technician_user_id, u.full_name AS technician_name
+         FROM subscriptions s
+         JOIN plans p ON p.id = s.plan_id
+         LEFT JOIN tenants t ON t.id = s.tenant_id
+         LEFT JOIN users u ON u.id = s.technician_user_id
+         WHERE s.id = $1`,
+        [subscriptionId],
+      );
+      return result.rows[0];
+    });
+  }
+
   async findPaymentEvents(client: PoolClient, subscriptionId: string): Promise<PaymentEventRow[]> {
     const result = await client.query<PaymentEventRow>(
       `SELECT id, mercadopago_payment_id, amount_cents, status, occurred_at

@@ -1,7 +1,8 @@
-import { Body, Controller, Get, Param, Post, Req, UsePipes, ValidationPipe } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Req, UsePipes, ValidationPipe } from '@nestjs/common';
 import { Roles } from '../common/decorators/roles.decorator';
 import { SubscriptionsService } from './subscriptions.service';
 import { CreateSubscriptionDto } from './dto/create-subscription.dto';
+import { UpdateSubscriptionStatusDto } from './dto/update-subscription-status.dto';
 
 @Controller('subscriptions')
 export class SubscriptionsController {
@@ -30,5 +31,12 @@ export class SubscriptionsController {
   @Get(':id/payment-events')
   findPaymentEvents(@Param('id') id: string, @Req() req: any) {
     return req.withTenantContext((client: any) => this.subscriptions.findPaymentEvents(client, id));
+  }
+
+  @Roles('admin')
+  @UsePipes(new ValidationPipe({ transform: true, whitelist: true, forbidNonWhitelisted: true }))
+  @Patch(':id/status')
+  updateStatus(@Param('id') id: string, @Body() dto: UpdateSubscriptionStatusDto, @Req() req: any) {
+    return this.subscriptions.updateStatus(req.withTenantContext.bind(req), id, dto.status);
   }
 }

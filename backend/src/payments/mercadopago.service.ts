@@ -76,6 +76,20 @@ export class MercadoPagoService {
     }
   }
 
+  async updatePreapprovalStatus(
+    id: string,
+    status: 'authorized' | 'paused' | 'cancelled',
+  ): Promise<{ id: string; status: string }> {
+    try {
+      const preapproval = new PreApproval(this.client);
+      const result = await preapproval.update({ id, body: { status } });
+      return { id: result.id as string, status: result.status as string };
+    } catch (err) {
+      this.logger.error(`Falha ao atualizar status da assinatura ${id} no Mercado Pago`, (err as Error).stack);
+      throw err;
+    }
+  }
+
   async getAuthorizedPayment(id: string): Promise<AuthorizedPaymentResult> {
     try {
       const invoice = new Invoice(this.client);
