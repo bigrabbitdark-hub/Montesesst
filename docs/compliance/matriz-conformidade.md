@@ -93,7 +93,7 @@ construir do zero.
 | Banco/Redis não expostos publicamente | **Existe** — só rede Docker interna | `docker-compose.yml` | — |
 | Rate limiting | **Existe** — Redis, por rota sensível (login, cadastro, contato) | `docs/operations/reliability.md` §3 | — |
 | Regra "documento nunca em disco da VPS" | **✅ Existe** — Cloudflare R2 em produção desde 2026-08-23 (linha desatualizada até 2026-08-27, credenciais já estavam preenchidas) | `backend/test/documents-upload.e2e-spec.ts`, `documents-download-delete.e2e-spec.ts`, `documents-partner.e2e-spec.ts` — upload/download/delete reais contra o bucket | — |
-| Transferência internacional de dado | **Parcialmente confirmado em 2026-08-27** — VPS confirmado no Brasil (Hostinger, Campinas/SP, via geolocalização do IP público); bucket R2 ainda não | `lgpd-compliance.md` §8 ⚠️ | Falta checar Location/Jurisdiction do bucket `montese-documentos` no painel Cloudflare — o token disponível no `.env` só tem escopo de objeto, não dá pra consultar isso via API |
+| Transferência internacional de dado | **⚠️ Confirmado que existe, em 2026-08-27** — VPS no Brasil (Hostinger, Campinas/SP), mas o bucket R2 (`montese-documentos`) fica em Eastern North America (ENAM), confirmado pelo fundador no painel Cloudflare. Documentos de funcionários saem do Brasil. | `lgpd-compliance.md` §8 ⚠️ | Deixa de ser pendência de verificação e vira pendência de base legal — Cloudflare oferece DPA/SCCs no modelo europeu (GDPR), se isso serve de base sob a LGPD (Art. 33) precisa de validação jurídica antes do primeiro cliente pagante |
 
 ## E — LGPD
 
@@ -210,10 +210,10 @@ decompostas.
   item genuinamente pendente que sobrou de B/D/H/I; baixa prioridade
   registrada (só 3 fornecedores hoje), deixado de fora desta rodada
   por decisão do fundador.
-- **Categoria D — Location/Jurisdiction do bucket R2** — aguardando o
-  fundador checar no painel Cloudflare (ver item 8 acima).
 - **Pontos ⚠️ que dependem de validação jurídica**, espalhados por
   `lgpd-compliance.md` e pelas páginas publicadas hoje (prazo de
   retenção de dado de saúde, prazo de comunicação de incidente,
-  cláusula contratual com fornecedor) — nenhum vira compromisso
+  cláusula contratual com fornecedor, e agora também **base legal pra
+  transferência internacional de dado pro bucket R2 em ENAM**,
+  confirmado em 2026-08-27 — ver categoria D) — nenhum vira compromisso
   definitivo sem essa revisão.

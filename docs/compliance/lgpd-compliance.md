@@ -178,19 +178,31 @@ de base para qualquer alegação de segurança em auditoria futura:
   `documents-download-delete.e2e-spec.ts`, `documents-partner.e2e-spec.ts`
   fazem upload/download/delete reais contra o bucket, não mockado).
 
-**Região de hospedagem — parcialmente confirmado em 2026-08-27:**
+**Região de hospedagem — confirmado em 2026-08-27:**
 - **VPS:** confirmado — Hostinger International Limited, datacenter em
   Campinas/SP, Brasil (`ipinfo.io` contra o IP público do servidor). Todo
   o banco de dados e os containers da aplicação ficam no Brasil.
-- **Bucket R2:** ⚠️ ainda não confirmado — o token disponível no `.env`
-  (`R2_ACCESS_KEY_ID`/`R2_SECRET_ACCESS_KEY`) só tem escopo de
-  leitura/escrita de objeto, não dá pra consultar a configuração de
-  Location/Jurisdiction do bucket via API. Precisa checar manualmente no
-  painel Cloudflare (R2 → bucket `montese-documentos` → Settings →
-  Location). Se o bucket não tiver jurisdição fixada em "EU" ou hint de
-  região que garanta permanência no Brasil/América Latina, isso é
-  "transferência internacional de dados" (Art. 33 da LGPD) e precisa de
-  base legal própria — não é automático só porque o provedor é confiável.
+- **Bucket R2 (`montese-documentos`):** confirmado pelo fundador no
+  painel Cloudflare (R2 → bucket → Settings → Location) — **Eastern
+  North America (ENAM)**. ⚠️ **Isso é transferência internacional de
+  dados (Art. 33 da LGPD)** — os documentos dos funcionários (PDFs,
+  fotos, laudos, fichas de EPI) ficam fisicamente fora do Brasil,
+  diferente do banco de dados. Não é mais uma pendência de verificação,
+  é um fato confirmado que precisa de base legal própria antes da venda
+  pro primeiro cliente pagante.
+  - Contexto factual levantado (não é validação jurídica, é só
+    insumo pra quem for fazer essa validação): a Cloudflare mantém um
+    Data Processing Addendum próprio que incorpora as *Standard
+    Contractual Clauses* da União Europeia (Decisão 2021/914) e
+    certificação no EU-U.S./Swiss-U.S. Data Privacy Framework — esses
+    mecanismos existem pra transferência a partir do EEE/Suíça/Reino
+    Unido (GDPR), não são automaticamente uma base legal sob a LGPD
+    brasileira. Se as SCCs da UE também servem de base sob a LGPD é
+    especificamente o que precisa de confirmação jurídica — a ANPD tem
+    posicionamento próprio sobre isso, não necessariamente idêntico ao
+    da UE.
+  - Fontes: [Cloudflare DPA](https://www.cloudflare.com/cloudflare-customer-dpa/),
+    [Cloudflare SCCs para clientes](https://www.cloudflare.com/cloudflare-customer-scc/).
 
 ## 9. Dependência com a Fase 2 (site institucional) — ✅ resolvida
 
@@ -227,8 +239,13 @@ inventário completo das páginas publicadas.
 **Antes de vender para o primeiro cliente pagante:**
 - [ ] Confirmar com jurídico: prazo de retenção de dados de conta/cadastro
       (seção 5)
-- [ ] Confirmar Location/Jurisdiction do bucket R2 no painel Cloudflare —
-      VPS já confirmado no Brasil, só o bucket falta (seção 8)
+- [x] ~~Confirmar Location/Jurisdiction do bucket R2~~ — ✅ confirmado em
+      2026-08-27: **Eastern North America (ENAM)**, fora do Brasil (seção 8)
+- [ ] **Novo, decorrente do item acima:** confirmar com jurídico se a
+      transferência internacional de dado pro bucket R2 (ENAM) tem base
+      legal válida sob a LGPD (Art. 33) — Cloudflare oferece DPA/SCCs no
+      modelo europeu, mas se isso basta pela LGPD brasileira é
+      especificamente o que precisa de validação (seção 8)
 
 **Antes de processar dado de saúde ocupacional (Fase 4/5):**
 - [ ] Validar com especialista em SST/jurídico o prazo real de retenção de
