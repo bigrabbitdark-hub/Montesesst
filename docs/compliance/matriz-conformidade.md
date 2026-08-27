@@ -59,7 +59,7 @@ privacidade/segurança acontece — distinto de A (o que o público lê).
 |---|---|---|---|
 | Processo de atendimento a direito do titular (LGPD) | **Existe, manual** — `lgpd-compliance.md` §6 já documenta o processo passo a passo | — | Funciona pro volume atual (zero clientes pagantes); vira risco operacional se o número de clientes crescer sem virar tela |
 | Processo de resposta a incidente de segurança | **✅ Existe, documentado** — `docs/compliance/processo-incidentes.md` (detecção, triagem, contenção, comunicação, registro, pós-incidente), honesto sobre a ausência de equipe dedicada e de SLA formal | `docs/compliance/processo-incidentes.md` | Fechado em 2026-08-26, junto da Política de Incidentes pública (A) |
-| Processo de avaliação de fornecedor novo | **Pendente** — hoje a escolha de fornecedor (Resend, Mercado Pago, R2) foi decisão técnica direta, sem checklist formal de segurança/compliance do fornecedor | — | Baixa prioridade — só 3 fornecedores hoje, mas vale existir antes do 4º |
+| Processo de avaliação de fornecedor novo | **✅ Existe, documentado em 2026-08-27** — checklist de 6 pontos (função/dado, localização, DPA, histórico de segurança, alternativa nacional, plano de saída), com avaliação retroativa dos 3 fornecedores atuais | `docs/compliance/processo-avaliacao-fornecedores.md` | Página pública (`fornecedores.mdx`) atualizada pra não dizer mais "em desenvolvimento" |
 | Papel de Encarregado (DPO) | **✅ Formalizado em 2026-08-27** — fundador assume o papel (`lgpd-compliance.md` §2), canal `privacidade@montesesst.com.br` publicado desde o fechamento da categoria A | `lgpd-compliance.md` §2 | Falta só confirmar operacionalmente que a caixa recebe mensagens de verdade (mesma pendência da categoria A) |
 
 ## C — Controles técnicos do sistema
@@ -196,6 +196,10 @@ decompostas.
    habilitado"~~ ✅ implementada em código (não só planejada) — ver
    seção G acima. Documento formal público continua pendente, sem
    urgência.
+10. ~~Categoria B — processo de avaliação de fornecedor novo~~ ✅
+    documentado em 2026-08-27 — ver seção B acima
+    (`docs/compliance/processo-avaliacao-fornecedores.md`). Fecha o
+    último item genuinamente pendente que tinha sobrado de B/D/H/I.
 
 **Ainda em aberto, sem data:**
 
@@ -206,10 +210,6 @@ decompostas.
 - **Dois placeholders nos Termos de Uso** (`[RAZÃO SOCIAL/CNPJ —
   PREENCHER]`, `[CIDADE/ESTADO — PREENCHER]`) — precisam do dado real
   do fundador antes do documento ser considerado final.
-- **Categoria B — processo de avaliação de fornecedor novo** — único
-  item genuinamente pendente que sobrou de B/D/H/I; baixa prioridade
-  registrada (só 3 fornecedores hoje), deixado de fora desta rodada
-  por decisão do fundador.
 - **Pontos ⚠️ que dependem de validação jurídica**, espalhados por
   `lgpd-compliance.md` e pelas páginas publicadas hoje (prazo de
   retenção de dado de saúde, prazo de comunicação de incidente,
