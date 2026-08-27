@@ -984,8 +984,10 @@ todas já detalhadas no ledger da SDD antes de ser apagado):
       assinatura): status" abaixo).
 - [x] ~~Visão geral/métricas~~ — ✅ fechada como sub-projeto C (ver
       seção acima).
-- [ ] "Gargalo da VPS", visão mais rica de "clientes" — outras
-      frentes já identificadas, não escolhidas ainda.
+- [x] ~~Visão mais rica de "clientes"~~ — ✅ fechada como sub-projeto E
+      (ver seção "Fase 7 (sub-projeto E — Visão rica de clientes):
+      status" abaixo).
+- [ ] "Gargalo da VPS" — única frente da Fase 7 ainda não escolhida.
 
 ## Fase 7 (sub-projeto C — Visão geral / métricas): status
 
@@ -1060,7 +1062,57 @@ kB).
 aprovado, sem achado de revisão pendente (task bounded, sem ciclo de
 revisão formal de todo o branch).
 
-## Fase 7 — Dashboard Admin (demais sub-projetos não iniciados)
+## Fase 7 (sub-projeto E — Visão rica de clientes): status
+
+Quinto e último sub-projeto candidato da Fase 7 Dashboard Admin.
+Classificado como **bounded** em brainstorming de 2026-08-27 (extensão
+de `/admin/empresas`, agregando dados de tabelas que já existem via
+consultas diretas, mesmo estilo do `/overview`) — sem spec/plano
+formais, design curto aprovado em chat (escopo: só empresa/tenant, não
+técnico/parceiro; ações de assinatura incluídas na tela, não só link
+pro financeiro), implementado direto via TDD.
+
+**Fechado em 2026-08-27:**
+- `GET /tenants/:id/detail` (`@Roles('admin')`, novo) — uma única
+  resposta juntando cadastro+vínculos (variante de uma linha da query
+  que `findAllWithLinks` já fazia), documentos, EPIs (com o mesmo JOIN
+  em `epi_catalog_items` que `epi.service.ts` usa), inspeções e
+  assinaturas (com nome/preço do plano) daquela empresa. Nenhuma tabela
+  nova, nenhuma RLS nova — mesmo raciocínio do `/overview`: cada tabela
+  já tem bypass de admin. Auditoria fica de fora dessa resposta —
+  reusa `GET /audit-log?tenant_id=` direto no frontend, que já suporta
+  esse filtro desde a fase de compliance.
+- `/admin/empresas/[id]` (novo) — tela com 6 blocos: cadastro/vínculos,
+  assinaturas (com os botões Pausar/Reativar/Cancelar do sub-projeto D,
+  duplicados aqui deliberadamente em vez de extraídos pra um hook
+  compartilhado — são ~20 linhas cada, YAGNI), documentos, EPIs,
+  inspeções e os últimos 20 eventos de auditoria daquela empresa
+  (leitura simples, sem paginação). Link "Ver detalhes" adicionado em
+  cada linha de `/admin/empresas`.
+
+**Verificação:** suíte e2e completa — **46 suítes, 159 testes, todos
+passando** (1 suíte nova — `tenants-detail.e2e-spec.ts`, 3 testes: 404
+pra tenant inexistente, 403 pra papel `empresa`, e o caminho feliz
+conferindo que cada seção reflete os fixtures criados). Build isolado
+do frontend passou (`/admin/empresas/[id]` presente, 2.96 kB).
+
+Durante a verificação, uma rodada inicial junto com testes que tocam
+R2/Mercado Pago reais (`documents-upload`, `documents-download-delete`,
+`documents-partner`, `subscriptions`) falhou por eu ter usado um
+comando de teste incompleto (faltavam as variáveis `R2_*` e
+`MERCADOPAGO_*`, copiadas de um processo antigo que rodava só um
+arquivo que não precisava delas) — não uma regressão. Corrigido
+completando o conjunto de variáveis; a suíte cheia então passou 100%.
+Também limpei ~130 chaves `ratelimit:*` no Redis compartilhado (só
+contadores de rate limit, nada de dado de negócio) que minhas próprias
+rodadas repetidas tinham acumulado dentro da mesma janela de 5min,
+gerando 429 em testes sem relação com esta feature.
+
+**Pendências:** nenhuma registrada — escopo fechado exatamente como
+aprovado, sem achado de revisão pendente (task bounded, sem ciclo de
+revisão formal de todo o branch).
+
+## Fase 7 — Dashboard Admin (todos os sub-projetos concluídos: A, B, C, D, E)
 
 ## Fase 8 — Copiloto de IA (não iniciada)
 
