@@ -359,10 +359,56 @@ existe chave configurada ainda:
 
 ## 10. Pendências
 
+Implementação, revisão por task e revisão final de todo o branch
+fechadas em 2026-08-27 (ver ledger da SDD antes de ser apagado). A
+revisão final achou 6 problemas "Important" e 11 "Minor" cruzando as 3
+tasks — os 6 Important (mais 2 Minor baratos de agrupar) já foram
+corrigidos num fix wave único, re-revisado e confirmado limpo. Os
+Minor restantes ficam registrados aqui, nenhum bloqueia o fechamento:
+
+**Antes de `MINIMAX_API_KEY` ser preenchida de verdade (checklist de
+pré-ativação):**
 - [ ] Assinatura real da API do MiniMax — decisão e ação do fundador,
       fora do escopo técnico deste sub-projeto.
-- [ ] Depois que `MINIMAX_API_KEY` existir de verdade: rodar os dois
-      exemplos da seção 7 contra a API real e comparar com a extração
-      manual, antes de liberar pra uso em produção.
-- [ ] Custo por chamada (tokens de entrada/saída) não foi medido —
-      só relevante depois que a chave existir.
+- [ ] Rodar os dois exemplos da seção 7 contra a API real e comparar
+      com a extração manual, antes de liberar pra uso em produção.
+- [ ] Custo por chamada (tokens de entrada/saída) não foi medido.
+- [ ] Sem rate limit próprio no endpoint — hoje cai no limite global
+      de 300/5min compartilhado com todas as rotas do IP. Vale um
+      `@RateLimit(...)` dedicado antes da chamada virar paga de
+      verdade (o projeto já tem esse padrão pronto, usado em
+      login/cadastro/contato).
+- [ ] Sem `@MaxLength` em `report_text` — hoje só o teto de ~100kb do
+      body parser do Express. Um limite explícito (ex.: 5000
+      caracteres) é barato e evita chamada cara por acidente.
+
+**Achados menores da revisão, sem prazo:**
+- [ ] `InspectionsService.findOne` (reusado pra checar existência/RLS
+      do endpoint `ai-draft`) carrega itens de checklist e planos de
+      ação inteiros só pra validar acesso — funciona, mas é trabalho
+      de banco desperdiçado por chamada. Otimização, não bug.
+- [ ] O endpoint não checa `status === 'rascunho'` — uma inspeção já
+      concluída aceita `ai-draft` e queima uma chamada paga (quando a
+      chave existir) pra sugestões que nunca poderão ser aplicadas
+      (`updateItem` rejeitaria o `PATCH` de qualquer forma). O
+      frontend já bloqueia isso via `isDraft`, só alcançável via API
+      direta.
+- [ ] `POST /inspections/:id/ai-draft` devolve `201`, mas o endpoint
+      não cria nada — consistente com `/concluir` no mesmo controller
+      (mesmo "erro"), baixa prioridade.
+- [ ] Se a IA devolver `item_key` duplicado, o frontend sobrescreve
+      silenciosamente no mapa de sugestões (o último ganha). Backend
+      não deduplica. Cenário improvável, sem dano real.
+- [ ] Concluir uma inspeção com sugestões da IA ainda pendentes
+      (nunca aplicadas nem descartadas) as descarta sem aviso — sem
+      risco de dado errado (o item aparece visivelmente vazio), só
+      perda de trabalho de digitação do relato.
+- [ ] `AuditInterceptor` já grava uma linha em `audit_log` com
+      `action='ai-draft'` pra cada chamada — bom pra conformidade
+      (trilha de uso da IA por inspeção), mas foi um efeito colateral
+      do interceptor global, não uma decisão consciente desta fase.
+      Vale documentar como decisão intencional quando a chave for
+      ativada.
+- [ ] `.env.example` continua sem placeholders de `MERCADOPAGO_*`
+      (gap pré-existente desde a Fase 7B, não introduzido aqui — só
+      documentado durante a revisão final desta fase).

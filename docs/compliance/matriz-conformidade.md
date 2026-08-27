@@ -112,14 +112,25 @@ hospedagem confirmada.
 
 ## G — Responsabilidades dos agentes (IA)
 
-**Vazio de propósito.** A Fase 8 (Copiloto de IA) não foi iniciada — não
-existe nenhuma chamada a API de IA no sistema hoje. Redigir uma "Política
-de Funcionamento dos Agentes Especializados" agora seria descrever um
-sistema que não existe. Fica registrado aqui como requisito confirmado
-para quando a Fase 8 for brainstormada — a regra central já foi
-articulada pelo fundador nesta conversa e deve entrar na spec daquela
-fase quando ela começar: **"Os agentes não devem ser apresentados como
-substitutos de profissionais legalmente habilitados."**
+**Código pronto desde 2026-08-27, ainda sem chamada real acontecendo.**
+A Fase 8 (Copiloto de IA — relato em campo → checklist estruturado, ver
+[`docs/specs/fase-8-copiloto-ia.md`](../specs/fase-8-copiloto-ia.md))
+foi implementada, revisada (revisão de tasks + revisão final de todo o
+branch + fix wave) e está no branch principal. **Mas `MINIMAX_API_KEY`
+continua vazia no `.env`** — decisão deliberada do fundador (assinar só
+depois de teste interno) — então nenhuma chamada real a IA acontece em
+produção hoje; o endpoint responde `503` sempre. A regra central já
+está implementada, não só articulada: o aviso "Sugestão gerada por
+IA — revise e confirme. Não substitui a avaliação do profissional
+habilitado." está fixo e não-removível na tela do Copiloto
+(`frontend/.../inspecoes/[id]/page.tsx`), mesma frase-chave publicada
+em `/compromisso-sst`.
+
+| Item | Onde vive / Status | Evidência | Observação |
+|---|---|---|---|
+| Regra "agente não substitui profissional habilitado" | **✅ Implementada em código**, não só em texto público | Aviso fixo na tela do Copiloto (`page.tsx`), reforçado em `/compromisso-sst` | Revisão final confirmou o aviso verbatim, sem controle de dispensar/fechar |
+| Revisão humana obrigatória antes de qualquer gravação | **✅ Existe** — o endpoint (`POST /inspections/:id/ai-draft`) nunca escreve no banco; técnico precisa clicar "Aplicar" por item, que grava pelo mesmo mecanismo já existente | `backend/src/inspections/inspections.controller.ts`, `frontend/.../page.tsx` | Corrigido na revisão final: "Aplicar" só limpa o card de sugestão se o salvamento realmente funcionou (antes apagava mesmo em caso de falha) |
+| "Política de Funcionamento dos Agentes Especializados" (documento formal, público) | **Pendente** | — | Ainda faz sentido esperar mais uso real antes de formalizar como página pública — diferente da regra central, que já está em produção como código |
 
 ## H — Responsabilidades do cliente (empresa)
 
@@ -179,10 +190,19 @@ decompostas.
    R2 ainda pendente — precisa checagem manual no painel Cloudflare
    (token disponível não alcança config de bucket via API).
 
+**Rodada de 2026-08-27 (Fase 8):**
+
+9. ~~Categoria G — regra central "agente não substitui profissional
+   habilitado"~~ ✅ implementada em código (não só planejada) — ver
+   seção G acima. Documento formal público continua pendente, sem
+   urgência.
+
 **Ainda em aberto, sem data:**
 
-- **Categoria G (agentes de IA)** — deliberadamente parado até a Fase 8
-  existir.
+- **Categoria G — "Política de Funcionamento dos Agentes
+  Especializados"** (documento formal público) — a regra central já
+  está em produção como código, esse documento é só a formalização
+  textual, sem pressa.
 - **Dois placeholders nos Termos de Uso** (`[RAZÃO SOCIAL/CNPJ —
   PREENCHER]`, `[CIDADE/ESTADO — PREENCHER]`) — precisam do dado real
   do fundador antes do documento ser considerado final.
