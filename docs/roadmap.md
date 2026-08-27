@@ -1114,10 +1114,67 @@ revisão formal de todo o branch).
 
 ## Fase 7 — Dashboard Admin (todos os sub-projetos concluídos: A, B, C, D, E)
 
-## Fase 8 — Copiloto de IA (não iniciada)
+## Fase 8 — Copiloto de IA: status
 
-Relato em campo → relatório estruturado. API externa de IA (nunca local, já
-confirmado como regra não-negociável).
+Relato em campo → relatório estruturado. Primeira integração de IA de
+todo o sistema. Classificada como **architectural** em brainstorming de
+2026-08-27 (subsistema novo, primeira integração externa de IA) —
+spec → plano → Subagent-Driven Development completo: 3 tasks + revisão
+final de todo o branch + 1 fix wave + re-revisão.
+
+**Fechado em 2026-08-27:**
+- `FieldReportExtractor` (interface trocável) + `MiniMaxExtractorService`
+  — chama a API OpenAI-compatible do MiniMax via `fetch` nativo,
+  function calling forçado pra devolver JSON estruturado nos 16
+  `item_key` fixos do checklist de inspeção (Fase 6A), filtra qualquer
+  `item_key`/`status` alucinado pela IA. `MINIMAX_API_KEY` fica **vazia
+  de propósito** — código pronto, mesmo padrão do `MERCADOPAGO_PROD_*` —
+  até o fundador assinar depois dos testes internos.
+- `POST /inspections/:id/ai-draft` (`tecnico`/`parceiro`, novo) —
+  endpoint stateless, nunca escreve no banco: só confere existência/RLS
+  da inspeção e delega pro extractor.
+- `/tecnico/.../inspecoes/[id]` (única tela, serve técnico e parceiro)
+  ganha a seção "Copiloto de IA": relato livre → botão "Gerar rascunho"
+  → card de sugestão por item com **Aplicar** (grava de verdade, reusa
+  o `saveItem` já existente) / **Descartar** — nunca pré-preenche os
+  controles reais silenciosamente. Aviso fixo, não removível: "Sugestão
+  gerada por IA — revise e confirme. Não substitui a avaliação do
+  profissional habilitado."
+
+**Revisão final de todo o branch (opus) achou 6 problemas "Important"
+cruzando as 3 tasks, todos corrigidos num fix wave único e
+re-revisados como limpos:**
+1. `MINIMAX_API_KEY`/`MINIMAX_MODEL` nunca chegavam ao container —
+   faltavam no `docker-compose.yml`. Falha do plano, não das tasks.
+2. **Achado extra, fora do escopo original:** `MERCADOPAGO_*` também
+   nunca chegava ao container — bug ao vivo desde a Fase 7B, corrigido
+   junto por ser a mesma classe de correção no mesmo arquivo.
+3. `fetch` sem timeout — colidia com o `proxy_read_timeout` padrão de
+   60s do nginx; corrigido com `AbortSignal.timeout(45_000)`.
+4. `applySuggestion` (frontend) apagava a sugestão mesmo se o
+   salvamento falhasse — reabria a porta que a restrição de design
+   "nunca parecer salvo sem estar salvo" existia pra fechar. Corrigido:
+   `saveItem` agora devolve sucesso/falha, só limpa em caso de sucesso.
+5. Resposta vazia da IA (relato ambíguo — caso comum) era um beco sem
+   saída silencioso — corrigido com mensagem explícita.
+6. Nenhum teste provava, via HTTP real, que sem `MINIMAX_API_KEY` o
+   endpoint devolve `503` — único comportamento que roda em produção
+   hoje. Teste novo adicionado.
+
+**Verificação:** suíte e2e completa — **48 suítes, 168 testes, todos
+passando**. Build isolado do frontend passou (cache limpo, sem
+mudança desde o fix wave).
+
+**Pendências registradas em `docs/specs/fase-8-copiloto-ia.md` §10,
+nenhuma bloqueante** (checklist de pré-ativação antes de
+`MINIMAX_API_KEY` existir: rate limit próprio no endpoint, `@MaxLength`
+em `report_text`, rodar os exemplos da spec contra a API real; achados
+menores sem prazo: `findOne` mais caro que o necessário, sem checagem
+de `status === 'rascunho'`, `POST` devolve 201 sem criar nada,
+`.env.example` sem placeholders de `MERCADOPAGO_*` desde a Fase 7B).
+Categoria G da matriz de conformidade atualizada — regra central já
+implementada em código, só a política formal pública continua
+pendente, sem urgência.
 
 ---
 
