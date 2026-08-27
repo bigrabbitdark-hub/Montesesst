@@ -23,6 +23,27 @@ export interface SubscribeContext {
 // abaixo) em vez de uma única transação que envolveria a chamada de rede.
 export type WithTenantContext = <T>(fn: (client: PoolClient) => Promise<T>) => Promise<T>;
 
+export interface SubscriptionAdminRow {
+  id: string;
+  status: string;
+  created_at: string;
+  plan_id: string;
+  plan_name: string;
+  price_cents: number;
+  tenant_id: string | null;
+  tenant_name: string | null;
+  technician_user_id: string | null;
+  technician_name: string | null;
+}
+
+export interface PaymentEventRow {
+  id: string;
+  mercadopago_payment_id: string;
+  amount_cents: number;
+  status: string;
+  occurred_at: string;
+}
+
 @Injectable()
 export class SubscriptionsService {
   constructor(private readonly mercadoPago: MercadoPagoService) {}
@@ -82,5 +103,31 @@ export class SubscriptionsService {
     });
 
     return { initPoint: preapproval.initPoint };
+  }
+
+  async findAllForAdmin(client: PoolClient): Promise<SubscriptionAdminRow[]> {
+    const result = await client.query<SubscriptionAdminRow>(
+      `SELECT s.id, s.status, s.created_at,
+         p.id AS plan_id, p.name AS plan_name, p.price_cents,
+         s.tenant_id, t.name AS tenant_name,
+         s.technician_user_id, u.full_name AS technician_name
+       FROM subscriptions s
+       JOIN plans p ON p.id = s.plan_id
+       LEFT JOIN tenants t ON t.id = s.tenant_id
+       LEFT JOIN users u ON u.id = s.technician_user_id
+       ORDER BY s.created_at DESC`,
+    );
+    return result.rows;
+  }
+
+  async findPaymentEvents(client: PoolClient, subscriptionId: string): Promise<PaymentEventRow[]> {
+    const result = await client.query<PaymentEventRow>(
+      `SELECT id, mercadopago_payment_id, amount_cents, status, occurred_at
+       FROM payment_events
+       WHERE subscription_id = $1
+       ORDER BY occurred_at DESC`,
+      [subscriptionId],
+    );
+    return result.rows;
   }
 }

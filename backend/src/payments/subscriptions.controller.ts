@@ -1,4 +1,4 @@
-import { Body, Controller, Post, Req, UsePipes, ValidationPipe } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Req, UsePipes, ValidationPipe } from '@nestjs/common';
 import { Roles } from '../common/decorators/roles.decorator';
 import { SubscriptionsService } from './subscriptions.service';
 import { CreateSubscriptionDto } from './dto/create-subscription.dto';
@@ -18,5 +18,17 @@ export class SubscriptionsController {
       userId: user.id,
       audience: user.role,
     });
+  }
+
+  @Roles('admin')
+  @Get()
+  findAll(@Req() req: any) {
+    return req.withTenantContext((client: any) => this.subscriptions.findAllForAdmin(client));
+  }
+
+  @Roles('admin')
+  @Get(':id/payment-events')
+  findPaymentEvents(@Param('id') id: string, @Req() req: any) {
+    return req.withTenantContext((client: any) => this.subscriptions.findPaymentEvents(client, id));
   }
 }
