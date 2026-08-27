@@ -75,6 +75,16 @@ CREATE POLICY payment_events_isolation ON payment_events USING (
   design pronto pra empresa/técnico um dia verem o próprio histórico,
   mesmo que esta entrega só construa a tela do admin.
 
+**Limitação aceita, registrada aqui de propósito:** hoje nenhuma tela ou
+endpoint expõe eventos com `subscription_id NULL` — nem
+`GET /subscriptions/:id/payment-events` (que filtra por uma assinatura
+específica, nunca bate com `NULL`) nem qualquer outra rota. Esses
+eventos ficam gravados (nunca descartados) mas só são consultáveis
+via acesso direto ao banco com `app.role='admin'` setado manualmente.
+"Auditoria" aqui significa "preservado para investigação manual", não
+"visível em alguma tela" — uma tela dedicada a esses eventos órfãos é
+trabalho futuro, não escopo desta entrega.
+
 ## 3. Correção de entendimento sobre a API do Mercado Pago
 
 O design original deste sub-projeto assumia um evento de webhook

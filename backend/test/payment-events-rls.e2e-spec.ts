@@ -88,23 +88,32 @@ describe('payment_events RLS (via SQL direto)', () => {
     expect(ids).toContain(subscriptionBId);
   });
 
-  it('payments_record_payment_event grava e ignora reenvio duplicado (idempotência)', async () => {
+  it('payments_record_payment_event grava, atualiza status em reenvio e nunca duplica linha', async () => {
     const paymentId = `payment-idempotencia-${Date.now()}`;
+    const preapprovalId = `preapproval-test-a-${subscriptionAId}`;
+
     const first = await (db as any).client.query(
       `SELECT * FROM payments_record_payment_event($1, $2, $3, $4, now())`,
-      [paymentId, `preapproval-test-a-${subscriptionAId}`, 5000, 'approved'],
+      [paymentId, preapprovalId, 5000, 'pending'],
     );
     // preapproval_id inventado não bate com nenhuma assinatura real —
     // prova que o evento ainda é gravado, sem vínculo.
     expect(first.rows[0].subscription_id).toBeNull();
 
+    // Reenvio do MESMO invoice id com status diferente (recycling/retry
+    // real do Mercado Pago) — precisa ATUALIZAR o status, não descartar.
     const second = await (db as any).client.query(
       `SELECT * FROM payments_record_payment_event($1, $2, $3, $4, now())`,
-      [paymentId, `preapproval-test-a-${subscriptionAId}`, 5000, 'approved'],
+      [paymentId, preapprovalId, 5000, 'approved'],
     );
-    // ON CONFLICT DO NOTHING: reenvio não gera segunda linha, id vem NULL
-    // (RETURNING não encontra a linha que não foi inserida de novo).
-    expect(second.rows[0].id).toBeNull();
+    expect(second.rows[0].id).toBe(first.rows[0].id);
+
+    const rows = await (db as any).client.query(
+      'SELECT status FROM payment_events WHERE mercadopago_payment_id = $1',
+      [paymentId],
+    );
+    expect(rows.rows).toHaveLength(1);
+    expect(rows.rows[0].status).toBe('approved');
 
     await (db as any).client.query('DELETE FROM payment_events WHERE mercadopago_payment_id = $1', [
       paymentId,

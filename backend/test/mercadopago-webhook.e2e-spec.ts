@@ -20,7 +20,11 @@ describe('POST /payments/mercadopago/webhook (e2e)', () => {
   let db: Client;
   let tenantId: string;
   let planId: string;
-  const fakeMercadoPago = { getPreapproval: jest.fn(), createPreapproval: jest.fn() };
+  const fakeMercadoPago = {
+    getPreapproval: jest.fn(),
+    createPreapproval: jest.fn(),
+    getAuthorizedPayment: jest.fn(),
+  };
 
   beforeAll(async () => {
     process.env.MERCADOPAGO_WEBHOOK_SECRET = WEBHOOK_SECRET;
@@ -153,5 +157,134 @@ describe('POST /payments/mercadopago/webhook (e2e)', () => {
     );
 
     warnSpy.mockRestore();
+  });
+
+  it('grava payment_events vinculado à assinatura quando preapproval_id bate', async () => {
+    fakeMercadoPago.getAuthorizedPayment.mockResolvedValueOnce({
+      id: 'invoice-vinculado-teste',
+      preapprovalId: 'preapproval-webhook-teste',
+      amountCents: 79700,
+      status: 'approved',
+      occurredAt: new Date().toISOString(),
+    });
+
+    const ts = String(Date.now());
+    const requestId = 'req-authorized-payment-vinculado';
+    const signature = buildSignature('invoice-vinculado-teste', requestId, ts, WEBHOOK_SECRET);
+
+    const res = await request(app.getHttpServer())
+      .post('/payments/mercadopago/webhook')
+      .query({ 'data.id': 'invoice-vinculado-teste', type: 'subscription_authorized_payment' })
+      .set('x-signature', signature)
+      .set('x-request-id', requestId)
+      .send({});
+
+    expect(res.status).toBe(201);
+    expect(fakeMercadoPago.getAuthorizedPayment).toHaveBeenCalledWith('invoice-vinculado-teste');
+
+    const row = await db.query(
+      `SELECT pe.amount_cents, pe.status, s.mercadopago_preapproval_id
+       FROM payment_events pe
+       JOIN subscriptions s ON s.id = pe.subscription_id
+       WHERE pe.mercadopago_payment_id = $1`,
+      ['invoice-vinculado-teste'],
+    );
+    expect(row.rows).toHaveLength(1);
+    expect(row.rows[0].amount_cents).toBe(79700);
+    expect(row.rows[0].status).toBe('approved');
+    expect(row.rows[0].mercadopago_preapproval_id).toBe('preapproval-webhook-teste');
+
+    await db.query('DELETE FROM payment_events WHERE mercadopago_payment_id = $1', [
+      'invoice-vinculado-teste',
+    ]);
+  });
+
+  it('loga warning e grava sem vínculo quando preapproval_id não corresponde a assinatura nenhuma', async () => {
+    const warnSpy = jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+
+    fakeMercadoPago.getAuthorizedPayment.mockResolvedValueOnce({
+      id: 'invoice-sem-vinculo-teste',
+      preapprovalId: 'preapproval-inexistente-teste',
+      amountCents: 39700,
+      status: 'approved',
+      occurredAt: new Date().toISOString(),
+    });
+
+    const ts = String(Date.now());
+    const requestId = 'req-authorized-payment-sem-vinculo';
+    const signature = buildSignature('invoice-sem-vinculo-teste', requestId, ts, WEBHOOK_SECRET);
+
+    const res = await request(app.getHttpServer())
+      .post('/payments/mercadopago/webhook')
+      .query({ 'data.id': 'invoice-sem-vinculo-teste', type: 'subscription_authorized_payment' })
+      .set('x-signature', signature)
+      .set('x-request-id', requestId)
+      .send({});
+
+    expect(res.status).toBe(201);
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('invoice-sem-vinculo-teste'));
+
+    const row = await db.query(
+      'SELECT subscription_id FROM payment_events WHERE mercadopago_payment_id = $1',
+      ['invoice-sem-vinculo-teste'],
+    );
+    expect(row.rows).toHaveLength(1);
+    expect(row.rows[0].subscription_id).toBeNull();
+
+    warnSpy.mockRestore();
+    await db.query('DELETE FROM payment_events WHERE mercadopago_payment_id = $1', [
+      'invoice-sem-vinculo-teste',
+    ]);
+  });
+
+  it('reenvio do mesmo invoice com status diferente atualiza em vez de duplicar', async () => {
+    fakeMercadoPago.getAuthorizedPayment.mockResolvedValueOnce({
+      id: 'invoice-reenvio-teste',
+      preapprovalId: 'preapproval-webhook-teste',
+      amountCents: 79700,
+      status: 'pending',
+      occurredAt: new Date().toISOString(),
+    });
+
+    const firstTs = String(Date.now());
+    const firstRequestId = 'req-authorized-payment-reenvio-1';
+    const firstSignature = buildSignature('invoice-reenvio-teste', firstRequestId, firstTs, WEBHOOK_SECRET);
+    await request(app.getHttpServer())
+      .post('/payments/mercadopago/webhook')
+      .query({ 'data.id': 'invoice-reenvio-teste', type: 'subscription_authorized_payment' })
+      .set('x-signature', firstSignature)
+      .set('x-request-id', firstRequestId)
+      .send({});
+
+    fakeMercadoPago.getAuthorizedPayment.mockResolvedValueOnce({
+      id: 'invoice-reenvio-teste',
+      preapprovalId: 'preapproval-webhook-teste',
+      amountCents: 79700,
+      status: 'approved',
+      occurredAt: new Date().toISOString(),
+    });
+
+    const secondTs = String(Date.now());
+    const secondRequestId = 'req-authorized-payment-reenvio-2';
+    const secondSignature = buildSignature('invoice-reenvio-teste', secondRequestId, secondTs, WEBHOOK_SECRET);
+    const res = await request(app.getHttpServer())
+      .post('/payments/mercadopago/webhook')
+      .query({ 'data.id': 'invoice-reenvio-teste', type: 'subscription_authorized_payment' })
+      .set('x-signature', secondSignature)
+      .set('x-request-id', secondRequestId)
+      .send({});
+
+    expect(res.status).toBe(201);
+
+    const rows = await db.query(
+      'SELECT status FROM payment_events WHERE mercadopago_payment_id = $1',
+      ['invoice-reenvio-teste'],
+    );
+    expect(rows.rows).toHaveLength(1);
+    expect(rows.rows[0].status).toBe('approved');
+
+    await db.query('DELETE FROM payment_events WHERE mercadopago_payment_id = $1', [
+      'invoice-reenvio-teste',
+    ]);
   });
 });

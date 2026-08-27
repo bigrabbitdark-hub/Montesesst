@@ -42,16 +42,24 @@ export class WebhookController {
       try {
         authorizedPayment = await this.mercadoPago.getAuthorizedPayment(dataId);
       } catch (err) {
-        // Payload bruto do erro fica no log — confirmação final do schema
-        // populado acontece organicamente na primeira cobrança real
-        // (ver docs/specs/fase-7-financeiro.md secao 3), não trava o
-        // webhook: melhor logar e seguir do que derrubar a notificação
-        // com um 500 que o Mercado Pago reinterpretaria como falha de
-        // entrega e tentaria de novo indefinidamente.
+        const status = (err as { status?: number }).status;
+        // Erro permanente (4xx — id malformado, recurso não encontrado)
+        // nunca vai se resolver com retry: loga e responde 200 pra não
+        // gerar retry infinito do Mercado Pago sobre algo que nunca vai
+        // funcionar. Erro transiente (5xx, falha de rede/conexão — sem
+        // status 4xx reconhecível) merece o retry que um 500 aciona, já
+        // que é exatamente o cenário em que tentar de novo tem chance
+        // real de funcionar — deixar propagar, não engolir.
+        if (typeof status === 'number' && status >= 400 && status < 500) {
+          this.logger.error(
+            `Erro permanente ao processar subscription_authorized_payment ${dataId}: ${(err as Error).message}`,
+          );
+          return { message: 'erro ao processar, ver log' };
+        }
         this.logger.error(
-          `Erro ao processar subscription_authorized_payment ${dataId}: ${(err as Error).message}`,
+          `Erro transiente ao processar subscription_authorized_payment ${dataId}, propagando pra retry do Mercado Pago: ${(err as Error).message}`,
         );
-        return { message: 'erro ao processar, ver log' };
+        throw err;
       }
 
       if (!authorizedPayment.preapprovalId) {
@@ -60,7 +68,7 @@ export class WebhookController {
         );
       }
 
-      await this.db.withoutTenantContext((client) =>
+      const result = await this.db.withoutTenantContext((client) =>
         client.query('SELECT * FROM payments_record_payment_event($1, $2, $3, $4, $5)', [
           authorizedPayment.id,
           authorizedPayment.preapprovalId,
@@ -69,6 +77,12 @@ export class WebhookController {
           authorizedPayment.occurredAt,
         ]),
       );
+
+      if (authorizedPayment.preapprovalId && !result.rows[0]?.subscription_id) {
+        this.logger.warn(
+          `authorized_payment ${dataId}: preapproval_id ${authorizedPayment.preapprovalId} sem assinatura correspondente — gravado sem vínculo`,
+        );
+      }
 
       return { message: 'ok' };
     }
