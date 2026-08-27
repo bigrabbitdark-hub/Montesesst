@@ -1,33 +1,23 @@
-import { Controller, Get, Query } from '@nestjs/common';
-import { DatabaseService } from '../common/database/database.service';
+import { Body, Controller, Get, Param, Patch, Query, Req, UsePipes, ValidationPipe } from '@nestjs/common';
 import { Public } from '../common/decorators/public.decorator';
-
-interface PlanRow {
-  id: string;
-  audience: string;
-  slug: string;
-  name: string;
-  price_cents: number;
-  employee_limit: number | null;
-}
+import { Roles } from '../common/decorators/roles.decorator';
+import { PlansService } from './plans.service';
+import { UpdatePlanDto } from './dto/update-plan.dto';
 
 @Controller('plans')
 export class PlansController {
-  constructor(private readonly db: DatabaseService) {}
+  constructor(private readonly plans: PlansService) {}
 
   @Public()
   @Get()
-  async findAll(@Query('audience') audience?: string) {
-    return this.db.withoutTenantContext(async (client) => {
-      const result = audience
-        ? await client.query<PlanRow>(
-            'SELECT id, audience, slug, name, price_cents, employee_limit FROM plans WHERE active = true AND audience = $1 ORDER BY price_cents',
-            [audience],
-          )
-        : await client.query<PlanRow>(
-            'SELECT id, audience, slug, name, price_cents, employee_limit FROM plans WHERE active = true ORDER BY audience, price_cents',
-          );
-      return result.rows;
-    });
+  async findAll(@Query('audience') audience: string | undefined, @Req() req: any) {
+    return req.withTenantContext((client: any) => this.plans.findAll(client, audience));
+  }
+
+  @Roles('admin')
+  @UsePipes(new ValidationPipe({ transform: true, whitelist: true, forbidNonWhitelisted: true }))
+  @Patch(':id')
+  update(@Param('id') id: string, @Body() dto: UpdatePlanDto, @Req() req: any) {
+    return req.withTenantContext((client: any) => this.plans.update(client, id, dto));
   }
 }
