@@ -3,3 +3,9 @@ export function envInt(name: string, fallback: number): number {
   const parsed = raw ? parseInt(raw, 10) : NaN;
   return Number.isFinite(parsed) ? parsed : fallback;
 }
+
+export function envFloat(name: string, fallback: number): number {
+  const raw = process.env[name];
+  const parsed = raw ? parseFloat(raw) : NaN;
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
