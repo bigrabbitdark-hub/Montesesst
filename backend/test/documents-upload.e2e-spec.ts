@@ -82,6 +82,53 @@ describe('POST/GET /documents — upload e listagem (e2e)', () => {
     ).toBeDefined();
   });
 
+  it('aceita company_unit_id da própria empresa e rejeita de outra empresa', async () => {
+    const ownUnit = await (db as any).client.query(
+      `INSERT INTO company_units (tenant_id, name, address_street, address_city, address_state, address_zip)
+       VALUES ($1, 'Matriz', 'Rua Teste', 'Porto Alegre', 'RS', '90000000') RETURNING id`,
+      [tenantId],
+    );
+    const ownUnitId = ownUnit.rows[0].id;
+
+    const otherTenant = await db.createTenantWithUser('Empresa Documentos Upload Outra Teste');
+    const otherUnit = await (db as any).client.query(
+      `INSERT INTO company_units (tenant_id, name, address_street, address_city, address_state, address_zip)
+       VALUES ($1, 'Matriz', 'Rua Outra', 'Curitiba', 'PR', '80000000') RETURNING id`,
+      [otherTenant.tenantId],
+    );
+    const otherUnitId = otherUnit.rows[0].id;
+
+    const fakePdf = Buffer.from('%PDF-1.4 conteudo de teste', 'utf-8');
+
+    const okRes = await request(app.getHttpServer())
+      .post('/documents')
+      .set('Authorization', `Bearer ${token}`)
+      .field('category', 'pgr')
+      .field('title', 'PGR da matriz')
+      .field('company_unit_id', ownUnitId)
+      .attach('file', fakePdf, { filename: 'pgr-matriz.pdf', contentType: 'application/pdf' });
+
+    expect(okRes.status).toBe(201);
+    expect(okRes.body.company_unit_id).toBe(ownUnitId);
+
+    await s3.send(new DeleteObjectCommand({ Bucket: process.env.R2_BUCKET, Key: okRes.body.file_key }));
+    await (db as any).client.query('DELETE FROM documents WHERE id = $1', [okRes.body.id]);
+
+    const crossTenantRes = await request(app.getHttpServer())
+      .post('/documents')
+      .set('Authorization', `Bearer ${token}`)
+      .field('category', 'pgr')
+      .field('title', 'Não deveria salvar')
+      .field('company_unit_id', otherUnitId)
+      .attach('file', fakePdf, { filename: 'pgr-invalido.pdf', contentType: 'application/pdf' });
+
+    expect(crossTenantRes.status).toBe(400);
+
+    await (db as any).client.query('DELETE FROM company_units WHERE id = ANY($1)', [[ownUnitId, otherUnitId]]);
+    await (db as any).client.query('DELETE FROM tenants WHERE id = $1', [otherTenant.tenantId]);
+    await (db as any).client.query('DELETE FROM users WHERE id = $1', [otherTenant.userId]);
+  });
+
   it('sanitiza o nome do arquivo na chave do R2, neutralizando tentativa de path traversal', async () => {
     const fakePdf = Buffer.from('%PDF-1.4 conteudo de teste traversal', 'utf-8');
 

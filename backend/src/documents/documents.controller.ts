@@ -46,6 +46,7 @@ export class DocumentsController {
         },
         uploadedByUserId: user.id,
         uploadedByRole: user.role,
+        companyUnitId: dto.company_unit_id,
       }),
     );
   }

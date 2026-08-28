@@ -24,6 +24,7 @@ export interface Document {
   expires_at: string | null;
   uploaded_by_user_id: string;
   uploaded_by_role: string;
+  company_unit_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -66,6 +67,7 @@ interface UploadData {
   file: UploadFile;
   uploadedByUserId: string;
   uploadedByRole: 'empresa' | 'tecnico' | 'parceiro';
+  companyUnitId?: string;
 }
 
 @Injectable()
@@ -79,6 +81,19 @@ export class DocumentsService {
     if (!ALLOWED_CATEGORIES.includes(data.category)) {
       throw new BadRequestException('Categoria inválida');
     }
+    if (data.companyUnitId) {
+      // FK só garante que o id existe em algum tenant — sem isso, dava
+      // pra rotular um documento com a unidade de OUTRA empresa (o
+      // documento em si continua isolado por tenant_id/RLS normalmente,
+      // mas o rótulo ficaria errado).
+      const unitCheck = await client.query('SELECT 1 FROM company_units WHERE id = $1 AND tenant_id = $2', [
+        data.companyUnitId,
+        data.tenantId,
+      ]);
+      if (unitCheck.rowCount === 0) {
+        throw new BadRequestException('Filial/matriz inválida para esta empresa');
+      }
+    }
 
     const id = randomUUID();
     const fileKey = `tenants/${data.tenantId}/documents/${id}/${sanitizeFileName(data.file.originalname)}`;
@@ -86,8 +101,8 @@ export class DocumentsService {
 
     try {
       const result = await client.query<Document>(
-        `INSERT INTO documents (id, tenant_id, category, title, file_key, file_name, mime_type, size_bytes, expires_at, uploaded_by_user_id, uploaded_by_role)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *`,
+        `INSERT INTO documents (id, tenant_id, category, title, file_key, file_name, mime_type, size_bytes, expires_at, uploaded_by_user_id, uploaded_by_role, company_unit_id)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING *`,
         [
           id,
           data.tenantId,
@@ -100,6 +115,7 @@ export class DocumentsService {
           data.expiresAt ?? null,
           data.uploadedByUserId,
           data.uploadedByRole,
+          data.companyUnitId ?? null,
         ],
       );
       return result.rows[0];

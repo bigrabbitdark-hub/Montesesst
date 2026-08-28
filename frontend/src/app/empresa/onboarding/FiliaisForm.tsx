@@ -10,6 +10,7 @@ export interface CompanyUnit {
   address_city: string;
   address_state: string;
   address_zip: string;
+  is_matriz: boolean;
 }
 
 export function FiliaisForm({ units, onChanged }: { units: CompanyUnit[]; onChanged: () => void }) {
@@ -55,12 +56,18 @@ export function FiliaisForm({ units, onChanged }: { units: CompanyUnit[]; onChan
     }
   }
 
+  const filiais = units.filter((unit) => !unit.is_matriz);
+
   return (
     <section className="rounded-lg border border-brand-100 p-6">
-      <h2 className="text-lg font-bold text-brand-900">Filiais</h2>
-      {units.length > 0 && (
+      <h2 className="text-lg font-bold text-brand-900">2. Filiais (opcional)</h2>
+      <p className="mt-1 text-sm text-brand-700">
+        Se a empresa tiver mais de um endereço, cadastre aqui. Se for só a matriz, pode pular esta
+        etapa.
+      </p>
+      {filiais.length > 0 && (
         <ul className="mt-4 flex flex-col gap-2">
-          {units.map((unit) => (
+          {filiais.map((unit) => (
             <li key={unit.id} className="text-sm text-brand-700">
               <strong className="text-brand-900">{unit.name}</strong> — {unit.address_street}
               {unit.address_number ? `, ${unit.address_number}` : ''}, {unit.address_city}/

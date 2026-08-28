@@ -22,6 +22,10 @@ export interface CompanyUnit {
   address_state: string;
   address_zip: string;
   status: string;
+  // Só true na unidade criada automaticamente por TenantsService.update()
+  // quando o endereço da matriz fica completo — nenhum endpoint deste
+  // service aceita esse campo como entrada, é sempre false aqui.
+  is_matriz: boolean;
   created_at: string;
   updated_at: string;
 }

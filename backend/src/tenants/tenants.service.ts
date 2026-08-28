@@ -2,7 +2,23 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { PoolClient } from 'pg';
 import { buildSafeSetClause } from '../common/safe-update.util';
 
-const UPDATABLE_FIELDS = ['sector', 'contact_name', 'contact_phone'] as const;
+const UPDATABLE_FIELDS = [
+  'sector',
+  'contact_name',
+  'contact_phone',
+  'trade_name',
+  'contact_role',
+  'address_street',
+  'address_number',
+  'address_city',
+  'address_state',
+  'address_zip',
+] as const;
+
+// Campos que precisam estar TODOS presentes (endereço completo, mesma
+// exigência de company_units) antes de criar/atualizar a unidade matriz
+// automaticamente — ver comentário em `update()` abaixo.
+const REQUIRED_MATRIZ_ADDRESS_FIELDS = ['address_street', 'address_city', 'address_state', 'address_zip'] as const;
 
 export interface TenantLink {
   id: string;
@@ -63,6 +79,13 @@ export interface Tenant {
   sector: string | null;
   contact_name: string | null;
   contact_phone: string | null;
+  trade_name: string | null;
+  contact_role: string | null;
+  address_street: string | null;
+  address_number: string | null;
+  address_city: string | null;
+  address_state: string | null;
+  address_zip: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -71,6 +94,13 @@ interface UpdateTenantData {
   sector?: string;
   contact_name?: string;
   contact_phone?: string;
+  trade_name?: string;
+  contact_role?: string;
+  address_street?: string;
+  address_number?: string;
+  address_city?: string;
+  address_state?: string;
+  address_zip?: string;
 }
 
 // tenants NÃO tem RLS própria (ver Global Constraints do plano) — este
@@ -194,6 +224,37 @@ export class TenantsService {
     );
     const tenant = result.rows[0];
     if (!tenant) throw new NotFoundException('Empresa não encontrada');
+
+    // Assim que o endereço completo da matriz existir (pode levar mais de
+    // uma chamada pra chegar nesse ponto, já que o formulário salva campo
+    // por campo), cria/atualiza a company_unit marcada is_matriz — é o
+    // que permite funcionário/documento se vincularem à matriz pelos
+    // mesmos caminhos que já existem pra filial, sem código paralelo.
+    const hasFullAddress = REQUIRED_MATRIZ_ADDRESS_FIELDS.every(
+      (field) => tenant[field] !== null && tenant[field] !== '',
+    );
+    if (hasFullAddress) {
+      await client.query(
+        `INSERT INTO company_units (tenant_id, name, address_street, address_number, address_city, address_state, address_zip, is_matriz)
+         VALUES ($1, 'Matriz', $2, $3, $4, $5, $6, true)
+         ON CONFLICT (tenant_id) WHERE is_matriz = true
+         DO UPDATE SET
+           address_street = EXCLUDED.address_street,
+           address_number = EXCLUDED.address_number,
+           address_city = EXCLUDED.address_city,
+           address_state = EXCLUDED.address_state,
+           address_zip = EXCLUDED.address_zip`,
+        [
+          tenant.id,
+          tenant.address_street,
+          tenant.address_number,
+          tenant.address_city,
+          tenant.address_state,
+          tenant.address_zip,
+        ],
+      );
+    }
+
     return tenant;
   }
 }

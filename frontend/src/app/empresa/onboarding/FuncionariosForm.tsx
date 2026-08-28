@@ -82,9 +82,10 @@ export function FuncionariosForm({ units, onChanged }: { units: CompanyUnit[]; o
   if (units.length === 0) {
     return (
       <section className="rounded-lg border border-brand-100 p-6">
-        <h2 className="text-lg font-bold text-brand-900">Funcionários</h2>
+        <h2 className="text-lg font-bold text-brand-900">3. Funcionários</h2>
         <p className="mt-4 text-sm text-brand-700">
-          Cadastre uma filial primeiro — cada funcionário precisa estar vinculado a uma.
+          Complete o passo 1 (matriz) primeiro — cada funcionário precisa estar vinculado a uma
+          unidade.
         </p>
       </section>
     );
@@ -92,7 +93,7 @@ export function FuncionariosForm({ units, onChanged }: { units: CompanyUnit[]; o
 
   return (
     <section className="rounded-lg border border-brand-100 p-6">
-      <h2 className="text-lg font-bold text-brand-900">Funcionários</h2>
+      <h2 className="text-lg font-bold text-brand-900">3. Funcionários (opcional)</h2>
 
       <form onSubmit={handleSubmit} className="mt-4 flex flex-col gap-4">
         <label className="flex flex-col gap-1 text-sm text-brand-900">
@@ -132,7 +133,7 @@ export function FuncionariosForm({ units, onChanged }: { units: CompanyUnit[]; o
             <option value="">Selecione</option>
             {units.map((unit) => (
               <option key={unit.id} value={unit.id}>
-                {unit.name}
+                {unit.is_matriz ? `${unit.name} (matriz)` : unit.name}
               </option>
             ))}
           </select>

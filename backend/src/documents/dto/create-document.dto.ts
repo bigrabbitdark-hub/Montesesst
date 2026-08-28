@@ -17,4 +17,10 @@ export class CreateDocumentDto {
   @IsOptional()
   @IsUUID()
   tenant_id?: string;
+
+  // Opcional — documento sem isso é considerado "não especificado" (não
+  // é obrigatório escolher matriz/filial pra continuar enviando).
+  @IsOptional()
+  @IsUUID()
+  company_unit_id?: string;
 }

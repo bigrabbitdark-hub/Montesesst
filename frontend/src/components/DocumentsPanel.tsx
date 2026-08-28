@@ -9,7 +9,14 @@ interface DocumentRow {
   file_name: string;
   expires_at: string | null;
   uploaded_by_user_id: string;
+  company_unit_id: string | null;
   created_at: string;
+}
+
+interface CompanyUnitOption {
+  id: string;
+  name: string;
+  is_matriz: boolean;
 }
 
 interface ComplianceItem {
@@ -115,6 +122,8 @@ export function DocumentsPanel({ tenantId }: { tenantId?: string }) {
   const [listError, setListError] = useState('');
   const [compliance, setCompliance] = useState<ComplianceResult | null>(null);
   const [epis, setEpis] = useState<EpiRow[]>([]);
+  const [units, setUnits] = useState<CompanyUnitOption[]>([]);
+  const [companyUnitId, setCompanyUnitId] = useState('');
 
   function currentUserId(): string | null {
     const raw = localStorage.getItem('montese_user');
@@ -178,10 +187,28 @@ export function DocumentsPanel({ tenantId }: { tenantId?: string }) {
     setLoading(false);
   }
 
+  async function loadUnits() {
+    // Só busca as unidades quando é a própria empresa vendo seus próprios
+    // documentos — GET /company-units não tem parâmetro tenant_id (só
+    // enxerga via RLS do próprio contexto), então pra técnico/parceiro
+    // vendo documento de uma empresa vinculada (tenantId setado) essa
+    // chamada não traria nada útil hoje.
+    if (tenantId) return;
+    const token = localStorage.getItem('montese_token');
+    try {
+      const res = await fetch('/api/company-units', { headers: { Authorization: `Bearer ${token}` } });
+      if (res.ok) setUnits(await res.json());
+    } catch {
+      // seletor de matriz/filial fica vazio; upload continua funcionando
+      // sem essa informação
+    }
+  }
+
   useEffect(() => {
     loadDocuments();
     loadCompliance();
     loadEpis();
+    loadUnits();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -196,6 +223,7 @@ export function DocumentsPanel({ tenantId }: { tenantId?: string }) {
     formData.append('title', title);
     if (expiresAt) formData.append('expires_at', expiresAt);
     if (tenantId) formData.append('tenant_id', tenantId);
+    if (companyUnitId) formData.append('company_unit_id', companyUnitId);
     formData.append('file', file);
 
     try {
@@ -208,6 +236,7 @@ export function DocumentsPanel({ tenantId }: { tenantId?: string }) {
         setTitle('');
         setExpiresAt('');
         setFile(null);
+        setCompanyUnitId('');
         setStatus('idle');
         loadDocuments();
         loadCompliance();
@@ -360,6 +389,23 @@ export function DocumentsPanel({ tenantId }: { tenantId?: string }) {
               className="rounded-md border border-brand-100 px-3 py-2"
             />
           </label>
+          {units.length > 0 && (
+            <label className="flex flex-col gap-1 text-sm text-brand-900">
+              Matriz ou filial (opcional)
+              <select
+                value={companyUnitId}
+                onChange={(e) => setCompanyUnitId(e.target.value)}
+                className="rounded-md border border-brand-100 px-3 py-2"
+              >
+                <option value="">Não especificado</option>
+                {units.map((unit) => (
+                  <option key={unit.id} value={unit.id}>
+                    {unit.is_matriz ? `${unit.name} (matriz)` : unit.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
           <label className="flex flex-col gap-1 text-sm text-brand-900">
             Arquivo (PDF, JPG ou PNG, até 10MB)
             <input
