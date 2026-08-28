@@ -1239,3 +1239,36 @@ novo de `@MaxLength`). Nenhuma mudança de frontend nesta rodada.
    sub-entregas — cadastro próprio de técnico (pré-requisito) e planos +
    assinatura recorrente. Em brainstorming em 2026-08-18, spec da primeira
    ainda não escrita.
+
+## Fase 9 — RAG Normativo: spec escrita
+
+Depois da Fase 8 (Copiloto de relato) ir ao ar, o fundador trouxe uma
+visão ampla de agentes de IA (orquestrador, agente operacional, RAG
+normativo, copiloto do técnico, agente de inspeção, secretário do
+técnico, pendências inteligentes, atualização normativa, verificador)
+em brainstorming em 2026-08-28. Escopo grande demais pra uma spec só —
+decomposto em sub-projetos independentes; o fundador escolheu começar
+pelo **RAG Normativo** (base de normas oficiais de SST, consultável
+via "Assistente Montese SST" por empresa e técnico/parceiro, sempre
+ancorada em fonte oficial vigente — "sem fonte oficial, sem afirmação
+normativa").
+
+Spec completa em
+[`docs/specs/fase-9-rag-normativo.md`](specs/fase-9-rag-normativo.md):
+monitoramento automático de fontes oficiais (NRs do MTE + Fundacentro
++ outras entidades) com validação humana obrigatória antes de qualquer
+atualização entrar na base pesquisável; `pgvector` no Postgres
+existente (troca de imagem confirmada pelo fundador,
+`postgres:16-alpine` → `pgvector/pgvector:pg16`); Verificador
+determinístico (checagem de código contra os trechos realmente
+recuperados, não uma segunda chamada de IA se autoconferindo).
+
+Demais agentes da visão original (Agente Operacional, atualização de
+cadastro via upload, Copiloto do técnico/"Meu dia", agente de
+inspeção por voz, secretário do técnico, pendências inteligentes,
+Orquestrador com roteamento real) ficam como sub-projetos futuros,
+cada um com sua própria spec quando chegar a vez — não fazem parte do
+escopo da Fase 9.
+
+Ainda não implementada — próximo passo é escrever o plano de
+implementação (`writing-plans`) a partir desta spec.
