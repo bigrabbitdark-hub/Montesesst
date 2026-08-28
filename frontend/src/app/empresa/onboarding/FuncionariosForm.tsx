@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from 'react';
 import { CompanyUnit } from './FiliaisForm';
+import { FileInput } from '@/components/FileInput';
 
 interface ImportRowError {
   linha: number;
@@ -155,12 +156,7 @@ export function FuncionariosForm({ units, onChanged }: { units: CompanyUnit[]; o
           bater com uma das já cadastradas acima.
         </p>
         <form onSubmit={handleImport} className="mt-3 flex flex-col gap-3">
-          <input
-            type="file"
-            accept=".csv"
-            onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-            className="text-sm text-brand-900"
-          />
+          <FileInput file={file} onChange={setFile} accept=".csv" label="Escolher arquivo CSV" />
           {importStatus === 'erro' && (
             <p className="text-sm text-red-600">Não foi possível importar. Tente de novo.</p>
           )}

@@ -1,6 +1,7 @@
 'use client';
 
 import { FormEvent, useEffect, useState } from 'react';
+import { FileInput } from './FileInput';
 
 interface DocumentRow {
   id: string;
@@ -408,18 +409,12 @@ export function DocumentsPanel({ tenantId }: { tenantId?: string }) {
           )}
           <label className="flex flex-col gap-1 text-sm text-brand-900">
             Arquivo (PDF, JPG ou PNG, até 10MB)
-            <input
-              type="file"
-              required
-              accept=".pdf,.jpg,.jpeg,.png"
-              onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-              className="text-sm text-brand-900"
-            />
+            <FileInput file={file} onChange={setFile} accept=".pdf,.jpg,.jpeg,.png" label="Escolher arquivo" />
           </label>
           {status === 'erro' && <p className="text-sm text-red-600">{errorMessage}</p>}
           <button
             type="submit"
-            disabled={status === 'loading'}
+            disabled={status === 'loading' || !file}
             className="self-start rounded-md bg-brand-500 px-6 py-2 font-medium text-white hover:bg-brand-700 disabled:opacity-50"
           >
             {status === 'loading' ? 'Enviando...' : 'Enviar documento'}
