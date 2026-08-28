@@ -2,7 +2,6 @@
 
 import { FormEvent, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { AdminNav } from '@/components/AdminNav';
 
 interface AuditLogRow {
   id: string;
@@ -22,6 +21,35 @@ const PAGE_SIZE = 50;
 
 function formatDateTime(iso: string): string {
   return new Date(iso).toLocaleString('pt-BR');
+}
+
+const STATUS_LABELS: Record<number, string> = {
+  200: 'Sucesso',
+  201: 'Criado com sucesso',
+  204: 'Sucesso, sem conteúdo',
+  400: 'Pedido inválido',
+  401: 'Não autenticado',
+  403: 'Sem permissão',
+  404: 'Não encontrado',
+  429: 'Limite de tentativas excedido',
+  500: 'Erro interno do servidor',
+  502: 'Erro ao falar com serviço externo',
+  503: 'Serviço indisponível',
+};
+
+function statusLabel(code: number): string {
+  if (STATUS_LABELS[code]) return STATUS_LABELS[code];
+  if (code >= 200 && code < 300) return 'Sucesso';
+  if (code >= 400 && code < 500) return 'Erro do usuário/pedido';
+  if (code >= 500) return 'Erro do servidor';
+  return 'Outro';
+}
+
+function statusColorClass(code: number): string {
+  if (code >= 200 && code < 300) return 'text-green-700';
+  if (code >= 400 && code < 500) return 'text-yellow-700';
+  if (code >= 500) return 'text-red-700';
+  return 'text-brand-700';
 }
 
 export default function AdminAuditoriaPage() {
@@ -83,17 +111,18 @@ export default function AdminAuditoriaPage() {
   }
 
   if (!ready) {
-    return <div className="mx-auto max-w-5xl px-4 py-16 text-center text-brand-700">Carregando...</div>;
+    return <p className="text-center text-brand-700">Carregando...</p>;
   }
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-16">
-      <h1 className="text-2xl font-bold text-brand-900">Painel administrativo</h1>
-      <div className="mt-6">
-        <AdminNav />
-      </div>
+    <div>
+      <h2 className="text-xl font-bold text-brand-900">Auditoria</h2>
+      <p className="mt-1 text-sm text-brand-700">
+        Registro de ações realizadas no sistema — quem fez o quê, quando, e o resultado (coluna
+        "Status"). Passe o mouse sobre o número do status pra ver o que significa em termos simples.
+      </p>
 
-      <form onSubmit={handleFilterSubmit} className="mt-8 flex items-end gap-3">
+      <form onSubmit={handleFilterSubmit} className="mt-6 flex items-end gap-3">
         <label className="flex flex-col gap-1 text-sm text-brand-900">
           Filtrar por tipo de recurso
           <input
@@ -151,13 +180,33 @@ export default function AdminAuditoriaPage() {
                     <td className="py-2 text-brand-700">{row.actor_tenant_name ?? '—'}</td>
                     <td className="py-2 text-brand-900">{row.action}</td>
                     <td className="py-2 text-brand-700">{row.resource_type}</td>
-                    <td className="py-2 text-brand-700">
-                      {row.method} {row.status_code}
+                    <td className={`py-2 ${statusColorClass(row.status_code)}`}>
+                      <span title={statusLabel(row.status_code)}>
+                        {row.method} {row.status_code}
+                      </span>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
+          </div>
+        )}
+        {rows.length > 0 && (
+          <div className="mt-4 flex flex-wrap gap-x-6 gap-y-1 rounded-md bg-brand-50 p-3 text-xs text-brand-700">
+            <span>
+              <strong className="text-green-700">200/201</strong> — deu certo
+            </span>
+            <span>
+              <strong className="text-yellow-700">400/401/403/404</strong> — algo no pedido não foi
+              aceito (dado errado, sem permissão, ou não existe)
+            </span>
+            <span>
+              <strong className="text-yellow-700">429</strong> — muitas tentativas seguidas, bloqueado
+              temporariamente
+            </span>
+            <span>
+              <strong className="text-red-700">500/502/503</strong> — erro do sistema, não do usuário
+            </span>
           </div>
         )}
         {hasMore && rows.length > 0 && (

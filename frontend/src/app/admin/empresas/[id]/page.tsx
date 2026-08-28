@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { AdminNav } from '@/components/AdminNav';
 
 interface TenantLink {
   id: string;
@@ -198,21 +197,14 @@ export default function AdminEmpresaDetailPage() {
   }
 
   if (!ready) {
-    return <div className="mx-auto max-w-5xl px-4 py-16 text-center text-brand-700">Carregando...</div>;
+    return <p className="text-center text-brand-700">Carregando...</p>;
   }
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-16">
-      <h1 className="text-2xl font-bold text-brand-900">Painel administrativo</h1>
-      <div className="mt-6">
-        <AdminNav />
-      </div>
-
-      <div className="mt-8">
-        <Link href="/admin/empresas" className="text-sm text-brand-500 hover:underline">
-          ← Voltar para empresas
-        </Link>
-      </div>
+    <div>
+      <Link href="/admin/empresas" className="text-sm text-brand-500 hover:underline">
+        ← Voltar para empresas
+      </Link>
 
       {loadError && <p className="mt-4 text-sm text-red-600">{loadError}</p>}
 

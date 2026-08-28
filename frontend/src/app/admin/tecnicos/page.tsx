@@ -2,7 +2,6 @@
 
 import { FormEvent, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { AdminNav } from '@/components/AdminNav';
 
 interface Technician {
   id: string;
@@ -35,8 +34,8 @@ export default function AdminTecnicosPage() {
   const [errorMessage, setErrorMessage] = useState('');
 
   const [assignFormId, setAssignFormId] = useState<string | null>(null);
-  const [assignTenantId, setAssignTenantId] = useState('');
-  const [assignStatus, setAssignStatus] = useState<'idle' | 'loading' | 'erro' | 'sucesso'>('idle');
+  const [assignTenantIds, setAssignTenantIds] = useState<string[]>([]);
+  const [assignStatus, setAssignStatus] = useState<'idle' | 'loading' | 'erro' | 'sucesso' | 'parcial'>('idle');
 
   async function loadTechnicians() {
     const token = localStorage.getItem('montese_token');
@@ -112,40 +111,53 @@ export default function AdminTecnicosPage() {
     }
   }
 
+  function toggleAssignTenant(tenantId: string) {
+    setAssignTenantIds((prev) =>
+      prev.includes(tenantId) ? prev.filter((id) => id !== tenantId) : [...prev, tenantId],
+    );
+  }
+
   async function handleAssign(event: FormEvent, technicianId: string) {
     event.preventDefault();
     setAssignStatus('loading');
     const token = localStorage.getItem('montese_token');
-    try {
-      const res = await fetch(`/api/technicians/${technicianId}/assign`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ tenant_id: assignTenantId }),
-      });
-      if (res.ok) {
-        setAssignStatus('sucesso');
-        setAssignTenantId('');
-      } else {
-        setAssignStatus('erro');
+    // Backend só aceita uma empresa por chamada — repete a chamada pra
+    // cada empresa marcada, sequencial (evita corrida se o técnico
+    // clicar em duas empresas que disparassem o mesmo PATCH ao mesmo
+    // tempo, e mantém o erro de uma chamada isolado das outras).
+    let failures = 0;
+    for (const tenantId of assignTenantIds) {
+      try {
+        const res = await fetch(`/api/technicians/${technicianId}/assign`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ tenant_id: tenantId }),
+        });
+        if (!res.ok) failures += 1;
+      } catch {
+        failures += 1;
       }
-    } catch {
+    }
+    if (failures === 0) {
+      setAssignStatus('sucesso');
+      setAssignTenantIds([]);
+    } else if (failures === assignTenantIds.length) {
       setAssignStatus('erro');
+    } else {
+      setAssignStatus('parcial');
     }
   }
 
   if (!ready) {
-    return <div className="mx-auto max-w-4xl px-4 py-16 text-center text-brand-700">Carregando...</div>;
+    return <p className="text-center text-brand-700">Carregando...</p>;
   }
 
   return (
-    <div className="mx-auto max-w-4xl px-4 py-16">
-      <h1 className="text-2xl font-bold text-brand-900">Painel administrativo</h1>
-      <div className="mt-6">
-        <AdminNav />
-      </div>
+    <div>
+      <h2 className="text-xl font-bold text-brand-900">Técnicos</h2>
 
-      <section className="mt-8 rounded-lg border border-brand-100 p-6">
-        <h2 className="text-lg font-bold text-brand-900">Criar técnico</h2>
+      <section className="mt-6 rounded-lg border border-brand-100 p-6">
+        <h3 className="text-lg font-bold text-brand-900">Criar técnico</h3>
         <form onSubmit={handleCreate} className="mt-4 flex flex-col gap-4">
           <label className="flex flex-col gap-1 text-sm text-brand-900">
             E-mail
@@ -212,7 +224,7 @@ export default function AdminTecnicosPage() {
       </section>
 
       <section className="mt-8 rounded-lg border border-brand-100 p-6">
-        <h2 className="text-lg font-bold text-brand-900">Técnicos cadastrados</h2>
+        <h3 className="text-lg font-bold text-brand-900">Técnicos cadastrados</h3>
         {listError && <p className="mt-2 text-sm text-red-600">{listError}</p>}
         {technicians.length === 0 ? (
           <p className="mt-4 text-sm text-brand-700">Nenhum técnico cadastrado ainda.</p>
@@ -232,6 +244,7 @@ export default function AdminTecnicosPage() {
                   <button
                     onClick={() => {
                       setAssignFormId(tech.id);
+                      setAssignTenantIds([]);
                       setAssignStatus('idle');
                     }}
                     className="text-brand-500 hover:underline"
@@ -245,24 +258,26 @@ export default function AdminTecnicosPage() {
                     onSubmit={(e) => handleAssign(e, tech.id)}
                     className="mt-3 flex flex-col gap-2 border-t border-brand-100 pt-3"
                   >
-                    <label className="flex flex-col gap-1 text-xs text-brand-900">
-                      Empresa
-                      <select
-                        required
-                        value={assignTenantId}
-                        onChange={(e) => setAssignTenantId(e.target.value)}
-                        className="rounded-md border border-brand-100 px-3 py-2"
-                      >
-                        <option value="">Selecione</option>
-                        {tenants.map((tenant) => (
-                          <option key={tenant.id} value={tenant.id}>
-                            {tenant.name}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
+                    <p className="text-xs text-brand-900">Empresas (selecione uma ou mais)</p>
+                    <div className="flex max-h-40 flex-col gap-1 overflow-y-auto rounded-md border border-brand-100 p-2">
+                      {tenants.map((tenant) => (
+                        <label key={tenant.id} className="flex items-center gap-2 text-xs text-brand-900">
+                          <input
+                            type="checkbox"
+                            checked={assignTenantIds.includes(tenant.id)}
+                            onChange={() => toggleAssignTenant(tenant.id)}
+                          />
+                          {tenant.name}
+                        </label>
+                      ))}
+                    </div>
                     {assignStatus === 'erro' && (
-                      <p className="text-xs text-red-600">Não foi possível vincular.</p>
+                      <p className="text-xs text-red-600">Não foi possível vincular a nenhuma empresa selecionada.</p>
+                    )}
+                    {assignStatus === 'parcial' && (
+                      <p className="text-xs text-red-600">
+                        Vinculado a algumas empresas, mas não a todas — confira e tente de novo as que faltaram.
+                      </p>
                     )}
                     {assignStatus === 'sucesso' && (
                       <p className="text-xs text-brand-700">Vinculado com sucesso.</p>
@@ -270,9 +285,10 @@ export default function AdminTecnicosPage() {
                     <div className="flex gap-3">
                       <button
                         type="submit"
-                        className="self-start rounded-md bg-brand-500 px-4 py-2 text-xs font-medium text-white hover:bg-brand-700"
+                        disabled={assignTenantIds.length === 0 || assignStatus === 'loading'}
+                        className="self-start rounded-md bg-brand-500 px-4 py-2 text-xs font-medium text-white hover:bg-brand-700 disabled:opacity-50"
                       >
-                        Confirmar vínculo
+                        {assignStatus === 'loading' ? 'Vinculando...' : 'Confirmar vínculo'}
                       </button>
                       <button
                         type="button"

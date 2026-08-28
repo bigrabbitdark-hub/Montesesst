@@ -2,7 +2,6 @@
 
 import { FormEvent, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { AdminNav } from '@/components/AdminNav';
 
 interface Partner {
   id: string;
@@ -130,18 +129,15 @@ export default function AdminParceirosPage() {
   }
 
   if (!ready) {
-    return <div className="mx-auto max-w-4xl px-4 py-16 text-center text-brand-700">Carregando...</div>;
+    return <p className="text-center text-brand-700">Carregando...</p>;
   }
 
   return (
-    <div className="mx-auto max-w-4xl px-4 py-16">
-      <h1 className="text-2xl font-bold text-brand-900">Painel administrativo</h1>
-      <div className="mt-6">
-        <AdminNav />
-      </div>
+    <div>
+      <h2 className="text-xl font-bold text-brand-900">Parceiros</h2>
 
-      <section className="mt-8 rounded-lg border border-brand-100 p-6">
-        <h2 className="text-lg font-bold text-brand-900">Criar parceiro</h2>
+      <section className="mt-6 rounded-lg border border-brand-100 p-6">
+        <h3 className="text-lg font-bold text-brand-900">Criar parceiro</h3>
         <form onSubmit={handleCreate} className="mt-4 flex flex-col gap-4">
           <label className="flex flex-col gap-1 text-sm text-brand-900">
             E-mail
@@ -201,7 +197,7 @@ export default function AdminParceirosPage() {
       </section>
 
       <section className="mt-8 rounded-lg border border-brand-100 p-6">
-        <h2 className="text-lg font-bold text-brand-900">Parceiros cadastrados</h2>
+        <h3 className="text-lg font-bold text-brand-900">Parceiros cadastrados</h3>
         {listError && <p className="mt-2 text-sm text-red-600">{listError}</p>}
         {partners.length === 0 ? (
           <p className="mt-4 text-sm text-brand-700">Nenhum parceiro cadastrado ainda.</p>

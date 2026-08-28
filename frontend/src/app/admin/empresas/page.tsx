@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { AdminNav } from '@/components/AdminNav';
 
 interface TenantLink {
   id: string;
@@ -43,16 +42,13 @@ export default function AdminEmpresasPage() {
   }, [router]);
 
   if (!ready) {
-    return <div className="mx-auto max-w-4xl px-4 py-16 text-center text-brand-700">Carregando...</div>;
+    return <p className="text-center text-brand-700">Carregando...</p>;
   }
 
   return (
-    <div className="mx-auto max-w-4xl px-4 py-16">
-      <h1 className="text-2xl font-bold text-brand-900">Painel administrativo</h1>
+    <div>
+      <h2 className="text-xl font-bold text-brand-900">Empresas</h2>
       <div className="mt-6">
-        <AdminNav />
-      </div>
-      <div className="mt-8">
         {error && <p className="text-sm text-red-600">{error}</p>}
         {tenants.length === 0 && !error ? (
           <p className="text-sm text-brand-700">Nenhuma empresa cadastrada ainda.</p>

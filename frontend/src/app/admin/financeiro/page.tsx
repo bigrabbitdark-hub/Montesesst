@@ -2,7 +2,6 @@
 
 import { FormEvent, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { AdminNav } from '@/components/AdminNav';
 
 interface Plan {
   id: string;
@@ -167,18 +166,15 @@ export default function AdminFinanceiroPage() {
   }
 
   if (!ready) {
-    return <div className="mx-auto max-w-5xl px-4 py-16 text-center text-brand-700">Carregando...</div>;
+    return <p className="text-center text-brand-700">Carregando...</p>;
   }
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-16">
-      <h1 className="text-2xl font-bold text-brand-900">Painel administrativo</h1>
-      <div className="mt-6">
-        <AdminNav />
-      </div>
+    <div>
+      <h2 className="text-xl font-bold text-brand-900">Financeiro</h2>
 
-      <section className="mt-8 rounded-lg border border-brand-100 p-6">
-        <h2 className="text-lg font-bold text-brand-900">Planos</h2>
+      <section className="mt-6 rounded-lg border border-brand-100 p-6">
+        <h3 className="text-lg font-bold text-brand-900">Planos</h3>
         <table className="mt-4 w-full text-left text-sm">
           <thead>
             <tr className="border-b border-brand-100 text-brand-700">
@@ -242,7 +238,7 @@ export default function AdminFinanceiroPage() {
       </section>
 
       <section className="mt-8 rounded-lg border border-brand-100 p-6">
-        <h2 className="text-lg font-bold text-brand-900">Assinaturas</h2>
+        <h3 className="text-lg font-bold text-brand-900">Assinaturas</h3>
         {listError && <p className="mt-2 text-sm text-red-600">{listError}</p>}
         {subscriptions.length === 0 && !listError ? (
           <p className="mt-4 text-sm text-brand-700">Nenhuma assinatura ainda.</p>
