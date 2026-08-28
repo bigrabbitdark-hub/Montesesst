@@ -19,6 +19,7 @@ import { AuditLogModule } from './audit-log/audit-log.module';
 import { OverviewModule } from './overview/overview.module';
 import { SystemStatusModule } from './system-status/system-status.module';
 import { DashboardModule } from './dashboard/dashboard.module';
+import { NormativeModule } from './normative/normative.module';
 import { JwtAuthGuard } from './auth/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 import { TenantContextInterceptor } from './common/interceptors/tenant-context.interceptor';
@@ -53,6 +54,7 @@ import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
     OverviewModule,
     SystemStatusModule,
     DashboardModule,
+    NormativeModule,
   ],
   providers: [
     // Ordem importa: RateLimitGuard barra abuso antes de qualquer auth;
