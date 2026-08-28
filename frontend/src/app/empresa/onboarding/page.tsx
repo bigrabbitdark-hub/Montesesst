@@ -28,7 +28,6 @@ export default function OnboardingPage() {
   const [units, setUnits] = useState<CompanyUnit[]>([]);
   const [loading, setLoading] = useState(true);
   const [step, setStep] = useState(1);
-  const [skippedInitialRedirect, setSkippedInitialRedirect] = useState(false);
 
   async function loadAll() {
     const token = localStorage.getItem('montese_token');
@@ -49,18 +48,10 @@ export default function OnboardingPage() {
     setUnits(unitsData);
     setLoading(false);
 
-    // Visita de retorno com a matriz já completa: pula o wizard inteiro e
-    // vai direto pro dashboard. Só acontece uma vez, no carregamento
-    // inicial — depois que o usuário já está navegando pelo wizard nesta
-    // sessão (ex: voltou pro passo 1 pra corrigir algo), não interrompe
-    // de novo.
-    if (!skippedInitialRedirect) {
-      setSkippedInitialRedirect(true);
-      if (isMatrizComplete(tenantData)) {
-        router.replace('/empresa/dashboard');
-        return;
-      }
-    }
+    // Matriz já completa: começa no passo 2 em vez do 1 — mas NUNCA
+    // redireciona pra fora desta página sozinho. "Dados da empresa" no
+    // menu lateral precisa sempre abrir o wizard de verdade, não voltar
+    // pro dashboard na hora (bug real reportado em teste, 2026-08-28).
     if (isMatrizComplete(tenantData) && step === 1) {
       setStep(2);
     }
