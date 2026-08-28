@@ -1,5 +1,6 @@
 import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
+import { ScheduleModule } from '@nestjs/schedule';
 import { DatabaseModule } from './common/database/database.module';
 import { AuditModule } from './common/audit/audit.module';
 import { HealthModule } from './health/health.module';
@@ -34,6 +35,7 @@ import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 @Module({
   imports: [
     DatabaseModule,
+    ScheduleModule.forRoot(),
     RedisModule,
     EmailModule,
     AuditModule,
