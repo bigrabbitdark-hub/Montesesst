@@ -115,6 +115,16 @@ describe('POST /inspections/:id/ai-draft (e2e)', () => {
     expect(fakeExtractor.extract).not.toHaveBeenCalled();
   });
 
+  it('rejeita report_text acima de 5000 caracteres com 400', async () => {
+    const res = await request(app.getHttpServer())
+      .post(`/inspections/${inspectionId}/ai-draft`)
+      .set('Authorization', `Bearer ${technicianToken}`)
+      .send({ report_text: 'a'.repeat(5001) });
+
+    expect(res.status).toBe(400);
+    expect(fakeExtractor.extract).not.toHaveBeenCalled();
+  });
+
   it('bloqueia empresa com 403', async () => {
     const res = await request(app.getHttpServer())
       .post(`/inspections/${inspectionId}/ai-draft`)

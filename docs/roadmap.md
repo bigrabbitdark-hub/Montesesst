@@ -1176,6 +1176,41 @@ Categoria G da matriz de conformidade atualizada — regra central já
 implementada em código, só a política formal pública continua
 pendente, sem urgência.
 
+**Ativado em produção em 2026-08-28** (bounded, direto via TDD, sem
+nova SDD — extensão de uma interface já pronta e revisada):
+
+- Fundador decidiu não esperar o MiniMax — ativou o Copiloto de IA
+  imediatamente via **OpenRouter** (openrouter.ai), modelo
+  `anthropic/claude-sonnet-5` como padrão, configurável pelo fundador
+  direto no painel do OpenRouter sem precisar de deploy novo.
+- Prompt/schema/filtro anti-alucinação extraídos pra
+  `checklist-extraction-shared.ts`, reusados por
+  `MiniMaxExtractorService` (continua pronta, não ativa) e pelo novo
+  `OpenRouterExtractorService` — trocar de provedor de novo é só mudar
+  o `useClass` de `AiCopilotModule`.
+- **Validação real, não só manual:** os 2 exemplos da spec §7 rodados
+  contra a API de verdade. Exemplo 1 bateu item a item com a previsão
+  manual; Exemplo 2 (relato ambíguo) divergiu — o modelo real incluiu o
+  item como `NA` com nota explicando a incerteza, em vez de omitir —
+  avaliado como comportamento aceitável (revisão humana obrigatória
+  continua intacta), documentado, não "corrigido" às pressas numa
+  amostra só. Custo real medido: US$ 0,004–0,006 por relato.
+- **Achado real durante a validação:** sem `max_tokens` explícito, o
+  pedido tentava usar o teto de saída do modelo (65536 tokens),
+  estourando o saldo de crédito da conta OpenRouter na primeira
+  tentativa. Corrigido com `max_tokens: 1024`.
+- **Antecipado da lista de pendências, porque a chamada passou a ser
+  paga de verdade:** rate limit dedicado no endpoint
+  (`AI_DRAFT_RATE_LIMIT_MAX`, 20/hora por IP) e `@MaxLength(5000)` em
+  `report_text` — não ficaram esperando um "depois".
+- `docker-compose.yml`/`.env.example` já saem corretos desta vez —
+  `OPENROUTER_API_KEY`/`OPENROUTER_MODEL`/`AI_DRAFT_RATE_LIMIT_*`
+  wired de cara, aplicando a lição do achado #1 da revisão final.
+
+**Verificação:** suíte e2e completa — **49 suítes, 173 testes, todos
+passando** (2 suítes de extractor — MiniMax e OpenRouter — mais 1 teste
+novo de `@MaxLength`). Nenhuma mudança de frontend nesta rodada.
+
 ---
 
 ## Próxima ação recomendada

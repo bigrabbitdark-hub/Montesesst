@@ -13,6 +13,8 @@ import {
   ValidationPipe,
 } from '@nestjs/common';
 import { Roles } from '../common/decorators/roles.decorator';
+import { RateLimit } from '../common/rate-limit/rate-limit.decorator';
+import { envInt } from '../common/env';
 import { InspectionsService } from './inspections.service';
 import { CreateInspectionDto } from './dto/create-inspection.dto';
 import { UpdateInspectionDto } from './dto/update-inspection.dto';
@@ -69,6 +71,11 @@ export class InspectionsController {
   }
 
   @Roles('tecnico', 'parceiro')
+  @RateLimit({
+    limit: envInt('AI_DRAFT_RATE_LIMIT_MAX', 20),
+    windowSeconds: envInt('AI_DRAFT_RATE_LIMIT_WINDOW_SECONDS', 3600),
+    keyBy: 'ip',
+  })
   @UsePipes(new ValidationPipe({ transform: true, whitelist: true, forbidNonWhitelisted: true }))
   @Post(':id/ai-draft')
   async aiDraft(@Param('id') id: string, @Body() dto: AiDraftDto, @Req() req: any) {

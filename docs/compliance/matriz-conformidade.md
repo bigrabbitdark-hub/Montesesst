@@ -112,25 +112,25 @@ hospedagem confirmada.
 
 ## G — Responsabilidades dos agentes (IA)
 
-**Código pronto desde 2026-08-27, ainda sem chamada real acontecendo.**
-A Fase 8 (Copiloto de IA — relato em campo → checklist estruturado, ver
+**Ativo em produção desde 2026-08-28.** A Fase 8 (Copiloto de IA —
+relato em campo → checklist estruturado, ver
 [`docs/specs/fase-8-copiloto-ia.md`](../specs/fase-8-copiloto-ia.md))
 foi implementada, revisada (revisão de tasks + revisão final de todo o
-branch + fix wave) e está no branch principal. **Mas `MINIMAX_API_KEY`
-continua vazia no `.env`** — decisão deliberada do fundador (assinar só
-depois de teste interno) — então nenhuma chamada real a IA acontece em
-produção hoje; o endpoint responde `503` sempre. A regra central já
-está implementada, não só articulada: o aviso "Sugestão gerada por
-IA — revise e confirme. Não substitui a avaliação do profissional
-habilitado." está fixo e não-removível na tela do Copiloto
-(`frontend/.../inspecoes/[id]/page.tsx`), mesma frase-chave publicada
-em `/compromisso-sst`.
+branch + fix wave) e está ativa com chamadas reais de IA via OpenRouter
+(`anthropic/claude-sonnet-5`) — decisão do fundador de não esperar o
+MiniMax. A regra central já está implementada, não só articulada: o
+aviso "Sugestão gerada por IA — revise e confirme. Não substitui a
+avaliação do profissional habilitado." está fixo e não-removível na
+tela do Copiloto (`frontend/.../inspecoes/[id]/page.tsx`), mesma
+frase-chave publicada em `/compromisso-sst`.
 
 | Item | Onde vive / Status | Evidência | Observação |
 |---|---|---|---|
 | Regra "agente não substitui profissional habilitado" | **✅ Implementada em código**, não só em texto público | Aviso fixo na tela do Copiloto (`page.tsx`), reforçado em `/compromisso-sst` | Revisão final confirmou o aviso verbatim, sem controle de dispensar/fechar |
 | Revisão humana obrigatória antes de qualquer gravação | **✅ Existe** — o endpoint (`POST /inspections/:id/ai-draft`) nunca escreve no banco; técnico precisa clicar "Aplicar" por item, que grava pelo mesmo mecanismo já existente | `backend/src/inspections/inspections.controller.ts`, `frontend/.../page.tsx` | Corrigido na revisão final: "Aplicar" só limpa o card de sugestão se o salvamento realmente funcionou (antes apagava mesmo em caso de falha) |
-| "Política de Funcionamento dos Agentes Especializados" (documento formal, público) | **Pendente** | — | Ainda faz sentido esperar mais uso real antes de formalizar como página pública — diferente da regra central, que já está em produção como código |
+| Chamada de IA é sempre externa, nunca local | **✅ Confirmado** — OpenRouter (openrouter.ai), API externa | `backend/src/ai-copilot/openrouter-extractor.service.ts` | Mesma regra não-negociável desde `docs/vision.md` |
+| Rate limit e limite de tamanho de entrada (proteção contra abuso/custo) | **✅ Existe** — 20 chamadas/hora por IP, `report_text` até 5000 caracteres | `inspections.controller.ts`, `dto/ai-draft.dto.ts` | Implementado na hora da ativação — chamada real custa dinheiro de verdade desde 2026-08-28 |
+| "Política de Funcionamento dos Agentes Especializados" (documento formal, público) | **Pendente** | — | Agora que o Copiloto está ativo de verdade (não só planejado), esse documento ganha mais urgência do que tinha antes — recomendado priorizar |
 
 ## H — Responsabilidades do cliente (empresa)
 
@@ -201,12 +201,13 @@ decompostas.
     (`docs/compliance/processo-avaliacao-fornecedores.md`). Fecha o
     último item genuinamente pendente que tinha sobrado de B/D/H/I.
 
-**Ainda em aberto, sem data:**
+**Ainda em aberto:**
 
 - **Categoria G — "Política de Funcionamento dos Agentes
   Especializados"** (documento formal público) — a regra central já
-  está em produção como código, esse documento é só a formalização
-  textual, sem pressa.
+  está em produção como código, e desde 2026-08-28 o Copiloto de IA
+  está ativo de verdade (não só planejado) — recomendado priorizar
+  esse documento agora, não é mais "sem pressa".
 - **Dois placeholders nos Termos de Uso** (`[RAZÃO SOCIAL/CNPJ —
   PREENCHER]`, `[CIDADE/ESTADO — PREENCHER]`) — precisam do dado real
   do fundador antes do documento ser considerado final.

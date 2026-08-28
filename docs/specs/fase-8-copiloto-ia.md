@@ -29,7 +29,14 @@ edita o que quiser, e salva pelos endpoints **já existentes**
   implementar, sem pipeline de transcrição/visão computacional).
 - Não gera um documento/relatório separado do checklist — só preenche o
   checklist estruturado que já existe.
-- Não fica ativo com uma API paga desde já — ver seção 3.
+
+> **Atualização de 2026-08-28:** a Fase 8 previu ativar isso depois, com
+> MiniMax, quando o fundador assinasse. O fundador decidiu ativar
+> imediatamente usando o OpenRouter (openrouter.ai) — um roteador que dá
+> acesso a vários modelos (incluindo Claude, a mesma família de modelo
+> usada no desenvolvimento deste projeto) por uma chave só, sem
+> assinatura de longo prazo, cobrança por uso. **O Copiloto de IA está
+> ativo em produção desde 2026-08-28** — ver seção 3.
 
 ## 2. Modelo do checklist (já existe, não muda)
 
@@ -61,32 +68,52 @@ nomes de campo de `UpdateChecklistItemDto`
 Copiloto de IA **reusa exatamente esses 16 `item_key` e esse vocabulário
 de status** — não inventa categoria nova.
 
-## 3. Provedor de IA: MiniMax, plugado mas desligado
+## 3. Provedor de IA: OpenRouter (ativo), MiniMax pronto como alternativa
 
-Decisão confirmada com o fundador em 2026-08-27: a assinatura paga da
-API do MiniMax só acontece **depois** dos testes internos. Até lá, o
-código de integração já é escrito e fica completo, mas atrás de uma
-chave vazia — mesmo padrão já usado neste projeto com
-`MERCADOPAGO_PROD_ACCESS_TOKEN` (presente no `.env`, não usado até o
-fundador decidir vender de verdade).
+**Atualizado em 2026-08-28.** Decisão original de 2026-08-27 era deixar
+o MiniMax "pronto mas desligado" até o fundador assinar. O fundador
+decidiu não esperar — ativou o Copiloto de IA imediatamente usando o
+**OpenRouter** (openrouter.ai), um roteador que dá acesso a vários
+modelos (Claude, GPT, MiniMax, etc.) atrás de uma única chave, cobrança
+por uso, sem assinatura de longo prazo. `FieldReportExtractor` (seção
+4.1) é a interface trocável que torna isso possível sem redesenho —
+`MiniMaxExtractorService` continua no código, testado, pronta pra virar
+o provedor ativo de novo só trocando o `useClass` de `AiCopilotModule`.
 
-**API do MiniMax (confirmado via documentação oficial,
-`platform.minimax.io/docs/api-reference/text-openai-api`):**
-- Compatível com o formato OpenAI Chat Completions.
-- Endpoint: `https://api.minimax.io/v1/chat/completions`.
-- Autenticação: header `Authorization: Bearer <MINIMAX_API_KEY>`.
-- Corpo mínimo: `{ model, messages: [{role, content}] }`.
-- Saída estruturada via `tools` (function calling) — o modelo devolve
-  `tool_calls` na mensagem de resposta, no mesmo formato do OpenAI SDK.
+**API do OpenRouter (confirmado via documentação oficial,
+`openrouter.ai/docs/api-reference/chat-completion`):**
+- Compatível com o formato OpenAI Chat Completions — mesmo formato de
+  `tools`/`tool_choice`/`tool_calls` já usado pro MiniMax, então
+  `OpenRouterExtractorService` reusa a mesma lógica de prompt, schema e
+  filtro anti-alucinação (`checklist-extraction-shared.ts`, extraído
+  nesta atualização pra não duplicar entre os dois provedores).
+- Endpoint: `https://openrouter.ai/api/v1/chat/completions`.
+- Autenticação: header `Authorization: Bearer <OPENROUTER_API_KEY>`.
+- Headers recomendados pelo OpenRouter (enviados, não obrigatórios):
+  `HTTP-Referer: https://montesesst.com.br`, `X-Title: Montese SST -
+  Copiloto de IA`.
+- Nomenclatura de modelo: `provedor/modelo` — modelo ativo:
+  `anthropic/claude-sonnet-5`, confirmado disponível no catálogo do
+  OpenRouter (mesma família de modelo usada no desenvolvimento deste
+  projeto).
+- `max_tokens: 1024` explícito no corpo da requisição — **achado real
+  durante o teste de validação (seção 7):** sem isso, o pedido tenta
+  usar o máximo de tokens de saída do modelo por padrão (65536 no Claude
+  Sonnet 5), o que estourou o saldo de crédito da conta OpenRouter do
+  fundador na primeira tentativa. 1024 sobra com folga pro tamanho real
+  da resposta (checklist de no máximo 16 itens, notes curtas).
 
-**Variável de ambiente nova:** `MINIMAX_API_KEY` (vazia no `.env` até o
-fundador assinar) e `MINIMAX_MODEL` (ex.: `MiniMax-M3`, com valor
-default no código pra não exigir configuração extra).
+**Variáveis de ambiente:** `OPENROUTER_API_KEY` (preenchida,
+`docker-compose.yml` repassa pro container) e `OPENROUTER_MODEL`
+(default `anthropic/claude-sonnet-5` no código, o fundador escolhe
+outro modelo direto no painel do OpenRouter sem precisar de deploy
+novo). `MINIMAX_API_KEY`/`MINIMAX_MODEL` continuam existindo, vazias,
+mesmo padrão de antes — trocar de provedor no futuro é só reativar.
 
-**Sem chave configurada:** o endpoint responde `503` com uma mensagem
-clara ("Copiloto de IA ainda não está disponível") **antes** de tentar
-qualquer chamada de rede — nunca deixa a tentativa falhar com um erro
-de rede genérico.
+**Sem chave configurada** (qualquer um dos dois provedores): o endpoint
+responde `503` com uma mensagem clara ("Copiloto de IA ainda não está
+disponível") **antes** de tentar qualquer chamada de rede — nunca deixa
+a tentativa falhar com um erro de rede genérico.
 
 ## 4. Backend
 
@@ -112,15 +139,28 @@ implementação real por uma falsa nos testes (`overrideProvider`), mesmo
 padrão já usado com `MercadoPagoService` em
 `subscriptions-update-status.e2e-spec.ts`.
 
-### 4.2 Implementação real (MiniMax)
+### 4.2 Implementações reais (OpenRouter ativo, MiniMax pronta)
 
-`backend/src/ai-copilot/minimax-extractor.service.ts` implementa
-`FieldReportExtractor`:
+**Atualizado em 2026-08-28:** o prompt (seção 5), o JSON Schema, e a
+lógica de parsing/filtro anti-alucinação foram extraídos pra
+`backend/src/ai-copilot/checklist-extraction-shared.ts`
+(`SYSTEM_PROMPT`, `TOOL_SCHEMA`, `buildChatCompletionBody`,
+`parseChatCompletionToolCall`, `filterValidSuggestions`) — reusados por
+`minimax-extractor.service.ts` e pelo novo
+`openrouter-extractor.service.ts`, já que os dois provedores falam o
+mesmo formato OpenAI-compatible. Cada um só difere em endpoint, nome de
+variável de ambiente e headers extras (o OpenRouter recomenda
+`HTTP-Referer`/`X-Title`).
 
-1. Se `process.env.MINIMAX_API_KEY` estiver vazio, lança
+`OpenRouterExtractorService` (ativo, ligado em `AiCopilotModule`) e
+`MiniMaxExtractorService` (pronta, não ativa) implementam
+`FieldReportExtractor` com a mesma sequência de passos:
+
+1. Se a variável de ambiente da chave (`OPENROUTER_API_KEY` ou
+   `MINIMAX_API_KEY`, conforme o provedor) estiver vazia, lança
    `ServiceUnavailableException('Copiloto de IA ainda não está
    disponível')` **antes** de montar a requisição.
-2. Monta a chamada HTTP pro endpoint do MiniMax (via `fetch` nativo do
+2. Monta a chamada HTTP pro endpoint do provedor (via `fetch` nativo do
    Node 20, sem SDK novo — o formato é simples o bastante pra não
    justificar uma dependência nova) com:
    - `system` message: o prompt da seção 5 abaixo, com os 16 `item_key`
@@ -134,7 +174,7 @@ padrão já usado com `MercadoPagoService` em
    cada `status` está em `['C','NC','NA']` — descarta silenciosamente
    qualquer item fora disso (a IA pode alucinar uma chave; nunca deixa
    passar pro frontend um `item_key` que o checklist não reconhece).
-4. Erros de rede/HTTP da API do MiniMax propagam como `502 Bad Gateway`
+4. Erros de rede/HTTP da API do provedor propagam como `502 Bad Gateway`
    (a chamada existe mas falhou) — distinto do `503` de "não
    configurado" acima.
 
@@ -297,10 +337,11 @@ confirmada pelo fundador e já registrada na categoria G da
 
 Mesma frase-chave já publicada em `/compromisso-sst`.
 
-## 7. Validação manual do prompt (2026-08-27)
+## 7. Validação do prompt: manual (2026-08-27) e real (2026-08-28)
 
-Dois exemplos rodados manualmente nesta conversa, simulando o papel do
-MiniMax, antes de qualquer código:
+**Rodada 1 — manual, 2026-08-27.** Dois exemplos rodados manualmente
+nesta conversa, simulando o papel da IA, antes de qualquer código
+(não havia chave de nenhum provedor ainda):
 
 **Exemplo 1** — relato rico: *"Cheguei na obra, os funcionários estavam
 todos de capacete e óculos, mas dois sem protetor auricular perto da
@@ -309,23 +350,63 @@ extintor com o lacre rompido e a data vencida desde março. As rotas de
 fuga estavam sinalizadas mas tinha material de obra bloqueando uma
 delas."*
 
-Extração esperada: `uso_adequado` → NC (protetor auricular ausente
-perto da serra); `ordem_servico` → C; `extintores` → NC (lacre rompido,
-vencido); `rotas_fuga` → NC (bloqueada por material); `sinalizacao` → C
-(a sinalização em si estava correta, distinto da rota estar
-fisicamente obstruída). Mostra que o modelo consegue diferenciar dois
-itens relacionados (sinalização vs. rota de fuga) sem confundir um pelo
-outro.
+Extração esperada (manual): `uso_adequado` → NC; `ordem_servico` → C;
+`extintores` → NC; `rotas_fuga` → NC; `sinalizacao` → C.
 
 **Exemplo 2** — relato ambíguo: *"Empresa parece organizada, conversar
 com o encarregado sobre treinamento."*
 
-Extração esperada: nenhum item — "conversar sobre treinamento" não
-afirma se o treinamento existe ou não, então `treinamento_operador` fica
-de fora, conforme a regra de não adivinhar.
+Extração esperada (manual): nenhum item.
 
-Os dois casos validam o desenho do prompt e do schema antes de gastar
-qualquer chamada real (não há chave do MiniMax ainda).
+**Rodada 2 — real, contra a API do OpenRouter (`anthropic/claude-sonnet-5`),
+2026-08-28.** Os mesmos dois exemplos, chamada HTTP de verdade,
+resposta literal do modelo:
+
+**Exemplo 1 — resultado real:**
+```json
+{
+  "items": [
+    { "item_key": "uso_adequado", "status": "NC", "notes": "Funcionários com capacete e óculos, mas dois sem protetor auricular perto da serra circular." },
+    { "item_key": "ordem_servico", "status": "C", "notes": "Ordem de serviço afixada corretamente." },
+    { "item_key": "extintores", "status": "NC", "notes": "Extintor com lacre rompido e data vencida desde março." },
+    { "item_key": "rotas_fuga", "status": "NC", "notes": "Rotas de fuga sinalizadas, mas uma estava bloqueada por material de obra." },
+    { "item_key": "sinalizacao", "status": "C", "notes": "Rotas de fuga estavam sinalizadas." }
+  ]
+}
+```
+Bate item a item com a extração manual prevista — inclusive a
+diferenciação entre `sinalizacao` (C) e `rotas_fuga` (NC) que a
+validação manual apontou como o teste mais difícil do exemplo. Custo:
+1981 tokens, US$ 0,0063.
+
+**Exemplo 2 — resultado real (diverge da previsão manual):**
+```json
+{
+  "items": [
+    { "item_key": "treinamento_operador", "status": "NA", "notes": "Necessário conversar com o encarregado sobre treinamento; sem informação conclusiva no momento." }
+  ]
+}
+```
+A previsão manual era que o modelo deixaria o relato ambíguo sem
+nenhum item. Na prática, o modelo real incluiu `treinamento_operador`
+como `NA` com uma nota que já sinaliza a ambiguidade ("sem informação
+conclusiva"), em vez de omitir o item por completo. **Avaliação: é um
+comportamento aceitável, não um bug** — o item aparece pro técnico
+revisar com a incerteza já explícita na nota, em vez de desaparecer
+silenciosamente; a garantia que importa (revisão humana obrigatória
+antes de salvar, seção 6) continua intacta de qualquer forma. Não foi
+feito ajuste de prompt em cima de uma amostra só — fica registrado como
+comportamento observado, não como defeito a corrigir às pressas.
+Custo: 1682 tokens, US$ 0,0041.
+
+**Achado real de configuração, corrigido depois desta validação:** a
+primeira tentativa do Exemplo 1 falhou com erro 402 (crédito
+insuficiente) — sem `max_tokens` explícito no corpo da requisição, o
+pedido tentava usar o teto de saída do modelo (65536 tokens no Claude
+Sonnet 5), que excedia o saldo da conta OpenRouter do fundador.
+Corrigido adicionando `max_tokens: 1024` em
+`checklist-extraction-shared.ts` (ver seção 3) — sobra com folga pro
+tamanho real da resposta.
 
 ## 8. Testes
 
@@ -338,14 +419,19 @@ existe chave configurada ainda:
   sugestões mapeadas corretamente pros 16 `item_key`.
 - `item_key` fora da lista de 16 (simulando alucinação da IA) é
   descartado, não aparece na resposta.
-- Sem `MINIMAX_API_KEY` (testando a implementação real, não a falsa):
-  `503` antes de qualquer tentativa de rede.
+- Sem a chave do provedor ativo (testando a implementação real, não a
+  falsa): `503` antes de qualquer tentativa de rede — coberto pros dois
+  provedores (`ai-copilot-minimax-extractor.e2e-spec.ts` e
+  `ai-copilot-openrouter-extractor.e2e-spec.ts`).
 - Papel `empresa` ou `admin`: `403`.
 - Técnico/parceiro sem vínculo com a inspeção: `404` (RLS esconde a
   linha, mesmo comportamento de `PATCH .../items/:itemId` hoje).
+- `report_text` acima de 5000 caracteres: `400` (adicionado em
+  2026-08-28, ver seção 10).
 
-## 9. Decisões confirmadas (brainstorming de 2026-08-27)
+## 9. Decisões confirmadas
 
+**2026-08-27 (brainstorming original):**
 - Entrada: só texto livre digitado — sem áudio, sem foto.
 - Saída: preenche o checklist estruturado já existente — não gera
   documento separado.
@@ -357,6 +443,19 @@ existe chave configurada ainda:
   prompt manualmente (seção 7), não substituir a chamada real em
   produção.
 
+**2026-08-28 (ativação real):**
+- Fundador decidiu não esperar o MiniMax — ativou via OpenRouter
+  imediatamente, usando `anthropic/claude-sonnet-5` como modelo padrão.
+- Papel do Claude mudou de "só valida o prompt manualmente" pra "é
+  literalmente o modelo por trás do provedor ativo" — a mesma família
+  de modelo, agora chamada de verdade via API, não mais simulada em
+  conversa.
+- Rate limit dedicado (`AI_DRAFT_RATE_LIMIT_MAX`, default 20/hora por
+  IP) e `@MaxLength(5000)` em `report_text` implementados na hora da
+  ativação, não deixados como pendência — decisão de que, uma vez que
+  chamadas reais custam dinheiro de verdade, essas proteções não
+  esperam um "depois".
+
 ## 10. Pendências
 
 Implementação, revisão por task e revisão final de todo o branch
@@ -366,33 +465,30 @@ tasks — os 6 Important (mais 2 Minor baratos de agrupar) já foram
 corrigidos num fix wave único, re-revisado e confirmado limpo. Os
 Minor restantes ficam registrados aqui, nenhum bloqueia o fechamento:
 
-**Antes de `MINIMAX_API_KEY` ser preenchida de verdade (checklist de
-pré-ativação):**
-- [ ] Assinatura real da API do MiniMax — decisão e ação do fundador,
-      fora do escopo técnico deste sub-projeto.
-- [ ] Rodar os dois exemplos da seção 7 contra a API real e comparar
-      com a extração manual, antes de liberar pra uso em produção.
-- [ ] Custo por chamada (tokens de entrada/saída) não foi medido.
-- [ ] Sem rate limit próprio no endpoint — hoje cai no limite global
-      de 300/5min compartilhado com todas as rotas do IP. Vale um
-      `@RateLimit(...)` dedicado antes da chamada virar paga de
-      verdade (o projeto já tem esse padrão pronto, usado em
-      login/cadastro/contato).
-- [ ] Sem `@MaxLength` em `report_text` — hoje só o teto de ~100kb do
-      body parser do Express. Um limite explícito (ex.: 5000
-      caracteres) é barato e evita chamada cara por acidente.
+**Checklist de pré-ativação — fechado em 2026-08-28:**
+- [x] ~~Assinatura real de um provedor de IA~~ — ✅ OpenRouter, não
+      MiniMax (decisão do fundador, ver seção 3/9).
+- [x] ~~Rodar os dois exemplos da seção 7 contra a API real~~ — ✅ feito,
+      resultado real documentado na seção 7 (inclusive uma divergência
+      honesta da previsão manual no Exemplo 2, avaliada e aceita).
+- [x] ~~Custo por chamada~~ — ✅ medido nos dois exemplos reais: entre
+      US$ 0,004 e US$ 0,0063 por relato, com `anthropic/claude-sonnet-5`.
+- [x] ~~Rate limit próprio no endpoint~~ — ✅
+      `AI_DRAFT_RATE_LIMIT_MAX`/`AI_DRAFT_RATE_LIMIT_WINDOW_SECONDS`
+      (default 20/hora por IP), mesmo padrão de login/cadastro/contato.
+- [x] ~~`@MaxLength` em `report_text`~~ — ✅ 5000 caracteres, testado.
 
-**Achados menores da revisão, sem prazo:**
+**Achados menores da revisão de 2026-08-27, ainda sem prazo (nenhum
+crítico, nenhum bloqueia uso real):**
 - [ ] `InspectionsService.findOne` (reusado pra checar existência/RLS
       do endpoint `ai-draft`) carrega itens de checklist e planos de
       ação inteiros só pra validar acesso — funciona, mas é trabalho
       de banco desperdiçado por chamada. Otimização, não bug.
 - [ ] O endpoint não checa `status === 'rascunho'` — uma inspeção já
-      concluída aceita `ai-draft` e queima uma chamada paga (quando a
-      chave existir) pra sugestões que nunca poderão ser aplicadas
-      (`updateItem` rejeitaria o `PATCH` de qualquer forma). O
-      frontend já bloqueia isso via `isDraft`, só alcançável via API
-      direta.
+      concluída aceita `ai-draft` e queima uma chamada paga de verdade
+      pra sugestões que nunca poderão ser aplicadas (`updateItem`
+      rejeitaria o `PATCH` de qualquer forma). O frontend já bloqueia
+      isso via `isDraft`, só alcançável via API direta.
 - [ ] `POST /inspections/:id/ai-draft` devolve `201`, mas o endpoint
       não cria nada — consistente com `/concluir` no mesmo controller
       (mesmo "erro"), baixa prioridade.
@@ -403,12 +499,13 @@ pré-ativação):**
       (nunca aplicadas nem descartadas) as descarta sem aviso — sem
       risco de dado errado (o item aparece visivelmente vazio), só
       perda de trabalho de digitação do relato.
-- [ ] `AuditInterceptor` já grava uma linha em `audit_log` com
-      `action='ai-draft'` pra cada chamada — bom pra conformidade
-      (trilha de uso da IA por inspeção), mas foi um efeito colateral
-      do interceptor global, não uma decisão consciente desta fase.
-      Vale documentar como decisão intencional quando a chave for
-      ativada.
 - [ ] `.env.example` continua sem placeholders de `MERCADOPAGO_*`
       (gap pré-existente desde a Fase 7B, não introduzido aqui — só
       documentado durante a revisão final desta fase).
+
+**Decisão registrada (não é mais pendência):** `AuditInterceptor` grava
+uma linha em `audit_log` com `action='ai-draft'` pra cada chamada real —
+efeito colateral do interceptor global (Fase 1), não código novo desta
+fase. Avaliado em 2026-08-28: é **desejável** — vira trilha de uso do
+Copiloto por inspeção, útil pra auditoria de custo e de uso indevido.
+Mantido como está, decisão consciente, não acidental.
