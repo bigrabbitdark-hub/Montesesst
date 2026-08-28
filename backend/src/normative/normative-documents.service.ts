@@ -173,7 +173,19 @@ export class NormativeDocumentsService {
   // withTenantContext do controller reverteria a transação inteira,
   // inclusive a troca de status já aplicada acima. `indexed_at`
   // simplesmente continua NULL (ver Global Constraints do plano).
+  //
+  // Isso sozinho NÃO basta pra falhas de SQL (ex.: embedding com
+  // dimensão errada pro `vector(1536)`, violação de constraint): o
+  // Postgres aborta a transação inteira no erro (25P02), e qualquer
+  // comando seguinte no mesmo client — inclusive o `findOne` que
+  // `approve`/`reindex` chamam depois — falha com "current transaction
+  // is aborted", propagando pra fora e derrubando o withTenantContext
+  // (rollback da transação inteira, desfazendo a troca de status já
+  // aplicada). Por isso o SAVEPOINT: ROLLBACK TO SAVEPOINT desfaz só o
+  // trabalho de indexação parcial e limpa o estado abortado, deixando a
+  // transação externa livre pra prosseguir e commitar normalmente.
   private async indexDocument(client: PoolClient, documentId: string, rawText: string): Promise<void> {
+    await client.query('SAVEPOINT indexing');
     try {
       const chunks = splitIntoChunks(rawText);
       for (let i = 0; i < chunks.length; i++) {
@@ -185,8 +197,10 @@ export class NormativeDocumentsService {
         );
       }
       await client.query(`UPDATE normative_documents SET indexed_at = now() WHERE id = $1`, [documentId]);
+      await client.query('RELEASE SAVEPOINT indexing');
     } catch (err) {
       this.logger.error(`Falha ao indexar documento ${documentId}`, (err as Error).stack);
+      await client.query('ROLLBACK TO SAVEPOINT indexing');
     }
   }
 }

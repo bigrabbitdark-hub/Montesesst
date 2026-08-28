@@ -127,6 +127,33 @@ describe('Fluxo de aprovação/indexação de normative_documents (e2e)', () => 
     expect(res.body.indexed_at).toBeNull();
   });
 
+  it('falha SQL real (dimensão de vetor errada) dentro do loop de indexação também não desfaz a aprovação', async () => {
+    const documentId = await insertPendingDocument('Texto que vai falhar com erro real de SQL ao indexar.');
+    // Diferente do teste acima (rejeição JS da Promise do provider), aqui o
+    // provider RESOLVE normalmente, mas com um vetor de dimensão errada
+    // (3, não 1536) — o erro só acontece dentro do client.query do INSERT,
+    // um erro de Postgres (25P02) que aborta a transação inteira até um
+    // ROLLBACK/ROLLBACK TO SAVEPOINT explícito. Sem o SAVEPOINT em
+    // indexDocument, o findOne subsequente dentro de approve() falharia
+    // com "current transaction is aborted", propagando pro
+    // withTenantContext e desfazendo a troca de status pra vigente.
+    fakeEmbed.mockResolvedValueOnce([0.1, 0.2, 0.3]);
+
+    const res = await request(app.getHttpServer())
+      .post(`/normative-documents/${documentId}/approve`)
+      .set('Authorization', `Bearer ${tokenAdmin}`);
+
+    expect(res.status).toBe(201);
+    expect(res.body.status).toBe('vigente');
+    expect(res.body.indexed_at).toBeNull();
+
+    const chunks = await (db as any).client.query(
+      'SELECT chunk_index FROM normative_document_chunks WHERE document_id = $1',
+      [documentId],
+    );
+    expect(chunks.rows).toHaveLength(0);
+  });
+
   it('reindex reprocessa um documento vigente com indexação pendente', async () => {
     const documentId = await insertPendingDocument('Texto pra reindexar depois.');
     fakeEmbed.mockRejectedValueOnce(new Error('falha simulada'));
