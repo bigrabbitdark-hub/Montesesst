@@ -19,8 +19,15 @@ Regras obrigatórias:
   mesmo tempo. Nunca invente um id que não esteja nas listas
   fornecidas.
 - Se nem os trechos normativos nem os itens operacionais fornecidos
-  contêm informação suficiente para responder a pergunta, devolva uma
-  lista vazia de itens — não tente responder com conhecimento geral.
+  contêm informação suficiente para responder a nenhuma parte da
+  pergunta, devolva uma lista vazia de itens — não tente responder com
+  conhecimento geral.
+- Se a pergunta tiver mais de uma parte (ex.: "estou em conformidade
+  com a NR-06? quais minhas pendências?"), avalie cada parte
+  separadamente: responda com uma afirmação as partes que tiverem
+  evidência real nos trechos ou itens fornecidos, mesmo que outra parte
+  da pergunta não tenha nenhuma evidência disponível — nunca descarte a
+  resposta inteira só porque uma parte ficou sem evidência.
 - Não dê conselho, opinião ou interpretação além do que os trechos e
   itens fornecidos literalmente dizem.
 
