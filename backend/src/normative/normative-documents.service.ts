@@ -1,4 +1,4 @@
-import { BadRequestException, Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PoolClient } from 'pg';
 import { randomUUID, createHash } from 'crypto';
 import { R2Service } from '../documents/r2.service';
@@ -135,9 +135,28 @@ export class NormativeDocumentsService {
     embeddedChunks: EmbeddedChunk[],
   ): Promise<NormativeDocument> {
     const doc = await this.findOne(client, documentId);
+    // Reconfere o status aqui — não só em prepareApproval — porque
+    // computeEmbeddedChunks roda entre as duas transações sem nenhum lock,
+    // e pode levar de segundos a minutos (uma chamada de embedding por
+    // chunk). Nessa janela outro admin (ou o mesmo, em outra aba) pode
+    // rejeitar este mesmo documento; sem essa reconferência, a aprovação
+    // em andamento reverteria a rejeição e publicaria conteúdo já
+    // explicitamente rejeitado. Achado da revisão final da Fase 9 (fix
+    // wave), corrigido como ajuste separado após aprovação do fundador.
+    if (doc.status !== 'aguardando_validacao') {
+      throw new ConflictException(
+        'O status deste documento mudou enquanto a indexação estava em andamento — aprovação cancelada',
+      );
+    }
+    // AND id <> $2: proteção redundante contra o documento se tornar "a
+    // vigente anterior" de si mesmo (ex.: clique duplo no botão Aprovar).
+    // Na prática, a reconferência de status acima já torna isso
+    // inalcançável — um documento não pode estar simultaneamente
+    // aguardando_validacao (checado acima) e vigente (o que essa query
+    // busca) — mas custa nada manter a exclusão explícita aqui também.
     const previous = await client.query<{ id: string }>(
-      `SELECT id FROM normative_documents WHERE source_id = $1 AND status = 'vigente'`,
-      [doc.source_id],
+      `SELECT id FROM normative_documents WHERE source_id = $1 AND status = 'vigente' AND id <> $2`,
+      [doc.source_id, documentId],
     );
     const previousId = previous.rows[0]?.id ?? null;
 
@@ -183,6 +202,16 @@ export class NormativeDocumentsService {
     documentId: string,
     embeddedChunks: EmbeddedChunk[],
   ): Promise<NormativeDocument> {
+    // Mesma reconferência de finalizeApproval, mesmo motivo: o documento
+    // pode ter deixado de ser 'vigente' (ex.: substituído por uma
+    // aprovação concorrente da mesma fonte) durante a janela de
+    // computeEmbeddedChunks.
+    const doc = await this.findOne(client, documentId);
+    if (doc.status !== 'vigente') {
+      throw new ConflictException(
+        'O status deste documento mudou enquanto a indexação estava em andamento — reindexação cancelada',
+      );
+    }
     await this.replaceChunks(client, documentId, embeddedChunks);
     return this.findOne(client, documentId);
   }

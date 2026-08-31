@@ -1,8 +1,9 @@
-import { INestApplication } from '@nestjs/common';
+import { ConflictException, INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { EMBEDDING_PROVIDER } from '../src/normative/embedding-provider.interface';
+import { NormativeDocumentsService } from '../src/normative/normative-documents.service';
 import { TestDb } from './db-test-helper';
 
 // A coluna normative_document_chunks.embedding é vector(1536) (migration
@@ -18,6 +19,7 @@ describe('Fluxo de aprovação/indexação de normative_documents (e2e)', () => 
   let app: INestApplication;
   let db: TestDb;
   let tokenAdmin: string;
+  let adminUserId: string;
   let sourceId: string;
   let fakeEmbed: jest.Mock;
 
@@ -34,6 +36,7 @@ describe('Fluxo de aprovação/indexação de normative_documents (e2e)', () => 
     await db.connect();
 
     const admin = await db.createUserWithRole('admin', 'Admin Aprovacao Normativa Teste');
+    adminUserId = admin.userId;
     const loginAdmin = await request(app.getHttpServer())
       .post('/auth/login')
       .send({ email: admin.email, password: admin.password });
@@ -255,6 +258,41 @@ describe('Fluxo de aprovação/indexação de normative_documents (e2e)', () => 
       'SELECT id FROM normative_document_chunks WHERE document_id = $1',
       [documentId],
     );
+    expect(chunks.rows).toHaveLength(0);
+  });
+
+  it('rejeição concorrente durante a espera do embedding impede a ressurreição do documento', async () => {
+    // Simula a condição de corrida achada na revisão final: entre
+    // prepareApproval (lê/valida) e finalizeApproval (escreve), o
+    // controller roda computeEmbeddedChunks — uma espera de segundos a
+    // minutos, sem nenhum lock no banco. Se outro admin (ou o mesmo, em
+    // outra aba) rejeitar o mesmo documento nessa janela, a aprovação em
+    // andamento não pode reverter a rejeição.
+    const documentId = await insertPendingDocument(
+      'Texto que será rejeitado enquanto uma aprovação concorrente está em andamento.',
+    );
+    const documents = app.get(NormativeDocumentsService);
+    const client = (db as any).client;
+
+    const doc = await documents.prepareApproval(client, documentId);
+    expect(doc.status).toBe('aguardando_validacao');
+
+    // A "outra aba" rejeita o documento enquanto a primeira aprovação
+    // ainda estaria esperando a IA gerar os embeddings.
+    await documents.reject(client, documentId, adminUserId, 'Rejeitado por outro admin durante aprovação concorrente.');
+
+    const embeddedChunks = await documents.computeEmbeddedChunks(doc.raw_text);
+
+    await expect(documents.finalizeApproval(client, documentId, adminUserId, embeddedChunks)).rejects.toThrow(
+      ConflictException,
+    );
+
+    const final = await client.query('SELECT status FROM normative_documents WHERE id = $1', [documentId]);
+    expect(final.rows[0].status).toBe('rejeitado');
+
+    const chunks = await client.query('SELECT id FROM normative_document_chunks WHERE document_id = $1', [
+      documentId,
+    ]);
     expect(chunks.rows).toHaveLength(0);
   });
 
