@@ -163,12 +163,26 @@ export class NormativeDocumentsService {
     if (previousId) {
       await client.query(`UPDATE normative_documents SET status = 'substituido' WHERE id = $1`, [previousId]);
     }
-    await client.query(
+    // WHERE ... AND status = 'aguardando_validacao' (não só WHERE id = $1)
+    // fecha a lacuna que sobrava mesmo com a checagem acima: duas chamadas
+    // concorrentes (ex.: clique duplo) podiam passar as duas pelo `if`
+    // acima antes de qualquer uma escrever. O UPDATE com status na
+    // cláusula WHERE é atômico — o Postgres trava a linha na primeira
+    // chamada que chegar; a segunda, ao reavaliar o WHERE depois que a
+    // trava libera, já vê status = 'vigente' e não casa nenhuma linha
+    // (rowCount 0), então lança em vez de reaplicar dados possivelmente
+    // obsoletos por cima. Achado da revisão de código deste próprio ajuste.
+    const updated = await client.query(
       `UPDATE normative_documents
        SET status = 'vigente', reviewed_by_user_id = $2, reviewed_at = now(), supersedes_document_id = $3
-       WHERE id = $1`,
+       WHERE id = $1 AND status = 'aguardando_validacao'`,
       [documentId, reviewerUserId, previousId],
     );
+    if (updated.rowCount === 0) {
+      throw new ConflictException(
+        'O status deste documento mudou enquanto a indexação estava em andamento — aprovação cancelada',
+      );
+    }
 
     await this.replaceChunks(client, documentId, embeddedChunks);
 
