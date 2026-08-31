@@ -1,8 +1,39 @@
 import { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { AppModule } from '../src/app.module';
-import { NormativeMonitorService } from '../src/normative/normative-monitor.service';
+import { NormativeMonitorService, extractHtmlText } from '../src/normative/normative-monitor.service';
 import { TestDb } from './db-test-helper';
+
+// Lógica pura, sem I/O — mas fica neste arquivo (não um .util.ts à parte)
+// porque é específica do monitor, não reaproveitada em outro lugar.
+describe('extractHtmlText', () => {
+  it('corta o cabeçalho/menu de navegação e para antes do rodapé, quando a página usa o CMS Plone do gov.br (id="content-core")', () => {
+    const html = `
+      <html><body>
+        <header>Ir para o Conteúdo Abrir menu principal de navegação Termos mais buscados imposto de renda</header>
+        <nav>Institucional Acesso à Informação Organograma</nav>
+        <div id="content-core">
+          <p>A Norma Regulamentadora nº 6 (NR-06) regulamenta o uso de EPI.</p>
+        </div>
+        <div id="viewlet-below-content">
+          <footer>Redes sociais Twitter YouTube Facebook Creative Commons</footer>
+        </div>
+      </body></html>
+    `;
+
+    const text = extractHtmlText(html);
+
+    expect(text).toContain('A Norma Regulamentadora nº 6 (NR-06) regulamenta o uso de EPI.');
+    expect(text).not.toContain('Abrir menu principal de navegação');
+    expect(text).not.toContain('Redes sociais');
+  });
+
+  it('sem id="content-core" (outra fonte, outro formato), cai de volta pro HTML inteiro', () => {
+    const html = '<html><body><p>Texto de uma fonte que não usa o CMS do gov.br.</p></body></html>';
+
+    expect(extractHtmlText(html)).toBe('Texto de uma fonte que não usa o CMS do gov.br.');
+  });
+});
 
 // Usa o AppModule inteiro (não um módulo mínimo) porque
 // NormativeMonitorService depende de DatabaseService, que por sua vez

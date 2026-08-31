@@ -4,8 +4,24 @@ import { PDFParse } from 'pdf-parse';
 import { DatabaseService } from '../common/database/database.service';
 import { NormativeDocumentsService } from './normative-documents.service';
 
-function extractHtmlText(html: string): string {
-  return html
+// As páginas de norma do gov.br/trabalho (CMS Plone) têm cabeçalho, menu de
+// navegação e rodapé institucional enormes em volta do texto real da norma
+// — sem recortar, o texto extraído fica dominado por "Ir para o Conteúdo",
+// itens de menu e links de rodapé, e o conteúdo de verdade só aparece bem
+// mais adiante (confirmado empiricamente ao cadastrar as NRs reais em
+// 2026-08-31). `id="content-core"` é o contêiner do corpo do artigo nesse
+// CMS; `viewlet-below-content` marca onde o rodapé de navegação recomeça
+// logo depois. Quando a página não usa esse CMS (outra entidade, formato
+// diferente), cai de volta pro HTML inteiro — heurística, não garantia.
+export function extractHtmlText(html: string): string {
+  const startMatch = html.match(/<div[^>]*id=["']content-core["'][^>]*>/i);
+  let scoped = html;
+  if (startMatch) {
+    const start = startMatch.index as number;
+    const endIndex = html.indexOf('viewlet-below-content', start);
+    scoped = endIndex !== -1 ? html.slice(start, endIndex) : html.slice(start);
+  }
+  return scoped
     .replace(/<script[\s\S]*?<\/script>/gi, ' ')
     .replace(/<style[\s\S]*?<\/style>/gi, ' ')
     .replace(/<[^>]+>/g, ' ')
