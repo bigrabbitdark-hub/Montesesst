@@ -114,29 +114,46 @@ describe('Fluxo de aprovação/indexação de normative_documents (e2e)', () => 
     expect(anterior.rows[0].status).toBe('substituido');
   });
 
-  it('falha na indexação deixa indexed_at nulo, mas a aprovação não é desfeita', async () => {
-    const documentId = await insertPendingDocument('Texto que vai falhar ao indexar.');
+  it('falha JS pura no provedor de embedding aborta a aprovação inteira, sem mudar o status', async () => {
+    // No design pós-C1b, computeEmbeddedChunks roda ANTES de qualquer
+    // withTenantContext de escrita (prepareApproval só lê/valida) — uma
+    // rejeição de Promise aqui nunca chega perto de mudar o status pra
+    // vigente, então a resposta é um erro e o documento continua
+    // exatamente como estava (aguardando_validacao, indexed_at nulo).
+    // Isso é diferente da falha de SQL real testada abaixo, que só
+    // acontece DEPOIS que o status já mudou dentro da mesma transação de
+    // finalizeApproval — daí o SAVEPOINT.
+    const documentId = await insertPendingDocument('Texto que vai falhar ao computar embeddings.');
     fakeEmbed.mockRejectedValueOnce(new Error('falha simulada no provedor de embedding'));
 
     const res = await request(app.getHttpServer())
       .post(`/normative-documents/${documentId}/approve`)
       .set('Authorization', `Bearer ${tokenAdmin}`);
 
-    expect(res.status).toBe(201);
-    expect(res.body.status).toBe('vigente');
-    expect(res.body.indexed_at).toBeNull();
+    expect(res.status).toBeGreaterThanOrEqual(500);
+
+    const doc = await (db as any).client.query(
+      'SELECT status, indexed_at FROM normative_documents WHERE id = $1',
+      [documentId],
+    );
+    expect(doc.rows[0].status).toBe('aguardando_validacao');
+    expect(doc.rows[0].indexed_at).toBeNull();
   });
 
-  it('falha SQL real (dimensão de vetor errada) dentro do loop de indexação também não desfaz a aprovação', async () => {
+  it('falha SQL real (dimensão de vetor errada) dentro de replaceChunks também não desfaz a aprovação', async () => {
     const documentId = await insertPendingDocument('Texto que vai falhar com erro real de SQL ao indexar.');
-    // Diferente do teste acima (rejeição JS da Promise do provider), aqui o
-    // provider RESOLVE normalmente, mas com um vetor de dimensão errada
-    // (3, não 1536) — o erro só acontece dentro do client.query do INSERT,
-    // um erro de Postgres (25P02) que aborta a transação inteira até um
-    // ROLLBACK/ROLLBACK TO SAVEPOINT explícito. Sem o SAVEPOINT em
-    // indexDocument, o findOne subsequente dentro de approve() falharia
-    // com "current transaction is aborted", propagando pro
-    // withTenantContext e desfazendo a troca de status pra vigente.
+    // Diferente do teste acima (rejeição JS da Promise do provider, que
+    // agora acontece em computeEmbeddedChunks ANTES de qualquer escrita),
+    // aqui o provider RESOLVE normalmente, mas com um vetor de dimensão
+    // errada (3, não 1536) — passa por computeEmbeddedChunks sem erro, e
+    // o erro só acontece dentro do client.query do INSERT em
+    // replaceChunks, já dentro de finalizeApproval (depois que o status
+    // já virou vigente na mesma transação). É um erro de Postgres
+    // (25P02) que aborta a transação inteira até um ROLLBACK/ROLLBACK TO
+    // SAVEPOINT explícito. Sem o SAVEPOINT em replaceChunks, o findOne
+    // subsequente dentro de finalizeApproval falharia com "current
+    // transaction is aborted", propagando pro withTenantContext e
+    // desfazendo a troca de status pra vigente.
     fakeEmbed.mockResolvedValueOnce([0.1, 0.2, 0.3]);
 
     const res = await request(app.getHttpServer())
@@ -156,10 +173,16 @@ describe('Fluxo de aprovação/indexação de normative_documents (e2e)', () => 
 
   it('reindex reprocessa um documento vigente com indexação pendente', async () => {
     const documentId = await insertPendingDocument('Texto pra reindexar depois.');
-    fakeEmbed.mockRejectedValueOnce(new Error('falha simulada'));
-    await request(app.getHttpServer())
+    // Deixa o documento vigente com indexed_at nulo via uma falha real de
+    // SQL (vetor de dimensão errada) — não mais via rejeição JS pura do
+    // provider, que sob o novo design de fases aborta a aprovação inteira
+    // antes de qualquer mudança de status (ver primeiro teste do arquivo).
+    fakeEmbed.mockResolvedValueOnce([0.1, 0.2, 0.3]);
+    const approveRes = await request(app.getHttpServer())
       .post(`/normative-documents/${documentId}/approve`)
       .set('Authorization', `Bearer ${tokenAdmin}`);
+    expect(approveRes.body.status).toBe('vigente');
+    expect(approveRes.body.indexed_at).toBeNull();
 
     const res = await request(app.getHttpServer())
       .post(`/normative-documents/${documentId}/reindex`)
@@ -167,6 +190,72 @@ describe('Fluxo de aprovação/indexação de normative_documents (e2e)', () => 
 
     expect(res.status).toBe(201);
     expect(res.body.indexed_at).not.toBeNull();
+  });
+
+  it('reindex com falha SQL real não apaga os chunks antigos (corrige I3)', async () => {
+    const documentId = await insertPendingDocument('Texto vigente com chunk bom antes do reindex quebrado.');
+    const approveRes = await request(app.getHttpServer())
+      .post(`/normative-documents/${documentId}/approve`)
+      .set('Authorization', `Bearer ${tokenAdmin}`);
+    expect(approveRes.body.status).toBe('vigente');
+    expect(approveRes.body.indexed_at).not.toBeNull();
+
+    const chunksBefore = await (db as any).client.query(
+      'SELECT id, chunk_index FROM normative_document_chunks WHERE document_id = $1',
+      [documentId],
+    );
+    expect(chunksBefore.rows).toHaveLength(1);
+    const originalChunkId = chunksBefore.rows[0].id;
+    const originalIndexedAt = approveRes.body.indexed_at;
+
+    // Reindexação com vetor de dimensão errada — falha real de SQL dentro
+    // do savepoint que agora TAMBÉM guarda o DELETE (é isso que corrige
+    // I3): antes desta correção, reindex() apagava os chunks antigos
+    // ANTES de abrir o savepoint, então um reindex que falhasse destruía
+    // um índice saudável sem colocar nada no lugar. Com o DELETE dentro
+    // do mesmo savepoint que o INSERT que falha, o ROLLBACK TO SAVEPOINT
+    // desfaz os dois juntos — os chunks antigos sobrevivem intactos.
+    fakeEmbed.mockResolvedValueOnce([0.1, 0.2, 0.3]);
+    const reindexRes = await request(app.getHttpServer())
+      .post(`/normative-documents/${documentId}/reindex`)
+      .set('Authorization', `Bearer ${tokenAdmin}`);
+
+    expect(reindexRes.status).toBe(201);
+    // indexed_at não é tocado pelo ROLLBACK TO SAVEPOINT — continua com o
+    // valor da aprovação original, não nulo e não atualizado.
+    expect(reindexRes.body.indexed_at).toBe(originalIndexedAt);
+
+    const chunksAfter = await (db as any).client.query(
+      'SELECT id, chunk_index FROM normative_document_chunks WHERE document_id = $1',
+      [documentId],
+    );
+    expect(chunksAfter.rows).toHaveLength(1);
+    expect(chunksAfter.rows[0].id).toBe(originalChunkId);
+  });
+
+  it('aprovação com raw_text vazio marca vigente mas deixa indexed_at nulo, sem lançar (corrige I4)', async () => {
+    // Simula uma extração de texto que falhou upstream no monitor (ver
+    // NormativeMonitorService) e salvou raw_text vazio/só espaços — o DTO
+    // de criação normal nunca permitiria isso, então insere direto via
+    // SQL, contornando a validação de entrada, só pra simular o estado.
+    // splitIntoChunks('') devolve [] (chunking.util.ts), então
+    // computeEmbeddedChunks nunca chama o provider de embedding.
+    const documentId = await insertPendingDocument('   ');
+
+    const res = await request(app.getHttpServer())
+      .post(`/normative-documents/${documentId}/approve`)
+      .set('Authorization', `Bearer ${tokenAdmin}`);
+
+    expect(res.status).toBe(201);
+    expect(res.body.status).toBe('vigente');
+    expect(res.body.indexed_at).toBeNull();
+    expect(fakeEmbed).not.toHaveBeenCalled();
+
+    const chunks = await (db as any).client.query(
+      'SELECT id FROM normative_document_chunks WHERE document_id = $1',
+      [documentId],
+    );
+    expect(chunks.rows).toHaveLength(0);
   });
 
   it('rejeita com motivo', async () => {

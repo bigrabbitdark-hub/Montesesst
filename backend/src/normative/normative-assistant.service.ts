@@ -1,9 +1,9 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { PoolClient } from 'pg';
 import { EMBEDDING_PROVIDER, EmbeddingProvider } from './embedding-provider.interface';
 import { NORMATIVE_ANSWER_PROVIDER, NormativeAnswerProvider } from './normative-answer-provider.interface';
 import { toVectorLiteral } from './vector.util';
 import { envFloat } from '../common/env';
+import { DatabaseService } from '../common/database/database.service';
 
 const FALLBACK_MESSAGE = 'Não encontrei uma norma vigente na base que trate disso.';
 
@@ -33,22 +33,32 @@ export class NormativeAssistantService {
   constructor(
     @Inject(EMBEDDING_PROVIDER) private readonly embeddings: EmbeddingProvider,
     @Inject(NORMATIVE_ANSWER_PROVIDER) private readonly answerer: NormativeAnswerProvider,
+    private readonly db: DatabaseService,
   ) {}
 
-  async query(client: PoolClient, question: string): Promise<NormativeQueryResult> {
+  async query(question: string): Promise<NormativeQueryResult> {
     const questionEmbedding = await this.embeddings.embed(question);
     const threshold = envFloat('OPENROUTER_RAG_MIN_SIMILARITY', 0.75);
 
-    const { rows } = await client.query<RetrievedChunk>(
-      `SELECT c.id AS chunk_id, c.content, d.id AS document_id, s.title AS source_title, s.official_url,
-              1 - (c.embedding <=> $1::vector) AS similarity
-       FROM normative_document_chunks c
-       JOIN normative_documents d ON d.id = c.document_id
-       JOIN official_sources s ON s.id = d.source_id
-       WHERE d.status = 'vigente' AND d.indexed_at IS NOT NULL
-       ORDER BY c.embedding <=> $1::vector
-       LIMIT 6`,
-      [toVectorLiteral(questionEmbedding)],
+    // `official_sources`, `normative_documents` e
+    // `normative_document_chunks` não têm tenant_id nem RLS — não há
+    // contexto de tenant a propagar aqui. Usar withoutTenantContext (só
+    // pool.connect()/release(), sem BEGIN/COMMIT) garante que nenhuma
+    // conexão do pool fica presa "idle in transaction" durante as duas
+    // chamadas HTTP externas lentas (embed acima, answer abaixo) — ver
+    // Finding C1a da revisão final da Fase 9.
+    const { rows } = await this.db.withoutTenantContext((client) =>
+      client.query<RetrievedChunk>(
+        `SELECT c.id AS chunk_id, c.content, d.id AS document_id, s.title AS source_title, s.official_url,
+                1 - (c.embedding <=> $1::vector) AS similarity
+         FROM normative_document_chunks c
+         JOIN normative_documents d ON d.id = c.document_id
+         JOIN official_sources s ON s.id = d.source_id
+         WHERE d.status = 'vigente' AND d.indexed_at IS NOT NULL
+         ORDER BY c.embedding <=> $1::vector
+         LIMIT 6`,
+        [toVectorLiteral(questionEmbedding)],
+      ),
     );
 
     const relevant = rows.filter((r) => r.similarity >= threshold);
@@ -62,6 +72,10 @@ export class NormativeAssistantService {
     );
 
     const validChunkIds = new Set(relevant.map((r) => r.chunk_id));
+    // O Verificador garante que toda afirmação cita um trecho real, recuperado
+    // nesta consulta, de um documento vigente — não garante que a afirmação é
+    // fiel ao conteúdo desse trecho (isso dependeria de avaliar a claim contra
+    // o texto, o que este design deliberadamente não faz — ver spec §4.4).
     const survivingClaims = claims.filter(
       (claim) => claim.chunk_ids.length > 0 && claim.chunk_ids.every((id) => validChunkIds.has(id)),
     );

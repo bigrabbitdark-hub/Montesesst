@@ -225,8 +225,13 @@ linha `aguardando_validacao`. Publicação é sempre decisão humana
 6. Nenhum item sobrevive à verificação → mesma mensagem de fallback do
    passo 3.
 7. Resposta final = concatenação das `claim`s que sobreviveram +
-   lista de citações (título da fonte + `official_url` de cada
-   `chunk_id` usado), devolvida ao frontend.
+   lista de citações, uma por `document_id` distinto entre os
+   `chunk_id`s usados: `document_id`, título da fonte e `official_url`
+   como metadados (não como link direto) — é a partir do `document_id`
+   que o frontend monta o link de download via `GET
+   /normative-documents/:id/download` (Task 6), nunca aponta o usuário
+   direto pro `official_url` externo (ver Global Constraints do
+   plano, `docs/plans/fase-9-rag-normativo.md`).
 
 OpenRouter fora do ar → mesma mensagem de indisponibilidade já usada
 pelo Copiloto de relato (Fase 8).

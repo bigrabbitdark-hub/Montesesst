@@ -1,6 +1,7 @@
 'use client';
 
 import { FormEvent, useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 
 interface OfficialSource {
   id: string;
@@ -32,11 +33,14 @@ function authHeaders() {
 }
 
 export default function AdminNormativaPage() {
+  const router = useRouter();
+  const [ready, setReady] = useState(false);
   const [sources, setSources] = useState<OfficialSource[]>([]);
   const [pending, setPending] = useState<NormativeDocument[]>([]);
   const [vigentes, setVigentes] = useState<NormativeDocument[]>([]);
   const [detail, setDetail] = useState<DocumentDetail | null>(null);
   const [rejectReason, setRejectReason] = useState('');
+  const [actionError, setActionError] = useState('');
 
   const [entity, setEntity] = useState('');
   const [code, setCode] = useState('');
@@ -56,8 +60,15 @@ export default function AdminNormativaPage() {
   }
 
   useEffect(() => {
+    const token = localStorage.getItem('montese_token');
+    if (!token) {
+      router.push('/login');
+      return;
+    }
+    setReady(true);
     loadAll();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [router]);
 
   async function handleCreateSource(event: FormEvent) {
     event.preventDefault();
@@ -85,30 +96,53 @@ export default function AdminNormativaPage() {
   }
 
   async function handleApprove(id: string) {
-    await fetch(`/api/normative-documents/${id}/approve`, { method: 'POST', headers: authHeaders() });
+    const res = await fetch(`/api/normative-documents/${id}/approve`, { method: 'POST', headers: authHeaders() });
+    if (!res.ok) {
+      const body = await res.json().catch(() => null);
+      setActionError(body?.message ?? 'Não foi possível aprovar o documento.');
+      return;
+    }
+    setActionError('');
     setDetail(null);
     loadAll();
   }
 
   async function handleReject(id: string) {
-    await fetch(`/api/normative-documents/${id}/reject`, {
+    const res = await fetch(`/api/normative-documents/${id}/reject`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...authHeaders() },
       body: JSON.stringify({ reason: rejectReason }),
     });
+    if (!res.ok) {
+      const body = await res.json().catch(() => null);
+      setActionError(body?.message ?? 'Não foi possível rejeitar o documento.');
+      return;
+    }
+    setActionError('');
     setRejectReason('');
     setDetail(null);
     loadAll();
   }
 
   async function handleReindex(id: string) {
-    await fetch(`/api/normative-documents/${id}/reindex`, { method: 'POST', headers: authHeaders() });
+    const res = await fetch(`/api/normative-documents/${id}/reindex`, { method: 'POST', headers: authHeaders() });
+    if (!res.ok) {
+      const body = await res.json().catch(() => null);
+      setActionError(body?.message ?? 'Não foi possível reindexar o documento.');
+      return;
+    }
+    setActionError('');
     loadAll();
+  }
+
+  if (!ready) {
+    return <p className="text-center text-brand-700">Carregando...</p>;
   }
 
   return (
     <div>
       <h2 className="text-2xl font-bold text-brand-900">Base normativa</h2>
+      {actionError && <p className="mt-2 text-sm text-red-600">{actionError}</p>}
 
       <section className="mt-8 rounded-lg border border-brand-100 p-6">
         <h3 className="text-lg font-bold text-brand-900">Fontes monitoradas</h3>
