@@ -324,4 +324,31 @@ describe('POST /assistant/normative-query (e2e)', () => {
     const lastCall = fakeAnswer.mock.calls[fakeAnswer.mock.calls.length - 1];
     expect(lastCall[2]).toEqual([]);
   });
+
+  it('isolamento entre tenants: empresa nunca recebe item operacional de outro tenant', async () => {
+    const outroTenant = await db.createTenantWithUser('Empresa Assistente Teste — Outro Tenant');
+    const outroDocumentId = await insertExpiredDocument(
+      outroTenant.tenantId,
+      outroTenant.userId,
+      'Documento vencido do OUTRO tenant — nunca deve aparecer',
+    );
+
+    fakeAnswer.mockResolvedValue([]);
+
+    await request(app.getHttpServer())
+      .post('/assistant/normative-query')
+      .set('Authorization', `Bearer ${tokenEmpresa}`)
+      .send({ question: 'quais minhas pendências?' });
+
+    const lastCall = fakeAnswer.mock.calls[fakeAnswer.mock.calls.length - 1];
+    const operationalItemsArg = lastCall[2];
+    const titulos = operationalItemsArg.map((o: any) => o.titulo);
+
+    expect(titulos.some((t: string) => t.includes('Documento vencido teste operacional'))).toBe(true);
+    expect(titulos.some((t: string) => t.includes('OUTRO tenant'))).toBe(false);
+
+    await (db as any).client.query('DELETE FROM documents WHERE id = $1', [outroDocumentId]);
+    await (db as any).client.query('DELETE FROM users WHERE tenant_id = $1', [outroTenant.tenantId]);
+    await (db as any).client.query('DELETE FROM tenants WHERE id = $1', [outroTenant.tenantId]);
+  });
 });
