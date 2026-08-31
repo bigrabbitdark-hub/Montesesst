@@ -90,7 +90,17 @@ export class NormativeAssistantService {
         { userId: user.id, tenantId, role: user.role },
         (client) => this.dashboard.getSummary(client, tenantId),
       );
-      operationalItems = summary.atencao.map((item, i) => ({ id: `op-${i}`, titulo: item.titulo }));
+      // Normaliza o texto antes de entrar no prompt — `titulo` vem de
+      // AttentionItem, que embute texto controlado pelo usuário
+      // (documents.title, tenant_epis.ca_number), gravável por
+      // empresa/tecnico/parceiro. Sem isso, um título com quebra de
+      // linha poderia forjar uma linha `[op-N] ...` extra que imita um
+      // item real, ou tentar embutir uma instrução dentro do texto que
+      // o modelo trata como dado (achado da revisão final da Fase 10).
+      operationalItems = summary.atencao.map((item, i) => ({
+        id: `op-${i}`,
+        titulo: item.titulo.replace(/\s+/g, ' ').trim().slice(0, 200),
+      }));
     }
 
     if (relevant.length === 0 && operationalItems.length === 0) {
