@@ -139,8 +139,9 @@ describe('POST /assistant/normative-query (e2e)', () => {
 
   it('não chama o provedor de resposta quando nenhum chunk atinge o limiar de similaridade', async () => {
     // Vetor ortogonal ao do chunk indexado ([1,0,0,...]) — similaridade
-    // de cosseno 0, bem abaixo do limiar padrão (0.75), então a busca
-    // retorna zero chunks relevantes.
+    // de cosseno 0, bem abaixo do limiar padrão (0.4, calibrado com dados
+    // reais em 2026-08-31 — ver comentário em normative-assistant.service.ts),
+    // então a busca retorna zero chunks relevantes.
     fakeEmbed.mockResolvedValueOnce(new Array(1536).fill(0).map((_, i) => (i === 1 ? 1 : 0)));
 
     const res = await request(app.getHttpServer())

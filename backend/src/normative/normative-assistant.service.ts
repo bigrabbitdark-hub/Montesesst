@@ -38,7 +38,15 @@ export class NormativeAssistantService {
 
   async query(question: string): Promise<NormativeQueryResult> {
     const questionEmbedding = await this.embeddings.embed(question);
-    const threshold = envFloat('OPENROUTER_RAG_MIN_SIMILARITY', 0.75);
+    // 0.75 (valor original do plano) nunca teria funcionado de verdade —
+    // calibrado contra as 38 NRs reais indexadas em 2026-08-31:
+    // pergunta irrelevante ("capital da França") ~0.13, tangencial ("bolo
+    // de chocolate") ~0.30, pergunta claramente respondida pela base
+    // ("cinto de segurança em altura" -> NR-35) 0.63-0.67. `text-
+    // embedding-3-small` não produz similaridade alta mesmo pra pares
+    // pergunta/trecho genuinamente relevantes — 0.4 separa com folga dos
+    // dois lados dessa amostra real.
+    const threshold = envFloat('OPENROUTER_RAG_MIN_SIMILARITY', 0.4);
 
     // `official_sources`, `normative_documents` e
     // `normative_document_chunks` não têm tenant_id nem RLS — não há
