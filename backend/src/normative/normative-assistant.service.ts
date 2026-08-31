@@ -1,11 +1,17 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { EMBEDDING_PROVIDER, EmbeddingProvider } from './embedding-provider.interface';
-import { NORMATIVE_ANSWER_PROVIDER, NormativeAnswerProvider } from './normative-answer-provider.interface';
+import {
+  NORMATIVE_ANSWER_PROVIDER,
+  NormativeAnswerProvider,
+  OperationalItem,
+} from './normative-answer-provider.interface';
 import { toVectorLiteral } from './vector.util';
 import { envFloat } from '../common/env';
 import { DatabaseService } from '../common/database/database.service';
+import { DashboardService } from '../dashboard/dashboard.service';
+import { AuthenticatedUser } from '../common/types';
 
-const FALLBACK_MESSAGE = 'Não encontrei uma norma vigente na base que trate disso.';
+const FALLBACK_MESSAGE = 'Não encontrei nada relevante pra essa pergunta.';
 
 export interface NormativeQueryCitation {
   document_id: string;
@@ -34,9 +40,10 @@ export class NormativeAssistantService {
     @Inject(EMBEDDING_PROVIDER) private readonly embeddings: EmbeddingProvider,
     @Inject(NORMATIVE_ANSWER_PROVIDER) private readonly answerer: NormativeAnswerProvider,
     private readonly db: DatabaseService,
+    private readonly dashboard: DashboardService,
   ) {}
 
-  async query(question: string): Promise<NormativeQueryResult> {
+  async query(question: string, user: AuthenticatedUser): Promise<NormativeQueryResult> {
     const questionEmbedding = await this.embeddings.embed(question);
     // 0.75 (valor original do plano) nunca teria funcionado de verdade —
     // calibrado contra as 38 NRs reais indexadas em 2026-08-31:
@@ -52,7 +59,7 @@ export class NormativeAssistantService {
     // `normative_document_chunks` não têm tenant_id nem RLS — não há
     // contexto de tenant a propagar aqui. Usar withoutTenantContext (só
     // pool.connect()/release(), sem BEGIN/COMMIT) garante que nenhuma
-    // conexão do pool fica presa "idle in transaction" durante as duas
+    // conexão do pool fica presa "idle in transaction" durante as
     // chamadas HTTP externas lentas (embed acima, answer abaixo) — ver
     // Finding C1a da revisão final da Fase 9.
     const { rows } = await this.db.withoutTenantContext((client) =>
@@ -68,25 +75,49 @@ export class NormativeAssistantService {
         [toVectorLiteral(questionEmbedding)],
       ),
     );
-
     const relevant = rows.filter((r) => r.similarity >= threshold);
-    if (relevant.length === 0) {
+
+    // Busca operacional só pra empresa, numa transação curta e SEPARADA
+    // — mesma regra de nunca segurar conexão durante chamada de IA (ver
+    // Finding C1a). Roda ANTES de chamar this.answerer.answer(...),
+    // então não estende a janela de conexão aberta durante embedding/chat.
+    // technico/parceiro: operationalItems fica [] sempre, comportamento
+    // idêntico ao da Fase 9.
+    let operationalItems: OperationalItem[] = [];
+    if (user.role === 'empresa' && user.tenantId) {
+      const tenantId = user.tenantId;
+      const summary = await this.db.withTenantContext(
+        { userId: user.id, tenantId, role: user.role },
+        (client) => this.dashboard.getSummary(client, tenantId),
+      );
+      operationalItems = summary.atencao.map((item, i) => ({ id: `op-${i}`, titulo: item.titulo }));
+    }
+
+    if (relevant.length === 0 && operationalItems.length === 0) {
       return { answer: null, message: FALLBACK_MESSAGE, citations: [] };
     }
 
     const claims = await this.answerer.answer(
       question,
       relevant.map((r) => ({ id: r.chunk_id, content: r.content })),
+      operationalItems,
     );
 
     const validChunkIds = new Set(relevant.map((r) => r.chunk_id));
-    // O Verificador garante que toda afirmação cita um trecho real, recuperado
-    // nesta consulta, de um documento vigente — não garante que a afirmação é
-    // fiel ao conteúdo desse trecho (isso dependeria de avaliar a claim contra
-    // o texto, o que este design deliberadamente não faz — ver spec §4.4).
-    const survivingClaims = claims.filter(
-      (claim) => claim.chunk_ids.length > 0 && claim.chunk_ids.every((id) => validChunkIds.has(id)),
-    );
+    const validOperationalIds = new Set(operationalItems.map((o) => o.id));
+    // Regra exata (ver Global Constraints do plano): uma afirmação com
+    // as duas listas vazias é descartada mesmo que nenhuma das duas
+    // contenha um id inválido — every() sobre array vazio dá true em
+    // JS, então "tem pelo menos uma fonte" é checado à parte, nunca
+    // inferido só das duas every().
+    const survivingClaims = claims.filter((claim) => {
+      const hasSource = claim.chunk_ids.length > 0 || claim.operational_ref_ids.length > 0;
+      return (
+        hasSource &&
+        claim.chunk_ids.every((id) => validChunkIds.has(id)) &&
+        claim.operational_ref_ids.every((id) => validOperationalIds.has(id))
+      );
+    });
 
     if (survivingClaims.length === 0) {
       return { answer: null, message: FALLBACK_MESSAGE, citations: [] };

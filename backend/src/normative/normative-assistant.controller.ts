@@ -1,4 +1,4 @@
-import { Body, Controller, Post, UsePipes, ValidationPipe } from '@nestjs/common';
+import { Body, Controller, Post, Req, UsePipes, ValidationPipe } from '@nestjs/common';
 import { Roles } from '../common/decorators/roles.decorator';
 import { RateLimit } from '../common/rate-limit/rate-limit.decorator';
 import { envInt } from '../common/env';
@@ -17,7 +17,7 @@ export class NormativeAssistantController {
   })
   @UsePipes(new ValidationPipe({ transform: true, whitelist: true, forbidNonWhitelisted: true }))
   @Post('normative-query')
-  query(@Body() dto: NormativeQueryDto) {
-    return this.assistant.query(dto.question);
+  query(@Body() dto: NormativeQueryDto, @Req() req: any) {
+    return this.assistant.query(dto.question, req.user);
   }
 }

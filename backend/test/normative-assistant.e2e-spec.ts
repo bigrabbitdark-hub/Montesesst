@@ -5,6 +5,7 @@ import { AppModule } from '../src/app.module';
 import { EMBEDDING_PROVIDER } from '../src/normative/embedding-provider.interface';
 import { NORMATIVE_ANSWER_PROVIDER } from '../src/normative/normative-answer-provider.interface';
 import { toVectorLiteral } from '../src/normative/vector.util';
+import { NormativeAssistantService } from '../src/normative/normative-assistant.service';
 import { TestDb } from './db-test-helper';
 
 describe('POST /assistant/normative-query (e2e)', () => {
@@ -12,9 +13,11 @@ describe('POST /assistant/normative-query (e2e)', () => {
   let db: TestDb;
   let tokenAdmin: string;
   let tokenEmpresa: string;
+  let tokenTecnico: string;
   let sourceId: string;
   let documentId: string;
   let chunkId: string;
+  let expiredDocumentId: string;
   const fakeAnswer = jest.fn();
   // Capturado à parte (em vez de um objeto anônimo) para que um teste
   // isolado possa sobrepor a resposta uma única vez com
@@ -23,6 +26,22 @@ describe('POST /assistant/normative-query (e2e)', () => {
   // limiar de similaridade — sem afetar o valor padrão usado pelos
   // demais testes.
   const fakeEmbed = jest.fn().mockResolvedValue(new Array(1536).fill(0).map((_, i) => (i === 0 ? 1 : 0)));
+
+  function iso(daysFromToday: number): string {
+    const d = new Date();
+    d.setDate(d.getDate() + daysFromToday);
+    return d.toISOString().slice(0, 10);
+  }
+
+  async function insertExpiredDocument(tenantId: string, userId: string, title: string) {
+    const res = await (db as any).client.query(
+      `INSERT INTO documents (tenant_id, category, title, file_key, file_name, mime_type, size_bytes, expires_at, uploaded_by_user_id, uploaded_by_role)
+       VALUES ($1, 'pgr', $2, $3, $3, 'application/pdf', 100, $4, $5, 'empresa')
+       RETURNING id`,
+      [tenantId, title, `fixture/${tenantId}-pgr-teste.pdf`, iso(-5), userId],
+    );
+    return res.rows[0].id;
+  }
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
@@ -48,6 +67,18 @@ describe('POST /assistant/normative-query (e2e)', () => {
       .post('/auth/login')
       .send({ email: tenant.email, password: tenant.password });
     tokenEmpresa = loginEmpresa.body.access_token;
+
+    const tecnico = await db.createUserWithRole('tecnico', 'Tecnico Assistente Teste');
+    const loginTecnico = await request(app.getHttpServer())
+      .post('/auth/login')
+      .send({ email: tecnico.email, password: tecnico.password });
+    tokenTecnico = loginTecnico.body.access_token;
+
+    expiredDocumentId = await insertExpiredDocument(
+      tenant.tenantId,
+      tenant.userId,
+      'Documento vencido teste operacional',
+    );
 
     const client = (db as any).client;
     const src = await client.query(
@@ -79,6 +110,7 @@ describe('POST /assistant/normative-query (e2e)', () => {
 
   afterAll(async () => {
     const client = (db as any).client;
+    await client.query('DELETE FROM documents WHERE id = $1', [expiredDocumentId]);
     await client.query('DELETE FROM normative_document_chunks WHERE document_id = $1', [documentId]);
     await client.query('DELETE FROM normative_documents WHERE id = $1', [documentId]);
     await client.query('DELETE FROM official_sources WHERE id = $1', [sourceId]);
@@ -96,7 +128,9 @@ describe('POST /assistant/normative-query (e2e)', () => {
   });
 
   it('responde com citação quando o Verificador confirma o chunk_id', async () => {
-    fakeAnswer.mockResolvedValue([{ claim: 'É obrigatório o uso de capacete.', chunk_ids: [chunkId] }]);
+    fakeAnswer.mockResolvedValue([
+      { claim: 'É obrigatório o uso de capacete.', chunk_ids: [chunkId], operational_ref_ids: [] },
+    ]);
 
     const res = await request(app.getHttpServer())
       .post('/assistant/normative-query')
@@ -112,7 +146,11 @@ describe('POST /assistant/normative-query (e2e)', () => {
 
   it('Verificador descarta claim com chunk_id fora do conjunto recuperado', async () => {
     fakeAnswer.mockResolvedValue([
-      { claim: 'Afirmação sem fonte válida.', chunk_ids: ['00000000-0000-0000-0000-000000000000'] },
+      {
+        claim: 'Afirmação sem fonte válida.',
+        chunk_ids: ['00000000-0000-0000-0000-000000000000'],
+        operational_ref_ids: [],
+      },
     ]);
 
     const res = await request(app.getHttpServer())
@@ -122,12 +160,14 @@ describe('POST /assistant/normative-query (e2e)', () => {
 
     expect(res.status).toBe(201);
     expect(res.body.answer).toBeNull();
-    expect(res.body.message).toBe('Não encontrei uma norma vigente na base que trate disso.');
+    expect(res.body.message).toBe('Não encontrei nada relevante pra essa pergunta.');
     expect(res.body.citations).toEqual([]);
   });
 
   it('claim com chunk_ids vazio é descartada', async () => {
-    fakeAnswer.mockResolvedValue([{ claim: 'Afirmação sem citação nenhuma.', chunk_ids: [] }]);
+    fakeAnswer.mockResolvedValue([
+      { claim: 'Afirmação sem citação nenhuma.', chunk_ids: [], operational_ref_ids: [] },
+    ]);
 
     const res = await request(app.getHttpServer())
       .post('/assistant/normative-query')
@@ -144,15 +184,108 @@ describe('POST /assistant/normative-query (e2e)', () => {
     // então a busca retorna zero chunks relevantes.
     fakeEmbed.mockResolvedValueOnce(new Array(1536).fill(0).map((_, i) => (i === 1 ? 1 : 0)));
 
+    // tokenTecnico (não tokenEmpresa) deliberadamente: o tenant de
+    // tokenEmpresa agora tem um documento vencido de fixture (ver
+    // expiredDocumentId), então operationalItems nunca fica vazio pra
+    // esse tenant — o provedor SERIA chamado mesmo com relevant.length
+    // === 0. Este teste prova especificamente o corte por limiar de
+    // similaridade normativa, isolado da busca operacional — técnico
+    // garante operationalItems === [] sempre (ver Fase 10).
     const res = await request(app.getHttpServer())
       .post('/assistant/normative-query')
-      .set('Authorization', `Bearer ${tokenEmpresa}`)
+      .set('Authorization', `Bearer ${tokenTecnico}`)
       .send({ question: 'pergunta sem nenhuma relação com a base indexada' });
 
     expect(res.status).toBe(201);
     expect(res.body.answer).toBeNull();
-    expect(res.body.message).toBe('Não encontrei uma norma vigente na base que trate disso.');
+    expect(res.body.message).toBe('Não encontrei nada relevante pra essa pergunta.');
     expect(res.body.citations).toEqual([]);
     expect(fakeAnswer).not.toHaveBeenCalled();
+  });
+
+  it('empresa recebe itens operacionais reais e o provedor de resposta é chamado com eles', async () => {
+    fakeAnswer.mockResolvedValue([]);
+
+    await request(app.getHttpServer())
+      .post('/assistant/normative-query')
+      .set('Authorization', `Bearer ${tokenEmpresa}`)
+      .send({ question: 'quais minhas pendências?' });
+
+    expect(fakeAnswer).toHaveBeenCalled();
+    const lastCall = fakeAnswer.mock.calls[fakeAnswer.mock.calls.length - 1];
+    const operationalItemsArg = lastCall[2];
+    expect(operationalItemsArg).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ titulo: expect.stringContaining('Documento vencido teste operacional') }),
+      ]),
+    );
+  });
+
+  it('claim que cita só operational_ref_ids (sem chunk_ids) sobrevive ao Verificador', async () => {
+    fakeAnswer.mockResolvedValue([
+      { claim: 'Você tem um documento vencido.', chunk_ids: [], operational_ref_ids: ['op-0'] },
+    ]);
+
+    const res = await request(app.getHttpServer())
+      .post('/assistant/normative-query')
+      .set('Authorization', `Bearer ${tokenEmpresa}`)
+      .send({ question: 'quais minhas pendências?' });
+
+    expect(res.status).toBe(201);
+    expect(res.body.answer).toBe('Você tem um documento vencido.');
+    expect(res.body.citations).toEqual([]);
+  });
+
+  it('claim que cita as duas fontes juntas (chunk_ids e operational_ref_ids válidos) sobrevive ao Verificador', async () => {
+    fakeAnswer.mockResolvedValue([
+      {
+        claim: 'Você tem capacete obrigatório e um documento vencido pra regularizar.',
+        chunk_ids: [chunkId],
+        operational_ref_ids: ['op-0'],
+      },
+    ]);
+
+    const res = await request(app.getHttpServer())
+      .post('/assistant/normative-query')
+      .set('Authorization', `Bearer ${tokenEmpresa}`)
+      .send({ question: 'preciso de capacete e quais minhas pendências?' });
+
+    expect(res.status).toBe(201);
+    expect(res.body.answer).toBe('Você tem capacete obrigatório e um documento vencido pra regularizar.');
+    expect(res.body.citations).toEqual([
+      { document_id: documentId, title: 'Norma teste assistente', official_url: 'https://exemplo.gov.br/assistente.html' },
+    ]);
+  });
+
+  it('claim com operational_ref_id inventado (fora do conjunto calculado) é descartada mesmo com chunk_id válido', async () => {
+    fakeAnswer.mockResolvedValue([
+      {
+        claim: 'Afirmação com referência operacional inventada.',
+        chunk_ids: [chunkId],
+        operational_ref_ids: ['op-999-nao-existe'],
+      },
+    ]);
+
+    const res = await request(app.getHttpServer())
+      .post('/assistant/normative-query')
+      .set('Authorization', `Bearer ${tokenEmpresa}`)
+      .send({ question: 'preciso usar capacete e quais minhas pendências?' });
+
+    expect(res.status).toBe(201);
+    expect(res.body.answer).toBeNull();
+    expect(res.body.message).toBe('Não encontrei nada relevante pra essa pergunta.');
+  });
+
+  it('técnico nunca recebe busca operacional — operationalItems sempre vazio', async () => {
+    fakeAnswer.mockResolvedValue([{ claim: 'Resposta normativa.', chunk_ids: [chunkId], operational_ref_ids: [] }]);
+
+    const res = await request(app.getHttpServer())
+      .post('/assistant/normative-query')
+      .set('Authorization', `Bearer ${tokenTecnico}`)
+      .send({ question: 'preciso usar capacete?' });
+
+    expect(res.status).toBe(201);
+    const lastCall = fakeAnswer.mock.calls[fakeAnswer.mock.calls.length - 1];
+    expect(lastCall[2]).toEqual([]);
   });
 });

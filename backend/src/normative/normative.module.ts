@@ -11,11 +11,13 @@ import { EMBEDDING_PROVIDER } from './embedding-provider.interface';
 import { OpenRouterEmbeddingService } from './openrouter-embedding.service';
 import { NORMATIVE_ANSWER_PROVIDER } from './normative-answer-provider.interface';
 import { OpenRouterNormativeAnswerService } from './openrouter-normative-answer.service';
+import { DashboardModule } from '../dashboard/dashboard.module';
 
 // Módulo único da Fase 9 (RAG Normativo) — as Tasks 5, 6 e 7 adicionam
 // providers/controllers aqui (monitor, aprovação/indexação, assistente),
 // não criam módulos novos.
 @Module({
+  imports: [DashboardModule],
   controllers: [OfficialSourcesController, NormativeDocumentsController, NormativeAssistantController],
   providers: [
     OfficialSourcesService,

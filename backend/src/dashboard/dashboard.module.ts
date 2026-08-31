@@ -7,5 +7,6 @@ import { DocumentsModule } from '../documents/documents.module';
   imports: [DocumentsModule],
   controllers: [DashboardController],
   providers: [DashboardService],
+  exports: [DashboardService],
 })
 export class DashboardModule {}
