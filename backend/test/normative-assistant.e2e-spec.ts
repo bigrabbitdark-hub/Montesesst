@@ -5,7 +5,6 @@ import { AppModule } from '../src/app.module';
 import { EMBEDDING_PROVIDER } from '../src/normative/embedding-provider.interface';
 import { NORMATIVE_ANSWER_PROVIDER } from '../src/normative/normative-answer-provider.interface';
 import { toVectorLiteral } from '../src/normative/vector.util';
-import { NormativeAssistantService } from '../src/normative/normative-assistant.service';
 import { TestDb } from './db-test-helper';
 
 describe('POST /assistant/normative-query (e2e)', () => {
@@ -201,6 +200,43 @@ describe('POST /assistant/normative-query (e2e)', () => {
     expect(res.body.message).toBe('Não encontrei nada relevante pra essa pergunta.');
     expect(res.body.citations).toEqual([]);
     expect(fakeAnswer).not.toHaveBeenCalled();
+  });
+
+  it('empresa sem nenhuma pendência operacional real cai no fallback (AND-gate) quando também não há chunk relevante — provedor não é chamado', async () => {
+    // Tenant "limpo": criado só aqui, sem nenhum documento/EPI/plano de
+    // ação — diferente do tenant de tokenEmpresa (que carrega o
+    // documento vencido de expiredDocumentId pro resto da suíte). Prova
+    // o AND-gate novo desta task (relevant.length === 0 &&
+    // operationalItems.length === 0 -> fallback, sem chamar o provedor)
+    // pro papel que ele de fato afeta — empresa com uma chamada REAL a
+    // DashboardService.getSummary() devolvendo atencao: [], não técnico
+    // (que nunca busca operacional) nem um DashboardService mockado.
+    const cleanTenant = await db.createTenantWithUser('Empresa Sem Pendencias Teste');
+    const loginClean = await request(app.getHttpServer())
+      .post('/auth/login')
+      .send({ email: cleanTenant.email, password: cleanTenant.password });
+    const tokenCleanEmpresa = loginClean.body.access_token;
+
+    // Vetor ortogonal ao do chunk indexado ([1,0,0,...]) — mesma técnica
+    // do teste do técnico acima: zero chunks normativos relevantes.
+    fakeEmbed.mockResolvedValueOnce(new Array(1536).fill(0).map((_, i) => (i === 1 ? 1 : 0)));
+
+    const res = await request(app.getHttpServer())
+      .post('/assistant/normative-query')
+      .set('Authorization', `Bearer ${tokenCleanEmpresa}`)
+      .send({ question: 'pergunta sem nenhuma relação com a base indexada' });
+
+    expect(res.status).toBe(201);
+    expect(res.body.answer).toBeNull();
+    expect(res.body.message).toBe('Não encontrei nada relevante pra essa pergunta.');
+    expect(res.body.citations).toEqual([]);
+    expect(fakeAnswer).not.toHaveBeenCalled();
+
+    // Limpeza inline — db.cleanup() no afterAll também cobriria via
+    // CASCADE de tenants (createTenantWithUser já registra o id em
+    // db.tenantIds), mas apaga aqui pra não deixar esse tenant extra
+    // pendurado pelo resto da suíte.
+    await (db as any).client.query('DELETE FROM tenants WHERE id = $1', [cleanTenant.tenantId]);
   });
 
   it('empresa recebe itens operacionais reais e o provedor de resposta é chamado com eles', async () => {
