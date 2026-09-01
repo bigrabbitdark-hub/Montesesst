@@ -112,6 +112,28 @@ describe('CRUD /cipa/meetings (e2e)', () => {
     expect(res.body).toHaveLength(2);
   });
 
+  it('participante sem cipa_member_id e sem nome_livre → 400', async () => {
+    const res = await request(app.getHttpServer())
+      .put(`/cipa/meetings/${extraordinariaId}/participants`)
+      .set('Authorization', `Bearer ${empresaToken}`)
+      .send({
+        participants: [{ presente: true }],
+      });
+
+    expect(res.status).toBe(400);
+  });
+
+  it('participante com cipa_member_id E nome_livre ao mesmo tempo → 400', async () => {
+    const res = await request(app.getHttpServer())
+      .put(`/cipa/meetings/${extraordinariaId}/participants`)
+      .set('Authorization', `Bearer ${empresaToken}`)
+      .send({
+        participants: [{ cipa_member_id: memberId, nome_livre: 'Técnico convidado', presente: true }],
+      });
+
+    expect(res.status).toBe(400);
+  });
+
   it('GET lista as reuniões da gestão', async () => {
     const res = await request(app.getHttpServer())
       .get(`/cipa/meetings?committee_id=${committeeId}`)

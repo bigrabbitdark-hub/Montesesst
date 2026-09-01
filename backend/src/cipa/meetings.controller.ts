@@ -43,8 +43,8 @@ export class MeetingsController {
   @Put(':id/participants')
   setParticipants(@Param('id') id: string, @Body() dto: SetParticipantsDto, @Req() req: any) {
     for (const p of dto.participants) {
-      if (!p.cipa_member_id && !p.nome_livre) {
-        throw new BadRequestException('Cada participante precisa de cipa_member_id ou nome_livre');
+      if ((!p.cipa_member_id && !p.nome_livre) || (p.cipa_member_id && p.nome_livre)) {
+        throw new BadRequestException('Cada participante precisa de exatamente um entre cipa_member_id e nome_livre');
       }
     }
     return req.withTenantContext((client: any) => this.meetings.setParticipants(client, id, dto.participants));
