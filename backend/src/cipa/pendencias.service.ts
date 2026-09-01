@@ -1,6 +1,8 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PoolClient } from 'pg';
 import { toDateString } from './committees.service';
+import { mapPgError } from '../common/pg-error.util';
+import { assertUserInTenant } from './tenant-guards';
 
 export interface CipaPendencia {
   id: string;
@@ -59,21 +61,39 @@ export class PendenciasService {
     // tabela unificar plano de ação nascido de reunião e pendência
     // avulsa), mas quando informado precisa pertencer ao mesmo tenant.
     if (meetingId) {
-      const meetingCheck = await client.query('SELECT 1 FROM cipa_meetings WHERE id = $1 AND tenant_id = $2', [
-        meetingId,
-        tenantId,
-      ]);
-      if (meetingCheck.rowCount === 0) {
+      const meetingCheck = await client.query<{ company_unit_id: string }>(
+        'SELECT company_unit_id FROM cipa_meetings WHERE id = $1 AND tenant_id = $2',
+        [meetingId, tenantId],
+      );
+      const meetingRow = meetingCheck.rows[0];
+      if (!meetingRow) {
         throw new BadRequestException('Reunião inválida para esta empresa');
+      }
+      // Achado da revisão final (Fix 10a): validar company_unit_id e
+      // meeting_id cada um contra o tenant não bastava — os dois podem
+      // ser válidos individualmente (mesmo tenant) e ainda assim
+      // pertencer a estabelecimentos DIFERENTES do mesmo tenant (ex.:
+      // pendência filiada ao estabelecimento B citando reunião do
+      // estabelecimento A).
+      if (meetingRow.company_unit_id !== companyUnitId) {
+        throw new BadRequestException('Reunião não pertence ao estabelecimento informado');
       }
     }
 
-    const result = await client.query<CipaPendencia>(
-      `INSERT INTO cipa_pendencias (tenant_id, company_unit_id, meeting_id, descricao, responsavel_user_id, prazo, prioridade)
-       VALUES ($1, $2, $3, $4, $5, $6, COALESCE($7, 'media')) RETURNING *`,
-      [tenantId, companyUnitId, meetingId ?? null, descricao, responsavelUserId ?? null, prazo ?? null, prioridade ?? null],
-    );
-    return normalizePendencia(result.rows[0]);
+    if (responsavelUserId) {
+      await assertUserInTenant(client, responsavelUserId, tenantId);
+    }
+
+    try {
+      const result = await client.query<CipaPendencia>(
+        `INSERT INTO cipa_pendencias (tenant_id, company_unit_id, meeting_id, descricao, responsavel_user_id, prazo, prioridade)
+         VALUES ($1, $2, $3, $4, $5, $6, COALESCE($7, 'media')) RETURNING *`,
+        [tenantId, companyUnitId, meetingId ?? null, descricao, responsavelUserId ?? null, prazo ?? null, prioridade ?? null],
+      );
+      return normalizePendencia(result.rows[0]);
+    } catch (err) {
+      mapPgError(err);
+    }
   }
 
   async findAll(client: PoolClient, companyUnitId?: string): Promise<CipaPendencia[]> {
@@ -91,6 +111,19 @@ export class PendenciasService {
   }
 
   async update(client: PoolClient, id: string, data: Record<string, unknown>): Promise<CipaPendencia> {
+    // Achado da revisão final (Fix 6): responsavel_user_id também precisa
+    // ser validado contra o tenant aqui, não só em create() — precisa do
+    // tenant_id da própria pendência (não é parâmetro deste método).
+    if (data.responsavel_user_id !== undefined && data.responsavel_user_id !== null) {
+      const tenantResult = await client.query<{ tenant_id: string }>(
+        'SELECT tenant_id FROM cipa_pendencias WHERE id = $1',
+        [id],
+      );
+      const tenantRow = tenantResult.rows[0];
+      if (!tenantRow) throw new NotFoundException('Pendência não encontrada');
+      await assertUserInTenant(client, data.responsavel_user_id as string, tenantRow.tenant_id);
+    }
+
     const setClauses: string[] = [];
     const values: unknown[] = [];
     let i = 2;
@@ -107,11 +140,15 @@ export class PendenciasService {
       return normalizePendencia(pendencia);
     }
 
-    const result = await client.query<CipaPendencia>(
-      `UPDATE cipa_pendencias SET ${setClauses.join(', ')} WHERE id = $1 RETURNING *`,
-      [id, ...values],
-    );
-    if (result.rows.length === 0) throw new NotFoundException('Pendência não encontrada');
-    return normalizePendencia(result.rows[0]);
+    try {
+      const result = await client.query<CipaPendencia>(
+        `UPDATE cipa_pendencias SET ${setClauses.join(', ')} WHERE id = $1 RETURNING *`,
+        [id, ...values],
+      );
+      if (result.rows.length === 0) throw new NotFoundException('Pendência não encontrada');
+      return normalizePendencia(result.rows[0]);
+    } catch (err) {
+      mapPgError(err);
+    }
   }
 }

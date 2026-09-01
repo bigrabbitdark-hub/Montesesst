@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PoolClient } from 'pg';
 import { toDateString } from './committees.service';
+import { mapPgError } from '../common/pg-error.util';
 
 export interface CipaMember {
   id: string;
@@ -55,15 +56,19 @@ export class MembersService {
       throw new BadRequestException('Estabelecimento inválido para esta empresa');
     }
 
-    const result = await client.query<CipaMember>(
-      `INSERT INTO cipa_members (tenant_id, company_unit_id, nome, funcao_empresa, setor, funcao_cipa, titular_suplente, representacao, inicio_mandato, fim_mandato)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *`,
-      [
-        tenantId, data.company_unit_id, data.nome, data.funcao_empresa ?? null, data.setor ?? null,
-        data.funcao_cipa, data.titular_suplente, data.representacao, data.inicio_mandato, data.fim_mandato,
-      ],
-    );
-    return normalizeMember(result.rows[0]);
+    try {
+      const result = await client.query<CipaMember>(
+        `INSERT INTO cipa_members (tenant_id, company_unit_id, nome, funcao_empresa, setor, funcao_cipa, titular_suplente, representacao, inicio_mandato, fim_mandato)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *`,
+        [
+          tenantId, data.company_unit_id, data.nome, data.funcao_empresa ?? null, data.setor ?? null,
+          data.funcao_cipa, data.titular_suplente, data.representacao, data.inicio_mandato, data.fim_mandato,
+        ],
+      );
+      return normalizeMember(result.rows[0]);
+    } catch (err) {
+      mapPgError(err);
+    }
   }
 
   async findAll(client: PoolClient, companyUnitId?: string): Promise<CipaMember[]> {
@@ -95,11 +100,15 @@ export class MembersService {
       return normalizeMember(member);
     }
 
-    const result = await client.query<CipaMember>(
-      `UPDATE cipa_members SET ${setClauses.join(', ')} WHERE id = $1 RETURNING *`,
-      [id, ...values],
-    );
-    if (result.rows.length === 0) throw new NotFoundException('Membro não encontrado');
-    return normalizeMember(result.rows[0]);
+    try {
+      const result = await client.query<CipaMember>(
+        `UPDATE cipa_members SET ${setClauses.join(', ')} WHERE id = $1 RETURNING *`,
+        [id, ...values],
+      );
+      if (result.rows.length === 0) throw new NotFoundException('Membro não encontrado');
+      return normalizeMember(result.rows[0]);
+    } catch (err) {
+      mapPgError(err);
+    }
   }
 }
