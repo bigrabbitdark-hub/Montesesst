@@ -2,7 +2,7 @@ import { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { AppModule } from '../src/app.module';
-import { TestDb } from './db-test-helper';
+import { TestDb, TestTenantFixture } from './db-test-helper';
 
 describe('PATCH /visits/:id/cancelar, /concluir (e2e)', () => {
   let app: INestApplication;
@@ -17,6 +17,7 @@ describe('PATCH /visits/:id/cancelar, /concluir (e2e)', () => {
   let visitToConcludeId: string;
   let inspectionId: string;
   let foreignInspectionId: string;
+  let foreignTenant: TestTenantFixture;
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
@@ -91,7 +92,16 @@ describe('PATCH /visits/:id/cancelar, /concluir (e2e)', () => {
     );
     inspectionId = inspectionResult.rows[0].id;
 
-    const foreignTenant = await db.createTenantWithUser('Empresa Visits Foreign Inspection Teste');
+    // O técnico PRECISA estar vinculado a este segundo tenant — senão a RLS
+    // esconde a inspeção inteira antes mesmo de chegar na comparação
+    // inspection.tenant_id !== visit.tenant_id dentro de VisitsService.conclude,
+    // e o 403 sairia do branch `!inspection` (RLS), não do branch de
+    // tenant_id divergente que este teste diz cobrir.
+    foreignTenant = await db.createTenantWithUser('Empresa Visits Foreign Inspection Teste');
+    await (db as any).client.query(
+      'INSERT INTO tenant_technicians (tenant_id, technician_id) VALUES ($1, $2)',
+      [foreignTenant.tenantId, technicianId],
+    );
     const foreignInspectionResult = await (db as any).client.query(
       `INSERT INTO inspections (tenant_id, technician_user_id, visited_at) VALUES ($1, $2, '2026-09-15') RETURNING id`,
       [foreignTenant.tenantId, technicianUserId],
@@ -169,6 +179,70 @@ describe('PATCH /visits/:id/cancelar, /concluir (e2e)', () => {
       .patch(`/visits/${visit.body.id}/concluir`)
       .set('Authorization', `Bearer ${technicianToken}`)
       .send({ inspection_id: foreignInspectionId });
+
+    expect(res.status).toBe(403);
+  });
+
+  it('técnico designado cancela a própria visita CONFIRMADA → 200, status cancelado (transição confirmado→cancelado)', async () => {
+    const visit = await request(app.getHttpServer())
+      .post('/visits')
+      .set('Authorization', `Bearer ${empresaToken}`)
+      .send({ technician_user_id: technicianUserId });
+    const confirmRes = await request(app.getHttpServer())
+      .patch(`/visits/${visit.body.id}/confirmar`)
+      .set('Authorization', `Bearer ${technicianToken}`)
+      .send({ confirmed_date: '2026-09-18' });
+    expect(confirmRes.status).toBe(200);
+    expect(confirmRes.body.status).toBe('confirmado');
+
+    // Mesmo técnico designado, não a empresa — cobre o branch
+    // isAssignedTechnician de VisitsService.cancel, que até aqui só era
+    // exercitado indiretamente pela empresa cancelando.
+    const res = await request(app.getHttpServer())
+      .patch(`/visits/${visit.body.id}/cancelar`)
+      .set('Authorization', `Bearer ${technicianToken}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.status).toBe('cancelado');
+  });
+
+  it('concluir visita ainda SOLICITADA (não confirmada) → 409', async () => {
+    const visit = await request(app.getHttpServer())
+      .post('/visits')
+      .set('Authorization', `Bearer ${empresaToken}`)
+      .send({ technician_user_id: technicianUserId });
+
+    const res = await request(app.getHttpServer())
+      .patch(`/visits/${visit.body.id}/concluir`)
+      .set('Authorization', `Bearer ${technicianToken}`)
+      .send({});
+
+    expect(res.status).toBe(409);
+  });
+
+  it('técnico B (vinculado à mesma empresa) não confirma visita atribuída ao técnico A → 403', async () => {
+    const visit = await request(app.getHttpServer())
+      .post('/visits')
+      .set('Authorization', `Bearer ${empresaToken}`)
+      .send({ technician_user_id: technicianUserId });
+
+    const res = await request(app.getHttpServer())
+      .patch(`/visits/${visit.body.id}/confirmar`)
+      .set('Authorization', `Bearer ${otherTechToken}`)
+      .send({ confirmed_date: '2026-09-19' });
+
+    expect(res.status).toBe(403);
+  });
+
+  it('técnico B (vinculado à mesma empresa) não cancela visita atribuída ao técnico A → 403', async () => {
+    const visit = await request(app.getHttpServer())
+      .post('/visits')
+      .set('Authorization', `Bearer ${empresaToken}`)
+      .send({ technician_user_id: technicianUserId });
+
+    const res = await request(app.getHttpServer())
+      .patch(`/visits/${visit.body.id}/cancelar`)
+      .set('Authorization', `Bearer ${otherTechToken}`);
 
     expect(res.status).toBe(403);
   });

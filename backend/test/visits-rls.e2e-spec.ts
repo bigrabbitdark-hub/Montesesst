@@ -15,6 +15,7 @@ describe('visit_requests — isolamento RLS entre tenants (e2e)', () => {
   let empresaAToken: string;
   let empresaBToken: string;
   let technicianAToken: string;
+  let unlinkedTechToken: string;
   let adminToken: string;
   let visitInTenantAId: string;
   let visitInTenantBId: string;
@@ -79,6 +80,15 @@ describe('visit_requests — isolamento RLS entre tenants (e2e)', () => {
       .send({ email: admin.email, password: admin.password });
     adminToken = loginAdmin.body.access_token;
 
+    // Técnico sem NENHUM vínculo (nem tenant_technicians, nem linha em
+    // technicians) — usado abaixo pra provar que a RLS em si (não o filtro
+    // de aplicação) esconde a visita do tenant A.
+    const unlinkedTech = await db.createUserWithRole('tecnico', 'Tecnico Visits RLS Nao Vinculado');
+    const loginUnlinkedTech = await request(app.getHttpServer())
+      .post('/auth/login')
+      .send({ email: unlinkedTech.email, password: unlinkedTech.password });
+    unlinkedTechToken = loginUnlinkedTech.body.access_token;
+
     const visit = await request(app.getHttpServer())
       .post('/visits')
       .set('Authorization', `Bearer ${empresaAToken}`)
@@ -117,6 +127,20 @@ describe('visit_requests — isolamento RLS entre tenants (e2e)', () => {
     const res = await request(app.getHttpServer())
       .patch(`/visits/${visitInTenantAId}/cancelar`)
       .set('Authorization', `Bearer ${empresaBToken}`);
+
+    expect(res.status).toBe(404);
+  });
+
+  it('técnico NÃO vinculado ao tenant A não vê visita daquele tenant — 404 via RLS, não via filtro de aplicação (spec §7)', async () => {
+    // VisitsService.cancel passa por findAndLock, cujo SELECT ... FOR UPDATE
+    // não tem WHERE de tenant/técnico nenhum — é um `SELECT * WHERE id = $1`
+    // puro. Se a policy de RLS do branch técnico algum dia regredir pra
+    // permissiva demais, este SELECT devolveria a linha mesmo assim, e o
+    // teste falharia com 403 (barrado só pela checagem isAssignedTechnician
+    // do service) em vez do 404 esperado — só a RLS pode produzir 404 aqui.
+    const res = await request(app.getHttpServer())
+      .patch(`/visits/${visitInTenantAId}/cancelar`)
+      .set('Authorization', `Bearer ${unlinkedTechToken}`);
 
     expect(res.status).toBe(404);
   });
