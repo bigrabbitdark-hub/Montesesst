@@ -14,6 +14,7 @@ describe('CRUD /cipa/pendencias (e2e)', () => {
   let meetingId: string;
   let empresaToken: string;
   let outroTenantCompanyUnitId: string;
+  let outroTenantMeetingId: string;
   let pendenciaSoltaId: string;
   let pendenciaDeReuniaoId: string;
 
@@ -60,6 +61,23 @@ describe('CRUD /cipa/pendencias (e2e)', () => {
       [outroTenant.tenantId],
     );
     outroTenantCompanyUnitId = outroUnitResult.rows[0].id;
+
+    // Comitê + reunião reais do outro tenant, só pra provar que create()
+    // também rejeita meeting_id de outro tenant (mesmo achado de
+    // company_unit_id, um passo abaixo: FK-only não bastava aqui também).
+    const outroCommitteeResult = await (db as any).client.query(
+      `INSERT INTO cipa_committees (tenant_id, company_unit_id, ano, data_inicio, data_termino, responsavel_user_id)
+       VALUES ($1, $2, 2026, '2026-01-01', '2026-12-31', $3) RETURNING id`,
+      [outroTenant.tenantId, outroTenantCompanyUnitId, outroTenant.userId],
+    );
+    const outroCommitteeId = outroCommitteeResult.rows[0].id;
+
+    const outroMeetingResult = await (db as any).client.query(
+      `INSERT INTO cipa_meetings (tenant_id, committee_id, company_unit_id, tipo, titulo)
+       VALUES ($1, $2, $3, 'extraordinaria', 'Reunião Outro Tenant') RETURNING id`,
+      [outroTenant.tenantId, outroCommitteeId, outroTenantCompanyUnitId],
+    );
+    outroTenantMeetingId = outroMeetingResult.rows[0].id;
 
     const loginEmpresa = await request(app.getHttpServer())
       .post('/auth/login')
@@ -115,6 +133,20 @@ describe('CRUD /cipa/pendencias (e2e)', () => {
       .send({
         company_unit_id: outroTenantCompanyUnitId,
         descricao: 'Pendência maliciosa',
+        prioridade: 'baixa',
+      });
+
+    expect(res.status).toBe(400);
+  });
+
+  it('rejeita registrar pendência com meeting_id de outro tenant → 400', async () => {
+    const res = await request(app.getHttpServer())
+      .post('/cipa/pendencias')
+      .set('Authorization', `Bearer ${empresaToken}`)
+      .send({
+        company_unit_id: companyUnitId,
+        meeting_id: outroTenantMeetingId,
+        descricao: 'Pendência maliciosa via meeting_id',
         prioridade: 'baixa',
       });
 

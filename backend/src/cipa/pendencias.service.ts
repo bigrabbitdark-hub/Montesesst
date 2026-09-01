@@ -53,6 +53,21 @@ export class PendenciasService {
       throw new BadRequestException('Estabelecimento inválido para esta empresa');
     }
 
+    // Mesma checagem, mesmo motivo (FK-only não impede cross-tenant sob
+    // RLS — a FK verifica só que a linha existe, não que ela pertence ao
+    // tenant do caller): meeting_id é opcional (é o que permite esta
+    // tabela unificar plano de ação nascido de reunião e pendência
+    // avulsa), mas quando informado precisa pertencer ao mesmo tenant.
+    if (meetingId) {
+      const meetingCheck = await client.query('SELECT 1 FROM cipa_meetings WHERE id = $1 AND tenant_id = $2', [
+        meetingId,
+        tenantId,
+      ]);
+      if (meetingCheck.rowCount === 0) {
+        throw new BadRequestException('Reunião inválida para esta empresa');
+      }
+    }
+
     const result = await client.query<CipaPendencia>(
       `INSERT INTO cipa_pendencias (tenant_id, company_unit_id, meeting_id, descricao, responsavel_user_id, prazo, prioridade)
        VALUES ($1, $2, $3, $4, $5, $6, COALESCE($7, 'media')) RETURNING *`,
