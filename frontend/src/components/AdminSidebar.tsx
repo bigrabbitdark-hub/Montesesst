@@ -2,41 +2,75 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { logout } from '@/lib/auth';
 
-const LINKS = [
-  { href: '/admin/overview', label: 'Visão Geral' },
-  { href: '/admin/empresas', label: 'Empresas' },
-  { href: '/admin/tecnicos', label: 'Técnicos' },
-  { href: '/admin/parceiros', label: 'Parceiros' },
-  { href: '/admin/normativa', label: 'Base normativa' },
-  { href: '/admin/auditoria', label: 'Auditoria' },
-  { href: '/admin/financeiro', label: 'Financeiro' },
+interface NavGroup {
+  label: string;
+  links: { href: string; label: string; emoji: string }[];
+}
+
+const GROUPS: NavGroup[] = [
+  {
+    label: 'Visão Geral',
+    links: [{ href: '/admin/overview', label: 'Visão Geral', emoji: '📊' }],
+  },
+  {
+    label: 'Gestão',
+    links: [
+      { href: '/admin/empresas', label: 'Empresas', emoji: '🏢' },
+      { href: '/admin/tecnicos', label: 'Técnicos', emoji: '👷' },
+      { href: '/admin/parceiros', label: 'Parceiros', emoji: '🤝' },
+    ],
+  },
+  {
+    label: 'Sistema',
+    links: [
+      { href: '/admin/normativa', label: 'Base normativa', emoji: '📚' },
+      { href: '/admin/auditoria', label: 'Auditoria', emoji: '🔍' },
+      { href: '/admin/financeiro', label: 'Financeiro', emoji: '💳' },
+    ],
+  },
 ];
 
 export function AdminSidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="w-56 shrink-0 border-r border-brand-100 px-4 py-10">
+    <aside className="flex w-56 shrink-0 flex-col border-r border-brand-100 px-4 py-10">
       <h1 className="px-2 text-lg font-bold text-brand-900">Painel administrativo</h1>
-      <nav className="mt-6 flex flex-col gap-1">
-        {LINKS.map((link) => {
-          const isActive = pathname === link.href || pathname.startsWith(`${link.href}/`);
-          return (
-            <Link
-              key={link.href}
-              href={link.href}
-              className={
-                isActive
-                  ? 'rounded-md bg-brand-50 px-3 py-2 text-sm font-semibold text-brand-900'
-                  : 'rounded-md px-3 py-2 text-sm text-brand-700 hover:bg-brand-50 hover:text-brand-900'
-              }
-            >
-              {link.label}
-            </Link>
-          );
-        })}
+      <nav className="mt-6 flex flex-1 flex-col gap-5">
+        {GROUPS.map((group) => (
+          <div key={group.label}>
+            <p className="px-3 text-xs font-bold uppercase tracking-wide text-brand-400">{group.label}</p>
+            <div className="mt-1 flex flex-col gap-1">
+              {group.links.map((link) => {
+                const isActive = pathname === link.href || pathname.startsWith(`${link.href}/`);
+                return (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    className={
+                      isActive
+                        ? 'flex items-center gap-2 rounded-md bg-brand-50 px-3 py-2 text-sm font-semibold text-brand-900'
+                        : 'flex items-center gap-2 rounded-md px-3 py-2 text-sm text-brand-700 hover:bg-brand-50 hover:text-brand-900'
+                    }
+                  >
+                    <span aria-hidden="true">{link.emoji}</span>
+                    {link.label}
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        ))}
       </nav>
+      <button
+        onClick={logout}
+        className="mt-6 flex items-center gap-2 rounded-md px-3 py-2 text-left text-sm text-brand-700 hover:bg-brand-50 hover:text-brand-900"
+      >
+        <span aria-hidden="true">🚪</span>
+        Sair
+      </button>
     </aside>
   );
 }
