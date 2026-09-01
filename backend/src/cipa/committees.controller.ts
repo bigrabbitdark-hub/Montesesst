@@ -1,0 +1,36 @@
+import { Body, Controller, Param, Post, Req, UsePipes, ValidationPipe } from '@nestjs/common';
+import { Roles } from '../common/decorators/roles.decorator';
+import { CommitteesService } from './committees.service';
+import { CreateCommitteeDto } from './dto/create-committee.dto';
+import { GenerateMeetingsDto } from './dto/generate-meetings.dto';
+
+@Controller('cipa/committees')
+export class CommitteesController {
+  constructor(private readonly committees: CommitteesService) {}
+
+  @Roles('empresa')
+  @UsePipes(new ValidationPipe({ transform: true, whitelist: true, forbidNonWhitelisted: true }))
+  @Post()
+  create(@Body() dto: CreateCommitteeDto, @Req() req: any) {
+    return req.withTenantContext((client: any) =>
+      this.committees.create(
+        client,
+        req.user.tenantId,
+        dto.company_unit_id,
+        dto.ano,
+        dto.data_inicio,
+        dto.data_termino,
+        dto.responsavel_user_id,
+      ),
+    );
+  }
+
+  @Roles('empresa')
+  @UsePipes(new ValidationPipe({ transform: true, whitelist: true, forbidNonWhitelisted: true }))
+  @Post(':id/generate-meetings')
+  generateMeetings(@Param('id') id: string, @Body() dto: GenerateMeetingsDto, @Req() req: any) {
+    return req.withTenantContext((client: any) =>
+      this.committees.generateMeetings(client, id, dto.dia_semana_preferido, dto.horario, dto.local),
+    );
+  }
+}

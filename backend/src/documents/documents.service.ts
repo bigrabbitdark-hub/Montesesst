@@ -5,7 +5,10 @@ import { R2Service } from './r2.service';
 import { mapPgError } from '../common/pg-error.util';
 
 const ALLOWED_MIME_TYPES = ['application/pdf', 'image/jpeg', 'image/png'];
-const ALLOWED_CATEGORIES = ['pgr', 'pcmso', 'laudo', 'ficha_epi', 'treinamento'];
+const ALLOWED_CATEGORIES = [
+  'pgr', 'pcmso', 'laudo', 'ficha_epi', 'treinamento',
+  'cipa_ata', 'cipa_comunicado', 'cipa_documento_eleitoral', 'cipa_anexo',
+];
 
 function sanitizeFileName(name: string): string {
   const base = name.split(/[/\\]/).pop() || 'arquivo';
