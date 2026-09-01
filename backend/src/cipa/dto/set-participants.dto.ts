@@ -1,5 +1,5 @@
 import { Type } from 'class-transformer';
-import { ArrayMaxSize, IsArray, IsBoolean, IsOptional, IsUUID, ValidateNested } from 'class-validator';
+import { ArrayMaxSize, IsArray, IsBoolean, IsOptional, IsString, IsUUID, MaxLength, ValidateNested } from 'class-validator';
 
 class ParticipantDto {
   @IsOptional()
@@ -7,6 +7,8 @@ class ParticipantDto {
   cipa_member_id?: string;
 
   @IsOptional()
+  @IsString()
+  @MaxLength(200)
   nome_livre?: string;
 
   @IsBoolean()

@@ -1,15 +1,21 @@
 import PDFDocument from 'pdfkit';
 import { CipaMeeting } from './committees.service';
-import { CipaMeetingParticipant } from './meetings.service';
+import { AtaParticipantRow } from './meetings.service';
 
 // pdfkit escreve em um stream — coletamos os chunks num Buffer só,
 // mesmo padrão de qualquer geração de PDF em memória com essa lib
 // (sem escrever em disco, o resultado vai direto pro R2 via
 // DocumentsService.upload).
+//
+// `meeting` precisa chegar aqui já normalizado (normalizeMeeting) —
+// achado da revisão final (Fix 2): `data`/`proxima_reuniao_data` são
+// colunas DATE, e node-pg devolve isso como objeto Date bruto se não
+// normalizado; interpolar um Date bruto aqui produz
+// "Tue Mar 10 2026 00:00:00 GMT..." em vez de "2026-03-10".
 export function buildAtaPdf(
   meeting: CipaMeeting,
   tenantName: string,
-  participants: CipaMeetingParticipant[],
+  participants: AtaParticipantRow[],
 ): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     const doc = new PDFDocument({ margin: 50 });
@@ -41,7 +47,10 @@ export function buildAtaPdf(
       doc.text('Nenhum participante registrado.');
     } else {
       for (const p of participants) {
-        doc.text(`- ${p.nome_livre ?? '(membro da CIPA)'} — ${p.presente ? 'presente' : 'ausente'}`);
+        // Fix 3: prioriza o nome do membro cadastrado (member_nome, vindo
+        // do LEFT JOIN em approveAta) sobre nome_livre — o placeholder só
+        // sobra pro caso residual em que nenhum dos dois veio preenchido.
+        doc.text(`- ${p.member_nome ?? p.nome_livre ?? '(membro da CIPA)'} — ${p.presente ? 'presente' : 'ausente'}`);
       }
     }
     doc.moveDown();

@@ -5,6 +5,7 @@ import { AuditService } from '../audit/audit.service';
 const AUDITED_METHODS: Record<string, string> = {
   POST: 'create',
   PATCH: 'update',
+  PUT: 'update',
   DELETE: 'delete',
 };
 
