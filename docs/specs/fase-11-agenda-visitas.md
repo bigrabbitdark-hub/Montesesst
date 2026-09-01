@@ -218,9 +218,19 @@ Implementação:
    `tenant_partners`, conforme `req.user.role` — mesma query que já
    existe pra `GET /tenant-technicians/me`).
 3. Pra cada tenant vinculado, chama `this.dashboard.getSummary(client,
-   tenantId)` — em paralelo (`Promise.all`), mesmo padrão que o próprio
-   `DashboardService.getSummary` já usa internamente pras suas
-   subconsultas.
+   tenantId)` — **sequencial (`for...of` com `await`), não `Promise.all`**.
+   Diferente do que o brief original sugeria, todas as subconsultas por
+   tenant compartilham o mesmo `PoolClient` (a mesma transação aberta por
+   `req.withTenantContext`); o driver node-postgres já serializa
+   internamente qualquer `query()` concorrente num único client, então
+   `Promise.all` sobre N chamadas de `getSummary` no mesmo client não traria
+   ganho real de latência (nenhuma chamada externa envolvida, só Postgres) e
+   somaria ao aviso de depreciação do node-postgres sobre uso concorrente de
+   `client.query` sem necessidade — troca de risco por zero benefício. (O
+   próprio `DashboardService.getSummary` continua paralelizando suas 4
+   subconsultas internas com `Promise.all`, que é diferente: são 4 queries
+   independentes dentro de uma única chamada, não N chamadas empilhadas no
+   mesmo client.)
 4. Retorna tudo agregado, cada resumo de empresa com `tenant_name`
    anexado (pra o frontend conseguir agrupar visualmente).
 

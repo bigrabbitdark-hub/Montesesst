@@ -1294,7 +1294,13 @@ plano em [`docs/plans/fase-11-agenda-visitas.md`](plans/fase-11-agenda-visitas.m
   (`@Roles('tecnico', 'parceiro')`): agrega próximas visitas
   confirmadas, pendentes de confirmação, e resumo (`DashboardService`
   reaproveitado, sem mudança) de cada empresa vinculada ao técnico —
-  em paralelo, `Promise.all`.
+  **sequencial (`for...of`/`await`), não `Promise.all`**: todas as
+  chamadas por tenant compartilham o mesmo `PoolClient`
+  (node-postgres já serializa `query()` concorrente num único client),
+  então paralelizar ali não traria ganho real de latência e só somaria
+  ao aviso de depreciação do driver sobre uso concorrente do client —
+  troca de risco por zero benefício (ver comentário em
+  `technician-agenda.service.ts` e `docs/specs/fase-11-agenda-visitas.md` §5).
 - **Task 3** — `VisitReminderCronService` (`@Cron('0 8 * * *')`,
   `runOnce()` separado pra teste chamar direto, mesmo padrão de
   `NormativeMonitorService`): e-mail pra empresa e técnico/parceiro no
@@ -1308,13 +1314,45 @@ plano em [`docs/plans/fase-11-agenda-visitas.md`](plans/fase-11-agenda-visitas.m
   `TenantContextInterceptor` já monta pra uma requisição autenticada
   de admin (ver `docs/specs/fase-11-agenda-visitas.md` §6).
 
-**Verificação:** suíte e2e completa — **65 suítes, 253 testes, todos
-passando** (Postgres real, sem mock de banco), incluindo as 5 novas
-suítes da fase (`visits-create-confirm`, `visits-cancel-conclude`,
-`visits-rls`, `technician-agenda`, `visit-reminder-cron`). Backend
-reconstruído e reimplantado (`docker compose build backend && docker
-compose up -d backend`) — `Nest application successfully started`,
-rota `GET /visits/me/day` confirmada no log de rotas mapeadas.
+**Verificação:** suíte e2e completa — **66 suítes, 264 testes, todos
+passando** (Postgres real, sem mock de banco), incluindo as 6 suítes
+da fase (`visits-create-confirm`, `visits-cancel-conclude`,
+`visits-rls`, `technician-agenda`, `visit-reminder-cron`,
+`visits-partner`). Backend reconstruído e reimplantado (`docker
+compose build backend && docker compose up -d backend`) — `Nest
+application successfully started`, rota `GET /visits/me/day`
+confirmada no log de rotas mapeadas.
+
+**Onda de correção pós-revisão final (mesmo dia, 2026-09-01):** a
+revisão de branch completa apontou 4 lacunas, todas fechadas nesta
+mesma onda — (1) `VisitReminderCronService` interpolava
+`tenant_name`/nome do técnico em HTML de e-mail sem escapar (terceiro
+site de envio de e-mail do projeto, único que pulava `escapeHtml`;
+`tenants.name` é texto livre do cadastro, sem sanitização na
+gravação — gap real, não teórico); corrigido, e o e-mail da empresa
+passou a mostrar o nome do técnico (`users.full_name`) em vez do
+e-mail dele; (2) zero cobertura do papel parceiro na fase inteira —
+suíte nova `visits-partner.e2e-spec.ts` cobre o ciclo completo
+(solicitar/confirmar/cancelar/concluir/`GET /visits/me/day`) como
+parceiro, e `visits-rls.e2e-spec.ts` ganhou o teste que a spec §7 já
+exigia (técnico não vinculado a um tenant não vê visita daquele
+tenant — via 404 em `PATCH .../cancelar`, provando que é a RLS em si
+que barra, não só o filtro de aplicação); (3) o teste de "concluir com
+`inspection_id` de outro tenant → 403" em
+`visits-cancel-conclude.e2e-spec.ts` usava uma inspeção de um tenant
+ao qual o técnico nem estava vinculado — a RLS escondia a linha e o
+403 saía do branch errado (`!inspection`, não da comparação de
+`tenant_id`); corrigido pra um segundo tenant ao qual o mesmo técnico
+está vinculado, e as lacunas da matriz de transição também foram
+fechadas (`confirmado→cancelado`, `cancelar` pelo próprio
+técnico/parceiro designado, `concluir` sobre visita ainda
+`solicitado` → 409, `confirmar`/`cancelar` por técnico B não
+designado → 403); (4) esta própria entrada do roadmap e
+`docs/specs/fase-11-agenda-visitas.md` §5 afirmavam incorretamente que
+`TechnicianAgendaService.getMyDay` chama `DashboardService.getSummary`
+"em paralelo, `Promise.all`" — corrigido acima para descrever o loop
+sequencial real e o motivo (mesmo `PoolClient` compartilhado entre as
+chamadas).
 
 Nenhuma chamada a API paga envolvida (sem IA) — a suíte e2e contra
 Postgres real já é a validação de ponta a ponta suficiente.
