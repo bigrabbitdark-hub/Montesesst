@@ -11,6 +11,7 @@ describe('CRUD /cipa/members (e2e)', () => {
   let companyUnitId: string;
   let empresaToken: string;
   let memberId: string;
+  let outroTenantCompanyUnitId: string;
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
@@ -29,6 +30,16 @@ describe('CRUD /cipa/members (e2e)', () => {
       [tenantId],
     );
     companyUnitId = unitResult.rows[0].id;
+
+    // Segundo tenant só pra provar que create() rejeita company_unit_id de
+    // fora do tenant do caller (achado da revisão: FK-only não bastava).
+    const outroTenant = await db.createTenantWithUser('Empresa CIPA Members Outro Tenant');
+    const outroUnitResult = await (db as any).client.query(
+      `INSERT INTO company_units (tenant_id, name, address_street, address_city, address_state, address_zip)
+       VALUES ($1, 'Matriz Outro Tenant', 'Rua Outra', 'Cidade Outra', 'SP', '02000000') RETURNING id`,
+      [outroTenant.tenantId],
+    );
+    outroTenantCompanyUnitId = outroUnitResult.rows[0].id;
 
     const loginEmpresa = await request(app.getHttpServer())
       .post('/auth/login')
@@ -62,6 +73,23 @@ describe('CRUD /cipa/members (e2e)', () => {
     expect(res.status).toBe(201);
     expect(res.body.status).toBe('ativo');
     memberId = res.body.id;
+  });
+
+  it('rejeita cadastrar membro com company_unit_id de outro tenant → 400', async () => {
+    const res = await request(app.getHttpServer())
+      .post('/cipa/members')
+      .set('Authorization', `Bearer ${empresaToken}`)
+      .send({
+        company_unit_id: outroTenantCompanyUnitId,
+        nome: 'Membro Malicioso',
+        funcao_cipa: 'membro',
+        titular_suplente: 'titular',
+        representacao: 'empregados',
+        inicio_mandato: '2026-01-01',
+        fim_mandato: '2027-12-31',
+      });
+
+    expect(res.status).toBe(400);
   });
 
   it('GET lista os membros do estabelecimento', async () => {

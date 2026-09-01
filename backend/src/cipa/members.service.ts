@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PoolClient } from 'pg';
 import { toDateString } from './committees.service';
 
@@ -43,6 +43,18 @@ export class MembersService {
     tenantId: string,
     data: Omit<CipaMember, 'id' | 'tenant_id' | 'status' | 'created_at' | 'updated_at'>,
   ): Promise<CipaMember> {
+    // Mesma checagem de CommitteesService.create (Task 1) — sem isso, um
+    // company_unit_id de outro tenant passa pelo FK-only e o membro fica
+    // vinculado ao estabelecimento errado (a linha em si continua isolada
+    // por tenant_id via RLS, mas o dado fica incorreto).
+    const unitCheck = await client.query('SELECT 1 FROM company_units WHERE id = $1 AND tenant_id = $2', [
+      data.company_unit_id,
+      tenantId,
+    ]);
+    if (unitCheck.rowCount === 0) {
+      throw new BadRequestException('Estabelecimento inválido para esta empresa');
+    }
+
     const result = await client.query<CipaMember>(
       `INSERT INTO cipa_members (tenant_id, company_unit_id, nome, funcao_empresa, setor, funcao_cipa, titular_suplente, representacao, inicio_mandato, fim_mandato)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *`,
