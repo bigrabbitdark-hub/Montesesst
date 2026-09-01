@@ -113,6 +113,7 @@ describe('POST /cipa/committees, POST /cipa/committees/:id/generate-meetings (e2
       expect(meeting.tipo).toBe('ordinaria');
       expect(meeting.status).toBe('planejada');
       expect(meeting.local).toBe('Sala de reuniões');
+      expect(meeting.company_unit_id).toBe(companyUnitId);
       expect(meeting.data).toBeTruthy();
       const dataObj = new Date(meeting.data + 'T00:00:00Z');
       expect(dataObj.getUTCDay()).toBe(1); // segunda-feira

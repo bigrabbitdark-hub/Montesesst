@@ -18,6 +18,7 @@ export interface CipaMeeting {
   id: string;
   tenant_id: string;
   committee_id: string;
+  company_unit_id: string;
   tipo: 'ordinaria' | 'extraordinaria';
   numero: number | null;
   titulo: string | null;
@@ -151,12 +152,20 @@ export class CommitteesService {
     const params: unknown[] = [];
     let i = 1;
     for (let numero = 1; numero <= 12; numero++) {
-      values.push(`($${i++}, $${i++}, 'ordinaria', $${i++}, $${i++}, $${i++}, $${i++})`);
-      params.push(committee.tenant_id, committeeId, numero, dates ? dates[numero - 1] : null, horario ?? null, local ?? null);
+      values.push(`($${i++}, $${i++}, $${i++}, 'ordinaria', $${i++}, $${i++}, $${i++}, $${i++})`);
+      params.push(
+        committee.tenant_id,
+        committeeId,
+        committee.company_unit_id,
+        numero,
+        dates ? dates[numero - 1] : null,
+        horario ?? null,
+        local ?? null,
+      );
     }
 
     const result = await client.query<CipaMeeting>(
-      `INSERT INTO cipa_meetings (tenant_id, committee_id, tipo, numero, data, hora, local)
+      `INSERT INTO cipa_meetings (tenant_id, committee_id, company_unit_id, tipo, numero, data, hora, local)
        VALUES ${values.join(', ')} RETURNING *`,
       params,
     );
