@@ -1,13 +1,17 @@
 import { BadRequestException, Body, Controller, Get, Param, Patch, Post, Put, Query, Req, UsePipes, ValidationPipe } from '@nestjs/common';
 import { Roles } from '../common/decorators/roles.decorator';
 import { MeetingsService } from './meetings.service';
+import { DocumentsService } from '../documents/documents.service';
 import { CreateExtraordinariaDto } from './dto/create-extraordinaria.dto';
 import { UpdateMeetingDto } from './dto/update-meeting.dto';
 import { SetParticipantsDto } from './dto/set-participants.dto';
 
 @Controller('cipa/meetings')
 export class MeetingsController {
-  constructor(private readonly meetings: MeetingsService) {}
+  constructor(
+    private readonly meetings: MeetingsService,
+    private readonly documents: DocumentsService,
+  ) {}
 
   @Roles('empresa')
   @UsePipes(new ValidationPipe({ transform: true, whitelist: true, forbidNonWhitelisted: true }))
@@ -48,5 +52,19 @@ export class MeetingsController {
       }
     }
     return req.withTenantContext((client: any) => this.meetings.setParticipants(client, id, dto.participants));
+  }
+
+  @Roles('empresa')
+  @Post(':id/aprovar-ata')
+  approveAta(@Param('id') id: string, @Req() req: any) {
+    return req.withTenantContext((client: any) =>
+      this.meetings.approveAta(client, id, req.user.id, this.documents),
+    );
+  }
+
+  @Roles('empresa')
+  @Post(':id/reabrir-ata')
+  reopenAta(@Param('id') id: string, @Req() req: any) {
+    return req.withTenantContext((client: any) => this.meetings.reopenAta(client, id));
   }
 }

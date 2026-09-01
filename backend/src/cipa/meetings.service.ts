@@ -1,6 +1,8 @@
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { PoolClient } from 'pg';
 import { CipaCommittee, CipaMeeting, normalizeMeeting } from './committees.service';
+import { DocumentsService } from '../documents/documents.service';
+import { buildAtaPdf } from './ata-pdf.util';
 
 export interface CipaMeetingParticipant {
   id: string;
@@ -135,5 +137,59 @@ export class MeetingsService {
       params,
     );
     return result.rows;
+  }
+
+  async approveAta(
+    client: PoolClient,
+    id: string,
+    userId: string,
+    documents: DocumentsService,
+  ): Promise<CipaMeeting> {
+    const lockResult = await client.query<CipaMeeting>(
+      'SELECT * FROM cipa_meetings WHERE id = $1 FOR UPDATE',
+      [id],
+    );
+    const meeting = lockResult.rows[0];
+    if (!meeting) throw new NotFoundException('Reunião não encontrada');
+    if (meeting.status_ata === 'aprovada') {
+      throw new ConflictException('Ata já está aprovada');
+    }
+
+    const tenantResult = await client.query<{ name: string }>('SELECT name FROM tenants WHERE id = $1', [
+      meeting.tenant_id,
+    ]);
+    const participantsResult = await client.query<CipaMeetingParticipant>(
+      'SELECT * FROM cipa_meeting_participants WHERE meeting_id = $1',
+      [id],
+    );
+
+    const pdfBuffer = await buildAtaPdf(meeting, tenantResult.rows[0].name, participantsResult.rows);
+    const fileName = `ata-${meeting.tipo}-${meeting.numero ?? meeting.id.slice(0, 8)}.pdf`;
+
+    await documents.upload(client, {
+      tenantId: meeting.tenant_id,
+      category: 'cipa_ata',
+      title: `Ata — ${meeting.tipo === 'ordinaria' ? `${meeting.numero}ª Reunião Ordinária` : meeting.titulo}`,
+      file: { buffer: pdfBuffer, mimetype: 'application/pdf', originalname: fileName, size: pdfBuffer.length },
+      uploadedByUserId: userId,
+      uploadedByRole: 'empresa',
+    });
+
+    const result = await client.query<CipaMeeting>(
+      `UPDATE cipa_meetings SET status_ata = 'aprovada', aprovado_por_user_id = $2, aprovado_em = now()
+       WHERE id = $1 RETURNING *`,
+      [id, userId],
+    );
+    return normalizeMeeting(result.rows[0]);
+  }
+
+  async reopenAta(client: PoolClient, id: string): Promise<CipaMeeting> {
+    const result = await client.query<CipaMeeting>(
+      `UPDATE cipa_meetings SET status_ata = 'rascunho', aprovado_por_user_id = NULL, aprovado_em = NULL
+       WHERE id = $1 RETURNING *`,
+      [id],
+    );
+    if (result.rows.length === 0) throw new NotFoundException('Reunião não encontrada');
+    return normalizeMeeting(result.rows[0]);
   }
 }
