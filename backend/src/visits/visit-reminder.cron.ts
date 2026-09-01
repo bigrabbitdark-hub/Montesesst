@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { DatabaseService } from '../common/database/database.service';
 import { EmailService } from '../common/email/email.service';
+import { toDateString } from './visits.service';
 
 interface ReminderRow {
   id: string;
@@ -10,7 +11,11 @@ interface ReminderRow {
   technician_user_id: string;
   technician_email: string;
   requested_by_email: string;
-  confirmed_date: string;
+  // Coluna `date` do Postgres — node-pg devolve um objeto Date, não string
+  // (mesma armadilha já documentada em visits.service.ts). Normalizado via
+  // toDateString antes de entrar no e-mail, senão vira
+  // "Fri Sep 12 2026 00:00:00 GMT+0000 (Coordinated Universal Time)".
+  confirmed_date: string | Date;
 }
 
 @Injectable()
@@ -53,11 +58,13 @@ export class VisitReminderCronService {
     );
 
     for (const row of rows) {
+      const confirmedDate = toDateString(row.confirmed_date);
+
       try {
         await this.email.send({
           to: row.requested_by_email,
           subject: 'Visita técnica confirmada amanhã',
-          html: `<p>Sua visita técnica com ${row.technician_email} está confirmada para amanhã (${row.confirmed_date}).</p>`,
+          html: `<p>Sua visita técnica com ${row.technician_email} está confirmada para amanhã (${confirmedDate}).</p>`,
         });
       } catch (err) {
         this.logger.error(`Falha ao enviar lembrete (empresa) pra visita ${row.id}`, (err as Error).stack);
@@ -67,7 +74,7 @@ export class VisitReminderCronService {
         await this.email.send({
           to: row.technician_email,
           subject: 'Você tem visita confirmada amanhã',
-          html: `<p>Você tem uma visita confirmada amanhã (${row.confirmed_date}) na empresa ${row.tenant_name}.</p>`,
+          html: `<p>Você tem uma visita confirmada amanhã (${confirmedDate}) na empresa ${row.tenant_name}.</p>`,
         });
       } catch (err) {
         this.logger.error(`Falha ao enviar lembrete (técnico) pra visita ${row.id}`, (err as Error).stack);

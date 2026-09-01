@@ -22,7 +22,7 @@ export interface VisitRequest {
 // 'YYYY-MM-DD'. Mesmo padrão de normalização usado em
 // dashboard.service.ts (toDateString) — aplicado aqui a preferred_date/
 // confirmed_date antes de qualquer VisitRequest sair pro controller.
-function toDateString(value: string | Date | null | undefined): string | null {
+export function toDateString(value: string | Date | null | undefined): string | null {
   if (!value) return null;
   if (value instanceof Date) return value.toISOString().slice(0, 10);
   return value;

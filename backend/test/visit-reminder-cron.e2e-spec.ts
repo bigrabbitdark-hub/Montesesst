@@ -75,5 +75,15 @@ describe('VisitReminderCronService.runOnce (e2e)', () => {
     expect(sendSpy).toHaveBeenCalledTimes(2);
     const recipients = sendSpy.mock.calls.map((call) => call[0].to).sort();
     expect(recipients).toEqual([tenantEmail, technicianEmail].sort());
+
+    // confirmed_date vem do Postgres como coluna `date` — node-pg devolve um
+    // objeto Date, não string. Sem normalização (toDateString, reusado de
+    // visits.service.ts), o e-mail mostraria algo como "Fri Sep 12 2026
+    // 00:00:00 GMT+0000 (Coordinated Universal Time)" em vez de
+    // 'YYYY-MM-DD'. Confere no e-mail da empresa que o formato é o correto.
+    const empresaCall = sendSpy.mock.calls.find((call) => call[0].to === tenantEmail);
+    expect(empresaCall).toBeDefined();
+    expect(empresaCall![0].html).toMatch(/\b\d{4}-\d{2}-\d{2}\b/);
+    expect(empresaCall![0].html).not.toMatch(/GMT|\d{2}:\d{2}:\d{2}/);
   });
 });
