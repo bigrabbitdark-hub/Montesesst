@@ -60,6 +60,17 @@ export class VisitsService {
   }
 
   async findAll(client: PoolClient, user: AuthenticatedUser): Promise<VisitRequest[]> {
+    if (user.role === 'admin') {
+      // Sem filtro: a RLS de visit_requests já concede visibilidade total
+      // pra admin (current_setting('app.role', true) = 'admin' no
+      // primeiro branch da policy) — mesmo padrão de
+      // InspectionsService.findAll quando nenhum tenantId é passado.
+      const result = await client.query<VisitRequest>(
+        `SELECT * FROM visit_requests
+         ORDER BY COALESCE(confirmed_date, preferred_date) ASC NULLS LAST`,
+      );
+      return result.rows.map(normalizeVisit);
+    }
     if (user.role === 'empresa') {
       const result = await client.query<VisitRequest>(
         `SELECT * FROM visit_requests WHERE tenant_id = $1
