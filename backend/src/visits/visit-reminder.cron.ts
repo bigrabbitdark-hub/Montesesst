@@ -2,14 +2,14 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { DatabaseService } from '../common/database/database.service';
 import { EmailService } from '../common/email/email.service';
+import { escapeHtml } from '../common/html-escape.util';
 import { toDateString } from './visits.service';
 
 interface ReminderRow {
   id: string;
-  tenant_id: string;
   tenant_name: string;
-  technician_user_id: string;
   technician_email: string;
+  technician_name: string;
   requested_by_email: string;
   // Coluna `date` do Postgres — node-pg devolve um objeto Date, não string
   // (mesma armadilha já documentada em visits.service.ts). Normalizado via
@@ -46,8 +46,9 @@ export class VisitReminderCronService {
   async runOnce(): Promise<void> {
     const { rows } = await this.db.withTenantContext({ role: 'admin' }, (client) =>
       client.query<ReminderRow>(
-        `SELECT vr.id, vr.tenant_id, t.name AS tenant_name, vr.technician_user_id,
-                tech_user.email AS technician_email, req_user.email AS requested_by_email,
+        `SELECT vr.id, t.name AS tenant_name,
+                tech_user.email AS technician_email, tech_user.full_name AS technician_name,
+                req_user.email AS requested_by_email,
                 vr.confirmed_date
          FROM visit_requests vr
          JOIN tenants t ON t.id = vr.tenant_id
@@ -59,12 +60,19 @@ export class VisitReminderCronService {
 
     for (const row of rows) {
       const confirmedDate = toDateString(row.confirmed_date);
+      // tenant_name vem de RegisterDto.company_name (texto livre digitado
+      // pelo próprio usuário no cadastro, 2-200 caracteres, sem sanitização
+      // na gravação) — escapado aqui como nos outros dois pontos de envio de
+      // e-mail do projeto (contact.service.ts, registration.service.ts),
+      // mesma razão: nunca interpolar texto de usuário em HTML sem escapar.
+      const technicianName = escapeHtml(row.technician_name);
+      const tenantName = escapeHtml(row.tenant_name);
 
       try {
         await this.email.send({
           to: row.requested_by_email,
           subject: 'Visita técnica confirmada amanhã',
-          html: `<p>Sua visita técnica com ${row.technician_email} está confirmada para amanhã (${confirmedDate}).</p>`,
+          html: `<p>Sua visita técnica com ${technicianName} está confirmada para amanhã (${confirmedDate}).</p>`,
         });
       } catch (err) {
         this.logger.error(`Falha ao enviar lembrete (empresa) pra visita ${row.id}`, (err as Error).stack);
@@ -74,7 +82,7 @@ export class VisitReminderCronService {
         await this.email.send({
           to: row.technician_email,
           subject: 'Você tem visita confirmada amanhã',
-          html: `<p>Você tem uma visita confirmada amanhã (${confirmedDate}) na empresa ${row.tenant_name}.</p>`,
+          html: `<p>Você tem uma visita confirmada amanhã (${confirmedDate}) na empresa ${tenantName}.</p>`,
         });
       } catch (err) {
         this.logger.error(`Falha ao enviar lembrete (técnico) pra visita ${row.id}`, (err as Error).stack);
