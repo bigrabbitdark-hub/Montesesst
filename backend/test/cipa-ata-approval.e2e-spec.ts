@@ -83,6 +83,22 @@ describe('POST /cipa/meetings/:id/aprovar-ata, /reabrir-ata (e2e)', () => {
     expect(docResult.rows[0].mime_type).toBe('application/pdf');
   });
 
+  it('aprovar de novo uma ata já aprovada → 409 (guard do próprio approveAta, não o do update())', async () => {
+    const res = await request(app.getHttpServer())
+      .post(`/cipa/meetings/${meetingId}/aprovar-ata`)
+      .set('Authorization', `Bearer ${empresaToken}`);
+
+    expect(res.status).toBe(409);
+
+    // Guard rejeita antes de gerar/subir um novo PDF — continua existindo
+    // só o documento da primeira aprovação, nenhum duplicado.
+    const docResult = await (db as any).client.query(
+      `SELECT * FROM documents WHERE tenant_id = $1 AND category = 'cipa_ata'`,
+      [tenantId],
+    );
+    expect(docResult.rows).toHaveLength(1);
+  });
+
   it('editar depois de aprovada → 409', async () => {
     const res = await request(app.getHttpServer())
       .patch(`/cipa/meetings/${meetingId}`)
