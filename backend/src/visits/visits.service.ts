@@ -28,7 +28,7 @@ function toDateString(value: string | Date | null | undefined): string | null {
   return value;
 }
 
-function normalizeVisit(row: VisitRequest): VisitRequest {
+export function normalizeVisit(row: VisitRequest): VisitRequest {
   return {
     ...row,
     preferred_date: toDateString(row.preferred_date),
