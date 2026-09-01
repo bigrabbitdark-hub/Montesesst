@@ -1,4 +1,4 @@
-import { IsIn, IsISO8601, IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
+import { IsIn, IsISO8601, IsOptional, IsString, IsUUID, Matches, MaxLength } from 'class-validator';
 
 export class CreateExtraordinariaDto {
   @IsUUID()
@@ -15,6 +15,7 @@ export class CreateExtraordinariaDto {
   @IsOptional()
   @IsString()
   @MaxLength(5)
+  @Matches(/^([01]\d|2[0-3]):[0-5]\d$/, { message: 'Horário inválido, use HH:MM' })
   hora?: string;
 
   @IsOptional()

@@ -1,4 +1,4 @@
-import { IsInt, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator';
+import { IsInt, IsOptional, IsString, Matches, Max, MaxLength, Min } from 'class-validator';
 
 export class GenerateMeetingsDto {
   @IsOptional()
@@ -10,6 +10,7 @@ export class GenerateMeetingsDto {
   @IsOptional()
   @IsString()
   @MaxLength(5)
+  @Matches(/^([01]\d|2[0-3]):[0-5]\d$/, { message: 'Horário inválido, use HH:MM' })
   horario?: string;
 
   @IsOptional()
