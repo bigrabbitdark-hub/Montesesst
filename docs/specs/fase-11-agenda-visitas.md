@@ -193,7 +193,7 @@ Todas as rotas de mutação usam `ValidationPipe({ transform: true,
 whitelist: true, forbidNonWhitelisted: true })`, igual
 `inspections.controller.ts`.
 
-## 5. "Meu Dia" — `GET /technicians/me/day`
+## 5. "Meu Dia" — `GET /visits/me/day`
 
 `@Roles('tecnico', 'parceiro')`. Novo `TechnicianAgendaService`:
 
@@ -233,11 +233,20 @@ Novo `VisitReminderCron`, mesmo módulo, `@Cron('0 8 * * *')` (8h da
 manhã, horário do servidor — mesmo fuso já assumido pelo resto do
 sistema, sem tratamento de fuso por tenant nesta fase):
 
-1. `SELECT * FROM visit_requests WHERE status = 'confirmado' AND
-   confirmed_date = CURRENT_DATE + INTERVAL '1 day'` (fora de contexto
-   de tenant — é um job de sistema, não uma requisição de usuário,
-   mesmo padrão de `withoutTenantContext` já usado pelo retrieval
-   normativo da Fase 9/10 quando não há tenant específico envolvido).
+1. `SELECT ... FROM visit_requests WHERE status = 'confirmado' AND
+   confirmed_date = CURRENT_DATE + INTERVAL '1 day'` (join com `tenants`
+   e `users`) — é um job de sistema, sem usuário autenticado, mas
+   `visit_requests`/`users` têm `FORCE ROW LEVEL SECURITY` e a role da
+   aplicação não tem `BYPASSRLS`; `withoutTenantContext` (sem
+   `app.role` setado) filtraria todas as linhas. Por isso a consulta
+   usa `db.withTenantContext({ role: 'admin' }, ...)` — o mesmo
+   contexto que `TenantContextInterceptor` monta pra uma requisição
+   autenticada de admin, que já é liberado em toda policy desta base,
+   com `SET LOCAL` escopado à transação (sem risco de vazar pro
+   próximo uso da conexão do pool) — diferente do retrieval normativo
+   da Fase 9/10, cujas tabelas (`official_sources`,
+   `normative_documents`, `normative_document_chunks`) não têm RLS,
+   então `withoutTenantContext` funciona sem contexto ali.
 2. Pra cada visita encontrada, `EmailService.send()` duas vezes: pro
    e-mail do `requested_by_user_id` (empresa) e pro e-mail do
    `technician_user_id` (técnico/parceiro) — textos diferentes
@@ -262,7 +271,7 @@ Mesma disciplina do projeto inteiro — Postgres real,
   (mesmo estando ambos vinculados à mesma empresa) → `403`.
 - Isolamento RLS: empresa não vê visita de outro tenant; técnico não
   vinculado a um tenant não vê visita daquele tenant.
-- `GET /technicians/me/day`: pendências de uma empresa vinculada nunca
+- `GET /visits/me/day`: pendências de uma empresa vinculada nunca
   aparecem misturadas nas de outra (mesmo teste de isolamento entre
   tenants já usado na Fase 10, adaptado pra 2+ empresas vinculadas ao
   mesmo técnico).

@@ -1272,3 +1272,49 @@ escopo da Fase 9.
 
 Ainda não implementada — próximo passo é escrever o plano de
 implementação (`writing-plans`) a partir desta spec.
+
+## Fase 11 — Agenda de Visitas + "Meu Dia" do técnico: status
+
+Terceiro sub-projeto da frente "Agentes + IA" (spec aprovada em
+brainstorming em 2026-09-01) — mas, diferente das Fases 9/10, sem
+nenhuma chamada de IA: agendamento real de visita técnica (empresa
+solicita, técnico/parceiro confirma com data) mais um painel agregado
+("Meu Dia") e um lembrete automático por e-mail. Spec completa em
+[`docs/specs/fase-11-agenda-visitas.md`](specs/fase-11-agenda-visitas.md),
+plano em [`docs/plans/fase-11-agenda-visitas.md`](plans/fase-11-agenda-visitas.md).
+
+**Fechado em 2026-09-01, 3 tasks:**
+- **Task 1** — `VisitsModule`: migration `visit_requests` (RLS
+  empresa/técnico/parceiro, mesmo padrão de
+  `0011_partner_access.sql`), máquina de estados
+  `solicitado → confirmado → concluído`/`cancelado` via
+  `POST /visits`, `PATCH /visits/:id/confirmar`, `.../cancelar`,
+  `.../concluir`, `GET /visits`.
+- **Task 2** — `TechnicianAgendaService` + `GET /visits/me/day`
+  (`@Roles('tecnico', 'parceiro')`): agrega próximas visitas
+  confirmadas, pendentes de confirmação, e resumo (`DashboardService`
+  reaproveitado, sem mudança) de cada empresa vinculada ao técnico —
+  em paralelo, `Promise.all`.
+- **Task 3** — `VisitReminderCronService` (`@Cron('0 8 * * *')`,
+  `runOnce()` separado pra teste chamar direto, mesmo padrão de
+  `NormativeMonitorService`): e-mail pra empresa e técnico/parceiro no
+  dia anterior à visita confirmada. **Desvio do brief encontrado e
+  corrigido durante a implementação:** a consulta do cron não pode
+  usar `withoutTenantContext` (proposto originalmente) porque
+  `visit_requests`/`users` têm `FORCE ROW LEVEL SECURITY` e a role da
+  aplicação não tem `BYPASSRLS` — sem contexto, a policy filtraria
+  todas as linhas e o job seria um no-op silencioso. Corrigido pra
+  `db.withTenantContext({ role: 'admin' }, ...)`, o mesmo contexto que
+  `TenantContextInterceptor` já monta pra uma requisição autenticada
+  de admin (ver `docs/specs/fase-11-agenda-visitas.md` §6).
+
+**Verificação:** suíte e2e completa — **65 suítes, 253 testes, todos
+passando** (Postgres real, sem mock de banco), incluindo as 5 novas
+suítes da fase (`visits-create-confirm`, `visits-cancel-conclude`,
+`visits-rls`, `technician-agenda`, `visit-reminder-cron`). Backend
+reconstruído e reimplantado (`docker compose build backend && docker
+compose up -d backend`) — `Nest application successfully started`,
+rota `GET /visits/me/day` confirmada no log de rotas mapeadas.
+
+Nenhuma chamada a API paga envolvida (sem IA) — a suíte e2e contra
+Postgres real já é a validação de ponta a ponta suficiente.
