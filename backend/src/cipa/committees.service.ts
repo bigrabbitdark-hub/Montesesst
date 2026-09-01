@@ -57,7 +57,7 @@ export interface CipaMeeting {
 // visits.service.ts / dashboard.service.ts (toDateString). Confirmado
 // empiricamente contra o Postgres real deste ambiente durante a
 // implementação desta task — não é suposição.
-function toDateString(value: string | Date | null | undefined): string | null {
+export function toDateString(value: string | Date | null | undefined): string | null {
   if (!value) return null;
   if (value instanceof Date) return value.toISOString().slice(0, 10);
   return value;
@@ -71,7 +71,13 @@ function normalizeCommittee(row: CipaCommittee): CipaCommittee {
   };
 }
 
-function normalizeMeeting(row: CipaMeeting): CipaMeeting {
+// Exportada para reuso em meetings.service.ts (Task 2) — mesma normalização
+// de `data`/`proxima_reuniao_data` se aplica lá (mesma tabela, mesmas
+// colunas DATE). `hora` é coluna TIME, que o node-pg já retorna como string
+// ('HH:MM:SS') por padrão — sem parser de Date embutido para esse OID —
+// confirmado empiricamente contra o Postgres real deste ambiente durante a
+// implementação da Task 2, por isso não entra nesta normalização.
+export function normalizeMeeting(row: CipaMeeting): CipaMeeting {
   return {
     ...row,
     data: toDateString(row.data),
