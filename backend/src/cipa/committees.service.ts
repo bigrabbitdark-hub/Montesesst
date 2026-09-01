@@ -1,5 +1,7 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { PoolClient } from 'pg';
+import { mapPgError } from '../common/pg-error.util';
+import { assertUserInTenant } from './tenant-guards';
 
 export interface CipaCommittee {
   id: string;
@@ -45,6 +47,7 @@ export interface CipaMeeting {
   status_ata: 'rascunho' | 'aprovada';
   aprovado_por_user_id: string | null;
   aprovado_em: string | null;
+  ata_document_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -119,13 +122,45 @@ export class CommitteesService {
     if (unitCheck.rowCount === 0) {
       throw new BadRequestException('Estabelecimento inválido para esta empresa');
     }
+    // responsavel_user_id é NOT NULL nesta tabela — sempre presente,
+    // sempre validado (achado da revisão final, Fix 6: mesmo bug de
+    // company_unit_id acima, mas pra usuário responsável).
+    await assertUserInTenant(client, responsavelUserId, tenantId);
 
+    try {
+      const result = await client.query<CipaCommittee>(
+        `INSERT INTO cipa_committees (tenant_id, company_unit_id, ano, data_inicio, data_termino, responsavel_user_id)
+         VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+        [tenantId, companyUnitId, ano, dataInicio, dataTermino, responsavelUserId],
+      );
+      return normalizeCommittee(result.rows[0]);
+    } catch (err) {
+      mapPgError(err);
+    }
+  }
+
+  async findAll(client: PoolClient, companyUnitId?: string): Promise<CipaCommittee[]> {
+    if (companyUnitId) {
+      const result = await client.query<CipaCommittee>(
+        'SELECT * FROM cipa_committees WHERE company_unit_id = $1 ORDER BY ano DESC, created_at DESC',
+        [companyUnitId],
+      );
+      return result.rows.map(normalizeCommittee);
+    }
+    // Sem filtro: RLS decide visibilidade (empresa vê o próprio tenant,
+    // técnico/parceiro vinculados veem, admin vê tudo) — mesmo padrão de
+    // MeetingsService.findAll.
     const result = await client.query<CipaCommittee>(
-      `INSERT INTO cipa_committees (tenant_id, company_unit_id, ano, data_inicio, data_termino, responsavel_user_id)
-       VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
-      [tenantId, companyUnitId, ano, dataInicio, dataTermino, responsavelUserId],
+      'SELECT * FROM cipa_committees ORDER BY ano DESC, created_at DESC',
     );
-    return normalizeCommittee(result.rows[0]);
+    return result.rows.map(normalizeCommittee);
+  }
+
+  async findOne(client: PoolClient, id: string): Promise<CipaCommittee> {
+    const result = await client.query<CipaCommittee>('SELECT * FROM cipa_committees WHERE id = $1', [id]);
+    const committee = result.rows[0];
+    if (!committee) throw new NotFoundException('Gestão da CIPA não encontrada');
+    return normalizeCommittee(committee);
   }
 
   async generateMeetings(
@@ -135,8 +170,17 @@ export class CommitteesService {
     horario: string | undefined,
     local: string | undefined,
   ): Promise<CipaMeeting[]> {
+    // FOR UPDATE — achado da revisão final (Fix 4): sem o lock, dois
+    // cliques rápidos (ou duas requisições concorrentes) em "gerar
+    // reuniões" passam os dois pela checagem de idempotência abaixo
+    // antes de qualquer um comitar, e os dois inserem 12 linhas cada
+    // (24 reuniões). Mesmo padrão de MeetingsService.update/approveAta
+    // (Global Constraint: toda transição de estado usa FOR UPDATE antes
+    // de checar o estado). O índice único parcial de
+    // 0025_cipa_meetings_unique_ordinaria.sql é o backstop de banco pro
+    // mesmo invariante.
     const committeeResult = await client.query<CipaCommittee>(
-      'SELECT * FROM cipa_committees WHERE id = $1',
+      'SELECT * FROM cipa_committees WHERE id = $1 FOR UPDATE',
       [committeeId],
     );
     const committeeRow = committeeResult.rows[0];
@@ -170,11 +214,15 @@ export class CommitteesService {
       );
     }
 
-    const result = await client.query<CipaMeeting>(
-      `INSERT INTO cipa_meetings (tenant_id, committee_id, company_unit_id, tipo, numero, data, hora, local)
-       VALUES ${values.join(', ')} RETURNING *`,
-      params,
-    );
-    return result.rows.map(normalizeMeeting);
+    try {
+      const result = await client.query<CipaMeeting>(
+        `INSERT INTO cipa_meetings (tenant_id, committee_id, company_unit_id, tipo, numero, data, hora, local)
+         VALUES ${values.join(', ')} RETURNING *`,
+        params,
+      );
+      return result.rows.map(normalizeMeeting);
+    } catch (err) {
+      mapPgError(err);
+    }
   }
 }

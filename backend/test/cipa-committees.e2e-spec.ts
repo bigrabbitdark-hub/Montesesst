@@ -128,4 +128,78 @@ describe('POST /cipa/committees, POST /cipa/committees/:id/generate-meetings (e2
 
     expect(res.status).toBe(409);
   });
+
+  // Fix 9 (revisão final): não havia nenhuma rota de leitura pra
+  // cipa_committees — depois de criar, não tinha como listar/refazer o
+  // fetch.
+  it('GET /cipa/committees lista a gestão criada, filtrando por company_unit_id', async () => {
+    const res = await request(app.getHttpServer())
+      .get(`/cipa/committees?company_unit_id=${companyUnitId}`)
+      .set('Authorization', `Bearer ${empresaToken}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.find((c: { id: string }) => c.id === createdCommitteeId)).toBeDefined();
+  });
+
+  it('GET /cipa/committees/:id busca a gestão criada', async () => {
+    const res = await request(app.getHttpServer())
+      .get(`/cipa/committees/${createdCommitteeId}`)
+      .set('Authorization', `Bearer ${empresaToken}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.id).toBe(createdCommitteeId);
+    expect(res.body.company_unit_id).toBe(companyUnitId);
+  });
+
+  it('GET /cipa/committees/:id de gestão inexistente → 404', async () => {
+    const res = await request(app.getHttpServer())
+      .get('/cipa/committees/00000000-0000-0000-0000-000000000000')
+      .set('Authorization', `Bearer ${empresaToken}`);
+
+    expect(res.status).toBe(404);
+  });
+
+  // Item de cobertura da revisão final: dois estabelecimentos do MESMO
+  // tenant, cada um com a própria gestão da CIPA — confirma que
+  // GET /cipa/committees?company_unit_id=X nunca vaza a gestão do outro
+  // estabelecimento (isolamento é por company_unit_id, não só por
+  // tenant_id — os dois estabelecimentos estão sob o mesmo tenant, então
+  // isso não é coberto pela RLS, que só isola por tenant).
+  it('isolamento entre estabelecimentos do mesmo tenant: gestão de uma unidade nunca aparece na listagem da outra', async () => {
+    const outroUnitResult = await (db as any).client.query(
+      `INSERT INTO company_units (tenant_id, name, address_street, address_city, address_state, address_zip)
+       VALUES ($1, 'Filial Teste', 'Rua Filial', 'Cidade Teste', 'SP', '04000000') RETURNING id`,
+      [tenantId],
+    );
+    const outroCompanyUnitId = outroUnitResult.rows[0].id;
+
+    const outroCommitteeRes = await request(app.getHttpServer())
+      .post('/cipa/committees')
+      .set('Authorization', `Bearer ${empresaToken}`)
+      .send({
+        company_unit_id: outroCompanyUnitId,
+        ano: 2026,
+        data_inicio: '2026-01-01',
+        data_termino: '2026-12-31',
+        responsavel_user_id: userId,
+      });
+    expect(outroCommitteeRes.status).toBe(201);
+    const outroCommitteeId = outroCommitteeRes.body.id;
+
+    const listUnidadeA = await request(app.getHttpServer())
+      .get(`/cipa/committees?company_unit_id=${companyUnitId}`)
+      .set('Authorization', `Bearer ${empresaToken}`);
+    expect(listUnidadeA.status).toBe(200);
+    expect(listUnidadeA.body.map((c: { id: string }) => c.id)).toContain(createdCommitteeId);
+    expect(listUnidadeA.body.map((c: { id: string }) => c.id)).not.toContain(outroCommitteeId);
+
+    const listUnidadeB = await request(app.getHttpServer())
+      .get(`/cipa/committees?company_unit_id=${outroCompanyUnitId}`)
+      .set('Authorization', `Bearer ${empresaToken}`);
+    expect(listUnidadeB.status).toBe(200);
+    expect(listUnidadeB.body.map((c: { id: string }) => c.id)).toContain(outroCommitteeId);
+    expect(listUnidadeB.body.map((c: { id: string }) => c.id)).not.toContain(createdCommitteeId);
+
+    await (db as any).client.query('DELETE FROM company_units WHERE id = $1', [outroCompanyUnitId]);
+  });
 });
