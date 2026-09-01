@@ -1356,3 +1356,84 @@ chamadas).
 
 Nenhuma chamada a API paga envolvida (sem IA) — a suíte e2e contra
 Postgres real já é a validação de ponta a ponta suficiente.
+
+## Fase 12a — Central da CIPA (núcleo, metade backend): status
+
+Primeiro sub-projeto de uma expansão grande trazida pelo fundador
+(dashboard do cliente + CIPA como ferramenta central, decomposta em
+brainstorming em ~9 frentes — ver `docs/specs/fase-12-central-cipa-nucleo.md`).
+Esta fase é só a metade backend; o frontend (sidebar, wizard, páginas
+de reunião/ata, dashboard próprio da CIPA) é `fase-12b`, escrita só
+depois desta metade implantada e revisada — evita especificar UI
+contra uma API que ainda podia mudar.
+
+**Fechado em 2026-09-01, 5 tasks + 1 rodada de correção da revisão
+final:**
+
+- **Task 1** — migration `0023_cipa_nucleo.sql` (5 tabelas:
+  `cipa_committees`, `cipa_meetings`, `cipa_members`,
+  `cipa_meeting_participants`, `cipa_pendencias`, todas com
+  `tenant_id` + `company_unit_id` — CIPA é por estabelecimento, não
+  por empresa inteira, exigência legal real) + extensão do `CHECK` de
+  `documents.category`; `CommitteesService`/`Controller` com o gerador
+  de calendário guiado (cria a gestão, gera as 12 reuniões ordinárias
+  em lote com data sugerida por dia da semana preferido). **Achado da
+  revisão fechado ainda na Task 1:** `cipa_meetings` tinha `tenant_id`
+  mas não `company_unit_id`, contrariando a própria Global Constraint
+  do plano — corrigido via migration nova (`0024`, já que `0023` já
+  estava aplicada).
+- **Task 2** — `MeetingsService`/`Controller`: reuniões extraordinárias
+  avulsas, edição de campos de ata (pauta/discussões/deliberações) e
+  checklist de 9 itens antes/durante/depois enquanto `status_ata =
+  'rascunho'`, registro de participantes (membro cadastrado OU
+  convidado por nome livre, nunca os dois — `CHECK` no banco + validação
+  na API).
+- **Task 3** — aprovação de ata com exportação real em PDF (`pdfkit`,
+  dependência nova — nenhuma lib de geração de PDF existia no projeto
+  antes) via `DocumentsService`/R2 já existentes; reabrir volta pra
+  rascunho.
+- **Task 4** — CRUD de membros da CIPA (mandato, função, titular/suplente,
+  representação empregador/empregados).
+- **Task 5** — CRUD de pendências, unificando "plano de ação nascido de
+  reunião" e "pendência solta" numa tabela só (`meeting_id` nulável).
+
+**Revisão final (opus) encontrou 1 Critical + 10 Important, todos
+fechados numa única rodada de correção (4 commits):** o mais sério —
+a rota de participantes (`PUT /cipa/meetings/:id/participants`)
+não tinha guarda de `status_ata`, então uma ata já aprovada continuava
+editável por ali, e `PUT` era o único verbo de mutação do projeto
+inteiro fora do `AuditInterceptor` — zero trilha de auditoria pra essa
+brecha. Também sérios: o PDF da ata (o artefato legal do fluxo) saía
+com data em formato de objeto `Date` cru e a lista de presença nunca
+resolvia o nome de membro cadastrado (sempre "(membro da CIPA)");
+condição de corrida no gerador de calendário (clique duplo podia criar
+24 reuniões, sem `FOR UPDATE`); três instâncias do mesmo tipo de gap
+(`cipa_member_id`, `responsavel_user_id` em 5 pontos, e
+`company_unit_id`/`meeting_id` nunca validados um contra o outro)
+onde um id de outro tenant/estabelecimento passava pela FK sem checar
+posse — mesma classe de bug que as revisões das Tasks 4 e 5 já tinham
+achado duas vezes antes nesta fase; nenhum service usava o
+`mapPgError` já estabelecido no projeto, então violação de constraint
+virava 500 cru; documento de ata gerado sem `company_unit_id` e sem
+vínculo de volta pra reunião; faltava rota de leitura pra
+`cipa_committees` (não dava pra listar/reler depois de criar).
+Corrigido tudo, mais um teste que decodifica o PDF de verdade (via
+`pdf-parse`, já dependência do projeto) provando que a data e o nome
+do membro saem corretos — é esse teste que teria pego os dois achados
+do PDF antes, se existisse desde a Task 3.
+
+**Duas lacunas pequenas ficaram registradas, não corrigidas (nenhuma
+bloqueia, nenhuma é Critical/Important):** o `UPDATE` de `reopenAta`
+não passou pelo `mapPgError` (só valores fixos, sem risco real); a
+checagem nova de "pendência não pode referenciar reunião de outro
+estabelecimento" está correta por inspeção mas sem teste próprio
+(a irmã dela, a mesma checagem pro campo de participantes, ganhou
+dois testes).
+
+**Verificação:** suíte e2e completa — **71 suítes, 297 testes, todos
+passando** (Postgres real, sem mock de banco, PDF de verdade decodificado
+e conferido, upload real no R2). Backend reconstruído e reimplantado
+(`docker compose build backend && docker compose up -d backend`).
+
+Nenhuma chamada a API paga envolvida (sem IA) — a suíte e2e contra
+Postgres real já é a validação de ponta a ponta suficiente.
