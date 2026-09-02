@@ -1,5 +1,6 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { PoolClient } from 'pg';
+import { mapPgError } from '../common/pg-error.util';
 import { buildSafeSetClause } from '../common/safe-update.util';
 import { parseEmployeesCsv } from './csv-import.util';
 
@@ -145,8 +146,17 @@ export class EmployeesService {
   }
 
   async remove(client: PoolClient, id: string): Promise<void> {
-    const result = await client.query('DELETE FROM employees WHERE id = $1', [id]);
-    if (result.rowCount === 0) throw new NotFoundException('Funcionário não encontrado');
+    try {
+      const result = await client.query('DELETE FROM employees WHERE id = $1', [id]);
+      if (result.rowCount === 0) throw new NotFoundException('Funcionário não encontrado');
+    } catch (err) {
+      if (err instanceof NotFoundException) throw err;
+      const pgErr = err as { code?: string };
+      if (pgErr.code === '23503') {
+        throw new ConflictException('Não é possível apagar um funcionário que já foi candidato em uma eleição da CIPA');
+      }
+      mapPgError(err);
+    }
   }
 
   async importCsv(client: PoolClient, tenantId: string, csvContent: string): Promise<ImportResult> {

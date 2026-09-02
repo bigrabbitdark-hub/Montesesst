@@ -28,6 +28,15 @@ export default function EleicaoPage() {
   const [novoEmployeeId, setNovoEmployeeId] = useState('');
   const [novoNomeLivre, setNovoNomeLivre] = useState('');
 
+  // Achado 3 (Important) da revisão: o input de votos disparava PATCH +
+  // load() (3 GETs) a cada tecla — como o valor do input é controlado por
+  // `candidates` (vindo do servidor), respostas de load() fora de ordem
+  // podiam reescrever o campo com um valor obsoleto, e os próprios PATCHs
+  // podiam aplicar fora de ordem, persistindo um número errado. Rascunho
+  // local por candidato: onChange só atualiza aqui, o PATCH só dispara no
+  // onBlur (e só se o valor mudou de fato).
+  const [votosDraft, setVotosDraft] = useState<Record<string, string>>({});
+
   // Achado 1 (Important) da revisão: sem isso, uma eleição concluída vira
   // um beco sem saída permanente — o form de criação só aparecia quando
   // `!election`, e depois de concluída `election` nunca mais volta a
@@ -65,6 +74,11 @@ export default function EleicaoPage() {
         { headers },
       ).then((r) => (r.ok ? r.json() : []));
       setCandidates(candidatesData);
+      // Reinicializa o rascunho a cada load() bem-sucedido — os valores
+      // vindos do servidor são a fonte da verdade após um GET completo.
+      setVotosDraft(
+        Object.fromEntries(candidatesData.map((c) => [c.id, String(c.votos ?? '')])),
+      );
     }
 
     const employeesData: Employee[] = await fetch(`/api/employees?tenant_id=${user.tenantId}`, { headers }).then(
@@ -297,8 +311,14 @@ export default function EleicaoPage() {
                         type="number"
                         min={0}
                         placeholder="Votos"
-                        value={c.votos ?? ''}
-                        onChange={(e) => updateCandidate(c.id, { votos: Number(e.target.value) })}
+                        value={votosDraft[c.id] ?? String(c.votos ?? '')}
+                        onChange={(e) => setVotosDraft((prev) => ({ ...prev, [c.id]: e.target.value }))}
+                        onBlur={(e) => {
+                          const draftValue = e.target.value;
+                          const current = String(c.votos ?? '');
+                          if (draftValue === current) return;
+                          updateCandidate(c.id, { votos: Number(draftValue) });
+                        }}
                         className="w-20 rounded-[9px] border-[1.5px] border-brand-100 px-2 py-1 text-sm"
                       />
                       <select

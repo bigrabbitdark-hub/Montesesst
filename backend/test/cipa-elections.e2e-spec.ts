@@ -11,6 +11,7 @@ describe('CIPA elections (e2e)', () => {
   let companyUnitId: string;
   let employeeId: string;
   let empresaToken: string;
+  let outroTenantEmployeeId: string;
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
@@ -36,6 +37,14 @@ describe('CIPA elections (e2e)', () => {
       [tenantId],
     );
     employeeId = employeeResult.rows[0].id;
+
+    // Tenant totalmente diferente — pra provar que addCandidate rejeita um
+    // employee_id que não pertence ao tenant da eleição (achado da revisão
+    // final: sem essa checagem, o conclude() travava pra sempre). Mesmo
+    // padrão de outroTenant em cipa-meetings.e2e-spec.ts.
+    // createTenantWithUser já cria um funcionário-fixture nesse tenant.
+    const outroTenant = await db.createTenantWithUser('Empresa CIPA Eleição Outro Tenant');
+    outroTenantEmployeeId = outroTenant.employeeId;
 
     const loginEmpresa = await request(app.getHttpServer())
       .post('/auth/login')
@@ -171,5 +180,89 @@ describe('CIPA elections (e2e)', () => {
 
     await (db as any).client.query('DELETE FROM cipa_members WHERE company_unit_id = $1', [companyUnitId]);
     await (db as any).client.query('DELETE FROM cipa_elections WHERE id = $1', [electionId]);
+  });
+
+  it('rejeita employee_id de outro tenant ao adicionar candidato (400) — achado da revisão final', async () => {
+    const createRes = await request(app.getHttpServer())
+      .post('/cipa/elections')
+      .set('Authorization', `Bearer ${empresaToken}`)
+      .send({
+        company_unit_id: companyUnitId,
+        ano: 2027,
+        inicio_mandato: '2027-06-01',
+        fim_mandato: '2028-05-31',
+      });
+    expect(createRes.status).toBe(201);
+    const electionId = createRes.body.id;
+
+    const crossTenantRes = await request(app.getHttpServer())
+      .post(`/cipa/elections/${electionId}/candidates`)
+      .set('Authorization', `Bearer ${empresaToken}`)
+      .send({ employee_id: outroTenantEmployeeId });
+    expect(crossTenantRes.status).toBe(400);
+
+    // Confirma que a eleição não fica com um candidato "fantasma" — sem
+    // isso, conclude() travaria pra sempre (COALESCE vira NULL, viola
+    // cipa_members.nome NOT NULL).
+    const candidatesRes = await request(app.getHttpServer())
+      .get(`/cipa/elections/${electionId}/candidates`)
+      .set('Authorization', `Bearer ${empresaToken}`);
+    expect(candidatesRes.body).toHaveLength(0);
+
+    await (db as any).client.query('DELETE FROM cipa_elections WHERE id = $1', [electionId]);
+  });
+
+  it('não é possível apagar um funcionário que já foi candidato em uma eleição da CIPA (409)', async () => {
+    const employeeRes = await (db as any).client.query(
+      `INSERT INTO employees (tenant_id, full_name, cpf, status)
+       VALUES ($1, 'Ciclano Candidato Apaga Teste', '55566677788', 'ativo') RETURNING id`,
+      [tenantId],
+    );
+    const candidateEmployeeId = employeeRes.rows[0].id;
+
+    const createRes = await request(app.getHttpServer())
+      .post('/cipa/elections')
+      .set('Authorization', `Bearer ${empresaToken}`)
+      .send({
+        company_unit_id: companyUnitId,
+        ano: 2028,
+        inicio_mandato: '2028-06-01',
+        fim_mandato: '2029-05-31',
+      });
+    expect(createRes.status).toBe(201);
+    const electionId = createRes.body.id;
+
+    const candidateRes = await request(app.getHttpServer())
+      .post(`/cipa/elections/${electionId}/candidates`)
+      .set('Authorization', `Bearer ${empresaToken}`)
+      .send({ employee_id: candidateEmployeeId });
+    expect(candidateRes.status).toBe(201);
+
+    const deleteBlockedRes = await request(app.getHttpServer())
+      .delete(`/employees/${candidateEmployeeId}`)
+      .set('Authorization', `Bearer ${empresaToken}`);
+    expect(deleteBlockedRes.status).toBe(409);
+    expect(deleteBlockedRes.body.message).toMatch(/candidato/i);
+
+    // Sem regressão: um funcionário SEM candidatura continua apagável
+    // normalmente.
+    const freeEmployeeRes = await (db as any).client.query(
+      `INSERT INTO employees (tenant_id, full_name, cpf, status)
+       VALUES ($1, 'Funcionario Sem Candidatura Teste', '99988877766', 'ativo') RETURNING id`,
+      [tenantId],
+    );
+    const freeEmployeeId = freeEmployeeRes.rows[0].id;
+    const deleteFreeRes = await request(app.getHttpServer())
+      .delete(`/employees/${freeEmployeeId}`)
+      .set('Authorization', `Bearer ${empresaToken}`);
+    expect(deleteFreeRes.status).toBe(200);
+
+    // Cleanup — remove a eleição (cascade tira o candidato) e só então o
+    // funcionário, provando que o bloqueio era mesmo a candidatura.
+    await (db as any).client.query('DELETE FROM cipa_elections WHERE id = $1', [electionId]);
+    const deleteAfterCleanupRes = await request(app.getHttpServer())
+      .delete(`/employees/${candidateEmployeeId}`)
+      .set('Authorization', `Bearer ${empresaToken}`);
+    expect(deleteAfterCleanupRes.status).toBe(200);
   });
 });

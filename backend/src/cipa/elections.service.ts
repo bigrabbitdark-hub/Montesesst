@@ -115,14 +115,32 @@ export class ElectionsService {
     employeeId: string | undefined,
     nomeLivre: string | undefined,
   ): Promise<CipaElectionCandidate> {
-    const electionResult = await client.query<{ status: string }>(
-      'SELECT status FROM cipa_elections WHERE id = $1',
+    const electionResult = await client.query<{ status: string; tenant_id: string }>(
+      'SELECT status, tenant_id FROM cipa_elections WHERE id = $1',
       [electionId],
     );
     const election = electionResult.rows[0];
     if (!election) throw new NotFoundException('Eleição não encontrada');
     if (election.status === 'concluida') {
       throw new ConflictException('Eleição já concluída — não é possível adicionar candidato');
+    }
+
+    // Achado da revisão final: employee_id é client-supplied — sem validar,
+    // um id de funcionário de OUTRO tenant passa pelo FK-only (employees
+    // existe, só isso, a checagem de FK roda com RLS bypassada) e o
+    // conclude() trava pra sempre (COALESCE(emp.full_name, c.nome_livre)
+    // vira NULL pro candidato porque o LEFT JOIN roda com RLS, violando
+    // cipa_members.nome NOT NULL — 23502 não mapeado, 500 cru). Mesmo
+    // padrão de MeetingsService.setParticipants — aqui é só um id, então um
+    // SELECT simples basta, sem precisar de ANY($1).
+    if (employeeId) {
+      const empCheck = await client.query('SELECT id FROM employees WHERE id = $1 AND tenant_id = $2', [
+        employeeId,
+        election.tenant_id,
+      ]);
+      if ((empCheck.rowCount ?? 0) === 0) {
+        throw new BadRequestException('Funcionário informado não pertence a este tenant');
+      }
     }
 
     try {
