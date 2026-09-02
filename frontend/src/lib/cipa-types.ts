@@ -77,6 +77,35 @@ export interface CipaMeetingAtaDraft {
   error_message: string | null;
 }
 
+export interface CipaElection {
+  id: string;
+  tenant_id: string;
+  company_unit_id: string;
+  ano: number;
+  data_eleicao: string | null;
+  inicio_mandato: string;
+  fim_mandato: string;
+  status: 'aberta' | 'concluida';
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CipaElectionCandidate {
+  id: string;
+  election_id: string;
+  employee_id: string | null;
+  nome_livre: string | null;
+  votos: number | null;
+  eleito: boolean;
+  titular_suplente: 'titular' | 'suplente' | null;
+}
+
+export interface Employee {
+  id: string;
+  full_name: string;
+  status: 'ativo' | 'inativo';
+}
+
 export interface CipaMember {
   id: string;
   tenant_id: string;
