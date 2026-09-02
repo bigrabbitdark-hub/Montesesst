@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { getToken } from '@/lib/auth';
-import { CipaMeeting, CipaMeetingParticipant, CipaMember, formatDateBR } from '@/lib/cipa-types';
+import { CipaMeeting, CipaMeetingParticipant, CipaMeetingAtaDraft, CipaMember, formatDateBR } from '@/lib/cipa-types';
 
 const CHECKLIST_ITEMS: { field: keyof CipaMeeting; label: string; group: 'Antes' | 'Durante' | 'Depois' }[] = [
   { field: 'chk_pauta_definida', label: 'Pauta definida', group: 'Antes' },
@@ -33,6 +33,12 @@ export default function ReuniaoPage() {
   const [deliberacoes, setDeliberacoes] = useState('');
   const [novoNomeLivre, setNovoNomeLivre] = useState('');
   const [novoMembroId, setNovoMembroId] = useState('');
+
+  const [ataDraft, setAtaDraft] = useState<CipaMeetingAtaDraft | null>(null);
+  const [uploadingAudio, setUploadingAudio] = useState(false);
+  const [audioError, setAudioError] = useState<string | null>(null);
+  const [showTranscript, setShowTranscript] = useState(false);
+  const pollTimer = useRef<ReturnType<typeof setInterval> | null>(null);
 
   async function load() {
     const token = getToken();
@@ -66,7 +72,72 @@ export default function ReuniaoPage() {
       { headers },
     ).then((r) => (r.ok ? r.json() : []));
     setParticipants(participantsData);
+    const draftRes = await fetch(`/api/cipa/meetings/${params.id}/ata-ai-draft`, { headers });
+    if (draftRes.ok) {
+      const draft: CipaMeetingAtaDraft = await draftRes.json();
+      setAtaDraft(draft);
+      if (draft.status === 'processando') startPolling();
+    }
     setReady(true);
+  }
+
+  function startPolling() {
+    if (pollTimer.current) return;
+    pollTimer.current = setInterval(async () => {
+      const token = getToken();
+      if (!token) return;
+      const res = await fetch(`/api/cipa/meetings/${params.id}/ata-ai-draft`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) return;
+      const draft: CipaMeetingAtaDraft = await res.json();
+      setAtaDraft(draft);
+      if (draft.status !== 'processando' && pollTimer.current) {
+        clearInterval(pollTimer.current);
+        pollTimer.current = null;
+      }
+    }, 4000);
+  }
+
+  useEffect(() => {
+    return () => {
+      if (pollTimer.current) clearInterval(pollTimer.current);
+    };
+  }, []);
+
+  async function uploadAudio(file: File) {
+    setAudioError(null);
+    setUploadingAudio(true);
+    const token = getToken();
+    const formData = new FormData();
+    formData.append('file', file);
+    try {
+      const res = await fetch(`/api/cipa/meetings/${params.id}/ata-audio`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      });
+      if (!res.ok) {
+        setAudioError('Não foi possível iniciar a transcrição. Confira o formato do arquivo.');
+        return;
+      }
+      const draft: CipaMeetingAtaDraft = await res.json();
+      setAtaDraft(draft);
+      startPolling();
+    } finally {
+      setUploadingAudio(false);
+    }
+  }
+
+  function applyDraftField(field: 'pauta' | 'discussoes' | 'deliberacoes', value: string) {
+    if (field === 'pauta') setPauta(value);
+    if (field === 'discussoes') setDiscussoes(value);
+    if (field === 'deliberacoes') setDeliberacoes(value);
+  }
+
+  function discardDraftField(field: 'draft_pauta' | 'draft_discussoes' | 'draft_deliberacoes') {
+    if (!ataDraft) return;
+    setAtaDraft({ ...ataDraft, [field]: null });
   }
 
   useEffect(() => {
@@ -240,6 +311,117 @@ export default function ReuniaoPage() {
           </div>
         </div>
       ))}
+
+      {(isRascunho || ataDraft?.transcript) && (
+        <>
+          <h2 className="mt-8 text-sm font-bold uppercase tracking-wide text-brand-700">
+            🎙️ Gerar ata por áudio
+          </h2>
+          <div className="mt-3 rounded-lg border border-brand-100 p-4">
+            {isRascunho && (
+              <>
+                {audioError && <p className="mb-2 text-sm text-red-600">{audioError}</p>}
+
+                {(!ataDraft || ataDraft.status === 'falhou') && (
+                  <div className="flex flex-col gap-2">
+                    {ataDraft?.status === 'falhou' && (
+                      <p className="text-sm text-red-600">
+                        {ataDraft.error_message ?? 'Não foi possível gerar o rascunho.'} Tente enviar o áudio de novo.
+                      </p>
+                    )}
+                    <label className="flex flex-col gap-1 text-sm text-brand-900">
+                      Áudio da reunião (mp3, m4a, ogg ou wav)
+                      <input
+                        type="file"
+                        accept="audio/*"
+                        disabled={uploadingAudio}
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) uploadAudio(file);
+                          e.target.value = '';
+                        }}
+                        className="rounded-[9px] border-[1.5px] border-brand-100 px-3 py-2"
+                      />
+                    </label>
+                  </div>
+                )}
+
+                {ataDraft?.status === 'processando' && (
+                  <p className="text-sm text-brand-700">
+                    Transcrevendo e gerando rascunho... isso pode levar alguns minutos. Pode continuar usando a página normalmente.
+                  </p>
+                )}
+
+                {ataDraft?.status === 'concluido' && (
+                  <div className="flex flex-col gap-3">
+                    <p className="text-xs font-semibold text-brand-500">
+                      Sugestão gerada por IA — revise e confirme. Não substitui a avaliação do profissional habilitado.
+                    </p>
+                    {([
+                      { field: 'draft_pauta' as const, applyField: 'pauta' as const, label: 'Pauta', value: ataDraft.draft_pauta },
+                      { field: 'draft_discussoes' as const, applyField: 'discussoes' as const, label: 'Discussões', value: ataDraft.draft_discussoes },
+                      { field: 'draft_deliberacoes' as const, applyField: 'deliberacoes' as const, label: 'Deliberações', value: ataDraft.draft_deliberacoes },
+                    ]).map((card) =>
+                      card.value === null ? null : (
+                        <div key={card.field} className="rounded-md border border-brand-100 bg-brand-50 p-3">
+                          <p className="text-xs font-semibold text-brand-700">{card.label} (sugestão)</p>
+                          <p className="mt-1 whitespace-pre-wrap text-sm text-brand-900">{card.value || '(vazio)'}</p>
+                          <div className="mt-2 flex gap-2">
+                            <button
+                              onClick={() => {
+                                applyDraftField(card.applyField, card.value ?? '');
+                                discardDraftField(card.field);
+                              }}
+                              className="rounded-[9px] bg-brand-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-700"
+                            >
+                              Aplicar
+                            </button>
+                            <button
+                              onClick={() => discardDraftField(card.field)}
+                              className="rounded-[9px] border border-brand-100 px-3 py-1.5 text-xs font-semibold text-brand-700 hover:bg-white"
+                            >
+                              Descartar
+                            </button>
+                          </div>
+                        </div>
+                      ),
+                    )}
+                    <button
+                      onClick={() => setAtaDraft(null)}
+                      className="self-start text-xs font-semibold text-brand-700 underline"
+                    >
+                      Enviar outro áudio
+                    </button>
+                  </div>
+                )}
+              </>
+            )}
+
+            {/* Fora do isRascunho acima de propósito: a transcrição continua
+                consultável depois da ata aprovada — é justamente nesse ponto
+                (alguém questionando se a ata reflete bem o que foi dito) que
+                ela é mais útil, já que o áudio original não existe mais pra
+                reouvir (spec §2: "áudio original é descartado após a
+                transcrição"). Mesmo raciocínio do link de download do PDF,
+                que também só faz sentido — e só aparece — depois de aprovada. */}
+            {ataDraft?.transcript && (
+              <div className={isRascunho ? 'mt-3' : undefined}>
+                <button
+                  onClick={() => setShowTranscript(!showTranscript)}
+                  className="text-xs font-semibold text-brand-700 underline"
+                >
+                  {showTranscript ? 'Ocultar transcrição' : 'Ver transcrição'}
+                </button>
+                {showTranscript && (
+                  <p className="mt-2 whitespace-pre-wrap rounded-md bg-brand-50 p-3 text-xs text-brand-700">
+                    {ataDraft.transcript}
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+        </>
+      )}
 
       <h2 className="mt-8 text-sm font-bold uppercase tracking-wide text-brand-700">Ata</h2>
       <div className="mt-3 flex flex-col gap-3">

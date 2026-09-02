@@ -66,6 +66,17 @@ export interface CipaMeetingParticipant {
   presente: boolean;
 }
 
+export interface CipaMeetingAtaDraft {
+  id: string;
+  meeting_id: string;
+  status: 'processando' | 'concluido' | 'falhou';
+  transcript: string | null;
+  draft_pauta: string | null;
+  draft_discussoes: string | null;
+  draft_deliberacoes: string | null;
+  error_message: string | null;
+}
+
 export interface CipaMember {
   id: string;
   tenant_id: string;
