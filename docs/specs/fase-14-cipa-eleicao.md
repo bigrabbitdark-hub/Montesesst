@@ -74,6 +74,12 @@ CREATE TABLE cipa_elections (
   company_unit_id UUID NOT NULL REFERENCES company_units(id) ON DELETE CASCADE,
   ano INT NOT NULL,
   data_eleicao DATE,
+  -- cipa_members.inicio_mandato/fim_mandato são NOT NULL (Fase 12a) — a
+  -- eleição precisa capturar o período do mandato pra poder alimentar
+  -- os membros ao concluir (seção 4). Mesmo padrão já usado em
+  -- cipa_committees (data_inicio/data_termino pedidos na criação).
+  inicio_mandato DATE NOT NULL,
+  fim_mandato DATE NOT NULL,
   status TEXT NOT NULL DEFAULT 'aberta' CHECK (status IN ('aberta', 'concluida')),
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
@@ -107,7 +113,8 @@ Ambas com RLS espelhando `cipa_meetings_isolation`/`cipa_meeting_ata_drafts_isol
 ## 4. Fluxo
 
 1. `POST /cipa/elections` — cria a eleição (`ano`, `data_eleicao`
-   opcional) para o estabelecimento selecionado. Rejeita com 409 se já
+   opcional, `inicio_mandato`/`fim_mandato` obrigatórios) para o
+   estabelecimento selecionado. Rejeita com 409 se já
    existe uma eleição `aberta` para o mesmo `company_unit_id` —
    checagem em duas camadas: uma checagem de aplicação antes do
    `INSERT` (`SELECT ... WHERE company_unit_id = $1 AND status =
@@ -139,7 +146,8 @@ Ambas com RLS espelhando `cipa_meetings_isolation`/`cipa_meeting_ata_drafts_isol
    `representacao: 'empregados'`, `titular_suplente` conforme
    marcado, `funcao_cipa: 'membro'` (ajustável depois na tela de
    membros já existente), `nome` = nome do funcionário vinculado ou
-   `nome_livre`, `company_unit_id` da eleição. Rejeita com 409 se a
+   `nome_livre`, `company_unit_id` da eleição, `inicio_mandato`/
+   `fim_mandato` = os mesmos da eleição (seção 3). Rejeita com 409 se a
    eleição já estiver `concluida` (mesmo padrão de trava de
    `aprovar-ata`/`reabrir-ata`).
 5. Eleição `concluida` fica só leitura — sem rota de reabertura nesta
@@ -154,7 +162,8 @@ já decidido nas fases anteriores). Link novo "🗳️ Eleição" no grupo
 CIPA da sidebar (`EmpresaSidebar.tsx`), entre "Membros" e
 "Pendências".
 
-- Sem eleição aberta: CTA "Criar eleição" (ano + data).
+- Sem eleição aberta: CTA "Criar eleição" (ano, data da votação
+  opcional, início e fim do mandato obrigatórios).
 - Eleição aberta: lista de candidatos + formulário de adicionar
   (select de funcionário cadastrado OU campo de nome livre, mesmo
   padrão já usado no formulário de participante da tela de reunião).
