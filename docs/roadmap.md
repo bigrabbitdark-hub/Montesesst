@@ -1620,3 +1620,126 @@ Nenhuma chamada de IA foi feita contra APIs reais durante toda a fase
 (nem Groq nem OpenRouter) — toda extração/transcrição foi verificada
 via mock (`jest.spyOn(fetch)`/`overrideProvider`) ou por inspeção de
 código, nunca contra as APIs pagas de verdade.
+
+## Fase 14 — CIPA: eleição de representantes (candidatos + resultado): status
+
+Segunda frente fora do núcleo da CIPA, segunda da ordem acordada em
+`docs/specs/fase-12-central-cipa-nucleo.md` §1, logo depois da Fase 13
+(ata por IA). Digitaliza só o processo administrativo da eleição de
+representantes dos empregados — candidatos + resultado já apurado — a
+votação em si continua 100% física, fora do sistema (decisão fechada
+desde a Fase 12: sem login de colaborador, nesta fase nem em nenhuma
+futura de CIPA). Concluir a eleição alimenta automaticamente o cadastro
+de membros já existente (Fase 12a), sem redigitação.
+
+**Fechada em 2026-09-02, 3 tasks + 1 rodada de correção da revisão
+final:**
+
+- **Task 1** — migration `0028_cipa_elections.sql`: tabelas
+  `cipa_elections` (`inicio_mandato`/`fim_mandato` obrigatórios — achado
+  do próprio brainstorming da spec: `cipa_members` exige essas datas
+  como `NOT NULL` e o rascunho inicial da spec nunca as capturava) e
+  `cipa_election_candidates` (candidato é `employee_id` **ou**
+  `nome_livre`, nunca os dois — mesmo padrão de
+  `cipa_meeting_participants`), índice único parcial garantindo no
+  máximo uma eleição `aberta` por estabelecimento, RLS espelhando o
+  padrão já auditado de `cipa_meetings_isolation`/
+  `cipa_meeting_participants`.
+- **Task 2** — backend: `ElectionsService`/`ElectionsController`, 7
+  endpoints REST (criar eleição, listar, detalhar, listar/adicionar/
+  editar candidato, concluir). `eleito = true` exige
+  `titular_suplente` definido, validado tanto no PATCH do candidato
+  quanto — defesa em profundidade — de novo ao concluir. Concluir é
+  atômico: uma única transação trava a eleição (`FOR UPDATE`), valida,
+  marca `status = 'concluida'` e cria as linhas de `cipa_members`
+  correspondentes num único `INSERT...SELECT` (sem N+1), usando as
+  datas de mandato da própria eleição.
+- **Task 3** — frontend: link "🗳️ Eleição" na sidebar da CIPA, tela
+  nova `/empresa/cipa/eleicao` com os 3 estados (sem eleição → CTA de
+  criar; aberta → candidatos editáveis + votos/eleito/titular-suplente
+  + concluir; concluída → tudo somente-leitura). **Rodada de correção
+  do próprio Task 3** (2 achados Important, ambos herdados verbatim do
+  código de referência do brief, não desvio do implementador): a tela
+  não tinha nenhum caminho pra criar uma segunda eleição depois que a
+  primeira fosse concluída (bug de "um só uso na vida" — eleições da
+  CIPA são periódicas, mandatos se renovam); e o nome de um candidato
+  vinculado a um funcionário desativado depois da nomeação virava
+  "Funcionário" genérico, inclusive no registro histórico
+  somente-leitura pós-conclusão. Corrigidos e re-revisados como
+  limpos antes da revisão final da branch.
+
+**Revisão final (opus, 2 tentativas — a primeira caiu por limite de
+sessão do modelo antes de fazer qualquer trabalho, mesmo padrão já
+visto na Fase 13) achou 0 Critical + 2 Important de integração cruzada
+que nenhuma revisão de task individual conseguiria ver, corrigidos
+numa rodada de correção única e re-revisados como limpos:**
+`addCandidate()` aceitava um `employee_id` de **qualquer tenant** sem
+validar — a checagem de FK do Postgres roda com RLS bypassada por
+design, então um id de outro tenant passava despercebido; ao concluir a
+eleição, esse candidato "fantasma" fazia o `COALESCE` de nome virar
+`NULL`, violando `cipa_members.nome NOT NULL` e travando a eleição
+**permanentemente impossível de concluir** (500 cru, sem rota de apagar
+candidato nem de reabrir eleição pra desfazer). Corrigido validando o
+tenant do `employee_id` antes do insert, mesmo padrão já usado em
+`MeetingsService.setParticipants`. Segundo achado: a FK de
+`employee_id` tinha `ON DELETE SET NULL`, que colidia com o CHECK de
+"candidato precisa ter exatamente uma origem" — apagar um funcionário
+que já tinha sido candidato alguma vez ficava **permanentemente
+impossível** (500 cru, mesmo problema de "sem saída" do achado
+anterior). Corrigido com uma migration nova (`0029`) trocando pra
+`ON DELETE RESTRICT` + tratamento claro do erro, mesmo padrão já usado
+antes neste projeto pra proteger `employee_epi_deliveries`
+(`0014_epi_delivery_delete_restrict.sql`). Um terceiro achado, que a
+revisão classificou como Minor mas o orquestrador elevou pra Important
+por ser a interação central da tela (registrar votos): o campo de
+votos disparava PATCH a cada tecla digitada, sem debounce, com risco
+real de persistir um valor errado por respostas fora de ordem —
+corrigido com rascunho local por candidato, só salvando no blur.
+
+**Verificação:** backend com suíte e2e real — 4 testes em
+`cipa-elections.e2e-spec.ts` (fluxo completo: candidato por
+`employee_id` e por `nome_livre`, rejeitar ambos/nenhum, guarda de
+eleição única aberta, `eleito` sem `titular_suplente`, conclusão
+criando os membros corretos) mais os 2 novos da rodada de correção
+final (rejeição de `employee_id` de outro tenant; bloqueio/desbloqueio
+de exclusão de funcionário conforme candidatura). Suíte `employees`
+completa (10 testes) rodada como regressão extra por
+`employees.service.ts` ser compartilhado — sem quebra. Frontend sem
+suíte automatizada (estado real do projeto) — Playwright contra a
+build de produção real em todas as tasks e na rodada de correção
+final, incluindo o cenário de maior risco (reload direto numa eleição
+já concluída, sem passar pelo fluxo de concluir na mesma sessão — zero
+flash de formulário editável confirmado por polling de 107 amostras).
+
+**Pendências reais, não são bugs:**
+
+- **Sem rota de apagar candidato.** A tela permite marcar um candidato
+  errado como "não eleito" (mitigação que funciona — não bloqueia o
+  fluxo, `conclude()` só considera `eleito = true`), mas não existe
+  como removê-lo de vez da lista. A spec previu "editável livremente
+  enquanto aberta" e o módulo-irmão de reuniões permite remoção de
+  participante — gap real, não decisão consciente, adiado pelo
+  orquestrador pra um follow-up curto (endpoint `DELETE` + botão na
+  tela) em vez de entrar nesta fase.
+- **Premissa da spec sobre `employees` desatualizada.** A spec (§2)
+  afirma que a tabela não é escopada por estabelecimento citando a
+  migration `0001_init.sql` — mas a `0007_onboarding.sql` já adicionou
+  `employees.company_unit_id` (opcional) depois disso. A decisão de
+  listar todos os funcionários do tenant no seletor de candidato foi
+  tomada sobre esse fato desatualizado; vale reabrir se surgir um
+  tenant com múltiplos estabelecimentos ativos usando a eleição.
+- Itens cosméticos parqueados sem ação: índice secundário faltando em
+  `cipa_elections` pra consultas por `company_unit_id` fora do caso
+  "uma aberta"; tipo `Employee.status` do frontend não inclui
+  `'pendente'` (só `'ativo'`/`'inativo'`); campos do formulário de
+  criação não resetam ao cancelar/reabrir; um candidato pode acabar com
+  `titular_suplente` setado sem `eleito = true` (estado "fantasma"
+  inofensivo, filtrado pelo `conclude()`); condição de corrida de baixo
+  risco entre `addCandidate`/`updateCandidate` e `conclude()` sem lock
+  cruzado (perfil de uso é um operador só por vez).
+
+Nenhuma chamada a API paga foi feita durante toda a fase — não
+aplicável aqui (Fase 14 não integra IA), mas o guardrail permanente de
+segurança da sessão (reforçado desde um incidente na Fase 12b) seguiu
+valendo em todos os despachos: nenhum segredo extraído, nenhum SQL
+direto fora de fixtures de teste, nenhuma conta real registrada.
