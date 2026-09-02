@@ -1437,3 +1437,96 @@ e conferido, upload real no R2). Backend reconstruído e reimplantado
 
 Nenhuma chamada a API paga envolvida (sem IA) — a suíte e2e contra
 Postgres real já é a validação de ponta a ponta suficiente.
+
+## Fase 12b — Central da CIPA (frontend, 12b-1 + 12b-2): status
+
+Metade frontend da expansão da CIPA (ver Fase 12a acima) — sidebar
+unificada + logout (pré-requisito de navegação) e as 6 telas que
+consomem a API real da Fase 12a. Sem test runner no frontend (só o
+gate de `docker compose build` — TypeScript + lint da build de
+produção); verificação manual, Playwright com sessão sintética via
+`localStorage` (nem sidebar nem guard de página validam o token contra
+o backend, só checam presença) e `page.route()` mockando `/api/*`
+contra a build de produção real deployada — mesma abordagem em todas
+as tasks das duas sub-fases.
+
+**12b-1 — fundação de navegação, fechada em 2026-09-01, 4 tasks, revisão
+final "Ready to merge":** `lib/auth.ts` centraliza `getToken`/`getUser`/
+`logout`; as 3 sidebars (empresa/admin/técnico) ganharam agrupamento
+visual e botão de sair — técnico não tinha sidebar nenhuma antes.
+Achado não bloqueante mais relevante: nenhuma das 3 áreas tem
+tratamento de layout mobile (pré-existente, não introduzido aqui) —
+decisão registrada como pendência pra 12b-2, ainda não endereçada.
+
+**12b-2 — as 6 telas, fechada em 2026-09-02, 6 tasks + 2 rodadas de
+correção da revisão final:** grupo "CIPA" na sidebar + dashboard
+(`/empresa/cipa`, 7 cards computados no cliente a partir das
+listagens — sem endpoint de resumo dedicado no backend); wizard de
+criação de calendário (2 passos: cria a gestão, gera as 12 reuniões
+ordinárias, com opção de pular sugestão de data); lista de reuniões
+(visões lista/mensal/anual) + reunião extraordinária avulsa; página de
+reunião individual (ata editável só em rascunho, checklist de 9 itens,
+participantes, aprovar/reabrir, download do PDF) — a tela mais densa
+da fase; CRUD de membros; CRUD de pendências avulsas.
+
+**Revisão final (opus) encontrou 1 Critical + 3 Important na primeira
+rodada — todas as 6 tasks já tinham passado na própria revisão
+individual, então isso é 100% achado de revisão de branch inteira:**
+o mais sério — reabrir uma reunião numa sessão posterior e adicionar
+um participante apagava silenciosamente a lista de presença já salva
+(a tela nunca buscava participantes existentes, e o `PUT` de
+participantes do backend sempre foi substituição total — achado da
+própria Fase 12a). Como a lista de presença é o registro de quórum de
+um documento legal (ata de CIPA), isso derrubou uma ruling anterior
+("o PDF não é afetado") — o PDF É afetado, porque a exclusão acontece
+antes da geração. Corrigido com uma rota nova (`GET
+/cipa/meetings/:id/participants`, mesmo padrão de RLS +
+`withTenantContext` das rotas irmãs) — a única vez nesta fase em que
+"frontend only" precisou ser reaberto. Também: falha ao carregar a
+reunião renderizava a tela como se a ata estivesse aprovada/travada em
+vez de mostrar erro (fail-unsafe invertido); visão mensal agrupava só
+por número do mês, ignorando o ano — quebra em qualquer gestão que não
+comece em janeiro (o caso comum, já que `generate-meetings` conta 12
+meses a partir de `data_inicio`); status de pendência "mentia" na tela
+quando o `PATCH` falhava (`<select>` controlado não revertia).
+**A revisão escopada da primeira correção pegou um novo bug Important
+que a própria correção introduziu:** a tela de reunião passou a
+reenviar `id`/`meeting_id` (agora vindos do `GET` real) num PUT que o
+`whitelist`/`forbidNonWhitelisted` do DTO rejeita com 400 — quebrando
+"adicionar participante" bem no caso que a correção acabou de tornar
+comum. Fechado numa segunda correção pequena e cirúrgica (mapear os
+participantes existentes só pros 3 campos que o DTO aceita antes de
+reenviar), com evidência específica pro exato tipo de gap que passou
+despercebido da primeira vez (checar `'id' in obj === false`, não só
+que o mock de API respondeu 200).
+
+**Duplicação de padrão, decisão consciente do plano (Global Constraint
+explícita: sem cliente de API centralizado nesta fase, mesmo motivo da
+Fase 12b-1 com as sidebars):** os ~22 pontos de `fetch` +
+`Authorization: Bearer` das 6 telas repetem o mesmo boilerplate.
+Revisão final recomenda um helper pequeno (`lib/api.ts`) como primeira
+task de uma fase futura — não bloqueou esta.
+
+**Verificação:** sem suíte automatizada no frontend (estado real do
+projeto, não desvio desta fase) — `docker compose build`
+(backend+frontend) limpo em toda rodada, Playwright cobrindo os 4
+achados da revisão final + os 2 achados novos, tudo contra a build de
+produção real (ou, quando reimplantar os containers ao vivo foi
+bloqueado pelo classificador de auto mode por ser ação em produção
+real, a mesma imagem buildada rodando isolada num container próprio,
+sem tocar o stack ao vivo).
+
+**Pendências registradas, não bloqueiam a fase:** containers de
+produção (`montese_backend`/`montese_frontend`) ainda não foram
+reiniciados com as duas correções da revisão final — decisão de
+redeploy ficou pro humano, não pro agente, dado que toca produção real
+(mesmo padrão de cautela que bloqueou a tentativa automática). Mobile
+das 3 áreas autenticadas (herdado da 12b-1, ainda sem tratamento).
+Extrair sidebar/JSX compartilhado (12b-1) e o helper de fetch acima
+(12b-2) — ambos candidatos naturais de abrir junto quando a Fase 12b-3
+(se houver) tocar esses arquivos de novo.
+
+Nenhuma chamada a API paga envolvida (sem IA) — verificação manual
+completa contra a build de produção real já é suficiente pro risco
+desta fase (CRUD client-side + uma garantia de integridade de dados,
+sem mudança de schema).
