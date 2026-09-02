@@ -47,6 +47,7 @@ export default function ReuniaoPage() {
       setReady(true);
       return;
     }
+    setLoadError(null);
     const m: CipaMeeting = await meetingRes.json();
     setMeeting(m);
     setPauta(m.pauta ?? '');
@@ -123,8 +124,20 @@ export default function ReuniaoPage() {
   }
 
   async function addParticipant() {
+    // Achado da revisão final (Fix — Important): GET :id/participants (e a
+    // resposta do próprio PUT) retorna rows completas do banco, com `id` e
+    // `meeting_id`. O DTO do backend (SetParticipantsDto/ParticipantDto) usa
+    // whitelist + forbidNonWhitelisted e só aceita cipa_member_id/nome_livre/
+    // presente — enviar `id`/`meeting_id` de volta faz o PUT ser rejeitado
+    // com 400. Reduzimos cada participante existente só aos campos aceitos
+    // antes de reenviar.
+    const existingSlim = participants.map((p) => ({
+      cipa_member_id: p.cipa_member_id ?? undefined,
+      nome_livre: p.nome_livre ?? undefined,
+      presente: p.presente,
+    }));
     const next = [
-      ...participants,
+      ...existingSlim,
       novoMembroId
         ? { cipa_member_id: novoMembroId, presente: true }
         : { nome_livre: novoNomeLivre, presente: true },

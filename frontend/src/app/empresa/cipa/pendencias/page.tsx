@@ -85,6 +85,7 @@ export default function PendenciasPage() {
       body: JSON.stringify({ status }),
     });
     if (res.ok) {
+      setError(null);
       await load();
     } else {
       // Achado da revisão final (Fix 4 — Important): sem este else, uma
