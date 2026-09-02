@@ -25,6 +25,7 @@ export default function ReuniaoPage() {
   const [participants, setParticipants] = useState<CipaMeetingParticipant[]>([]);
   const [members, setMembers] = useState<CipaMember[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
   const [pauta, setPauta] = useState('');
@@ -40,7 +41,13 @@ export default function ReuniaoPage() {
       return;
     }
     const headers = { Authorization: `Bearer ${token}` };
-    const m: CipaMeeting = await fetch(`/api/cipa/meetings/${params.id}`, { headers }).then((r) => r.json());
+    const meetingRes = await fetch(`/api/cipa/meetings/${params.id}`, { headers });
+    if (!meetingRes.ok) {
+      setLoadError('Não foi possível carregar esta reunião.');
+      setReady(true);
+      return;
+    }
+    const m: CipaMeeting = await meetingRes.json();
     setMeeting(m);
     setPauta(m.pauta ?? '');
     setDiscussoes(m.discussoes ?? '');
@@ -49,6 +56,15 @@ export default function ReuniaoPage() {
       headers,
     }).then((r) => (r.ok ? r.json() : []));
     setMembers(membersData);
+    // Achado da revisão final (Fix 1 — Critical): sem este fetch, o estado
+    // `participants` só era populado pela resposta de addParticipant nesta
+    // mesma sessão — recarregar a página "esquecia" os participantes já
+    // salvos, e o próximo PUT (full replace) apagava eles do banco.
+    const participantsData: CipaMeetingParticipant[] = await fetch(
+      `/api/cipa/meetings/${params.id}/participants`,
+      { headers },
+    ).then((r) => (r.ok ? r.json() : []));
+    setParticipants(participantsData);
     setReady(true);
   }
 
@@ -57,8 +73,21 @@ export default function ReuniaoPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params.id]);
 
-  if (!ready || !meeting) {
+  if (!ready) {
     return <div className="px-4 py-16 text-center text-brand-700">Carregando...</div>;
+  }
+
+  // Achado da revisão final (Fix 2 — Important): sem checar r.ok, uma
+  // reunião inexistente/inacessível (404/403) fazia `meeting` virar o body
+  // de erro do NestJS (truthy, status_ata undefined) — isRascunho dava
+  // false e a página renderizava como se a ata estivesse APROVADA
+  // (travada), em vez de um estado de erro neutro.
+  if (loadError || !meeting) {
+    return (
+      <div className="mx-auto max-w-2xl px-4 py-16 text-center">
+        <p className="text-brand-700">{loadError ?? 'Não foi possível carregar esta reunião.'}</p>
+      </div>
+    );
   }
 
   const isRascunho = meeting.status_ata === 'rascunho';

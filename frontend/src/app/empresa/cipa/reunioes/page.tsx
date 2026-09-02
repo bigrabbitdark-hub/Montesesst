@@ -25,6 +25,22 @@ const STATUS_CLASS: Record<CipaMeeting['status'], string> = {
 
 type View = 'lista' | 'mensal' | 'anual';
 
+const MES_LABEL = [
+  'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+  'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro',
+];
+
+// Achado da revisão final (Fix 3 — Important): calendários da CIPA não são
+// alinhados ao ano civil — suggestedMeetingDates (committees.service.ts)
+// gera 12 meses consecutivos a partir de data_inicio, que pode cair em
+// qualquer mês (ex.: começando maio/2026, termina abril/2027). Formata uma
+// chave 'YYYY-MM' como "Maio de 2026".
+function formatMesAno(key: string): string {
+  const mes = Number(key.slice(5, 7)) - 1;
+  const ano = key.slice(0, 4);
+  return `${MES_LABEL[mes]} de ${ano}`;
+}
+
 export default function ReunioesPage() {
   const router = useRouter();
   const [ready, setReady] = useState(false);
@@ -83,11 +99,17 @@ export default function ReunioesPage() {
 
   const ordinarias = [...meetings].filter((m) => m.tipo === 'ordinaria').sort((a, b) => (a.numero ?? 0) - (b.numero ?? 0));
   const extraordinarias = meetings.filter((m) => m.tipo === 'extraordinaria');
-  const porMes: Record<number, CipaMeeting[]> = {};
+  // Achado da revisão final (Fix 3 — Important): a chave era o número do
+  // mês (1-12) sem o ano, então um calendário que atravessa a virada do
+  // ano (ex.: maio/2026 a abril/2027) misturava dois anos diferentes sob o
+  // mesmo rótulo "Mês N" e ordenava numericamente — jan/2027 (chave 1)
+  // aparecia ANTES de mai/2026 (chave 5). Chave 'YYYY-MM' ordena
+  // corretamente como string e mantém o ano visível no rótulo.
+  const porMes: Record<string, CipaMeeting[]> = {};
   for (const m of meetings) {
     if (!m.data) continue;
-    const mes = Number(m.data.split('-')[1]);
-    porMes[mes] = [...(porMes[mes] ?? []), m];
+    const chave = m.data.slice(0, 7);
+    porMes[chave] = [...(porMes[chave] ?? []), m];
   }
 
   function MeetingRow({ m }: { m: CipaMeeting }) {
@@ -167,10 +189,10 @@ export default function ReunioesPage() {
       {view === 'mensal' && (
         <div className="mt-6 flex flex-col gap-6">
           {Object.entries(porMes)
-            .sort(([a], [b]) => Number(a) - Number(b))
-            .map(([mes, ms]) => (
-              <div key={mes}>
-                <p className="text-xs font-bold uppercase tracking-wide text-brand-500">Mês {mes}</p>
+            .sort(([a], [b]) => (a < b ? -1 : 1))
+            .map(([chave, ms]) => (
+              <div key={chave}>
+                <p className="text-xs font-bold uppercase tracking-wide text-brand-500">{formatMesAno(chave)}</p>
                 <div className="mt-2 flex flex-col gap-2">
                   {ms.map((m) => (
                     <MeetingRow key={m.id} m={m} />

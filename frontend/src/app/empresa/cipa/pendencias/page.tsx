@@ -84,7 +84,18 @@ export default function PendenciasPage() {
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body: JSON.stringify({ status }),
     });
-    if (res.ok) await load();
+    if (res.ok) {
+      await load();
+    } else {
+      // Achado da revisão final (Fix 4 — Important): sem este else, uma
+      // falha no PATCH não mostrava erro nenhum — e como o <select> é
+      // controlado por p.status, o DOM continuava exibindo o valor que o
+      // usuário acabou de escolher mesmo o servidor tendo rejeitado,
+      // afirmando um estado persistido que não é verdade. `load()` não é
+      // chamado aqui de propósito: sem ele, o <select> reverte pro valor
+      // real de `pendencias` no próximo render (estado controlado).
+      setError('Não foi possível atualizar o status da pendência.');
+    }
   }
 
   if (!ready) {

@@ -152,6 +152,22 @@ export class MeetingsService {
     }
   }
 
+  async findParticipants(client: PoolClient, meetingId: string): Promise<CipaMeetingParticipant[]> {
+    // Achado da revisão final (Fix 1 — Critical): sem esta rota, o
+    // frontend não tinha como repopular `participants` ao carregar a
+    // página — cada visita "esquecia" quem já tinha sido salvo e um PUT
+    // subsequente em setParticipants (full replace) apagava os
+    // participantes de sessões anteriores. Mesmo padrão de findOne: sem
+    // FOR UPDATE (é leitura), tenant-safe só pela RLS via withTenantContext.
+    const meetingCheck = await client.query('SELECT id FROM cipa_meetings WHERE id = $1', [meetingId]);
+    if (!meetingCheck.rows[0]) throw new NotFoundException('Reunião não encontrada');
+    const result = await client.query<CipaMeetingParticipant>(
+      'SELECT * FROM cipa_meeting_participants WHERE meeting_id = $1',
+      [meetingId],
+    );
+    return result.rows;
+  }
+
   async setParticipants(
     client: PoolClient,
     meetingId: string,

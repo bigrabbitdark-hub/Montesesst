@@ -42,6 +42,11 @@ export class MeetingsController {
     return req.withTenantContext((client: any) => this.meetings.update(client, id, dto as Record<string, unknown>));
   }
 
+  @Get(':id/participants')
+  findParticipants(@Param('id') id: string, @Req() req: any) {
+    return req.withTenantContext((client: any) => this.meetings.findParticipants(client, id));
+  }
+
   @Roles('empresa')
   @UsePipes(new ValidationPipe({ transform: true, whitelist: true, forbidNonWhitelisted: true }))
   @Put(':id/participants')
