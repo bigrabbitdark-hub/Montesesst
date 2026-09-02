@@ -1530,3 +1530,93 @@ Nenhuma chamada a API paga envolvida (sem IA) — verificação manual
 completa contra a build de produção real já é suficiente pro risco
 desta fase (CRUD client-side + uma garantia de integridade de dados,
 sem mudança de schema).
+
+## Fase 13 — CIPA: ata por IA (upload de áudio → transcrição → rascunho): status
+
+Primeira frente fora do núcleo da CIPA (ver Fase 12a/12b acima),
+primeira da ordem acordada em `docs/specs/fase-12-central-cipa-nucleo.md`
+§1. Empresa grava a reunião com qualquer aparelho, faz upload do áudio
+na própria tela da reunião; o backend transcreve (Groq/Whisper) e usa
+IA (OpenRouter, reaproveitando o padrão da Fase 8) pra gerar um
+rascunho dos 3 campos de texto da ata — pauta, discussões,
+deliberações — que a empresa aplica ou descarta campo a campo, nunca
+salvo automaticamente. Segunda integração de IA do projeto (a primeira
+é o Copiloto de IA das inspeções, Fase 8) e primeira vez que o produto
+lida com upload/processamento de áudio.
+
+**Fechada em 2026-09-02, 3 tasks + 1 rodada de correção da revisão
+final:**
+
+- **Task 1** — migration `0027_cipa_meeting_ata_drafts.sql`: tabela
+  satélite de `cipa_meetings` (`meeting_id` único — um rascunho ativo
+  por reunião, substituído inteiro a cada novo upload), RLS
+  byte-idêntica à `cipa_meetings_isolation` já auditada.
+- **Task 2** — backend: `GroqTranscriptionService`
+  (áudio→texto)/`OpenRouterAtaExtractorService`
+  (texto→3 campos, function-calling forçado) em
+  `backend/src/cipa/ata-ai/`, espelhando o padrão trocável da Fase 8;
+  endpoints `POST :id/ata-audio` (upload, dispara processamento em
+  segundo plano sem `await`) e `GET :id/ata-ai-draft` (polling);
+  processamento assíncrono **sem fila de jobs nova** — decisão
+  consciente, dado `DB_POOL_MAX=10`: cada chamada de IA roda fora de
+  qualquer transação Postgres aberta, com transações curtas e
+  independentes só pra cada escrita. Reaproveita `client_max_body_size`
+  do nginx (elevado nesta rota) e o rate limit dedicado já usado desde
+  a Fase 8.
+- **Task 3** — frontend: seção "🎙️ Gerar ata por áudio" na tela de
+  reunião, upload + polling + 3 cards de sugestão (Aplicar/Descartar
+  independentes) + aviso fixo de revisão obrigatória — mesmo padrão já
+  validado na Fase 8. Achado corrigido ainda no brainstorming da spec:
+  a transcrição precisa continuar visível **depois** da ata aprovada
+  (o áudio original é descartado, só o texto fica), não só durante
+  rascunho — a primeira versão do design escondia isso por engano.
+
+**Revisão final (opus, 2 tentativas — a primeira caiu por limite de
+sessão do modelo antes de fazer qualquer trabalho) achou 0 Critical +
+4 Important, todos corrigidos numa rodada de correção única e
+re-revisados como limpos:** o mais sério — um rascunho `processando`
+nunca podia ser substituído, mesmo órfão de um restart do backend no
+meio do processamento; a própria decisão arquitetural do plano previa
+"reenviar o áudio" como saída, mas o código não permitia — corrigido
+com uma janela de 30 minutos (rascunho `processando` mais velho que
+isso deixa de bloquear um novo upload) + limite de 150 tentativas de
+polling no frontend, com mensagem de desistência. Também sérios: sem
+`GROQ_API_KEY` (o estado real da produção agora), o endpoint devolvia
+201 e só falhava minutos depois, dentro do processamento em segundo
+plano — a empresa subia até 200MB e esperava pra descobrir que nunca
+funcionaria; corrigido checando a chave **antes** de aceitar o upload,
+devolvendo 503 na hora, como a própria constraint do plano já exigia.
+Limite de arquivo caiu de 200MB pra 100MB (pico de memória de ~600MB
+por upload com as cópias Buffer→Uint8Array→Blob, e teto real do Groq
+provavelmente bem menor — ver pendência abaixo) — nginx ajustado junto
+(110m, com folga real de multipart, o par 200MB/200m anterior não
+deixava nenhuma). E `uploadAudio` no frontend não tinha `catch` —
+queda de conexão no meio do upload (o modo de falha mais provável da
+fase inteira) ficava em silêncio total.
+
+**Verificação:** backend com suíte e2e real (13 testes novos + os já
+existentes) — o orçamento do rate limit dedicado da rota nova
+(`ATA_AUDIO_RATE_LIMIT_MAX=10`/dia por IP) foi consumido pelas próprias
+rodadas de verificação da Task 2 no mesmo dia, então a correção final
+não conseguiu rodar os testes HTTP-level uma segunda vez sem esperar a
+janela — a lógica das duas correções mais críticas (rascunho obsoleto,
+guarda de chave ausente) foi então comprovada direto contra o Postgres
+real via chamada de serviço por DI, sem passar pelo `RateLimitGuard`.
+Frontend sem suíte automatizada (estado real do projeto) — Playwright
+contra a build de produção real em todas as tasks. Nenhuma tentativa
+de burlar o rate limit ou obter credencial real foi feita em nenhum
+momento da fase.
+
+**Pendência real, não é código:** `GROQ_API_KEY` segue vazia de
+propósito (mesmo padrão do `MINIMAX_API_KEY` original da Fase 8) — a
+funcionalidade está no ar mas inativa até o fundador decidir ativar.
+Antes disso, falta validar contra a API real do Groq: formato exato da
+resposta, modelo/preço, e principalmente o teto de tamanho de arquivo
+real do provedor (o limite de 100MB do backend é uma estimativa
+conservadora, não confirmada — free tier do Groq é bem menor). Sem
+essa validação, a fase não deve ser anunciada como ativa pro fundador.
+
+Nenhuma chamada de IA foi feita contra APIs reais durante toda a fase
+(nem Groq nem OpenRouter) — toda extração/transcrição foi verificada
+via mock (`jest.spyOn(fetch)`/`overrideProvider`) ou por inspeção de
+código, nunca contra as APIs pagas de verdade.
