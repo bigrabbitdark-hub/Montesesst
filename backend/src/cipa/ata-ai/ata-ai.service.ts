@@ -57,11 +57,22 @@ export class AtaAiService {
       throw new ConflictException('Ata já aprovada — reabra antes de gerar um rascunho por áudio');
     }
 
-    const existingResult = await client.query<{ status: string }>(
-      'SELECT status FROM cipa_meeting_ata_drafts WHERE meeting_id = $1 FOR UPDATE',
+    // Achado da revisão final (Finding 1 — Important): o check antigo
+    // bloqueava para sempre quando existia QUALQUER linha 'processando',
+    // sem olhar a idade dela. Um restart do backend no meio do
+    // processamento (processDraft roda fora da transação, sem retry — ver
+    // comentário acima) deixava a linha órfã em 'processando' e a
+    // funcionalidade ficava permanentemente travada pra aquela reunião até
+    // alguém apagar a linha manualmente no banco. Agora só bloqueia se a
+    // linha 'processando' foi atualizada há menos de 30 minutos — uma linha
+    // órfã antiga deixa de travar uploads novos.
+    const activeResult = await client.query(
+      `SELECT 1 FROM cipa_meeting_ata_drafts
+       WHERE meeting_id = $1 AND status = 'processando' AND updated_at > now() - interval '30 minutes'
+       FOR UPDATE`,
       [meetingId],
     );
-    if (existingResult.rows[0]?.status === 'processando') {
+    if (activeResult.rows.length > 0) {
       throw new ConflictException('Já existe uma transcrição em andamento para esta reunião');
     }
 

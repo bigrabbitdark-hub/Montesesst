@@ -17,6 +17,13 @@ const CHECKLIST_ITEMS: { field: keyof CipaMeeting; label: string; group: 'Antes'
   { field: 'chk_pendencias_registradas', label: 'Pendências registradas', group: 'Depois' },
 ];
 
+// Achado da revisão final (Finding 1 — Important): sem um teto, um rascunho
+// 'processando' que nunca sai desse estado (ex.: o backend derrubou o job em
+// segundo plano) fazia o polling continuar pra sempre, sem nenhuma saída pro
+// usuário. ~10 minutos a 4s por tentativa é generoso pra reuniões longas
+// (transcrição de um áudio de horas), mas não é infinito.
+const MAX_POLL_ATTEMPTS = 150;
+
 export default function ReuniaoPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
@@ -39,6 +46,7 @@ export default function ReuniaoPage() {
   const [audioError, setAudioError] = useState<string | null>(null);
   const [showTranscript, setShowTranscript] = useState(false);
   const pollTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const pollAttempts = useRef(0);
 
   async function load() {
     const token = getToken();
@@ -83,7 +91,18 @@ export default function ReuniaoPage() {
 
   function startPolling() {
     if (pollTimer.current) return;
+    pollAttempts.current = 0;
     pollTimer.current = setInterval(async () => {
+      pollAttempts.current += 1;
+      if (pollAttempts.current > MAX_POLL_ATTEMPTS) {
+        if (pollTimer.current) {
+          clearInterval(pollTimer.current);
+          pollTimer.current = null;
+        }
+        setAudioError('Isso está demorando mais que o esperado. Tente enviar o áudio novamente.');
+        setAtaDraft(null);
+        return;
+      }
       const token = getToken();
       if (!token) return;
       const res = await fetch(`/api/cipa/meetings/${params.id}/ata-ai-draft`, {
@@ -118,12 +137,27 @@ export default function ReuniaoPage() {
         body: formData,
       });
       if (!res.ok) {
-        setAudioError('Não foi possível iniciar a transcrição. Confira o formato do arquivo.');
+        // Achado da revisão final (Finding 2 — Important): 503 é o backend
+        // recusando de propósito porque a chave da API de transcrição ainda
+        // não está ativada nesta conta — tentar de novo nunca vai funcionar,
+        // então a mensagem não sugere isso (diferente do branch genérico
+        // abaixo, que cobre erros que podem ser transitórios).
+        if (res.status === 503) {
+          setAudioError('Transcrição de áudio ainda não está disponível nesta conta.');
+        } else {
+          setAudioError('Não foi possível iniciar a transcrição. Confira o formato do arquivo.');
+        }
         return;
       }
       const draft: CipaMeetingAtaDraft = await res.json();
       setAtaDraft(draft);
       startPolling();
+    } catch {
+      // Achado da revisão final (Finding 4 — Important): sem este catch, uma
+      // conexão caindo no meio do upload (fetch rejeitando) ficava
+      // silenciosa — nenhuma mensagem de erro, só uma promise rejeitada sem
+      // handler no console e o input de arquivo reaparecendo sem explicação.
+      setAudioError('Não foi possível conectar ao servidor. Confira sua conexão e tente novamente.');
     } finally {
       setUploadingAudio(false);
     }

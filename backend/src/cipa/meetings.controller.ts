@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Controller, Get, NotFoundException, Param, Patch, Post, Put, Query, Req, UploadedFile, UseInterceptors, UsePipes, ValidationPipe } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Get, NotFoundException, Param, Patch, Post, Put, Query, Req, ServiceUnavailableException, UploadedFile, UseInterceptors, UsePipes, ValidationPipe } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Roles } from '../common/decorators/roles.decorator';
 import { RateLimit } from '../common/rate-limit/rate-limit.decorator';
@@ -90,11 +90,25 @@ export class MeetingsController {
     keyBy: 'ip',
   })
   @Post(':id/ata-audio')
-  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 200 * 1024 * 1024 } }))
+  // Achado da revisão final (Finding 3 — Important): 200MB permitia até ~600MB de pico de memória por
+  // upload (cópias Buffer→Uint8Array→Blob) e provavelmente excede o teto real
+  // da API do Groq (free tier ~25MB, dev tier ~100MB, não confirmado ainda —
+  // ver pendência de validação real no Step 7 do plano). 100MB é um teto mais
+  // conservador enquanto isso não é confirmado contra a API real.
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 100 * 1024 * 1024 } }))
   async uploadAtaAudio(@Param('id') id: string, @UploadedFile() file: Express.Multer.File, @Req() req: any) {
     if (!file) throw new BadRequestException('Nenhum arquivo enviado');
     if (!MeetingsController.ALLOWED_AUDIO_MIME_TYPES.includes(file.mimetype)) {
       throw new BadRequestException('Formato de áudio não suportado. Envie mp3, m4a, ogg ou wav.');
+    }
+    // Achado da revisão final (Finding 2 — Important): sem este check, o
+    // upload inteiro (até 100MB) era aceito e só falhava minutos depois, no
+    // pipeline em segundo plano (GroqTranscriptionService.transcribe já
+    // lança este mesmo 503 — mensagem idêntica de propósito), desperdiçando
+    // banda/tempo do usuário e uma unidade do rate limit diário por algo que
+    // não tinha a menor chance de dar certo.
+    if (!process.env.GROQ_API_KEY) {
+      throw new ServiceUnavailableException('Transcrição de áudio ainda não está disponível');
     }
 
     const draft = await req.withTenantContext((client: any) => this.ataAi.createDraft(client, id));
