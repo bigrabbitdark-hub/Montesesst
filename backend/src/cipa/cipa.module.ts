@@ -2,6 +2,8 @@ import { Module } from '@nestjs/common';
 import { DocumentsModule } from '../documents/documents.module';
 import { CommitteesController } from './committees.controller';
 import { CommitteesService } from './committees.service';
+import { ElectionsController } from './elections.controller';
+import { ElectionsService } from './elections.service';
 import { MeetingsController } from './meetings.controller';
 import { MeetingsService } from './meetings.service';
 import { MembersController } from './members.controller';
@@ -16,12 +18,13 @@ import { OpenRouterAtaExtractorService } from './ata-ai/openrouter-ata-extractor
 
 @Module({
   imports: [DocumentsModule],
-  controllers: [CommitteesController, MeetingsController, MembersController, PendenciasController],
+  controllers: [CommitteesController, MeetingsController, MembersController, PendenciasController, ElectionsController],
   providers: [
     CommitteesService,
     MeetingsService,
     MembersService,
     PendenciasService,
+    ElectionsService,
     AtaAiService,
     GroqTranscriptionService,
     { provide: AUDIO_TRANSCRIPTION_SERVICE, useClass: GroqTranscriptionService },
