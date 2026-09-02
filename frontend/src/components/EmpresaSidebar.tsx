@@ -24,6 +24,15 @@ const GROUPS: NavGroup[] = [
     ],
   },
   {
+    label: 'CIPA',
+    links: [
+      { href: '/empresa/cipa', label: 'Central da CIPA', emoji: '🦺' },
+      { href: '/empresa/cipa/reunioes', label: 'Reuniões', emoji: '📅' },
+      { href: '/empresa/cipa/membros', label: 'Membros', emoji: '👥' },
+      { href: '/empresa/cipa/pendencias', label: 'Pendências', emoji: '📌' },
+    ],
+  },
+  {
     label: 'Conta',
     links: [{ href: '/empresa/onboarding', label: 'Dados da empresa', emoji: '🏢' }],
   },

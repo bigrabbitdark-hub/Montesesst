@@ -42,6 +42,10 @@ const CATEGORY_LABELS: Record<string, string> = {
   ficha_epi: 'Ficha de EPI',
   treinamento: 'Treinamento',
   epi: 'EPI',
+  cipa_ata: 'Ata da CIPA',
+  cipa_comunicado: 'Comunicado da CIPA',
+  cipa_documento_eleitoral: 'Documento eleitoral da CIPA',
+  cipa_anexo: 'Anexo da CIPA',
 };
 
 interface AgendaItem {
