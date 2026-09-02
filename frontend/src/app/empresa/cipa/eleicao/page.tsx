@@ -28,6 +28,15 @@ export default function EleicaoPage() {
   const [novoEmployeeId, setNovoEmployeeId] = useState('');
   const [novoNomeLivre, setNovoNomeLivre] = useState('');
 
+  // Achado 1 (Important) da revisão: sem isso, uma eleição concluída vira
+  // um beco sem saída permanente — o form de criação só aparecia quando
+  // `!election`, e depois de concluída `election` nunca mais volta a
+  // `null` (a mais recente concluída vira `elections[0]`). Eleições da
+  // CIPA são periódicas (mandatos da NR-5 se renovam), então precisa dar
+  // pra abrir uma eleição nova depois que a anterior é concluída — o
+  // backend já permite isso (só rejeita com 409 se já existe uma aberta).
+  const [mostrandoNovaEleicao, setMostrandoNovaEleicao] = useState(false);
+
   async function load() {
     const token = getToken();
     const user = getUser();
@@ -61,7 +70,13 @@ export default function EleicaoPage() {
     const employeesData: Employee[] = await fetch(`/api/employees?tenant_id=${user.tenantId}`, { headers }).then(
       (r) => (r.ok ? r.json() : []),
     );
-    setEmployees(employeesData.filter((e) => e.status === 'ativo'));
+    // Achado 2 (Important) da revisão: guarda TODOS os funcionários aqui
+    // (sem filtro) — precisamos deles pra resolver o nome de exibição de
+    // candidatos já adicionados (abaixo), inclusive os que foram
+    // desativados depois de virar candidato. O filtro por `ativo` só faz
+    // sentido pro seletor de NOVO candidato, e é derivado separadamente
+    // no render (`activeEmployees`).
+    setEmployees(employeesData);
 
     setReady(true);
   }
@@ -101,6 +116,7 @@ export default function EleicaoPage() {
         }
         return;
       }
+      setMostrandoNovaEleicao(false);
       await load();
     } finally {
       setSaving(false);
@@ -171,6 +187,12 @@ export default function EleicaoPage() {
   }
 
   const isAberta = election?.status === 'aberta';
+  // Achado 2: filtro de `ativo` derivado só pro seletor de novo candidato
+  // — `employees` em si fica sem filtro (usado pra resolver nome de
+  // candidatos já adicionados, mesmo que o funcionário tenha sido
+  // desativado depois).
+  const activeEmployees = employees.filter((e) => e.status === 'ativo');
+  const showCreateForm = !election || (election.status === 'concluida' && mostrandoNovaEleicao);
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-16">
@@ -182,7 +204,7 @@ export default function EleicaoPage() {
 
       {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
 
-      {!election && (
+      {showCreateForm && (
         <form onSubmit={createElection} className="mt-6 flex flex-col gap-4 rounded-lg border border-brand-100 p-4">
           <label className="flex flex-col gap-1 text-sm text-brand-900">
             Ano
@@ -223,13 +245,24 @@ export default function EleicaoPage() {
               className="rounded-[9px] border-[1.5px] border-brand-100 px-4 py-3"
             />
           </label>
-          <button
-            type="submit"
-            disabled={saving}
-            className="self-start rounded-[9px] bg-brand-500 px-6 py-3 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-50"
-          >
-            {saving ? 'Criando...' : 'Criar eleição'}
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              type="submit"
+              disabled={saving}
+              className="self-start rounded-[9px] bg-brand-500 px-6 py-3 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-50"
+            >
+              {saving ? 'Criando...' : 'Criar eleição'}
+            </button>
+            {election && (
+              <button
+                type="button"
+                onClick={() => setMostrandoNovaEleicao(false)}
+                className="text-sm font-semibold text-brand-700 underline"
+              >
+                Cancelar
+              </button>
+            )}
+          </div>
         </form>
       )}
 
@@ -311,7 +344,7 @@ export default function EleicaoPage() {
                     className="rounded-[9px] border-[1.5px] border-brand-100 px-3 py-2"
                   >
                     <option value="">Selecione...</option>
-                    {employees.map((emp) => (
+                    {activeEmployees.map((emp) => (
                       <option key={emp.id} value={emp.id}>
                         {emp.full_name}
                       </option>
@@ -348,6 +381,15 @@ export default function EleicaoPage() {
                 ✅ Concluir eleição
               </button>
             </>
+          )}
+
+          {!isAberta && !mostrandoNovaEleicao && (
+            <button
+              onClick={() => setMostrandoNovaEleicao(true)}
+              className="mt-8 rounded-[9px] bg-brand-500 px-6 py-3 text-sm font-semibold text-white hover:bg-brand-700"
+            >
+              Criar nova eleição
+            </button>
           )}
         </div>
       )}
