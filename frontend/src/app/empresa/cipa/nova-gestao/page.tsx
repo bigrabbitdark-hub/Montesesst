@@ -76,8 +76,8 @@ export default function NovaGestaoPage() {
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({
           dia_semana_preferido: skipSugestao || diaSemana === '' ? undefined : diaSemana,
-          horario: horario || undefined,
-          local: local || undefined,
+          horario: skipSugestao ? undefined : (horario || undefined),
+          local: skipSugestao ? undefined : (local || undefined),
         }),
       });
       if (!res.ok) {
