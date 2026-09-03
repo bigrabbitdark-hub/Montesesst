@@ -14,6 +14,7 @@ interface PortfolioComplianceItem {
   tenant_id: string;
   tenant_name: string;
   score: number | null;
+  empresa_destaque: boolean;
   pendencias_count: number;
   avisos_count: number;
 }
@@ -78,6 +79,9 @@ export default function TecnicoEmpresasPage() {
                   <span>{tenant.tenant_name}</span>
                   {item && (
                     <span className="flex items-center gap-2 text-sm">
+                      {item.empresa_destaque && (
+                        <span title="Empresa Destaque Montese">🏆</span>
+                      )}
                       <span className="font-semibold text-brand-900">
                         {item.score === null ? 'Sem dados' : `${item.score}%`}
                       </span>

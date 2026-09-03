@@ -24,6 +24,7 @@ interface AttentionItem {
 interface DashboardSummary {
   status: DashboardStatus;
   score: number | null;
+  empresa_destaque: boolean;
   updated_at: string;
   resumo: {
     pendencias: number;
@@ -170,6 +171,13 @@ export default function EmpresaDashboardPage() {
             {status.emoji} {status.label}
           </span>
           <span className="text-xs opacity-80">Atualizado às {formatUpdatedAt(summary.updated_at)}</span>
+        </div>
+      )}
+
+      {summary?.empresa_destaque && (
+        <div className="mt-4 flex items-center gap-2 rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          <span className="text-lg">🏆</span>
+          <span className="font-semibold">Empresa Destaque Montese — todos os documentos em dia!</span>
         </div>
       )}
 
