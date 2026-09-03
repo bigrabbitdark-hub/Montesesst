@@ -26,13 +26,25 @@ describe('CAEPI — consulta de CA (e2e)', () => {
     db = new TestDb();
     await db.connect();
 
+    // Captura o estado real de caepi_sync_status logo após a conexão,
+    // antes de qualquer passo que possa lançar exceção (criação de
+    // tenant/usuário, login HTTP, insert dos fixtures TESTE- em
+    // caepi_records). Se essa captura acontecer depois de um passo
+    // falível, um beforeAll interrompido (ex.: rerun com fixtures
+    // TESTE- ainda presentes de uma execução anterior interrompida)
+    // deixaria originalSyncStatus em null e o afterAll deletaria a
+    // linha real da sincronização de produção — ver comentário na
+    // declaração de originalSyncStatus acima.
+    const client = (db as any).client;
+    const existing = await client.query('SELECT last_synced_at, rows_imported, rows_skipped FROM caepi_sync_status WHERE id = 1');
+    originalSyncStatus = existing.rows[0] ?? null;
+
     const tenant = await db.createTenantWithUser('Empresa CAEPI Teste');
     const loginEmpresa = await request(app.getHttpServer())
       .post('/auth/login')
       .send({ email: tenant.email, password: tenant.password });
     empresaToken = loginEmpresa.body.access_token;
 
-    const client = (db as any).client;
     await client.query(
       `INSERT INTO caepi_records (numero_ca, data_validade, situacao, equipamento, marca_ca, razao_social)
        VALUES
@@ -40,9 +52,6 @@ describe('CAEPI — consulta de CA (e2e)', () => {
          ($2, CURRENT_DATE - INTERVAL '30 days', 'VENCIDO', 'LUVA DE SEGURANÇA TESTE', 'MARCA TESTE Y', 'OUTRO FABRICANTE TESTE LTDA')`,
       testCaNumbers,
     );
-
-    const existing = await client.query('SELECT last_synced_at, rows_imported, rows_skipped FROM caepi_sync_status WHERE id = 1');
-    originalSyncStatus = existing.rows[0] ?? null;
   });
 
   afterAll(async () => {
