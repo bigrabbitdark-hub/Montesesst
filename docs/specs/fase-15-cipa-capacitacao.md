@@ -46,9 +46,17 @@ técnico entre si.
   padrão sugerida por tipo (sempre editável antes de salvar) — não é
   uma tabela gerenciável pela empresa nesta fase. Ver seção 3 pra
   lista completa.
-- **Certificado é opcional, anexado via R2** (mesma infraestrutura já
-  ativa do módulo de documentos — diferente do `GROQ_API_KEY`, o R2
-  já está configurado e funcionando em produção hoje).
+- **Certificado é opcional, anexado via o módulo de documentos já
+  existente** (`DocumentsService.upload`, categoria `treinamento` —
+  já existe na lista de categorias permitidas desde a Fase 4, hoje sem
+  dono nem validade estruturada; é exatamente o que esta fase
+  organiza). `cipa_trainings` guarda só um link (`certificado_document_id`)
+  pro `documents` criado, mesmo padrão já usado por
+  `cipa_meetings.ata_document_id` (Fase 12a) — nada de R2 cru
+  reinventado aqui, e o download reaproveita
+  `GET /documents/:id/download` que já existe, sem endpoint novo.
+  Diferente do `GROQ_API_KEY`, o R2 já está configurado e funcionando
+  em produção hoje.
 - **Reciclagem não é uma ação especial** — fazer o treinamento de novo
   é só criar um novo registro pro mesmo funcionário+tipo. O histórico
   completo fica visível; o vencimento considerado é sempre o do
@@ -113,9 +121,13 @@ CREATE TABLE cipa_trainings (
   -- como valor final, não recalculada depois.
   data_validade DATE NOT NULL,
   carga_horaria INT,
-  -- Referência ao objeto no R2 (mesmo padrão de documents.file_key),
-  -- NULL quando não há certificado anexado.
-  certificado_key TEXT,
+  -- Link pro documents criado via DocumentsService.upload (categoria
+  -- 'treinamento'), NULL quando não há certificado anexado. Mesmo
+  -- padrão de cipa_meetings.ata_document_id (0026): SET NULL, não
+  -- CASCADE — apagar o documents (rota genérica DELETE /documents/:id,
+  -- já existente) não deveria arrastar o registro de treinamento
+  -- junto, só desvincular o certificado.
+  certificado_document_id UUID REFERENCES documents(id) ON DELETE SET NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   CONSTRAINT chk_tipo_outro CHECK (
@@ -283,28 +295,36 @@ CREATE POLICY cipa_sipat_activities_isolation ON cipa_sipat_activities USING (
 
 ### 4.1 Treinamentos
 
-1. `POST /cipa/trainings` — multipart, mesmo padrão de
-   `DocumentsController.upload` (`FileInterceptor`), mas com o arquivo
-   opcional (`DocumentsController` exige arquivo; aqui não — cria
-   normalmente sem `certificado_key` se nada for anexado). Campos:
-   `employee_id`, `tipo`, `tipo_outro` se `tipo = 'outro'`,
-   `data_realizacao`, `data_validade` (o frontend pré-preenche
-   sugerindo `data_realizacao + validade padrão do tipo`, mas o valor
-   final enviado é sempre o que estiver no campo, editado ou não),
-   `carga_horaria` opcional, e o arquivo `certificado` opcional — se
-   presente, grava no R2 (mesmo client já usado por
-   `DocumentsService.upload`) e preenche `certificado_key` no mesmo
-   INSERT, sem uma segunda chamada.
+1. `POST /cipa/trainings` — multipart (`FileInterceptor`), arquivo
+   opcional (diferente de `POST /documents`, que exige arquivo — aqui
+   cria normalmente sem `certificado_document_id` se nada for
+   anexado). Campos: `employee_id`, `tipo`, `tipo_outro` se
+   `tipo = 'outro'`, `data_realizacao`, `data_validade` (o frontend
+   pré-preenche sugerindo `data_realizacao + validade padrão do
+   tipo`, mas o valor final enviado é sempre o que estiver no campo,
+   editado ou não), `carga_horaria` opcional, e o arquivo
+   `certificado` opcional. Se presente: `TrainingsService` chama
+   `DocumentsService.upload` (injetado via `DocumentsModule`, já
+   importado em `CipaModule`) com `category: 'treinamento'`,
+   `title` derivado do tipo+funcionário, e guarda o `document.id`
+   retornado em `certificado_document_id` no INSERT de
+   `cipa_trainings` — sem lidar com R2 diretamente, sem endpoint
+   separado.
 2. `GET /cipa/trainings?employee_id=&tipo=&status=` — lista com
    filtros. `status` (`valido`/`vencendo`/`vencido`) é calculado na
    query (comparando `data_validade` contra `now()` e uma janela de
-   60 dias), não é uma coluna.
-3. `GET /cipa/trainings/:id/certificado` — URL assinada do R2 pra
-   download, mesmo padrão de `DocumentsController.download`.
-4. Sem `PATCH`/`PUT` nesta fase — um registro de treinamento não é
+   60 dias), não é uma coluna. Retorna `certificado_document_id`
+   quando existir — o frontend usa esse id diretamente contra
+   `GET /documents/:id/download` (rota já existente, RLS já cobre
+   `empresa`/`tecnico`/`parceiro` do mesmo tenant) pra baixar; não
+   existe uma rota `GET /cipa/trainings/:id/certificado` dedicada,
+   seria redundante.
+3. Sem `PATCH`/`PUT` nesta fase — um registro de treinamento não é
    editado depois de criado (é um fato histórico: "fulano fez X em
    tal data"); corrigir um erro de digitação exige apagar e recriar.
-   `DELETE /cipa/trainings/:id` existe pra esse caso.
+   `DELETE /cipa/trainings/:id` existe pra esse caso (não apaga o
+   `documents` vinculado — fica órfão mas intacto, mesma filosofia de
+   `ata_document_id`; limpeza de documento órfão não é desta fase).
 
 ### 4.2 DDS
 
@@ -379,7 +399,9 @@ chamadas de API totalmente independentes por aba.
   formulário de candidato da eleição —, seletor de tipo com validade
   sugerida preenchendo automaticamente a data de validade ao escolher,
   campo de nome livre quando tipo = "outro", upload opcional de
-  certificado). Link de download do certificado quando existir.
+  certificado). Link de download do certificado quando existir, aponta
+  direto pra `GET /documents/:id/download` usando o
+  `certificado_document_id` do registro.
 - **Aba DDS:** lista cronológica + formulário simples de novo
   registro.
 - **Aba SIPAT:** seletor de edição/ano (com CTA de criar uma nova
