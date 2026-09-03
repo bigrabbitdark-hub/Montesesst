@@ -218,6 +218,61 @@ describe('CRUD /cipa/pendencias (e2e)', () => {
     expect(depoisDaRenovacao.body.some((p: any) => p.id === `treinamento:${renovado.body.id}`)).toBe(false);
   });
 
+  it('tipo="outro" com tipo_outro diferentes são séries distintas — pendência vencida de uma não some quando a outra é criada (Fix 1 da revisão final)', async () => {
+    const employeeResult = await (db as any).client.query(
+      `INSERT INTO employees (tenant_id, full_name, cpf, status)
+       VALUES ($1, 'Funcionário Treinamento Outro', '99977766655', 'ativo') RETURNING id`,
+      [tenantId],
+    );
+    const trainingEmployeeId = employeeResult.rows[0].id;
+
+    const brigada = await request(app.getHttpServer())
+      .post('/cipa/trainings')
+      .set('Authorization', `Bearer ${empresaToken}`)
+      .field('employee_id', trainingEmployeeId)
+      .field('tipo', 'outro')
+      .field('tipo_outro', 'Brigada de Incêndio')
+      .field('data_realizacao', '2020-01-10')
+      .field('data_validade', '2021-01-10');
+    expect(brigada.status).toBe(201);
+
+    const antesDoSegundo = await request(app.getHttpServer())
+      .get('/cipa/pendencias')
+      .set('Authorization', `Bearer ${empresaToken}`);
+    expect(
+      antesDoSegundo.body.some((p: any) => p.id === `treinamento:${brigada.body.id}`),
+    ).toBe(true);
+
+    // Segundo treinamento tipo='outro', mesmo funcionário, mas tipo_outro
+    // DIFERENTE ("Primeiros Socorros" != "Brigada de Incêndio") — não é
+    // renovação do primeiro, é uma série distinta. A pendência do
+    // primeiro (vencido, nunca renovado) precisa continuar aparecendo.
+    const primeirosSocorros = await request(app.getHttpServer())
+      .post('/cipa/trainings')
+      .set('Authorization', `Bearer ${empresaToken}`)
+      .field('employee_id', trainingEmployeeId)
+      .field('tipo', 'outro')
+      .field('tipo_outro', 'Primeiros Socorros')
+      .field('data_realizacao', '2026-06-01')
+      .field('data_validade', '2028-06-01');
+    expect(primeirosSocorros.status).toBe(201);
+
+    const depoisDoSegundo = await request(app.getHttpServer())
+      .get('/cipa/pendencias')
+      .set('Authorization', `Bearer ${empresaToken}`);
+    const pendenciaBrigada = depoisDoSegundo.body.find(
+      (p: any) => p.id === `treinamento:${brigada.body.id}`,
+    );
+    expect(pendenciaBrigada).toBeTruthy();
+    expect(pendenciaBrigada.prioridade).toBe('alta');
+    expect(pendenciaBrigada.descricao).toContain('Brigada de Incêndio');
+    // Primeiros Socorros é válido (vence em 2028, fora da janela de 60
+    // dias) — não deve gerar pendência própria.
+    expect(
+      depoisDoSegundo.body.some((p: any) => p.id === `treinamento:${primeirosSocorros.body.id}`),
+    ).toBe(false);
+  });
+
   it('rejeita PATCH numa pendência computada de treinamento (Fase 15)', async () => {
     const res = await request(app.getHttpServer())
       .patch('/cipa/pendencias/treinamento:00000000-0000-0000-0000-000000000000')

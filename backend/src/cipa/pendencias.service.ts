@@ -118,7 +118,18 @@ export class PendenciasService {
   // o registro MAIS RECENTE por funcionário+tipo (decisão da spec:
   // "o vencimento considerado é sempre o do registro mais recente
   // daquele tipo" — sem isso, um certificado antigo já renovado
-  // continuaria gerando pendência pra sempre).
+  // continuaria gerando pendência pra sempre). Quando tipo='outro',
+  // t.tipo sozinho não identifica a "série" — é sempre a mesma string
+  // literal 'outro' pra qualquer treinamento livre — então o
+  // discriminador real da série passa a incluir também
+  // COALESCE(t.tipo_outro, '') (o texto livre digitado). Sem isso,
+  // dois treinamentos 'outro' diferentes do mesmo funcionário (ex.:
+  // "Brigada de Incêndio" e "Primeiros Socorros") eram tratados como
+  // a mesma série, e o mais recente dos dois suprimia silenciosamente
+  // a pendência do outro, mesmo vencido e nunca renovado. Pra tipos
+  // que não são 'outro', tipo_outro é sempre NULL, então o COALESCE
+  // vira '' pra todos e o agrupamento continua só por tipo, como
+  // antes.
   private async computeTrainingPendencias(client: PoolClient): Promise<CipaPendencia[]> {
     const result = await client.query<{
       id: string;
@@ -127,10 +138,10 @@ export class PendenciasService {
       data_validade: string | Date;
       employee_full_name: string;
     }>(
-      `SELECT DISTINCT ON (t.employee_id, t.tipo) t.id, t.tipo, t.tipo_outro, t.data_validade, e.full_name AS employee_full_name
+      `SELECT DISTINCT ON (t.employee_id, t.tipo, COALESCE(t.tipo_outro, '')) t.id, t.tipo, t.tipo_outro, t.data_validade, e.full_name AS employee_full_name
        FROM cipa_trainings t
        JOIN employees e ON e.id = t.employee_id
-       ORDER BY t.employee_id, t.tipo, t.data_realizacao DESC, t.created_at DESC`,
+       ORDER BY t.employee_id, t.tipo, COALESCE(t.tipo_outro, ''), t.data_realizacao DESC, t.created_at DESC`,
     );
 
     const today = new Date();
