@@ -17,10 +17,12 @@ import { ATA_EXTRACTOR } from './ata-ai/ata-extractor.interface';
 import { OpenRouterAtaExtractorService } from './ata-ai/openrouter-ata-extractor.service';
 import { TrainingsController } from './trainings.controller';
 import { TrainingsService } from './trainings.service';
+import { DdsController } from './dds.controller';
+import { DdsService } from './dds.service';
 
 @Module({
   imports: [DocumentsModule],
-  controllers: [CommitteesController, MeetingsController, MembersController, PendenciasController, ElectionsController, TrainingsController],
+  controllers: [CommitteesController, MeetingsController, MembersController, PendenciasController, ElectionsController, TrainingsController, DdsController],
   providers: [
     CommitteesService,
     MeetingsService,
@@ -28,6 +30,7 @@ import { TrainingsService } from './trainings.service';
     PendenciasService,
     ElectionsService,
     TrainingsService,
+    DdsService,
     AtaAiService,
     GroqTranscriptionService,
     { provide: AUDIO_TRANSCRIPTION_SERVICE, useClass: GroqTranscriptionService },
