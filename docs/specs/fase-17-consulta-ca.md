@@ -72,11 +72,19 @@ Investigação feita com download real e inspeção direta do arquivo
   com papel `empresa`/`tecnico`/`parceiro` pode consultar (mesmo
   conjunto de papéis já usado no módulo de EPI hoje).
 - **Sincronização é um script rodado manualmente por quem opera o
-  servidor**, mesmo padrão já usado pra `npm run db:migrate` — sem
-  scheduler/job novo (decisão YAGNI já repetida em toda fase anterior
-  desta sessão), sem rota HTTP nova que dispare a sincronização (evita
-  expor uma operação pesada — importar potencialmente centenas de
-  milhares de linhas — a qualquer usuário autenticado sem controle).
+  servidor**, mesmo padrão já usado pra `npm run db:migrate`. **Nota de
+  precisão**: diferente do que ficou repetido em fases anteriores
+  desta sessão, este projeto não é livre de scheduler — já existe
+  `@nestjs/schedule` (`ScheduleModule.forRoot()` em `app.module.ts`)
+  rodando um `@Cron` diário de lembrete de visita
+  (`VisitReminderCronService`) e um monitor normativo. A escolha de
+  script manual aqui não é "porque não existe scheduler no projeto" —
+  é porque uma importação de potencialmente centenas de milhares de
+  linhas merece controle explícito de quando roda (mesmo raciocínio de
+  rodar uma migration manualmente), e não expor uma rota HTTP nova que
+  dispare essa operação pesada a qualquer usuário autenticado sem
+  controle. Automatizar via `@Cron` fica como evolução natural futura,
+  se a sincronização manual se mostrar incômoda na prática.
 - **Sem índice de busca textual sofisticado (full-text search) nesta
   fase.** Busca livre via `ILIKE` simples é suficiente pro volume de
   uso esperado (consulta manual ocasional, não uma rota de alto
