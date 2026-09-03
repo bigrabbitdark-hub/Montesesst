@@ -31,6 +31,7 @@ const GROUPS: NavGroup[] = [
       { href: '/empresa/cipa/membros', label: 'Membros', emoji: '👥' },
       { href: '/empresa/cipa/eleicao', label: 'Eleição', emoji: '🗳️' },
       { href: '/empresa/cipa/pendencias', label: 'Pendências', emoji: '📌' },
+      { href: '/empresa/cipa/capacitacao', label: 'Capacitação', emoji: '🎓' },
     ],
   },
   {

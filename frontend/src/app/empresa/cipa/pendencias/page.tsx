@@ -172,19 +172,30 @@ export default function PendenciasPage() {
                 <p className="mt-0.5 text-xs text-brand-700">
                   {PRIORIDADE_LABEL[p.prioridade]} · Prazo: {formatDateBR(p.prazo)}
                   {p.meeting_id && ' · Originada de reunião'}
+                  {p.origem === 'treinamento' && ' · Treinamento'}
                 </p>
               </div>
-              <select
-                value={p.status}
-                onChange={(e) => updateStatus(p, e.target.value as CipaPendencia['status'])}
-                className={`shrink-0 rounded-full border-0 px-2.5 py-1 text-xs font-semibold ${STATUS_CLASS[p.status]}`}
-              >
-                {Object.entries(STATUS_PENDENCIA_LABEL).map(([value, label]) => (
-                  <option key={value} value={value}>
-                    {label}
-                  </option>
-                ))}
-              </select>
+              {p.origem === 'treinamento' ? (
+                <span
+                  className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${
+                    p.prioridade === 'alta' ? 'bg-red-50 text-red-800' : 'bg-amber-50 text-amber-800'
+                  }`}
+                >
+                  🎓 Treinamento
+                </span>
+              ) : (
+                <select
+                  value={p.status}
+                  onChange={(e) => updateStatus(p, e.target.value as CipaPendencia['status'])}
+                  className={`shrink-0 rounded-full border-0 px-2.5 py-1 text-xs font-semibold ${STATUS_CLASS[p.status]}`}
+                >
+                  {Object.entries(STATUS_PENDENCIA_LABEL).map(([value, label]) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+              )}
             </div>
           </div>
         ))}

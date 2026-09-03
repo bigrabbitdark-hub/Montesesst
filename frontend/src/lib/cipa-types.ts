@@ -106,6 +106,83 @@ export interface Employee {
   status: 'ativo' | 'inativo';
 }
 
+export const TRAINING_TYPES = [
+  'nr-05', 'nr-06', 'nr-10', 'nr-11', 'nr-12', 'nr-18', 'nr-20', 'nr-33', 'nr-35', 'outro',
+] as const;
+export type TrainingType = (typeof TRAINING_TYPES)[number];
+
+export const TRAINING_TYPE_LABEL: Record<TrainingType, string> = {
+  'nr-05': 'NR-05 — Membro da CIPA',
+  'nr-06': 'NR-06 — Uso de EPI',
+  'nr-10': 'NR-10 — Segurança em eletricidade',
+  'nr-11': 'NR-11 — Transporte/movimentação de materiais',
+  'nr-12': 'NR-12 — Segurança em máquinas e equipamentos',
+  'nr-18': 'NR-18 — Condições de segurança na construção civil',
+  'nr-20': 'NR-20 — Inflamáveis e combustíveis',
+  'nr-33': 'NR-33 — Espaço confinado',
+  'nr-35': 'NR-35 — Trabalho em altura',
+  outro: 'Outro',
+};
+
+// Mesmos valores de TRAINING_VALIDITY_MONTHS em
+// backend/src/cipa/trainings.service.ts — usado só pra pré-preencher
+// a sugestão de data de validade no formulário, o backend não confia
+// nesse valor (o valor final enviado é sempre o que estiver no campo).
+export const TRAINING_VALIDITY_MONTHS: Record<Exclude<TrainingType, 'outro'>, number> = {
+  'nr-05': 24,
+  'nr-06': 12,
+  'nr-10': 24,
+  'nr-11': 12,
+  'nr-12': 24,
+  'nr-18': 12,
+  'nr-20': 12,
+  'nr-33': 12,
+  'nr-35': 24,
+};
+
+export interface CipaTraining {
+  id: string;
+  employee_id: string;
+  employee_full_name: string;
+  tipo: TrainingType;
+  tipo_outro: string | null;
+  data_realizacao: string;
+  data_validade: string;
+  carga_horaria: number | null;
+  certificado_document_id: string | null;
+  status: 'valido' | 'vencendo' | 'vencido';
+}
+
+export interface CipaDdsRecord {
+  id: string;
+  company_unit_id: string;
+  data: string;
+  tema: string;
+  numero_participantes: number | null;
+  responsavel: string | null;
+  observacoes: string | null;
+}
+
+export interface CipaSipatEdition {
+  id: string;
+  company_unit_id: string;
+  ano: number;
+  periodo_inicio: string;
+  periodo_fim: string;
+  tema: string | null;
+}
+
+export interface CipaSipatActivity {
+  id: string;
+  edition_id: string;
+  data: string;
+  titulo: string;
+  responsavel: string | null;
+  publico_alvo: string | null;
+  status: 'planejada' | 'realizada' | 'cancelada';
+  numero_participantes: number | null;
+}
+
 export interface CipaMember {
   id: string;
   tenant_id: string;
@@ -135,6 +212,7 @@ export interface CipaPendencia {
   status: 'aberta' | 'andamento' | 'concluida' | 'atrasada';
   created_at: string;
   updated_at: string;
+  origem?: 'treinamento';
 }
 
 export function formatDateBR(iso: string | null): string {
