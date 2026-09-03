@@ -126,11 +126,15 @@ export class DashboardService {
     return {
       status,
       score: compliance.score,
-      // Fase 16: selo "Empresa Destaque" — só quando o score de
-      // documentos é exatamente 100 (nunca quando é null, i.e. tenant
-      // sem nenhum documento com expires_at — não é "destaque
-      // vacuamente", é ausência de dado).
-      empresa_destaque: compliance.score === 100,
+      // Fase 16, revisão final: score === 100 sozinho não bastava — a
+      // fórmula de score conta documento "vencendo" (≤30 dias) como
+      // emDia, então dava pra ter score 100 com status 'atencao' ao
+      // mesmo tempo (mesma empresa, documento vencendo). O selo
+      // promete "todos os documentos em dia", então precisa checar
+      // avisos/pendencias explicitamente também — um score 100
+      // genuíno já implica isso, esta checagem só fecha o caso de
+      // arredondamento e o caso de avisos contados como emDia.
+      empresa_destaque: compliance.score === 100 && compliance.pendencias.length === 0 && compliance.avisos.length === 0,
       updated_at: new Date().toISOString(),
       resumo: {
         pendencias,

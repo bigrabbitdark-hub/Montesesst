@@ -259,9 +259,10 @@ export class DocumentsService {
         tenant_id: tenantId,
         tenant_name: g.tenant_name,
         score,
-        // Fase 16: mesmo critério de DashboardService.getSummary —
-        // só true quando score é exatamente 100, nunca quando é null.
-        empresa_destaque: score === 100,
+        // Fase 16, revisão final: mesmo raciocínio de
+        // DashboardService.getSummary — score === 100 sozinho não
+        // bastava (arredondamento + avisos contados como emDia).
+        empresa_destaque: score === 100 && g.pendencias === 0 && g.avisos === 0,
         pendencias_count: g.pendencias,
         avisos_count: g.avisos,
       };

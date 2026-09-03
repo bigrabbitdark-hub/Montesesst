@@ -80,7 +80,9 @@ export default function TecnicoEmpresasPage() {
                   {item && (
                     <span className="flex items-center gap-2 text-sm">
                       {item.empresa_destaque && (
-                        <span title="Empresa Destaque Montese">🏆</span>
+                        <span role="img" aria-label="Empresa Destaque Montese" title="Empresa Destaque Montese">
+                          🏆
+                        </span>
                       )}
                       <span className="font-semibold text-brand-900">
                         {item.score === null ? 'Sem dados' : `${item.score}%`}

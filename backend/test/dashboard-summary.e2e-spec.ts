@@ -114,6 +114,7 @@ describe('GET /dashboard/summary (e2e)', () => {
     expect(res.body.resumo.pendencias).toBe(1);
     expect(res.body.resumo.avisos).toBe(1);
     expect(res.body.resumo.inspecoes_pendentes).toBe(1);
+    expect(res.body.empresa_destaque).toBe(false);
 
     const titulos: string[] = res.body.atencao.map((item: any) => item.titulo);
     expect(titulos.some((t) => t.includes('PGR vencido teste'))).toBe(true);
@@ -151,6 +152,30 @@ describe('GET /dashboard/summary (e2e)', () => {
     expect(res.status).toBe(200);
     expect(res.body.score).toBe(100);
     expect(res.body.empresa_destaque).toBe(true);
+
+    await client.query('DELETE FROM documents WHERE id = $1', [docRes.rows[0].id]);
+  });
+
+  it('empresa com documento vencendo (não vencido) tem score 100 mas NÃO recebe empresa_destaque', async () => {
+    const client = (db as any).client;
+
+    const docRes = await client.query(
+      `INSERT INTO documents (tenant_id, category, title, file_key, file_name, mime_type, size_bytes, expires_at, uploaded_by_user_id, uploaded_by_role)
+       VALUES ($1, 'pgr', 'PGR vencendo teste', 'fixture/pgr-vencendo.pdf', 'pgr-vencendo.pdf', 'application/pdf', 100, $2, $3, 'empresa')
+       RETURNING id`,
+      [tenantId, iso(15), userId],
+    );
+
+    const res = await request(app.getHttpServer())
+      .get('/dashboard/summary')
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(200);
+    // A fórmula de score existente conta "vencendo" (≤30 dias) como
+    // em dia — score continua 100, mas o selo não deve aparecer.
+    expect(res.body.score).toBe(100);
+    expect(res.body.status).toBe('atencao');
+    expect(res.body.empresa_destaque).toBe(false);
 
     await client.query('DELETE FROM documents WHERE id = $1', [docRes.rows[0].id]);
   });
