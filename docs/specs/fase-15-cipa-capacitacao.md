@@ -60,7 +60,14 @@ técnico entre si.
 - **Reciclagem não é uma ação especial** — fazer o treinamento de novo
   é só criar um novo registro pro mesmo funcionário+tipo. O histórico
   completo fica visível; o vencimento considerado é sempre o do
-  registro mais recente daquele tipo.
+  registro mais recente daquele tipo. **Quando `tipo = 'outro'`, "o
+  mesmo tipo" inclui `tipo_outro`** — dois treinamentos livres
+  diferentes do mesmo funcionário (ex. "Brigada de Incêndio" e
+  "Primeiros Socorros") são séries distintas, cada uma com seu próprio
+  vencimento mais recente; achado da revisão final da própria Fase 15
+  (`PendenciasService.computeTrainingPendencias`'s `DISTINCT ON`
+  precisou incluir `tipo_outro`, não só `tipo`, pra não fundir as duas
+  séries e suprimir silenciosamente a pendência de uma delas).
 - **Pendência de treinamento é calculada na hora, não é uma linha
   gravável** — evita precisar de um scheduler/job novo (mesma linha de
   decisão já tomada na Fase 13 de evitar fila de jobs). `GET

@@ -1743,3 +1743,150 @@ aplicável aqui (Fase 14 não integra IA), mas o guardrail permanente de
 segurança da sessão (reforçado desde um incidente na Fase 12b) seguiu
 valendo em todos os despachos: nenhum segredo extraído, nenhum SQL
 direto fora de fixtures de teste, nenhuma conta real registrada.
+
+## Fase 15 — CIPA: Capacitação (Treinamentos, DDS, SIPAT): status
+
+Terceira frente fora do núcleo da CIPA, terceira da ordem acordada em
+`docs/specs/fase-12-central-cipa-nucleo.md` §1, logo depois da Fase 14
+(eleição de representantes). O item do roadmap agrupava três temas
+numa frase só ("Treinamentos, DDS (módulo completo), SIPAT") —
+mantidos juntos numa spec só por decisão do fundador, cada um com seu
+próprio modelo de dados e fluxo, unidos só por uma navegação
+compartilhada ("🎓 Capacitação", 3 abas).
+
+- **Treinamentos** — controle de treinamentos obrigatórios de NR por
+  funcionário (qualquer NR, qualquer funcionário do tenant, não só
+  membros da CIPA), com data de realização/validade, catálogo fixo no
+  código com validade padrão sugerida por tipo (sempre editável), e
+  certificado opcional anexado reaproveitando o módulo de documentos
+  já existente (`DocumentsService.upload`, categoria `treinamento` já
+  existente desde a Fase 4) — mesmo padrão de link-back já usado por
+  `cipa_meetings.ata_document_id` (Fase 12a), sem tocar em R2
+  diretamente.
+- **DDS** — registro próprio da empresa (Diálogo Diário de Segurança),
+  independente de visita técnica; o campo já existente embutido no
+  relatório de inspeção (Fase 6) não foi alterado — são registros
+  diferentes por design.
+- **SIPAT** — edição anual por estabelecimento (uma por
+  ano/estabelecimento) com atividades planejadas/realizadas/canceladas.
+
+**Fechada em 2026-09-03, 5 tasks + 1 rodada de correção da revisão
+final:**
+
+- **Task 1** — migration `0030_cipa_capacitacao.sql`: as 4 tabelas
+  novas (`cipa_trainings`, `cipa_dds_records`, `cipa_sipat_editions`,
+  `cipa_sipat_activities`), RLS espelhando os padrões já auditados do
+  módulo. `cipa_trainings.employee_id` é `ON DELETE RESTRICT` (não
+  `SET NULL`/`CASCADE`) — decisão tomada já antecipando a lição da
+  revisão final da Fase 14 (histórico de compliance NR precisa
+  sobreviver ao desligamento do funcionário).
+- **Task 2** — backend de Treinamentos, a mais complexa das três
+  frentes por mexer em código já revisado de fases anteriores:
+  `TrainingsService`/Controller (upload opcional de certificado,
+  validação de tenant do `employee_id` antes de aceitar — mesma lição
+  já aprendida em `ElectionsService.addCandidate` na Fase 14); merge
+  de pendência computada em `GET /cipa/pendencias` (treinamento
+  vencido/vencendo aparece junto com as pendências manuais, calculado
+  na consulta, sem scheduler novo); fix em `EmployeesService.remove`
+  pra distinguir corretamente, pelo nome da constraint FK (não só o
+  código do erro), qual histórico está bloqueando a exclusão de um
+  funcionário — o novo (`cipa_trainings`) ou o já existente da Fase 14
+  (`cipa_election_candidates`).
+- **Task 3** — backend de DDS: CRUD simples, sem upload nem lógica
+  cross-cutting.
+- **Task 4** — backend de SIPAT: CRUD em dois níveis (edições +
+  atividades), reaproveitando os padrões de concorrência (`FOR UPDATE`
+  + checagem de duplicata + índice único como backstop) e de `SET`
+  dinâmico já estabelecidos em `ElectionsService` (Fase 14).
+- **Task 5** — frontend: link "🎓 Capacitação" na sidebar, tela nova
+  com 3 abas independentes por baixo (`TreinamentosTab`/`DdsTab`/`SipatTab`,
+  arquivos separados — decisão de estrutura tomada na escrita do
+  plano, dado que este projeto não tinha precedente de tela com abas),
+  mais a tela de pendências já existente passando a distinguir itens
+  computados de treinamento (badge fixo) dos manuais (`<select>`
+  editável de sempre). Escrutínio dedicado nos dois pontos de maior
+  risco: upload multipart do certificado (uma única requisição,
+  `Content-Type` nunca definido manualmente) e o campo de participantes
+  da atividade de SIPAT usando `onBlur` em vez de `onChange` — aplicando
+  proativamente a lição do achado da revisão final da Fase 14 (campo de
+  votos disparando PATCH a cada tecla), sem esperar um revisor achar de
+  novo.
+
+**Revisão final (opus, dispatch único, sem falhas) achou 0 Critical +
+1 Important + 11 Minor, o Important corrigido numa rodada de correção
+única e re-revisado como limpo:** `PendenciasService.computeTrainingPendencias`
+usava `DISTINCT ON (employee_id, tipo)` pra pegar só o registro mais
+recente de cada "série" de treinamento — mas pra `tipo = 'outro'`, o
+discriminador real da série é `tipo_outro` (o texto livre), não
+`tipo` sozinho (que é sempre a string literal `'outro'`). Dois
+treinamentos livres diferentes do mesmo funcionário (ex. "Brigada de
+Incêndio" vencido e "Primeiros Socorros" válido) eram tratados como a
+mesma série, e a pendência do primeiro **desaparecia silenciosamente**
+assim que o segundo era criado — como se tivesse sido renovado, sem
+nunca ter sido. Num produto de compliance, suprimir um alerta de
+vencimento sem querer é o pior modo de falha desta funcionalidade.
+Corrigido incluindo `COALESCE(tipo_outro, '')` no `DISTINCT ON`/`ORDER BY`,
+com teste de regressão provando o cenário exato. Achado tanto de
+código quanto da própria redação da spec (§2 nunca antecipou o caso
+`tipo='outro'` precisar de um terceiro discriminador) — a spec foi
+corrigida no mesmo commit da revisão final.
+
+**Verificação:** backend com suíte e2e real (Postgres real, sem mock)
+— testes por task cobrindo os CRUDs das 4 tabelas, validação de tenant
+cross-entidade nos três `create` novos (mesma lição da Fase 14),
+upload+download de certificado ponta-a-ponta, filtro de status,
+bloqueio/desbloqueio de exclusão de funcionário conforme histórico de
+treinamento, guarda contra `PATCH` numa pendência computada, e o
+teste de regressão do achado da revisão final. Frontend sem suíte
+automatizada (estado real do projeto) — Playwright contra a build de
+produção real em todas as tasks, incluindo os dois pontos de maior
+risco (upload multipart, `onBlur` do campo de participantes).
+
+**Pendências reais, não são bugs, registradas pela revisão final e
+deferidas conscientemente pra depois desta fase:**
+
+- **Card "Pendências abertas" da Central da CIPA (tela pré-existente,
+  fora deste plano) muda de comportamento sem ter sido revisado ou
+  testado nesta fase.** Como pendência de treinamento não é escopada
+  por estabelecimento (decisão da spec — `employees`/`cipa_trainings`
+  são tenant-wide), um tenant com múltiplos estabelecimentos passa a
+  contar os mesmos treinamentos vencidos no card de *todos* os
+  estabelecimentos. Correto pela spec, mas é uma mudança de
+  comportamento numa tela que ninguém revisou explicitamente nesta
+  fase — vale conferir se vira problema real quando aparecer o
+  primeiro tenant multi-estabelecimento usando Capacitação.
+- Janela de 60 dias duplicada como literal em dois arquivos
+  (`trainings.service.ts`/`pendencias.service.ts`) — risco de drift se
+  um dia mudar só de um lado.
+- Filtro de funcionário na aba Treinamentos só lista `status='ativo'`
+  — não dá pra filtrar o histórico de um funcionário desativado (o
+  próprio motivo do `ON DELETE RESTRICT` desta fase é preservar esse
+  histórico). Mesmo padrão de separação `employees`/`activeEmployees`
+  já resolvido na tela de eleição (Fase 14) ainda não replicado aqui.
+- Campo de participantes de atividade de SIPAT: limpar o valor envia
+  `numero_participantes: 0`, não `null` — não dá pra voltar ao estado
+  "sem contagem" depois de preenchido.
+- Sem validação de ordem de datas (`periodo_fim >= periodo_inicio` em
+  SIPAT, `data_validade >= data_realizacao` em treinamentos) — como
+  não há edição, um erro de digitação exige apagar e recriar (e pra
+  SIPAT isso cascateia as atividades da edição).
+- `EmployeesService.remove`'s mensagem de fallback assume "candidato
+  em eleição" pra qualquer FK 23503 não reconhecida — exaustivo hoje
+  (só duas FKs RESTRICT existem), mas frágil se uma terceira for
+  adicionada no futuro sem atualizar esse `if/else`.
+- Itens cosméticos/de cobertura parqueados sem ação: `tipo_outro`
+  aceita string só de espaços; `documents` pode ficar órfão se o
+  INSERT de `cipa_trainings` falhar depois do upload (mesmo formato
+  pré-existente de `MeetingsService.approveAta`, não é regressão);
+  sem índice de apoio pro `DISTINCT ON` (irrelevante na escala atual);
+  lacunas de cobertura de teste (registro renovado continua `vencido`
+  na listagem, limite exato de `vencendo`, merge com
+  `?company_unit_id=`); 500 não mapeado em id de path malformado
+  (`DELETE /cipa/trainings/abc`) — pré-existente em todo o backend
+  (sem `ParseUUIDPipe` em nenhuma rota), não é regressão desta fase.
+
+Nenhuma chamada a API paga foi feita durante toda a fase — não
+aplicável aqui (Fase 15 não integra IA). Guardrail permanente de
+segurança da sessão (reforçado desde um incidente na Fase 12b) seguiu
+valendo em todos os despachos: nenhum segredo extraído, nenhum SQL
+direto fora de fixtures de teste, nenhuma conta real registrada.
