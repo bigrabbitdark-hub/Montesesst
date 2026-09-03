@@ -1890,3 +1890,91 @@ aplicável aqui (Fase 15 não integra IA). Guardrail permanente de
 segurança da sessão (reforçado desde um incidente na Fase 12b) seguiu
 valendo em todos os despachos: nenhum segredo extraído, nenhum SQL
 direto fora de fixtures de teste, nenhuma conta real registrada.
+
+## Fase 16 — Reconhecimento: Empresa Destaque: status
+
+Quarta frente fora do núcleo da CIPA, na ordem já acordada
+(`docs/specs/fase-12-central-cipa-nucleo.md` §1), logo após a Fase 15
+(Capacitação). **Diferente das três frentes anteriores, não é uma
+funcionalidade da Central da CIPA** — o brainstorming revelou que
+"Troféu Montese"/"Empresa Destaque" reconhecem a empresa cliente pelo
+score de conformidade de documentos já existente, não a atuação da
+CIPA. Escopo enxuto por decisão do fundador: sem tabela nova, sem
+histórico/janela de tolerância, sem ranking entre empresas, sem selo
+baixável — só um booleano computado exposto nos dois lugares que já
+mostram o score hoje (dashboard da empresa, carteira do técnico).
+
+**Fechada em 2026-09-03, 2 tasks + 1 rodada de correção da revisão
+final:**
+
+- **Task 1** — backend: `empresa_destaque: boolean` adicionado em
+  `DashboardService.getSummary` (`GET /dashboard/summary`) e
+  `DocumentsService.getPortfolioCompliance`
+  (`GET /documents/compliance/portfolio`), reaproveitando o score de
+  documentos já calculado em cada lugar (nenhuma tabela/migration
+  nova). `getPortfolioCompliance` extrai `score` pra uma variável
+  local antes de usá-lo nos dois campos, garantindo que `score` e
+  `empresa_destaque` nunca divirjam entre si. Nenhum dos tenants
+  fixture já existentes em `documents-portfolio.e2e-spec.ts` tinha
+  score exatamente 100 — precisou de um tenant D novo, com um único
+  documento em dia, especificamente pra provar o caso `true`.
+- **Task 2** — frontend: banner "🏆 Empresa Destaque Montese" no
+  dashboard da empresa (sempre um irmão do banner de status
+  `ok`/`atencao`/`critico` já existente, nunca o substituindo) e um
+  troféu pequeno ao lado do score de cada empresa na lista do técnico.
+
+**Revisão final (opus, dispatch único, sem falhas) achou 0 Critical +
+1 Important + 1 Minor da mesma causa raiz, corrigidos numa rodada de
+correção única e re-revisados como limpos:** `score === 100` sozinho
+não significava "nada vencendo" — a fórmula de score já existente
+(não criada por esta fase) conta um documento vencendo em até 30 dias
+como "em dia" pra fins da fração do score. Consequência real: uma
+empresa com todos os documentos "não vencidos" mas pelo menos um
+vencendo em, digamos, 20 dias tinha `score: 100` (selo "🏆 Empresa
+Destaque Montese — todos os documentos em dia!") **e ao mesmo tempo**
+`status: 'atencao'` (banner amarelo) por causa desse mesmo documento —
+as duas faixas apareciam empilhadas na mesma tela, o selo contradizendo
+o banner um parágrafo acima. Não é um estado raro — basta um PGR
+vencendo mês que vem. Achado relacionado: `Math.round` podia arredondar
+o score pra 100 mesmo com um documento genuinamente vencido, num
+denominador grande o bastante. Corrigido apertando o critério (não a
+decisão fechada da spec, que continua `score === 100` — a correção só
+torna explícito que um score 100 genuíno já implica zero avisos e
+zero pendências) pra exigir também `pendencias.length === 0 &&
+avisos.length === 0` nos dois lugares, com um teste de regressão
+novo provando o cenário exato do achado (documento vencendo em 15
+dias → `score: 100` mas `empresa_destaque: false`).
+
+**Verificação:** backend com suíte e2e real (Postgres real, sem mock)
+— testes cobrindo `score: null → false`, `score: 100 (genuíno) →
+true`, `score: 0 (crítico) → false`, e o teste de regressão do achado
+final (`score: 100` mas com aviso → `false`). Frontend sem suíte
+automatizada (estado real do projeto) — Playwright contra a build de
+produção real, cobrindo os dois lugares nos dois estados (com e sem o
+selo).
+
+**Pendências reais, não são bugs, registradas pela revisão final e
+deferidas conscientemente:**
+
+- **O critério apertado considera só avisos/pendências de
+  documentos, não o conjunto mais amplo (documentos + EPI) usado
+  pra calcular `status`.** Uma empresa com todos os documentos em dia
+  mas um CA de EPI vencendo ainda pode mostrar `status: 'atencao'` ao
+  lado do selo "Empresa Destaque" — versão mais estreita da mesma
+  contradição original, mas por desenho: o selo é explicitamente
+  escopado ao score de documentos (decisão fechada da spec §2), não
+  uma métrica ampliada. Registrado caso o escopo do selo seja
+  reaberto numa frente futura.
+- Limpeza de fixture de teste só no caminho feliz (sem
+  `try`/`finally`) em `dashboard-summary.e2e-spec.ts` — mesmo padrão
+  já usado no arquivo antes desta fase, não é regressão.
+- Nenhum outro lugar do produto exibe o score de documentos sem
+  também ganhar o selo — confirmado pela revisão final que o escopo
+  de exatamente 2 telas está correto, não falta nenhuma tela
+  "esquecida".
+
+Nenhuma chamada a API paga foi feita durante toda a fase — não
+aplicável aqui (Fase 16 não integra IA). Guardrail permanente de
+segurança da sessão (reforçado desde um incidente na Fase 12b) seguiu
+valendo em todos os despachos: nenhum segredo extraído, nenhum SQL
+direto fora de fixtures de teste, nenhuma conta real registrada.
