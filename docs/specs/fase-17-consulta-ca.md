@@ -33,8 +33,14 @@ Investigação feita com download real e inspeção direta do arquivo
   arquivo datado do próprio dia (atualização diária, conforme a
   documentação oficial do MTE já indica).
 - **Formato real**: dentro do zip, um único arquivo texto
-  (`tgg_export_caepi.txt`) separado por `|`, codificado em
-  Windows-1252 (não UTF-8). Cabeçalho e colunas confirmados por
+  (`tgg_export_caepi.txt`) separado por `|`, codificado em UTF-8
+  (**correção**: uma primeira tentativa deste spike assumiu
+  Windows-1252, baseada num texto de pesquisa colado pelo fundador de
+  origem não verificada — testei as três hipóteses de encoding
+  lado a lado contra os bytes reais baixados do servidor, e só UTF-8
+  produz texto correto, ex. "CINTURÃO TIPO PÁRA-QUEDISTA", "PROTEÇÃO
+  DO USUÁRIO"; Windows-1252 e Latin-1 produzem caracteres corrompidos
+  como "CINTURÃƒO"/"USUÃ�RIO"). Cabeçalho e colunas confirmados por
   inspeção direta:
   `NR Registro CA|DATA DE VALIDADE|SITUACAO|NR DO PROCESSO|CNPJ|RAZAO SOCIAL|NATUREZA|EQUIPAMENTO|DESCRICAO EQUIPAMENTO|MARCA CA|REFERENCIA|COR|APROVADO PARA LAUDO|RESTRICAO LAUDO|OBSERVACAO ANALISE LAUDO|CNPJ LABORATORIO|RAZAO SOCIAL LABORATORIO|NR LAUDO|NORMA`.
   `SITUACAO` é um enum em português confirmado com valores reais:
@@ -148,10 +154,10 @@ nenhum tenant.
 2. Faz o parsing manual do cabeçalho local do zip + descompressão
    bruta (`raw deflate`) — não usa uma lib de zip padrão, que falha
    nesse arquivo (seção 2).
-3. Processa linha por linha (separador `|`, encoding Windows-1252
-   convertido pra UTF-8), pulando (e contando) qualquer linha que não
-   tenha o número certo de colunas — inclusive a última linha, se
-   vier cortada.
+3. Processa linha por linha (separador `|`, o texto descomprimido já
+   é UTF-8 — sem conversão de encoding necessária), pulando (e
+   contando) qualquer linha que não tenha o número certo de colunas —
+   inclusive a última linha, se vier cortada.
 4. Faz upsert em lote em `caepi_records` (`INSERT ... ON CONFLICT
    (numero_ca) DO UPDATE`), chaveado por `numero_ca`.
 5. Atualiza `caepi_sync_status` com o timestamp, total importado e
