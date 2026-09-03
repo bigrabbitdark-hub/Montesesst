@@ -23,6 +23,7 @@ import { DashboardModule } from './dashboard/dashboard.module';
 import { NormativeModule } from './normative/normative.module';
 import { VisitsModule } from './visits/visits.module';
 import { CipaModule } from './cipa/cipa.module';
+import { CaepiModule } from './caepi/caepi.module';
 import { JwtAuthGuard } from './auth/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 import { TenantContextInterceptor } from './common/interceptors/tenant-context.interceptor';
@@ -61,6 +62,7 @@ import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
     NormativeModule,
     VisitsModule,
     CipaModule,
+    CaepiModule,
   ],
   providers: [
     // Ordem importa: RateLimitGuard barra abuso antes de qualquer auth;
