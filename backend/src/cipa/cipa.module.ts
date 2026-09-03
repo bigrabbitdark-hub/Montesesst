@@ -19,10 +19,12 @@ import { TrainingsController } from './trainings.controller';
 import { TrainingsService } from './trainings.service';
 import { DdsController } from './dds.controller';
 import { DdsService } from './dds.service';
+import { SipatController } from './sipat.controller';
+import { SipatService } from './sipat.service';
 
 @Module({
   imports: [DocumentsModule],
-  controllers: [CommitteesController, MeetingsController, MembersController, PendenciasController, ElectionsController, TrainingsController, DdsController],
+  controllers: [CommitteesController, MeetingsController, MembersController, PendenciasController, ElectionsController, TrainingsController, DdsController, SipatController],
   providers: [
     CommitteesService,
     MeetingsService,
@@ -31,6 +33,7 @@ import { DdsService } from './dds.service';
     ElectionsService,
     TrainingsService,
     DdsService,
+    SipatService,
     AtaAiService,
     GroqTranscriptionService,
     { provide: AUDIO_TRANSCRIPTION_SERVICE, useClass: GroqTranscriptionService },
