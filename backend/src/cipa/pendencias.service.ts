@@ -16,6 +16,7 @@ export interface CipaPendencia {
   status: 'aberta' | 'andamento' | 'concluida' | 'atrasada';
   created_at: string;
   updated_at: string;
+  origem?: 'treinamento';
 }
 
 const UPDATABLE_FIELDS = ['descricao', 'responsavel_user_id', 'prazo', 'prioridade', 'status'] as const;
@@ -97,17 +98,73 @@ export class PendenciasService {
   }
 
   async findAll(client: PoolClient, companyUnitId?: string): Promise<CipaPendencia[]> {
-    if (companyUnitId) {
-      const result = await client.query<CipaPendencia>(
-        'SELECT * FROM cipa_pendencias WHERE company_unit_id = $1 ORDER BY prazo NULLS LAST, created_at',
-        [companyUnitId],
-      );
-      return result.rows.map(normalizePendencia);
-    }
-    const result = await client.query<CipaPendencia>(
-      'SELECT * FROM cipa_pendencias ORDER BY prazo NULLS LAST, created_at',
+    const manualResult = companyUnitId
+      ? await client.query<CipaPendencia>(
+          'SELECT * FROM cipa_pendencias WHERE company_unit_id = $1 ORDER BY prazo NULLS LAST, created_at',
+          [companyUnitId],
+        )
+      : await client.query<CipaPendencia>('SELECT * FROM cipa_pendencias ORDER BY prazo NULLS LAST, created_at');
+
+    const computed = await this.computeTrainingPendencias(client);
+    return [...manualResult.rows.map(normalizePendencia), ...computed];
+  }
+
+  // Fase 15: treinamento vencido/vencendo (janela de 60 dias, mesma de
+  // TrainingsService) vira pendência calculada na consulta — sem
+  // scheduler novo (decisão da spec). Não filtra por company_unit_id
+  // porque cipa_trainings não tem essa coluna (employees é
+  // tenant-wide, decisão já registrada na spec) — aparece
+  // independente do estabelecimento selecionado. DISTINCT ON pega só
+  // o registro MAIS RECENTE por funcionário+tipo (decisão da spec:
+  // "o vencimento considerado é sempre o do registro mais recente
+  // daquele tipo" — sem isso, um certificado antigo já renovado
+  // continuaria gerando pendência pra sempre).
+  private async computeTrainingPendencias(client: PoolClient): Promise<CipaPendencia[]> {
+    const result = await client.query<{
+      id: string;
+      tipo: string;
+      tipo_outro: string | null;
+      data_validade: string | Date;
+      employee_full_name: string;
+    }>(
+      `SELECT DISTINCT ON (t.employee_id, t.tipo) t.id, t.tipo, t.tipo_outro, t.data_validade, e.full_name AS employee_full_name
+       FROM cipa_trainings t
+       JOIN employees e ON e.id = t.employee_id
+       ORDER BY t.employee_id, t.tipo, t.data_realizacao DESC, t.created_at DESC`,
     );
-    return result.rows.map(normalizePendencia);
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const nowIso = new Date().toISOString();
+
+    const items: CipaPendencia[] = [];
+    for (const row of result.rows) {
+      const dataValidade = toDateString(row.data_validade) as string;
+      const validade = new Date(`${dataValidade}T00:00:00`);
+      const diffDays = Math.floor((validade.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+      if (diffDays > 60) continue; // válido, fora da janela — não é pendência
+
+      const tipoLabel = row.tipo === 'outro' ? row.tipo_outro : row.tipo.toUpperCase();
+      const descricao = diffDays < 0
+        ? `${tipoLabel} de ${row.employee_full_name} venceu há ${Math.abs(diffDays)} dia(s)`
+        : `${tipoLabel} de ${row.employee_full_name} vence em ${diffDays} dia(s)`;
+
+      items.push({
+        id: `treinamento:${row.id}`,
+        tenant_id: '',
+        company_unit_id: '',
+        meeting_id: null,
+        descricao,
+        responsavel_user_id: null,
+        prazo: dataValidade,
+        prioridade: diffDays < 0 ? 'alta' : 'media',
+        status: 'aberta',
+        created_at: nowIso,
+        updated_at: nowIso,
+        origem: 'treinamento',
+      });
+    }
+    return items;
   }
 
   async update(client: PoolClient, id: string, data: Record<string, unknown>): Promise<CipaPendencia> {

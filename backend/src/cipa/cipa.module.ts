@@ -15,16 +15,19 @@ import { AUDIO_TRANSCRIPTION_SERVICE } from './ata-ai/audio-transcription.interf
 import { GroqTranscriptionService } from './ata-ai/groq-transcription.service';
 import { ATA_EXTRACTOR } from './ata-ai/ata-extractor.interface';
 import { OpenRouterAtaExtractorService } from './ata-ai/openrouter-ata-extractor.service';
+import { TrainingsController } from './trainings.controller';
+import { TrainingsService } from './trainings.service';
 
 @Module({
   imports: [DocumentsModule],
-  controllers: [CommitteesController, MeetingsController, MembersController, PendenciasController, ElectionsController],
+  controllers: [CommitteesController, MeetingsController, MembersController, PendenciasController, ElectionsController, TrainingsController],
   providers: [
     CommitteesService,
     MeetingsService,
     MembersService,
     PendenciasService,
     ElectionsService,
+    TrainingsService,
     AtaAiService,
     GroqTranscriptionService,
     { provide: AUDIO_TRANSCRIPTION_SERVICE, useClass: GroqTranscriptionService },

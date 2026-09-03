@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, Query, Req, UsePipes, ValidationPipe } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Get, Param, Patch, Post, Query, Req, UsePipes, ValidationPipe } from '@nestjs/common';
 import { Roles } from '../common/decorators/roles.decorator';
 import { PendenciasService } from './pendencias.service';
 import { CreatePendenciaDto } from './dto/create-pendencia.dto';
@@ -29,6 +29,11 @@ export class PendenciasController {
   @UsePipes(new ValidationPipe({ transform: true, whitelist: true, forbidNonWhitelisted: true }))
   @Patch(':id')
   update(@Param('id') id: string, @Body() dto: UpdatePendenciaDto, @Req() req: any) {
+    if (id.startsWith('treinamento:')) {
+      throw new BadRequestException(
+        'Pendência de treinamento é calculada automaticamente — resolva registrando um novo treinamento pro funcionário',
+      );
+    }
     return req.withTenantContext((client: any) => this.pendencias.update(client, id, dto as Record<string, unknown>));
   }
 }

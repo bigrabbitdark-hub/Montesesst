@@ -151,8 +151,18 @@ export class EmployeesService {
       if (result.rowCount === 0) throw new NotFoundException('Funcionário não encontrado');
     } catch (err) {
       if (err instanceof NotFoundException) throw err;
-      const pgErr = err as { code?: string };
+      const pgErr = err as { code?: string; constraint?: string };
       if (pgErr.code === '23503') {
+        // Fase 15: cipa_trainings.employee_id também é RESTRICT agora
+        // (histórico de treinamento é compliance NR, não pode ser
+        // apagado junto com o funcionário). O nome da constraint abaixo
+        // é o gerado automaticamente pelo Postgres pra uma FK sem nome
+        // explícito (<tabela>_<coluna>_fkey) — confirmado contra o
+        // Postgres real (`\d cipa_trainings`) durante a implementação
+        // desta task, não é um palpite.
+        if (pgErr.constraint === 'cipa_trainings_employee_id_fkey') {
+          throw new ConflictException('Não é possível apagar um funcionário que tem histórico de treinamento registrado');
+        }
         throw new ConflictException('Não é possível apagar um funcionário que já foi candidato em uma eleição da CIPA');
       }
       mapPgError(err);

@@ -173,4 +173,56 @@ describe('CRUD /cipa/pendencias (e2e)', () => {
     expect(res.status).toBe(200);
     expect(res.body.status).toBe('concluida');
   });
+
+  it('mescla pendência computada de treinamento vencido, some quando renovado (Fase 15)', async () => {
+    const employeeResult = await (db as any).client.query(
+      `INSERT INTO employees (tenant_id, full_name, cpf, status)
+       VALUES ($1, 'Funcionário Treinamento Pendência', '99988877766', 'ativo') RETURNING id`,
+      [tenantId],
+    );
+    const trainingEmployeeId = employeeResult.rows[0].id;
+
+    const vencido = await request(app.getHttpServer())
+      .post('/cipa/trainings')
+      .set('Authorization', `Bearer ${empresaToken}`)
+      .field('employee_id', trainingEmployeeId)
+      .field('tipo', 'nr-35')
+      .field('data_realizacao', '2020-01-10')
+      .field('data_validade', '2021-01-10');
+    expect(vencido.status).toBe(201);
+
+    const semFiltro = await request(app.getHttpServer())
+      .get('/cipa/pendencias')
+      .set('Authorization', `Bearer ${empresaToken}`);
+    const computada = semFiltro.body.find((p: any) => p.origem === 'treinamento' && p.id === `treinamento:${vencido.body.id}`);
+    expect(computada).toBeTruthy();
+    expect(computada.prioridade).toBe('alta');
+    expect(computada.descricao).toContain('Funcionário Treinamento Pendência');
+
+    // Renova o mesmo tipo pro mesmo funcionário com validade futura —
+    // a pendência do registro vencido não deve mais aparecer (só o
+    // mais recente conta, decisão da spec).
+    const renovado = await request(app.getHttpServer())
+      .post('/cipa/trainings')
+      .set('Authorization', `Bearer ${empresaToken}`)
+      .field('employee_id', trainingEmployeeId)
+      .field('tipo', 'nr-35')
+      .field('data_realizacao', '2026-06-01')
+      .field('data_validade', '2028-06-01');
+    expect(renovado.status).toBe(201);
+
+    const depoisDaRenovacao = await request(app.getHttpServer())
+      .get('/cipa/pendencias')
+      .set('Authorization', `Bearer ${empresaToken}`);
+    expect(depoisDaRenovacao.body.some((p: any) => p.id === `treinamento:${vencido.body.id}`)).toBe(false);
+    expect(depoisDaRenovacao.body.some((p: any) => p.id === `treinamento:${renovado.body.id}`)).toBe(false);
+  });
+
+  it('rejeita PATCH numa pendência computada de treinamento (Fase 15)', async () => {
+    const res = await request(app.getHttpServer())
+      .patch('/cipa/pendencias/treinamento:00000000-0000-0000-0000-000000000000')
+      .set('Authorization', `Bearer ${empresaToken}`)
+      .send({ status: 'concluida' });
+    expect(res.status).toBe(400);
+  });
 });
