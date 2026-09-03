@@ -18,6 +18,7 @@ export interface AttentionItem {
 export interface DashboardSummary {
   status: DashboardStatus;
   score: number | null;
+  empresa_destaque: boolean;
   updated_at: string;
   resumo: {
     pendencias: number;
@@ -125,6 +126,11 @@ export class DashboardService {
     return {
       status,
       score: compliance.score,
+      // Fase 16: selo "Empresa Destaque" — só quando o score de
+      // documentos é exatamente 100 (nunca quando é null, i.e. tenant
+      // sem nenhum documento com expires_at — não é "destaque
+      // vacuamente", é ausência de dado).
+      empresa_destaque: compliance.score === 100,
       updated_at: new Date().toISOString(),
       resumo: {
         pendencias,

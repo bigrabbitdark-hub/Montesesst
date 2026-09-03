@@ -51,6 +51,7 @@ export interface PortfolioComplianceItem {
   tenant_id: string;
   tenant_name: string;
   score: number | null;
+  empresa_destaque: boolean;
   pendencias_count: number;
   avisos_count: number;
 }
@@ -253,10 +254,14 @@ export class DocumentsService {
 
     return order.map((tenantId) => {
       const g = groups.get(tenantId)!;
+      const score = g.total === 0 ? null : Math.round((g.emDia / g.total) * 100);
       return {
         tenant_id: tenantId,
         tenant_name: g.tenant_name,
-        score: g.total === 0 ? null : Math.round((g.emDia / g.total) * 100),
+        score,
+        // Fase 16: mesmo critério de DashboardService.getSummary —
+        // só true quando score é exatamente 100, nunca quando é null.
+        empresa_destaque: score === 100,
         pendencias_count: g.pendencias,
         avisos_count: g.avisos,
       };

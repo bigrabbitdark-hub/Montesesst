@@ -10,6 +10,7 @@ describe('Carteira do técnico — compliance/portfolio e agenda agregada (e2e)'
   let tenantAId: string;
   let tenantBId: string;
   let tenantCId: string;
+  let tenantDId: string;
   let technicianId: string;
   let technicianUserId: string;
   let technicianToken: string;
@@ -50,9 +51,11 @@ describe('Carteira do técnico — compliance/portfolio e agenda agregada (e2e)'
     const tenantA = await db.createTenantWithUser('Empresa Portfolio A');
     const tenantB = await db.createTenantWithUser('Empresa Portfolio B (sem vencimento)');
     const tenantC = await db.createTenantWithUser('Empresa Portfolio C (nao vinculada)');
+    const tenantD = await db.createTenantWithUser('Empresa Portfolio D (destaque)');
     tenantAId = tenantA.tenantId;
     tenantBId = tenantB.tenantId;
     tenantCId = tenantC.tenantId;
+    tenantDId = tenantD.tenantId;
 
     const tech = await db.createUserWithRole('tecnico', 'Tecnico Carteira');
     technicianUserId = tech.userId;
@@ -64,14 +67,15 @@ describe('Carteira do técnico — compliance/portfolio e agenda agregada (e2e)'
     technicianId = techResult.rows[0].id;
 
     await (db as any).client.query(
-      'INSERT INTO tenant_technicians (tenant_id, technician_id) VALUES ($1, $2), ($3, $2)',
-      [tenantAId, technicianId, tenantBId],
+      'INSERT INTO tenant_technicians (tenant_id, technician_id) VALUES ($1, $2), ($3, $2), ($4, $2)',
+      [tenantAId, technicianId, tenantBId, tenantDId],
     );
     // tenantC fica sem vínculo — deve ficar de fora da carteira do técnico.
 
     await insertDocument(tenantAId, tenantA.userId, 'pgr', 'PGR Vencido A', isoDateDaysFromNow(-5));
     await insertDocument(tenantAId, tenantA.userId, 'laudo', 'Laudo Em Dia A', isoDateDaysFromNow(90));
     await insertDocument(tenantCId, tenantC.userId, 'pgr', 'PGR C (não deve aparecer)', isoDateDaysFromNow(-1));
+    await insertDocument(tenantDId, tenantD.userId, 'laudo', 'Laudo Em Dia D', isoDateDaysFromNow(90));
 
     const loginRes = await request(app.getHttpServer())
       .post('/auth/login')
@@ -89,23 +93,30 @@ describe('Carteira do técnico — compliance/portfolio e agenda agregada (e2e)'
     await app.close();
   });
 
-  it('GET /documents/compliance/portfolio devolve uma linha por empresa vinculada, com score e contagens corretos', async () => {
+  it('GET /documents/compliance/portfolio devolve uma linha por empresa vinculada, com score, empresa_destaque e contagens corretos', async () => {
     const res = await request(app.getHttpServer())
       .get('/documents/compliance/portfolio')
       .set('Authorization', `Bearer ${technicianToken}`);
 
     expect(res.status).toBe(200);
-    expect(res.body).toHaveLength(2);
+    expect(res.body).toHaveLength(3);
 
     const byId: Record<string, any> = Object.fromEntries(res.body.map((item: any) => [item.tenant_id, item]));
 
     expect(byId[tenantAId].score).toBe(50);
+    expect(byId[tenantAId].empresa_destaque).toBe(false);
     expect(byId[tenantAId].pendencias_count).toBe(1);
     expect(byId[tenantAId].avisos_count).toBe(0);
 
     expect(byId[tenantBId].score).toBeNull();
+    expect(byId[tenantBId].empresa_destaque).toBe(false);
     expect(byId[tenantBId].pendencias_count).toBe(0);
     expect(byId[tenantBId].avisos_count).toBe(0);
+
+    expect(byId[tenantDId].score).toBe(100);
+    expect(byId[tenantDId].empresa_destaque).toBe(true);
+    expect(byId[tenantDId].pendencias_count).toBe(0);
+    expect(byId[tenantDId].avisos_count).toBe(0);
 
     expect(byId[tenantCId]).toBeUndefined();
   });

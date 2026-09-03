@@ -73,6 +73,8 @@ describe('GET /dashboard/summary (e2e)', () => {
     expect(res.body.atencao).toEqual([]);
     expect(res.body.proximos_eventos).toEqual([]);
     expect(typeof res.body.updated_at).toBe('string');
+    expect(res.body.score).toBeNull();
+    expect(res.body.empresa_destaque).toBe(false);
   });
 
   it('agrega documento vencido, EPI vencendo e ação pendente em critico com itens de atenção corretos', async () => {
@@ -128,6 +130,27 @@ describe('GET /dashboard/summary (e2e)', () => {
     // EPI vencendo em 5 dias e ação com prazo em 3 dias caem nos próximos 7 dias
     const eventoTipos = res.body.proximos_eventos.map((item: any) => item.tipo);
     expect(eventoTipos).toEqual(expect.arrayContaining(['epi', 'acao']));
+
+    await client.query('DELETE FROM documents WHERE id = $1', [docRes.rows[0].id]);
+  });
+
+  it('empresa com todos os documentos em dia recebe score 100 e empresa_destaque true', async () => {
+    const client = (db as any).client;
+
+    const docRes = await client.query(
+      `INSERT INTO documents (tenant_id, category, title, file_key, file_name, mime_type, size_bytes, expires_at, uploaded_by_user_id, uploaded_by_role)
+       VALUES ($1, 'pgr', 'PGR em dia teste', 'fixture/pgr-em-dia.pdf', 'pgr-em-dia.pdf', 'application/pdf', 100, $2, $3, 'empresa')
+       RETURNING id`,
+      [tenantId, iso(90), userId],
+    );
+
+    const res = await request(app.getHttpServer())
+      .get('/dashboard/summary')
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.score).toBe(100);
+    expect(res.body.empresa_destaque).toBe(true);
 
     await client.query('DELETE FROM documents WHERE id = $1', [docRes.rows[0].id]);
   });
