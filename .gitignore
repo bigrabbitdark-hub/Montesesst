@@ -8,3 +8,6 @@ dist/
 # Certificados TLS reais (Let's Encrypt) — nunca no git, chave privada
 nginx/letsencrypt/
 nginx/certbot-webroot/
+
+# Mockups/estado do companion visual de brainstorming (superpowers)
+.superpowers/
