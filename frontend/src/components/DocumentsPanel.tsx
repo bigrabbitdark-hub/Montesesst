@@ -35,18 +35,31 @@ interface ComplianceResult {
   avisos: ComplianceItem[];
 }
 
+// Rótulos de exibição pra QUALQUER categoria que possa aparecer numa
+// listagem (documentos já salvos, itens da agenda combinada) — inclui
+// 'epi' (sintética, usada só por episToAgendaItems, nunca gravada em
+// `documents`) e as categorias `cipa_*` (gravadas só internamente por
+// outros módulos, nunca pelo formulário de upload manual abaixo).
 const CATEGORY_LABELS: Record<string, string> = {
   pgr: 'PGR',
   pcmso: 'PCMSO',
   laudo: 'Laudo',
   ficha_epi: 'Ficha de EPI',
   treinamento: 'Treinamento',
+  ltcat: 'LTCAT',
+  lip: 'LIP',
   epi: 'EPI',
   cipa_ata: 'Ata da CIPA',
   cipa_comunicado: 'Comunicado da CIPA',
   cipa_documento_eleitoral: 'Documento eleitoral da CIPA',
   cipa_anexo: 'Anexo da CIPA',
 };
+
+// Categorias que o formulário de upload manual (abaixo) oferece —
+// precisa bater exatamente com o @IsIn de CreateDocumentDto no
+// backend. 'epi' e as `cipa_*` ficam de fora de propósito: hoje
+// resultam em 400 se enviadas manualmente (gravadas só internamente).
+const UPLOAD_CATEGORIES = ['pgr', 'pcmso', 'laudo', 'ficha_epi', 'treinamento', 'ltcat', 'lip'];
 
 interface AgendaItem {
   id: string;
@@ -369,9 +382,9 @@ export function DocumentsPanel({ tenantId }: { tenantId?: string }) {
               onChange={(e) => setCategory(e.target.value)}
               className="rounded-md border border-brand-100 px-3 py-2"
             >
-              {Object.entries(CATEGORY_LABELS).map(([value, label]) => (
+              {UPLOAD_CATEGORIES.map((value) => (
                 <option key={value} value={value}>
-                  {label}
+                  {CATEGORY_LABELS[value]}
                 </option>
               ))}
             </select>

@@ -8,6 +8,7 @@ const ALLOWED_MIME_TYPES = ['application/pdf', 'image/jpeg', 'image/png'];
 const ALLOWED_CATEGORIES = [
   'pgr', 'pcmso', 'laudo', 'ficha_epi', 'treinamento',
   'cipa_ata', 'cipa_comunicado', 'cipa_documento_eleitoral', 'cipa_anexo',
+  'ltcat', 'lip',
 ];
 
 function sanitizeFileName(name: string): string {

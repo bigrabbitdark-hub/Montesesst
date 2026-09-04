@@ -1,7 +1,7 @@
 import { IsIn, IsISO8601, IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
 
 export class CreateDocumentDto {
-  @IsIn(['pgr', 'pcmso', 'laudo', 'ficha_epi', 'treinamento'])
+  @IsIn(['pgr', 'pcmso', 'laudo', 'ficha_epi', 'treinamento', 'ltcat', 'lip'])
   category: string;
 
   @IsString()
