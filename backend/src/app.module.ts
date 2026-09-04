@@ -32,6 +32,7 @@ import { RequestLoggingInterceptor } from './common/interceptors/request-logging
 import { RequestIdMiddleware } from './common/middleware/request-id.middleware';
 import { RedisModule } from './common/redis/redis.module';
 import { EmailModule } from './common/email/email.module';
+import { R2Module } from './common/r2/r2.module';
 import { RateLimitGuard } from './common/rate-limit/rate-limit.guard';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 
@@ -41,6 +42,7 @@ import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
     ScheduleModule.forRoot(),
     RedisModule,
     EmailModule,
+    R2Module,
     AuditModule,
     HealthModule,
     AuthModule,

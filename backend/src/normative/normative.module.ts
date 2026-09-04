@@ -6,7 +6,7 @@ import { NormativeDocumentsController } from './normative-documents.controller';
 import { NormativeMonitorService } from './normative-monitor.service';
 import { NormativeAssistantService } from './normative-assistant.service';
 import { NormativeAssistantController } from './normative-assistant.controller';
-import { R2Service } from '../documents/r2.service';
+import { R2Service } from '../common/r2/r2.service';
 import { EMBEDDING_PROVIDER } from './embedding-provider.interface';
 import { OpenRouterEmbeddingService } from './openrouter-embedding.service';
 import { NORMATIVE_ANSWER_PROVIDER } from './normative-answer-provider.interface';
@@ -24,7 +24,6 @@ import { DashboardModule } from '../dashboard/dashboard.module';
     NormativeDocumentsService,
     NormativeMonitorService,
     NormativeAssistantService,
-    R2Service,
     OpenRouterEmbeddingService,
     { provide: EMBEDDING_PROVIDER, useClass: OpenRouterEmbeddingService },
     OpenRouterNormativeAnswerService,

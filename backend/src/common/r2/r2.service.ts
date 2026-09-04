@@ -5,6 +5,11 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 // Mesmo padrão de fallback já usado em EmailService/MercadoPagoService —
 // não deixa a ausência de credencial derrubar o boot da aplicação, a
 // falha real acontece na chamada, não na configuração.
+//
+// Global (registrado em R2Module) — usado por documents, normative, e
+// desde a Fase 19 também por tenants (logo da empresa). Não tem lógica
+// específica de nenhum desses módulos, é só um wrapper fino sobre o S3
+// Client apontando pro R2.
 @Injectable()
 export class R2Service {
   private readonly client = new S3Client({

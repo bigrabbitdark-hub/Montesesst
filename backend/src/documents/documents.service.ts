@@ -1,7 +1,7 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PoolClient } from 'pg';
 import { randomUUID } from 'crypto';
-import { R2Service } from './r2.service';
+import { R2Service } from '../common/r2/r2.service';
 import { mapPgError } from '../common/pg-error.util';
 
 const ALLOWED_MIME_TYPES = ['application/pdf', 'image/jpeg', 'image/png'];

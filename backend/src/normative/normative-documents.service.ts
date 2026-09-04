@@ -1,7 +1,7 @@
 import { BadRequestException, ConflictException, Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PoolClient } from 'pg';
 import { randomUUID, createHash } from 'crypto';
-import { R2Service } from '../documents/r2.service';
+import { R2Service } from '../common/r2/r2.service';
 import { EMBEDDING_PROVIDER, EmbeddingProvider } from './embedding-provider.interface';
 import { splitIntoChunks } from './chunking.util';
 import { toVectorLiteral } from './vector.util';
