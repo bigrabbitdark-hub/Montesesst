@@ -33,12 +33,25 @@ interface CaepiRow {
   norma: string | null;
 }
 
-function parseBrDate(value: string): string | null {
+export function parseBrDate(value: string): string | null {
   const trimmed = value.trim();
   if (!trimmed) return null;
   const match = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(trimmed);
   if (!match) return null;
   const [, day, month, year] = match;
+  const dayNum = Number(day);
+  const monthNum = Number(month);
+  const yearNum = Number(year);
+  // Confere que a data é real, não só que o formato bate — Date "rola"
+  // dias/meses inválidos pro período seguinte (ex. 30/02/2025 vira
+  // 02/03/2025), o que gravaria um valor errado e silencioso no banco.
+  // Reconstrói a data a partir dos componentes numéricos e confere que
+  // volta exatamente os mesmos — se não voltar, a data de origem não
+  // existe no calendário.
+  const date = new Date(yearNum, monthNum - 1, dayNum);
+  if (date.getFullYear() !== yearNum || date.getMonth() !== monthNum - 1 || date.getDate() !== dayNum) {
+    return null;
+  }
   return `${year}-${month}-${day}`;
 }
 
@@ -47,7 +60,7 @@ function nullIfEmpty(value: string | undefined): string | null {
   return trimmed === '' ? null : trimmed;
 }
 
-async function downloadZip(destPath: string): Promise<void> {
+export async function downloadZip(destPath: string): Promise<void> {
   const client = new ftp.Client(30_000);
   try {
     // Acesso anônimo — user/password default da lib já são
@@ -71,7 +84,7 @@ async function downloadZip(destPath: string): Promise<void> {
 // próprio governo já veio cortado no meio de um registro num teste
 // real feito durante o brainstorming desta fase, e é esperado que
 // isso aconteça de novo.
-async function extractCaepiText(zipPath: string): Promise<Buffer> {
+export async function extractCaepiText(zipPath: string): Promise<Buffer> {
   const data = readFileSync(zipPath);
   if (data.length < 30 || data.readUInt32LE(0) !== 0x04034b50) {
     throw new Error('Arquivo não começa com uma assinatura de local file header de ZIP válida (PK\\x03\\x04)');
@@ -89,7 +102,21 @@ async function extractCaepiText(zipPath: string): Promise<Buffer> {
     // arquivo (stream deflate sem marcador de fim, por causa do
     // truncamento na origem) — já recebemos em 'data' tudo que deu
     // pra descomprimir até o ponto do corte, que é o que importa.
-    inflater.on('error', () => resolve(Buffer.concat(chunks)));
+    // Mas isso não pode ficar silencioso: sem um aviso explícito aqui,
+    // nada distingue "baixei o arquivo completo" de "baixei 60% dele" —
+    // e essa base alimenta a tela de busca em produção, cujo rodapé
+    // ("Base local atualizada em DD/MM/AAAA") dá a entender uma base
+    // completa. Ver também a checagem de sanidade em main() contra a
+    // sincronização anterior.
+    inflater.on('error', () => {
+      console.warn(
+        '[caepi-sync] AVISO: o stream de descompressão terminou sem o marcador de fim ' +
+          '(evento "error" tolerado) — a fonte provavelmente foi cortada no meio de um ' +
+          'registro. A importação segue apenas com os dados parciais recebidos até o ' +
+          'ponto do corte.',
+      );
+      resolve(Buffer.concat(chunks));
+    });
     inflater.on('end', () => resolve(Buffer.concat(chunks)));
     inflater.end(compressed);
   });
@@ -99,7 +126,7 @@ async function extractCaepiText(zipPath: string): Promise<Buffer> {
 // as três hipóteses de encoding lado a lado contra os bytes reais —
 // Windows-1252/Latin-1 corrompem os acentos, só UTF-8 produz texto
 // correto) — sem conversão de encoding necessária.
-function parseCaepiText(raw: Buffer): { rows: CaepiRow[]; skipped: number } {
+export function parseCaepiText(raw: Buffer): { rows: CaepiRow[]; skipped: number } {
   const text = raw.toString('utf8');
   const lines = text.split(/\r?\n/);
   const rows: CaepiRow[] = [];
@@ -159,7 +186,7 @@ function parseCaepiText(raw: Buffer): { rows: CaepiRow[]; skipped: number } {
 // os lotes reproduz exatamente o mesmo estado final que upserts
 // sequenciais um-a-um produziriam, e evita colisão dentro do lote
 // não importa como as duplicatas caiam nos batches de 1000.
-function dedupeByNumeroCa(rows: CaepiRow[]): { deduped: CaepiRow[]; duplicates: number } {
+export function dedupeByNumeroCa(rows: CaepiRow[]): { deduped: CaepiRow[]; duplicates: number } {
   const map = new Map<string, CaepiRow>();
   for (const row of rows) {
     map.set(row.numero_ca, row);
@@ -230,6 +257,32 @@ async function main() {
     console.log('[caepi-sync] gravando no banco (upsert em lote)...');
     await upsertRows(client, rows);
 
+    // Checagem de sanidade contra a sincronização anterior — só avisa,
+    // não aborta nem muda o exit code (script rodado manualmente pelo
+    // operador, que decide se investiga/re-roda; ver comentário no
+    // 'error' de extractCaepiText acima sobre por que isso importa: um
+    // truncamento na origem produz um sync "bem sucedido" com muito
+    // menos linhas, sem nenhum outro sinal de erro).
+    const previousStatus = await client.query<{ rows_imported: number }>(
+      'SELECT rows_imported FROM caepi_sync_status WHERE id = 1',
+    );
+    const previousRowsImported = previousStatus.rows[0]?.rows_imported ?? null;
+    if (previousRowsImported !== null && previousRowsImported > 0) {
+      const dropRatio = (previousRowsImported - rows.length) / previousRowsImported;
+      if (dropRatio > 0.2) {
+        const dropPct = (dropRatio * 100).toFixed(1);
+        console.warn('='.repeat(70));
+        console.warn(
+          `ATENÇÃO: importação caiu de ${previousRowsImported} para ${rows.length} registros ` +
+            `(${dropPct}% menor que a sincronização anterior) — possível truncamento ou falha na fonte`,
+        );
+        console.warn('='.repeat(70));
+      }
+    }
+    // Se previousRowsImported for null, é a primeira sincronização
+    // deste ambiente (ou a linha nunca foi escrita) — nada pra comparar,
+    // pula a checagem sem erro.
+
     await client.query(
       `INSERT INTO caepi_sync_status (id, last_synced_at, rows_imported, rows_skipped)
        VALUES (1, now(), $1, $2)
@@ -252,7 +305,21 @@ async function main() {
   }
 }
 
-main().catch((err) => {
-  console.error('[caepi-sync] falhou:', err);
-  process.exit(1);
-});
+// Só dispara a sincronização de verdade (download real, conexão real
+// com o banco, `process.exit`) quando este arquivo é executado
+// diretamente como script (`npm run caepi:sync`) — nunca como efeito
+// colateral de simplesmente importar as funções puras exportadas
+// acima (ex.: os testes unitários deste arquivo, ou o script de
+// investigação read-only da Fase 17, que reusa downloadZip/
+// extractCaepiText/parseCaepiText via import). Sem essa guarda,
+// `require(...)` deste módulo em qualquer contexto já dispararia um
+// download FTP real, uma tentativa de conexão com Postgres e um
+// `process.exit(1)` matando o processo host em caso de falha — foi
+// exatamente o que aconteceu ao rodar os testes unitários pela
+// primeira vez antes desta guarda existir.
+if (require.main === module) {
+  main().catch((err) => {
+    console.error('[caepi-sync] falhou:', err);
+    process.exit(1);
+  });
+}
