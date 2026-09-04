@@ -2175,3 +2175,64 @@ real registrada; a exceção real desta fase foi a exposição acidental
 da senha do superuser do Postgres descrita acima, de natureza
 diferente (infraestrutura, não segredo de aplicação) e já corrigida
 na causa raiz, com rotação recomendada e pendente.
+
+## Fase 18 — Documentos Técnicos (LTCAT/LIP): status
+
+Sexta frente fora do núcleo da CIPA, na ordem já acordada
+(`docs/specs/fase-12-central-cipa-nucleo.md` §1) — segunda metade do
+item original do roadmap ("Consulta de CA, Documentos Técnicos
+(LTCAT/LIP)"), separada em frente própria pela spec da Fase 17 por
+ser bem menor e sem relação técnica com CAEPI. Classificada como
+**bounded** no brainstorming (mudança pequena num fluxo já existente,
+o módulo de documentos da Fase 4) — design aprovado em chat, sem spec
+nem plano formais, implementação direto no fluxo normal de dev (TDD).
+
+**Fechada em 2026-09-04, implementação direta + 1 rodada de correção
+da revisão:**
+
+- Duas categorias novas em `documents` — `ltcat` e `lip` — mesmo
+  padrão da migration 0023 (categorias `cipa_*`): sem tabela nova,
+  sem regra de validade especial. `laudo` continua existindo como
+  categoria genérica, sem migração de dados. Como qualquer categoria
+  já existente, entram no score/pendências só se `expires_at` for
+  preenchido — decisão da Fase 4 ("score avalia só o que já foi
+  enviado, sem categorias obrigatórias") não foi reaberta.
+- **Achado real na exploração inicial, corrigido de brinde**: três
+  listas de categoria (CHECK constraint, `ALLOWED_CATEGORIES` do
+  service, `@IsIn` do DTO) já divergiam entre si antes desta fase — o
+  dropdown de upload manual do frontend (`DocumentsPanel.tsx`) oferecia
+  10 opções, mas o DTO só aceitava 5, então selecionar `Ata da CIPA`,
+  `Comunicado da CIPA`, `Documento eleitoral da CIPA`, `Anexo da CIPA`
+  ou `EPI` sempre resultava em erro 400 (essas categorias são gravadas
+  só internamente por outros módulos, nunca pelo formulário manual).
+  Corrigido separando `CATEGORY_LABELS` (rótulos de exibição, todas as
+  categorias) de um novo `UPLOAD_CATEGORIES` (só as que o DTO aceita),
+  sincronizado com o `@IsIn` desde o início — `ltcat`/`lip` entram
+  corretamente nas quatro listas (CHECK, `ALLOWED_CATEGORIES`, DTO,
+  frontend) sem repetir o problema.
+- **Achado real na revisão, corrigido numa rodada**: `frontend/src/app/tecnico/agenda/page.tsx`
+  mantém seu próprio dicionário `CATEGORY_LABELS`, independente do de
+  `DocumentsPanel.tsx`, que não tinha sido atualizado — um documento
+  LTCAT/LIP com vencimento apareceria na agenda combinada do técnico
+  sem rótulo de categoria (`undefined` descartado silenciosamente pelo
+  React). Corrigido adicionando os dois rótulos faltantes; verificado
+  via Playwright contra produção real com dados mockados que o rótulo
+  aparece corretamente e nenhum "undefined" some na tela.
+
+**Verificação:** backend com TDD real (RED confirmado — 400 antes da
+migration/DTO — depois GREEN) contra Postgres e R2 reais (novo
+`documents-technical-categories.e2e-spec.ts`, upload real nas duas
+categorias novas); suíte completa de documentos (8 arquivos, 32
+testes) sem regressão. Frontend sem suíte automatizada (estado real
+do projeto) — Playwright contra produção real confirmando que o
+dropdown de upload agora só oferece as 7 categorias que o backend
+aceita, e que a agenda do técnico exibe os rótulos novos corretamente.
+
+Nenhuma chamada a API paga foi feita durante toda a fase — não
+aplicável aqui. Guardrail permanente de segurança da sessão seguiu
+valendo em todos os passos — nenhum segredo extraído, nenhum SQL
+direto fora de fixtures de teste, nenhuma conta real registrada; desta
+vez, ao contrário da Fase 17, o override temporário de dev foi
+removido imediatamente após cada uso, antes de qualquer outro comando
+`docker compose`, seguindo a lição registrada no incidente da fase
+anterior.
