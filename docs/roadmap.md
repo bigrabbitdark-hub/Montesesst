@@ -1978,3 +1978,200 @@ aplicável aqui (Fase 16 não integra IA). Guardrail permanente de
 segurança da sessão (reforçado desde um incidente na Fase 12b) seguiu
 valendo em todos os despachos: nenhum segredo extraído, nenhum SQL
 direto fora de fixtures de teste, nenhuma conta real registrada.
+
+## Fase 17 — Consulta de CA (base oficial CAEPI/MTE): status
+
+Quinta frente fora do núcleo da CIPA, na ordem já acordada
+(`docs/specs/fase-12-central-cipa-nucleo.md` §1: "Consulta de CA,
+Documentos Técnicos (LTCAT/LIP)" — esta fase cobre só a primeira
+metade, Documentos Técnicos vira frente própria). Espelho local,
+sincronizado manualmente, da base pública do CAEPI/MTE (Certificados
+de Aprovação de EPI), com busca pra empresa e técnico. Precedida por
+um spike técnico real (download e inspeção direta do arquivo do MTE,
+não pesquisa de segunda mão) que corrigiu duas suposições erradas
+trazidas pelo fundador na proposta original: o encoding é UTF-8 (não
+Windows-1252) e o ZIP da própria fonte vem malformado (sem fim de
+índice central, às vezes truncado no meio de um registro) — o
+importador precisou nascer com parsing defensivo desde o início.
+
+**Fechada em 2026-09-03, 4 tasks + 1 rodada de correção na Task 3 +
+revisão final (opus) com 5 Important + 1 rodada de correção única:**
+
+- **Task 1** — migration `caepi_records`/`caepi_sync_status`
+  (`0031_caepi.sql`). **Primeira exceção arquitetural desta sessão**:
+  sem `tenant_id`, sem RLS — dado público global, igual pra qualquer
+  tenant (mesma categoria de `epi_catalog_items`/0013 e
+  `official_sources`/`normative_documents`/0021, que já seguiam esse
+  padrão fora desta sessão — a spec original comparava só contra as
+  fases CIPA desta sessão e dava a impressão de precedente inédito no
+  projeto; corrigido na revisão final).
+- **Task 2** — script `npm run caepi:sync` (nunca scheduler, nunca
+  rota HTTP — decisão de controle operacional explícito sobre uma
+  importação potencialmente grande, não por falta de scheduler no
+  projeto: `@nestjs/schedule` já existe e já roda `@Cron` em
+  produção). Baixa o ZIP real do FTP anônimo do MTE, faz parsing
+  manual do cabeçalho local + `raw deflate` tolerante a truncamento,
+  decodifica UTF-8, upsert em lote. Rodado de verdade contra o
+  servidor real e o Postgres real (não é violação de guardrail — dado
+  público, sem tenant, popular a tabela É a entrega da fase). **Bug
+  real achado e corrigido pelo próprio implementador, não previsto no
+  brief**: a base real tem ~9.842 números de CA que aparecem em 2+
+  linhas (variantes de laudo/equipamento); um `upsert` em lote sem
+  dedupe prévio quebra com "ON CONFLICT DO UPDATE command cannot
+  affect row a second time" — corrigido com `dedupeByNumeroCa`
+  (mantém a última ocorrência na ordem do arquivo). Resultado real:
+  56.748 linhas válidas, 23.282 CAs distintos gravados, 41.457
+  puladas (7.991 malformadas + 33.466 duplicadas).
+- **Task 3** — API `GET /caepi/search?q=` (CA exato ou `ILIKE` livre
+  em equipamento/descrição/marca/razão social, exato primeiro, limite
+  50) e `GET /caepi/sync-status`, sem `@Roles` (qualquer papel
+  autenticado consulta, mesmo padrão de `PendenciasController`).
+  `DatabaseService.withoutTenantContext` (não RLS-scoped). **Bug real
+  achado na revisão da task, corrigido numa rodada**: o teste e2e
+  capturava o estado real de `caepi_sync_status` (pra restaurar depois)
+  *depois* de passos falíveis (criação de tenant, login, insert de
+  fixture) — um `beforeAll` interrompido por uma execução anterior
+  cortada deixaria a captura em `null` e o `afterAll` apagaria a linha
+  real de sincronização (23.282 registros). Corrigido reordenando a
+  captura pra logo após `db.connect()`, antes de qualquer passo
+  falível.
+- **Task 4** — telas `/empresa/consulta-ca` e `/tecnico/consulta-ca`
+  (link novo na sidebar de cada papel, ao lado de "EPIs"/"Assistente"),
+  badge colorido por `situacao` (verde `VÁLIDO`, âmbar `SUSPENSO`,
+  vermelho `VENCIDO`/`CANCELADO`), rodapé com data da última
+  sincronização.
+
+**Revisão final (opus, dispatch único) achou 0 Critical + 5 Important
++ vários Minor, todos endereçados numa rodada de correção única e
+re-revisados como limpos:**
+
+- Truncamento na origem era tolerado mas engolido em silêncio (sem
+  log, sem sinal pro operador) — corrigido com aviso explícito no
+  log e uma checagem de sanidade que compara com a sincronização
+  anterior e imprime um banner alto se a contagem cair mais de 20%
+  (sem abortar o script — só avisa, decisão do operador).
+- `dedupeByNumeroCa` descarta ~59% das linhas da fonte (mantém só a
+  última linha por CA), o que é inofensivo pro caso de uso principal
+  (validade/situação do CA) mas pode prejudicar o recall da busca
+  livre em `descricao_equipamento` (uma variante de laudo não-última
+  simplesmente não aparece na busca). **Investigado, não corrigido
+  nesta rodada** (decisão de modelo de dados, não bug de
+  implementação) — novo download real, contagem read-only: de 9.842
+  CAs com 2+ linhas, só 14 (0,14%) têm `situacao`/`data_validade`
+  divergentes entre linhas irmãs; `cnpj`/`razao_social` nunca
+  divergem. Risco real confirmado baixo pro caso principal; a
+  limitação de recall em `descricao_equipamento`/`norma`/`numero_laudo`
+  fica registrada como conhecida, não corrigida — reabrir a chave
+  primária pra guardar todas as variantes fica como frente futura se
+  a limitação incomodar na prática.
+- `descricao_equipamento` era buscado mas nunca exibido nas duas
+  telas — falha vinda do próprio plano (o código já dado nos Steps 3/4
+  não renderizava o campo), não desvio da Task 4. Corrigido.
+- O teste e2e de `sync-status` ainda *escrevia* um valor fabricado na
+  linha real (`caepi_sync_status`) antes de restaurar — a correção da
+  Task 3 já tinha fechado o caminho do *delete* indevido, mas sobrava
+  o caminho do *write* (um processo morto entre a escrita e o
+  `afterAll` deixaria produção mostrando dado fabricado). Eliminado
+  por completo, não só mitigado: o teste agora só lê o que já existe
+  e compara — todo o aparato de captura/restauração foi removido como
+  código morto.
+- Zero cobertura automatizada no código mais propenso a bug da fase
+  (`parseCaepiText`/`parseBrDate`/`dedupeByNumeroCa`, funções puras) e
+  a decisão arquitetural central (qualquer papel autenticado busca,
+  sem `@Roles`) só era testada com `empresa`. Corrigido: 14 testes
+  unitários novos (sem rede/banco) cobrindo truncamento, linha em
+  branco, coluna faltando/sobrando, datas inválidas e dedup; mais um
+  caso e2e com papel `tecnico` (`tenant_id: NULL`) provando que a
+  tabela sem conceito de tenant funciona pra qualquer papel, não só
+  empresa. **Achado colateral durante essa correção**: o script
+  chamava `main()` incondicionalmente no escopo do módulo — importar
+  as funções puras pro teste unitário disparava uma sincronização
+  real de verdade (download FTP real, tentativa de conexão Postgres,
+  `process.exit(1)` em caso de falha). Corrigido com
+  `if (require.main === module)`, padrão CommonJS — só dispara ao
+  rodar o arquivo diretamente (`npm run caepi:sync`), nunca por
+  `import`. Verificado de duas formas pela revisão focada (leitura de
+  código + reprodução empírica isolada), não só aceito da palavra do
+  relatório.
+- `parseBrDate` validava só o formato, não se a data existia
+  (`30/02/2025` passava e quebraria um lote inteiro no Postgres, sem
+  transação envolvendo os lotes) — corrigido com validação de
+  ida-e-volta (`Date` reconstruída, compara os componentes de volta).
+- Minor corrigido junto: a spec/plano/comentário da migration diziam
+  "diferente de toda tabela do projeto" sobre a ausência de RLS —
+  impreciso; já existe precedente real (`epi_catalog_items`,
+  `official_sources`/`normative_documents`) fora das fases desta
+  sessão. Corrigido diretamente pelo controlador (commit `0583a2c`,
+  documentação pura, verificado antes via grep nas migrations 0013 e
+  0021).
+
+**Incidente de segurança real durante a rodada final de correção,
+não um achado de review — registrado com transparência total:** um
+`docker-compose.override.yml` temporário (config de dev) ficou
+presente durante uma recriação não relacionada do container de
+frontend (`docker compose up -d frontend`); o Compose recalculou o
+plano do serviço `backend` também por causa do override e recriou o
+`montese_backend` real de produção com config de dev (bind mount,
+`NODE_ENV=development`, `TEST_SUPERUSER_DATABASE_URL` injetada).
+Depurando um problema de volume nesse container (sem querer) em modo
+dev via `docker inspect`, a senha do superuser do Postgres apareceu
+em texto puro no output de ferramenta da sessão. Causa raiz corrigida
+na hora (override apagado, container recriado limpo, confirmado de
+volta a `NODE_ENV=production`/sem mounts/sem a env var/API saudável).
+Não foi extração deliberada de segredo nem persistida em nenhum
+arquivo/commit — efeito colateral de depurar um problema de
+configuração real, mas a senha passou pela sessão do agente.
+**Fundador foi notificado diretamente antes de qualquer passo
+seguinte**, recomendada a rotação de `POSTGRES_SUPERUSER_PASSWORD`
+(decisão e execução do fundador, no tempo dele — **ainda pendente**
+no fechamento desta fase). Processo ajustado daqui pra frente: apagar
+qualquer override temporário *antes* de mexer em outro serviço, não
+só no fim da task.
+
+**Verificação:** backend com suíte e2e real (Postgres real, sem
+mock) — 6/6 testes cobrindo busca exata, busca livre `ILIKE`, 400 sem
+`q`, 401 sem autenticação, sync-status (read-only), e o caso
+cross-role `tecnico`; mais 14/14 testes unitários novos (funções
+puras, zero rede/banco, rodados duas vezes — local e em container).
+Frontend sem suíte automatizada (estado real do projeto) — Playwright
+contra a build de produção real, 10/10 cenários (5 × 2 telas)
+cobrindo busca com resultado, busca vazia, `descricao_equipamento`
+presente/ausente, e os dois estados de sincronização (nunca
+sincronizada / com data real).
+
+**Pendências reais, não são bugs, registradas pela revisão final e
+deferidas conscientemente:**
+
+- Limitação de recall em `descricao_equipamento`/`norma`/`numero_laudo`
+  causada pelo dedupe por `numero_ca` (ver achado acima) — conhecida,
+  documentada, não corrigida; reabrir a chave primária fica como
+  frente futura condicional.
+- `rows_skipped` (Task 2) mistura duas categorias (linha malformada +
+  CA duplicado) num único inteiro gravado — o log do terminal já
+  separa as duas, só a coluna persistida não; só importa se um painel
+  futuro precisar mostrar essa distinção.
+- Upsert em lote (Task 2) não está dentro de uma transação cobrindo
+  todos os lotes — baixo risco dado o modelo operacional (re-rodar é
+  seguro e idempotente).
+- `downloadZip`/`extractCaepiText` ficaram exportadas sem consumidor
+  fora do próprio arquivo (usadas só por um script de investigação
+  descartável, nunca commitado) — inofensivo, zero mudança de
+  comportamento.
+- Validação de bounds do cabeçalho ZIP e verificação explícita do
+  método de compressão, FTPS em vez de FTP puro, comentário
+  desatualizado de `withoutTenantContext` em `database.service.ts`
+  (lista mais módulos do que documentado) — todos reais, todos de
+  custo/benefício menor que os 5 Important, deliberadamente fora do
+  escopo da rodada final única.
+
+Nenhuma chamada a API paga foi feita durante toda a fase — não
+aplicável aqui (Fase 17 não integra IA, decisão fechada na spec §3/§6,
+mesmo raciocínio de adiamento do Copiloto da Fase 8). Guardrail
+permanente de segurança da sessão (reforçado desde um incidente na
+Fase 12b) seguiu valendo quanto a segredos de aplicação (`JWT_SECRET`,
+`GROQ_API_KEY`/`OPENROUTER_API_KEY`) e dado de tenant — nenhum
+extraído, nenhum SQL direto fora de fixtures de teste, nenhuma conta
+real registrada; a exceção real desta fase foi a exposição acidental
+da senha do superuser do Postgres descrita acima, de natureza
+diferente (infraestrutura, não segredo de aplicação) e já corrigida
+na causa raiz, com rotação recomendada e pendente.
