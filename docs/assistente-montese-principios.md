@@ -82,7 +82,45 @@ Quando uma resposta depende de mais de uma fonte, a ordem de confiança é:
 4. Interpretação da IA sobre as três fontes acima — nunca fonte primária de
    obrigação normativa por conta própria.
 
-## 5. Custo é uma restrição de design, não um detalhe posterior
+## 5. Três níveis de inteligência — banco primeiro, IA quando necessário
+
+Discutido com o fundador em 2026-09-04. Nenhum dos três é aspiracional —
+os três já existem, espalhados pelo código, sem estar nomeados assim:
+
+- **Nível 1 — Determinístico, sem LLM.** Contagens, vencimentos, status,
+  permissões, regras simples. Ex.: a importação de planilha de
+  funcionários (`backend/src/employees/csv-import.util.ts`) é 100%
+  determinística — parsing de string + regex + lookup em tabela, zero IA.
+- **Nível 2 — IA operacional.** Resumir, extrair, classificar texto/áudio
+  livre — o Copiloto de relato (Fase 8) e a ata por IA (Fase 13).
+- **Nível 3 — IA especializada + RAG.** Perguntas que dependem de cruzar
+  fonte oficial com dado da empresa — o Assistente RAG Normativo/
+  Operacional (Fase 9/10).
+
+Qualquer capacidade nova começa perguntando "isso precisa mesmo de LLM,
+ou é nível 1?" antes de gastar uma chamada de IA.
+
+## 6. Acesso a modelos: interface por capacidade, não um Gateway único
+
+Cada capacidade de IA já é desacoplada do provedor por trás dela através
+de uma interface pequena e específica, trocável via injeção de dependência
+do NestJS (`useClass`) — não por um "Model Gateway" central. Precedente
+real: `FieldReportExtractor` (`backend/src/ai-copilot/field-report-extractor.interface.ts`)
+tem duas implementações completas hoje, `OpenRouterExtractorService`
+(ativa) e `MiniMaxExtractorService` (escrita, testada, só não ligada) —
+trocar é mudar uma linha de `useClass`, sem tocar em nenhum agente que a
+consome.
+
+**Decisão deliberada: cada capacidade nova ganha sua própria interface
+pequena, não um Gateway único cobrindo extração/embeddings/chat/
+transcrição de uma vez.** Um Gateway centralizado antes de existir dor real
+de manutenção repetida seria infraestrutura adiantada — a mesma disciplina
+já seguida em outras frentes deste projeto (ex.: CAEPI, Fase 17, não usa o
+`@nestjs/schedule` que já existe porque a dor de agendar automaticamente
+não existe ainda). Revisitar isso só se um padrão de dor real aparecer
+depois de mais agentes construídos.
+
+## 7. Custo é uma restrição de design, não um detalhe posterior
 
 `OPENROUTER_API_KEY` já é uma conta real, com saldo real — já houve um
 incidente real de estouro de crédito numa chamada sem limite de tokens
@@ -90,9 +128,11 @@ incidente real de estouro de crédito numa chamada sem limite de tokens
 **desde a ativação**, mesmo padrão já usado em `AI_DRAFT_RATE_LIMIT_MAX`/
 `ASSISTANT_RATE_LIMIT_MAX`/`ATA_AUDIO_RATE_LIMIT_MAX` — e nenhum agente é
 anunciado como ativo pro fundador antes de ser validado contra a API real
-(paga), não só contra mock.
+(paga), não só contra mock. `MINIMAX_API_KEY` não é necessária pra nenhuma
+capacidade planejada hoje — só entraria em jogo se um dia vocês quiserem
+comparar custo/qualidade contra o que já está ativo.
 
-## 6. Fora de escopo deste documento
+## 8. Fora de escopo deste documento
 
 - Quantos agentes existem, se há um orquestrador central, ou qualquer
   decisão de arquitetura de implementação — decisão de cada spec futura.
