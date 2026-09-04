@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { getToken } from '@/lib/auth';
 
 interface CaepiRecord {
   numero_ca: string;
@@ -48,7 +49,7 @@ export default function ConsultaCaPage() {
   const [syncStatus, setSyncStatus] = useState<CaepiSyncStatus | null>(null);
 
   useEffect(() => {
-    const token = localStorage.getItem('montese_token');
+    const token = getToken();
     if (!token) {
       router.push('/login');
       return;
@@ -65,7 +66,7 @@ export default function ConsultaCaPage() {
     setError(null);
     const trimmed = query.trim();
     if (!trimmed) return;
-    const token = localStorage.getItem('montese_token');
+    const token = getToken();
     try {
       const res = await fetch(`/api/caepi/search?q=${encodeURIComponent(trimmed)}`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -120,6 +121,9 @@ export default function ConsultaCaPage() {
                 <p className="text-sm font-medium text-brand-900">
                   CA {r.numero_ca} — {r.equipamento || 'Equipamento não informado'}
                 </p>
+                {r.descricao_equipamento && (
+                  <p className="mt-0.5 text-xs text-brand-700">{r.descricao_equipamento}</p>
+                )}
                 <p className="mt-0.5 text-xs text-brand-700">
                   Fabricante: {r.razao_social || '—'} · Marca: {r.marca_ca || '—'} · Validade:{' '}
                   {formatDate(r.data_validade)}
