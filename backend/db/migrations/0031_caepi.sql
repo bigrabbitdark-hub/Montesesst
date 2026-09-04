@@ -1,7 +1,9 @@
 -- Fase 17: Consulta de CA — espelho local da base pública do MTE
--- (sistema CAEPI). Diferente de toda tabela CIPA deste projeto: é
--- dado público global, igual pra qualquer tenant — sem tenant_id,
--- sem RLS. Ver docs/specs/fase-17-consulta-ca.md.
+-- (sistema CAEPI). Dado público global, igual pra qualquer tenant —
+-- sem tenant_id, sem RLS. Mesma categoria de epi_catalog_items
+-- (0013) e official_sources/normative_documents (0021): dado de
+-- referência compartilhado, não pertence a nenhum tenant. Ver
+-- docs/specs/fase-17-consulta-ca.md.
 
 CREATE TABLE caepi_records (
   numero_ca TEXT PRIMARY KEY,

@@ -73,8 +73,17 @@ Investigação feita com download real e inspeção direta do arquivo
   reestruturar mais nada da sidebar.
 - **`caepi_records` é dado público global, não é dado de tenant.** É
   um espelho de uma base do governo, igual pra qualquer empresa —
-  diferente de toda tabela criada nas fases anteriores desta sessão,
-  **não leva `tenant_id` e não tem RLS**. Qualquer usuário autenticado
+  diferente de toda tabela criada nas fases anteriores desta sessão
+  (fases 12-16, todas CIPA e todas com RLS), **não leva `tenant_id` e
+  não tem RLS**. **Correção (achada na revisão final desta fase)**: já
+  existe precedente real no projeto pra esse padrão fora desta sessão
+  — `epi_catalog_items` (migration 0013, Fase 6) e
+  `official_sources`/`normative_documents` (migration 0021, Fase 9)
+  também são dado de referência compartilhado sem `tenant_id`/RLS,
+  pelo mesmo motivo. Não é uma exceção inédita no projeto, só inédita
+  entre as fases CIPA feitas nesta sessão — mas segue exatamente o
+  padrão já estabelecido, não abre precedente novo. Qualquer usuário
+  autenticado
   com papel `empresa`/`tecnico`/`parceiro` pode consultar (mesmo
   conjunto de papéis já usado no módulo de EPI hoje).
 - **Sincronização é um script rodado manualmente por quem opera o
