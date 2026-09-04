@@ -1,5 +1,10 @@
 import { BadGatewayException, Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
-import { NormativeAnswerProvider, NormativeClaim, OperationalItem } from './normative-answer-provider.interface';
+import {
+  AttachmentInput,
+  NormativeAnswerProvider,
+  NormativeClaim,
+  OperationalItem,
+} from './normative-answer-provider.interface';
 import { buildRagChatCompletionBody, parseRagToolCall } from './normative-answer-shared';
 
 @Injectable()
@@ -10,6 +15,7 @@ export class OpenRouterNormativeAnswerService implements NormativeAnswerProvider
     question: string,
     chunks: { id: string; content: string }[],
     operationalItems: OperationalItem[],
+    attachment?: AttachmentInput,
   ): Promise<NormativeClaim[]> {
     const apiKey = process.env.OPENROUTER_API_KEY;
     if (!apiKey) {
@@ -27,7 +33,7 @@ export class OpenRouterNormativeAnswerService implements NormativeAnswerProvider
           'HTTP-Referer': 'https://montesesst.com.br',
           'X-Title': 'Montese SST - Assistente Normativo',
         },
-        body: JSON.stringify(buildRagChatCompletionBody(model, question, chunks, operationalItems)),
+        body: JSON.stringify(buildRagChatCompletionBody(model, question, chunks, operationalItems, attachment)),
         signal: AbortSignal.timeout(45_000),
       });
     } catch (err) {
@@ -57,7 +63,8 @@ export class OpenRouterNormativeAnswerService implements NormativeAnswerProvider
       return (
         typeof candidate.claim === 'string' &&
         Array.isArray(candidate.chunk_ids) &&
-        Array.isArray(candidate.operational_ref_ids)
+        Array.isArray(candidate.operational_ref_ids) &&
+        typeof candidate.uses_attachment === 'boolean'
       );
     });
   }
