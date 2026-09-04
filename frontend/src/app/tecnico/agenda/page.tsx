@@ -45,6 +45,8 @@ const CATEGORY_LABELS: Record<string, string> = {
   laudo: 'Laudo',
   ficha_epi: 'Ficha de EPI',
   treinamento: 'Treinamento',
+  ltcat: 'LTCAT',
+  lip: 'LIP',
   epi: 'EPI',
 };
 
