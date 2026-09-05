@@ -1,11 +1,37 @@
-import { Body, Controller, Get, Param, Patch, Req, UsePipes, ValidationPipe } from '@nestjs/common';
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Req,
+  Res,
+  UploadedFile,
+  UseInterceptors,
+  UsePipes,
+  ValidationPipe,
+} from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { Response } from 'express';
 import { Roles } from '../common/decorators/roles.decorator';
-import { TenantsService } from './tenants.service';
+import { Public } from '../common/decorators/public.decorator';
+import { DatabaseService } from '../common/database/database.service';
+import { TenantsService, Tenant } from './tenants.service';
 import { UpdateTenantDto } from './dto/update-tenant.dto';
+
+function withHasLogo(tenant: Tenant) {
+  return { ...tenant, has_logo: tenant.logo_file_key !== null };
+}
 
 @Controller('tenants')
 export class TenantsController {
-  constructor(private readonly tenants: TenantsService) {}
+  constructor(
+    private readonly tenants: TenantsService,
+    private readonly db: DatabaseService,
+  ) {}
 
   // Lista completa (todos os tenants, com vínculos agregados) — só admin,
   // ver findAll() abaixo. findMe/updateMe seguem exclusivos de 'empresa',
@@ -13,17 +39,45 @@ export class TenantsController {
   // cliente.
   @Roles('empresa')
   @Get('me')
-  findMe(@Req() req: any) {
-    return req.withTenantContext((client: any) => this.tenants.findOne(client, req.user.tenantId));
+  async findMe(@Req() req: any) {
+    const tenant = await req.withTenantContext((client: any) => this.tenants.findOne(client, req.user.tenantId));
+    return withHasLogo(tenant);
   }
 
   @Roles('empresa')
   @UsePipes(new ValidationPipe({ transform: true, whitelist: true, forbidNonWhitelisted: true }))
   @Patch('me')
-  updateMe(@Body() dto: UpdateTenantDto, @Req() req: any) {
-    return req.withTenantContext((client: any) =>
+  async updateMe(@Body() dto: UpdateTenantDto, @Req() req: any) {
+    const tenant = await req.withTenantContext((client: any) =>
       this.tenants.update(client, req.user.tenantId, dto),
     );
+    return withHasLogo(tenant);
+  }
+
+  @Roles('empresa')
+  @Post('me/logo')
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 2 * 1024 * 1024 } }))
+  uploadLogo(@UploadedFile() file: Express.Multer.File, @Req() req: any) {
+    if (!file) throw new BadRequestException('Nenhum arquivo enviado');
+    return req.withTenantContext((client: any) =>
+      this.tenants.uploadLogo(client, req.user.tenantId, {
+        buffer: file.buffer,
+        mimetype: file.mimetype,
+      }),
+    );
+  }
+
+  @Roles('empresa')
+  @Delete('me/logo')
+  removeLogo(@Req() req: any) {
+    return req.withTenantContext((client: any) => this.tenants.removeLogo(client, req.user.tenantId));
+  }
+
+  @Public()
+  @Get(':id/logo')
+  async getLogo(@Param('id') id: string, @Res() res: Response) {
+    const url = await this.db.withoutTenantContext((client) => this.tenants.getLogoRedirectUrl(client, id));
+    res.redirect(302, url);
   }
 
   // 'tenants' não tem RLS própria — @Roles('admin') é a única barreira

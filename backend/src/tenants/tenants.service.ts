@@ -1,6 +1,13 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PoolClient } from 'pg';
+import { randomUUID } from 'crypto';
 import { buildSafeSetClause } from '../common/safe-update.util';
+import { R2Service } from '../common/r2/r2.service';
+
+const ALLOWED_LOGO_MIME_TYPES: Record<string, string> = {
+  'image/jpeg': 'jpg',
+  'image/png': 'png',
+};
 
 const UPDATABLE_FIELDS = [
   'sector',
@@ -86,6 +93,7 @@ export interface Tenant {
   address_city: string | null;
   address_state: string | null;
   address_zip: string | null;
+  logo_file_key: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -108,6 +116,8 @@ interface UpdateTenantData {
 // do JWT pelo controller (req.user.tenantId).
 @Injectable()
 export class TenantsService {
+  constructor(private readonly r2: R2Service) {}
+
   async findAllWithLinks(client: PoolClient): Promise<TenantWithLinks[]> {
     const result = await client.query<TenantWithLinks>(
       `SELECT
@@ -256,5 +266,76 @@ export class TenantsService {
     }
 
     return tenant;
+  }
+
+  async uploadLogo(
+    client: PoolClient,
+    tenantId: string,
+    file: { buffer: Buffer; mimetype: string },
+  ): Promise<{ has_logo: true }> {
+    const ext = ALLOWED_LOGO_MIME_TYPES[file.mimetype];
+    if (!ext) {
+      throw new BadRequestException('Tipo de arquivo não permitido (só JPG ou PNG)');
+    }
+
+    const existing = await client.query<{ logo_file_key: string | null }>(
+      'SELECT logo_file_key FROM tenants WHERE id = $1',
+      [tenantId],
+    );
+    const oldKey = existing.rows[0]?.logo_file_key ?? null;
+
+    const newKey = `tenants/${tenantId}/branding/logo-${randomUUID()}.${ext}`;
+    await this.r2.putObject(newKey, file.buffer, file.mimetype);
+
+    try {
+      await client.query('UPDATE tenants SET logo_file_key = $1 WHERE id = $2', [newKey, tenantId]);
+    } catch (err) {
+      // O objeto já foi gravado no R2 real antes do UPDATE — se o UPDATE
+      // falhar, sem isso o objeto ficaria órfão no bucket pra sempre.
+      // Mesmo padrão de DocumentsService.upload.
+      try {
+        await this.r2.deleteObject(newKey);
+      } catch {
+        // Best-effort: não mascara o erro real do UPDATE.
+      }
+      throw err;
+    }
+
+    if (oldKey) {
+      // Best-effort — uma falha aqui não derruba a resposta de sucesso,
+      // só deixaria um objeto órfão (aceitável, não é dado sensível).
+      try {
+        await this.r2.deleteObject(oldKey);
+      } catch {
+        // Ignorado de propósito.
+      }
+    }
+
+    return { has_logo: true };
+  }
+
+  async removeLogo(client: PoolClient, tenantId: string): Promise<{ has_logo: false }> {
+    const existing = await client.query<{ logo_file_key: string | null }>(
+      'SELECT logo_file_key FROM tenants WHERE id = $1',
+      [tenantId],
+    );
+    const oldKey = existing.rows[0]?.logo_file_key ?? null;
+
+    if (oldKey) {
+      await this.r2.deleteObject(oldKey);
+    }
+    await client.query('UPDATE tenants SET logo_file_key = NULL WHERE id = $1', [tenantId]);
+
+    return { has_logo: false };
+  }
+
+  async getLogoRedirectUrl(client: PoolClient, tenantId: string): Promise<string> {
+    const result = await client.query<{ logo_file_key: string | null }>(
+      'SELECT logo_file_key FROM tenants WHERE id = $1',
+      [tenantId],
+    );
+    const key = result.rows[0]?.logo_file_key;
+    if (!key) throw new NotFoundException('Logo não encontrada');
+    return this.r2.getPresignedDownloadUrl(key);
   }
 }
