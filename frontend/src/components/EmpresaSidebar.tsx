@@ -1,12 +1,20 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { logout } from '@/lib/auth';
+import { getToken, logout } from '@/lib/auth';
 
 interface NavGroup {
   label: string;
   links: { href: string; label: string; emoji: string }[];
+}
+
+interface TenantBranding {
+  id: string;
+  name: string;
+  trade_name: string | null;
+  has_logo: boolean;
 }
 
 const GROUPS: NavGroup[] = [
@@ -43,10 +51,31 @@ const GROUPS: NavGroup[] = [
 
 export function EmpresaSidebar() {
   const pathname = usePathname();
+  const [tenant, setTenant] = useState<TenantBranding | null>(null);
+
+  useEffect(() => {
+    const token = getToken();
+    if (!token) return;
+    fetch('/api/tenants/me', { headers: { Authorization: `Bearer ${token}` } })
+      .then((res) => (res.ok ? res.json() : null))
+      .then(setTenant)
+      .catch(() => {});
+  }, []);
 
   return (
     <aside className="flex w-56 shrink-0 flex-col bg-brand-900 px-4 py-10">
-      <h1 className="px-2 text-lg font-bold text-white">Montese SST</h1>
+      {tenant?.has_logo ? (
+        <div className="flex items-center gap-2 px-2">
+          <img
+            src={`/api/tenants/${tenant.id}/logo`}
+            alt="Logo da empresa"
+            className="h-9 w-9 shrink-0 rounded-lg object-cover"
+          />
+          <span className="truncate text-sm font-bold text-white">{tenant.trade_name ?? tenant.name}</span>
+        </div>
+      ) : (
+        <h1 className="px-2 text-lg font-bold text-white">Montese SST</h1>
+      )}
       <nav className="mt-6 flex flex-1 flex-col gap-5">
         {GROUPS.map((group) => (
           <div key={group.label}>
