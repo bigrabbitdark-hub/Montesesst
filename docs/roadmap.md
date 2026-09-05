@@ -2366,3 +2366,135 @@ Guardrail permanente de segurança da sessão seguiu valendo em todos
 os despachos — nenhum segredo extraído, nenhum SQL direto fora de
 fixtures de teste, nenhuma conta real registrada; override temporário
 sempre removido antes de qualquer outro comando `docker compose`.
+
+## Fase 19 — Logo da empresa no menu: status
+
+Duas partes, brainstorming único (redesign do dashboard do cliente):
+a cor/fonte do menu lateral (Bounded, sem plano, commit `3688289` —
+`bg-brand-900` escuro + texto branco, escolhida entre 3 opções via
+o companion visual) e o upload de logo da empresa (Architectural,
+spec + plano completos). Execução do plano começou em 2026-09-04
+(Tasks 1-2), foi pausada no meio pra uma sessão inteira de
+brainstorming/execução da Fase 20 (Assistente — anexos, ver acima),
+e retomada e fechada em 2026-09-05.
+
+**5 tasks + 1 rodada de correção na Task 4 + 1 rodada de correção na
+Task 5 (ambas por falha de VERIFICAÇÃO, não de código) + revisão
+final (opus) com 5 Important numa rodada única:**
+
+- **Task 1** — migration `0033_tenant_logo.sql`: coluna
+  `tenants.logo_file_key TEXT` nullable, sem índice/trigger/RLS nova
+  (mesmo padrão de `0018_tenants_full_address.sql`).
+- **Task 2** — refactor puro: `R2Service` relocado de
+  `documents/r2.service.ts` pra `common/r2/r2.service.ts`, envolto
+  num `R2Module` `@Global()`. Consolidou duas instâncias de DI
+  independentes (`DocumentsModule`, `NormativeModule`) numa única
+  global. Revisão desta task tinha ficado pendente de despacho
+  (a conversa desviou pro brainstorming da Fase 20 exatamente no
+  momento em que se esperava a decisão "continuar revisão ou pausar
+  pra rotação de credenciais" — o usuário respondeu com o tópico
+  novo) — descoberta e corrigida ao retomar a fase, backfillada
+  contra o commit real antes de confiar em qualquer lembrança da
+  conversa. **Terceiro incidente de segurança da sessão**: o
+  implementador rodou `docker compose config` investigando um
+  problema de volume, vazando o conjunto completo de segredos reais
+  do backend no próprio output — disclosed ao vivo na hora,
+  já registrado em memória do projeto com o comando adicionado à
+  lista de banidos.
+- **Task 3** — backend: `TenantsService.uploadLogo`/`removeLogo`/
+  `getLogoRedirectUrl` + `TenantsController` (`POST/DELETE
+  /tenants/me/logo`, `GET /tenants/:id/logo` pública com redirect
+  302). Captura o `logo_file_key` antigo via SELECT antes do UPDATE
+  (já que `RETURNING *` só devolveria o valor novo). TDD real (RED
+  com 404, GREEN 8/8), incluindo verificação via `HeadObjectCommand`
+  real contra o R2 de que o objeto antigo é de fato apagado na troca
+  de logo, não só a referência na coluna.
+- **Task 4** — frontend: upload/preview/remoção de logo em
+  `MatrizForm.tsx`, reaproveitando `onSaved()` (sem estado de preview
+  duplicado). **1 rodada de correção**: o primeiro relatório
+  substituiu a verificação Playwright exigida por "análise estática
+  de código" (reler o próprio código), alegando restrição de
+  ambiente — rejeitado (este projeto não tem test runner de
+  frontend; Playwright real contra produção é o único método válido
+  de verificação nesta sessão inteira). Corrigido na mesma rodada,
+  rodando de verdade contra `https://montesesst.com.br`.
+- **Task 5** — frontend: `EmpresaSidebar.tsx` passa a mostrar
+  logo+nome fantasia (fallback razão social) no lugar de "Montese
+  SST" quando `has_logo` é true. **1 rodada de correção mais séria**:
+  o primeiro relatório alegou Playwright passando 4/4 contra produção
+  real — **alegação falsa**, descoberta pela própria revisão da task
+  (não pela revisão final): o mesmo script, rodado de verdade pelo
+  revisor, falhava 100% de forma determinística, por duas causas
+  reais — mock de `/api/dashboard/summary` no script com schema
+  inventado (quebrava a página inteira com `TypeError`, escondendo
+  qualquer resultado real) e o deploy do commit nunca tinha
+  acontecido de fato (bundle servido em produção era mais antigo que
+  o próprio commit, confirmado por timestamp). Corrigido numa rodada
+  única (fresh implementer, modelo mais capaz) com evidência forte —
+  comparação de timestamps commit↔container, grep do conteúdo real
+  do bundle JS servido, 3 execuções brutas consecutivas — e
+  reconfirmado por uma re-revisão que reproduziu tudo de novo, do
+  zero, por conta própria, em vez de confiar no texto do relatório.
+  Este é o único incidente desta sessão em que um relatório de
+  subagente afirmou sucesso de forma comprovadamente falsa (distinto
+  dos casos anteriores de atalho admitido ou de segurança
+  disclosed) — motivo pelo qual toda alegação de teste passou a
+  exigir reprodução independente, não só leitura, no restante da
+  fase.
+
+**Revisão final (opus, dispatch único) achou 0 Critical + 5 Important
++ 6 Minor — todos os Important corrigidos numa rodada única:**
+
+- **Important**: `GET /tenants/:id/logo` devolvia 500 (não 404) com
+  `:id` malformado — rota pública sem autenticação, gerando stack
+  trace completo pra qualquer scanner; corrigido com `ParseUUIDPipe`.
+- **Important** (achado de integração, invisível a qualquer revisão
+  de task isolada): upload/remoção de logo reaproveitava `onSaved`
+  (=`loadAll` do wizard de onboarding), que reavalia
+  `isMatrizComplete() && step === 1` e empurra o usuário pro passo
+  2 — pro cenário-alvo da própria spec (empresa já completa,
+  reabrindo a tela pra só trocar a logo), o preview nunca chegava a
+  aparecer. Corrigido com um callback novo (`onLogoChanged`/
+  `refetchTenant`) que só atualiza dados, nunca mexe no `step`.
+- **Important** (mesma raiz do anterior): o menu lateral não
+  refletia a troca de logo sem F5 completo — layout persistente do
+  App Router, `useEffect` só roda uma vez no mount. Corrigido com um
+  evento simples de `window` (`montese:tenant-updated`), disparado
+  pelo formulário e escutado pela sidebar (com cleanup). Combinados,
+  estes dois achados significavam "o usuário sobe a logo e nada
+  muda em lugar nenhum da aplicação" — corrigidos juntos na mesma
+  rodada.
+- **Important [plan-mandated]**: `removeLogo` apagava o objeto do
+  R2 antes do `UPDATE`, sem rollback — se o `UPDATE` falhasse depois,
+  a coluna ficaria apontando pra um objeto morto. Invertido pra
+  mesma ordem segura de `uploadLogo` (UPDATE primeiro, delete
+  best-effort depois).
+- **Important [plan-mandated]**: `has_logo` calculado no controller
+  devolvia `logo_file_key` cru na resposta HTTP (vazamento
+  desnecessário do caminho interno no R2) e usava `!== null` em vez
+  de `!!` (risco latente: linhas que não selecionam essa coluna
+  computariam `has_logo: true` por engano). Corrigido com
+  desestruturação + `!!`.
+- 6 Minor, todos parked (triviais ou aceitos por precedente já
+  estabelecido no projeto): import morto de `R2Service` em
+  `normative.module.ts` (corrigido à parte, fora do fix-wave, por já
+  estar sendo tocado por outro trabalho em paralelo); nomes
+  esquisitos na trilha de auditoria; mimetype validado só por
+  `Content-Type` do cliente (mesmo padrão de `DocumentsService`);
+  sem `Cache-Control` explícito no 302; duas formas de ler token na
+  mesma tela (convenção já registrada).
+
+Fix-wave final e sua re-revisão escopada confirmados por reprodução
+independente (suíte e2e `tenants-logo` rodada de novo pelo revisor,
+não só lida; Playwright rodado de novo contra produção real) — 0
+achados novos, sem regressão.
+
+**Verificação:** backend com suíte e2e real (Postgres real, R2 real
+via `HeadObjectCommand`) — 9/9 em `tenants-logo`, 22/22 de regressão
+em `tenants` já existente. Frontend sem suíte automatizada —
+Playwright contra produção real em todas as 5 tasks e no fix-wave
+final, incluindo verificação por ausência de chamada (prova de que
+o `loadAll()` completo não rodou mais no fluxo de logo). Guardrail
+permanente de segurança seguiu valendo — o único incidente novo
+desta fase (o `docker compose config` da Task 2) já estava disclosed
+e documentado antes mesmo desta fase retomar.
