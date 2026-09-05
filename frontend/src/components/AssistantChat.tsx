@@ -1,6 +1,7 @@
 'use client';
 
 import { FormEvent, useState } from 'react';
+import { getToken } from '@/lib/auth';
 
 interface Citation {
   document_id: string;
@@ -12,15 +13,17 @@ interface QueryResult {
   answer: string | null;
   message?: string;
   citations: Citation[];
+  used_attachment?: boolean;
+  attachment_warning?: string;
 }
 
 function authHeaders() {
-  const token = localStorage.getItem('montese_token');
-  return { Authorization: `Bearer ${token}` };
+  return { Authorization: `Bearer ${getToken()}` };
 }
 
 export function AssistantChat() {
   const [question, setQuestion] = useState('');
+  const [file, setFile] = useState<File | null>(null);
   const [result, setResult] = useState<QueryResult | null>(null);
   const [status, setStatus] = useState<'idle' | 'loading' | 'erro'>('idle');
 
@@ -29,14 +32,27 @@ export function AssistantChat() {
     setStatus('loading');
     setResult(null);
     try {
-      const res = await fetch('/api/assistant/normative-query', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...authHeaders() },
-        body: JSON.stringify({ question }),
-      });
+      let res: Response;
+      if (file) {
+        const formData = new FormData();
+        formData.append('question', question);
+        formData.append('file', file);
+        res = await fetch('/api/assistant/normative-query', {
+          method: 'POST',
+          headers: authHeaders(),
+          body: formData,
+        });
+      } else {
+        res = await fetch('/api/assistant/normative-query', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...authHeaders() },
+          body: JSON.stringify({ question }),
+        });
+      }
       if (res.ok) {
         setResult(await res.json());
         setStatus('idle');
+        setFile(null);
         return;
       }
       setStatus('erro');
@@ -64,6 +80,15 @@ export function AssistantChat() {
           rows={3}
           className="rounded-md border border-brand-100 px-3 py-2 text-sm"
         />
+        <label className="flex flex-col gap-1 text-sm text-brand-900">
+          Anexar documento ou imagem (opcional — PDF, JPG ou PNG, até 5MB)
+          <input
+            type="file"
+            accept="application/pdf,image/jpeg,image/png"
+            onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+            className="text-sm"
+          />
+        </label>
         <button
           type="submit"
           disabled={status === 'loading' || !question.trim()}
@@ -77,6 +102,14 @@ export function AssistantChat() {
       {result && (
         <div className="mt-6 rounded-lg border border-brand-100 p-6">
           <p className="whitespace-pre-wrap text-sm text-brand-900">{result.answer ?? result.message}</p>
+          {result.attachment_warning && (
+            <p className="mt-2 text-sm text-amber-700">{result.attachment_warning}</p>
+          )}
+          {result.used_attachment && (
+            <p className="mt-2 text-xs font-medium text-brand-700">
+              Parte desta resposta usa o documento/imagem anexado nesta pergunta.
+            </p>
+          )}
           {result.citations.length > 0 && (
             <div className="mt-4 flex flex-col gap-1">
               <h4 className="text-xs font-bold uppercase tracking-wide text-brand-700">Fontes</h4>
