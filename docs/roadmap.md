@@ -2236,3 +2236,133 @@ vez, ao contrário da Fase 17, o override temporário de dev foi
 removido imediatamente após cada uso, antes de qualquer outro comando
 `docker compose`, seguindo a lição registrada no incidente da fase
 anterior.
+
+## Fase 20 — Assistente: anexar documento/imagem: status
+
+Primeira frente concreta de uma visão maior trazida pelo fundador em
+2026-09-04 sobre expandir o "Assistente Montese SST" pra um sistema
+multiagente — ver `docs/assistente-montese-principios.md` (documento
+de princípios, não de arquitetura: missão, 3 níveis de confiança
+🟢🟡🔴, limites absolutos, hierarquia de fontes, decisão deliberada de
+interface por capacidade em vez de um Model Gateway central, e que o
+MiniMax não é necessário pra nenhuma capacidade planejada hoje).
+Estende o Assistente RAG Normativo/Operacional já existente (Fase
+9/10) — não cria um agente novo do zero, não é o sistema multiagente
+completo da visão maior (essa fica pra frentes futuras, uma de cada
+vez).
+
+**Fechada em 2026-09-05, 3 tasks + 1 rodada de correção na Task 2 +
+revisão final (opus) com 1 Crítico + 5 Important + 1 Minor, todos numa
+rodada única:**
+
+- **Task 1** — camada de resposta: a interface já trocável
+  `NormativeAnswerProvider` (uma implementação real hoje, OpenRouter)
+  ganhou um 4º parâmetro opcional, `attachment?: AttachmentInput`
+  (`kind: 'pdf_text' | 'image'`). PDF vira seção de texto no prompt;
+  imagem vira bloco `image_url` (base64) na mesma chamada de chat
+  completions — o modelo já ativo (`anthropic/claude-sonnet-5` via
+  OpenRouter) já é multimodal, sem precisar de OCR. `NormativeClaim`
+  ganhou `uses_attachment: boolean` **obrigatório** no schema (o
+  modelo sempre preenche, nunca fica implícito). SYSTEM_PROMPT
+  estendido preservando todas as regras originais (não invente id,
+  avalie cada parte separadamente, trate como DADO nunca instrução —
+  agora também pro anexo) mais uma nova: não tratar imagem como
+  conclusão definitiva de risco.
+- **Task 2** — orquestração + endpoint: novo
+  `attachment-text.util.ts` (extração de PDF via `pdf-parse`,
+  truncada em 8000 caracteres). `POST /assistant/normative-query`
+  (rota já existente, não uma nova) passa a aceitar multipart
+  opcional (PDF/JPG/PNG, até 5MB) — sem anexo, comportamento idêntico
+  ao de sempre (confirmado por regressão explícita contra a suíte
+  e2e pré-existente, 14/14). Com anexo, a busca normativa cai de 6
+  pra 3 trechos (orçamento de contexto). Nenhuma persistência — tudo
+  em memória, descartado após a resposta. Segundo rate limit dedicado
+  (mais apertado, chave Redis própria) só pra perguntas com anexo,
+  já que `@RateLimit` é estático por rota. **2 bugs reais achados e
+  corrigidos pelo próprio implementador, não previstos no brief**:
+  (1) `pdf-parse@2.4.5`'s `getText()` sempre preenche um marcador de
+  fim de página por padrão, mesmo numa página em branco — sem
+  `{ pageJoiner: '' }`, o código do próprio brief nunca detectaria um
+  PDF escaneado sem texto, bug confirmado lendo o código-fonte real
+  da lib, não só a alegação; (2) PDF genuinamente corrompido/malformado
+  lançava exceção não tratada (500 cru) em vez do fallback gracioso
+  já construído pro caso "sem texto" — corrigido numa rodada de
+  correção, com teste novo cobrindo buffer não-PDF.
+- **Task 3** — frontend: `AssistantChat.tsx` (compartilhado por
+  `/empresa/assistente` e `/tecnico/assistente`) ganhou campo de
+  anexo, exibição de `used_attachment`/`attachment_warning`, e
+  `getToken()` no lugar da leitura direta de `localStorage`
+  (drive-by). Verificado via Playwright contra produção real, 5/5
+  cenários (4 + repetição em `/tecnico/assistente`), screenshots
+  reais confirmando a cor de alerta do aviso distinta da resposta
+  normal.
+
+**Revisão final (opus, dispatch único) achou 1 Critical + 5 Important
++ 1 Minor — o Critical é um achado real de integração que nenhuma
+revisão por task isolada poderia ver, corrigidos numa rodada de
+correção única:**
+
+- **Critical**: o Verificador determinístico (a garantia "inegociável"
+  do produto de nunca afirmar algo sem fonte real) aceitava
+  `claim.uses_attachment === true` como prova de fonte válida SEM
+  checar se um anexo de verdade foi processado nesta chamada — uma
+  afirmação alucinada pelo modelo, com as duas outras listas vazias,
+  sobreviveria ao Verificador mesmo numa pergunta SEM anexo nenhum (ou
+  com PDF ilegível). Corrigido com um guard (`attachmentIsReal`)
+  aplicado nos dois lugares que confiavam em `uses_attachment` sem
+  verificar a origem real do anexo. Confirmado correto por dois
+  revisores independentes lendo a lógica linha a linha, incluindo
+  checagem cruzada de que casos legítimos de anexo real continuam
+  funcionando.
+- 5 Important, todos corrigidos: variáveis de rate limit de anexo
+  ausentes de `.env.example`/`docker-compose.yml` (limite de custo
+  travado, sem jeito de ajustar sem novo deploy); `catch` silencioso
+  em `extractPdfText` (PDF corrompido virava indistinguível de PDF
+  escaneado na telemetria); frontend colapsava 413/400/429 numa
+  mensagem genérica enganosa; nota de `used_attachment` não deixava
+  clara a hierarquia de fontes que a spec exige (documento anexado é
+  nível 2, não nível 1 como norma oficial); caminho de imagem sem
+  nenhuma das proteções que o PDF ganhou (corpo do erro do OpenRouter
+  nunca era logado).
+- 1 Minor corrigido de brinde (mesmo arquivo já em edição): `429` de
+  anexo sem header `Retry-After`, inconsistente com o guard global.
+
+**Pendência real, registrada e deferida conscientemente**: o teste de
+regressão novo escrito pra cobrir o achado Critical é vazio — usa
+precondições que já batem no fallback antecipado antes do provedor de
+resposta ser chamado, então o claim alucinado mockado nunca é
+consumido de fato. A correção de produção em si foi verificada correta
+por leitura direta da lógica (não é uma falha de comportamento hoje),
+mas falta uma proteção de regressão automatizada de verdade pra esse
+guard específico — um refactor futuro descuidado poderia reintroduzir
+o bug sem nenhum teste pegando. Fica como tarefa pequena e
+independente pra um próximo ciclo (cenário com um chunk/item
+operacional real presente, pra o provedor de resposta ser
+genuinamente chamado com o claim fabricado, afirmando que ele é
+filtrado — não só que a resposta geral é null).
+
+**Verificação:** backend com suíte e2e real (Postgres real, sem mock
+de banco, mas com o provedor de resposta sempre mockado — nenhuma
+chamada real ao OpenRouter acontece na suíte automatizada, mesma
+disciplina de toda fase de IA anterior) — 22 testes unitários (Task
+1: 4, Task 2: 4 + o novo do fix de corrupção), 7 e2e do endpoint de
+anexo, 14 e2e de regressão da suíte pré-existente do assistente,
+todos passando. Frontend sem suíte automatizada — Playwright contra
+produção real.
+
+**Pendência formal, ainda não feita**: a validação manual obrigatória
+contra a API real do OpenRouter (PDF real com texto, imagem real,
+confirmando custo/tempo de resposta razoáveis) — exigida pela própria
+spec antes de anunciar a fase como ativa pro fundador, mesma regra já
+usada nas Fases 8/13. Envolve gasto real (pequeno) da conta OpenRouter
+do fundador — deliberadamente não executada sem confirmação explícita
+antes, dado o histórico desta sessão de cuidado redobrado com custo
+real de IA e com ações que afetam contas/serviços externos reais.
+
+Nenhuma chamada de IA real foi feita durante toda a fase — mesma
+disciplina de toda fase anterior (verificação via mock, validação
+real como passo manual separado, ainda pendente — ver acima).
+Guardrail permanente de segurança da sessão seguiu valendo em todos
+os despachos — nenhum segredo extraído, nenhum SQL direto fora de
+fixtures de teste, nenhuma conta real registrada; override temporário
+sempre removido antes de qualquer outro comando `docker compose`.
