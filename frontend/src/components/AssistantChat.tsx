@@ -21,11 +21,15 @@ function authHeaders() {
   return { Authorization: `Bearer ${getToken()}` };
 }
 
+const GENERIC_ERROR_MESSAGE = 'Não foi possível consultar agora. Tente de novo.';
+const MAX_ATTACHMENT_BYTES = 5 * 1024 * 1024;
+
 export function AssistantChat() {
   const [question, setQuestion] = useState('');
   const [file, setFile] = useState<File | null>(null);
   const [result, setResult] = useState<QueryResult | null>(null);
   const [status, setStatus] = useState<'idle' | 'loading' | 'erro'>('idle');
+  const [errorMessage, setErrorMessage] = useState(GENERIC_ERROR_MESSAGE);
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
@@ -34,6 +38,14 @@ export function AssistantChat() {
     try {
       let res: Response;
       if (file) {
+        // Checagem client-side antes de montar o FormData — evita subir
+        // um arquivo grande inteiro só pra levar um 413 do Multer no
+        // backend (o limite real, que continua sendo aplicado lá).
+        if (file.size > MAX_ATTACHMENT_BYTES) {
+          setErrorMessage('Arquivo maior que 5MB — escolha um arquivo menor.');
+          setStatus('erro');
+          return;
+        }
         const formData = new FormData();
         formData.append('question', question);
         formData.append('file', file);
@@ -55,8 +67,23 @@ export function AssistantChat() {
         setFile(null);
         return;
       }
+      // As três respostas de erro determinísticas e causadas pelo próprio
+      // usuário que o endpoint de anexo introduziu (413/400/429) merecem
+      // uma mensagem específica — repetir a tentativa sem mudar nada vai
+      // falhar do mesmo jeito todas as vezes, então a mensagem genérica
+      // não ajuda nesses três casos.
+      if (res.status === 413) {
+        setErrorMessage('Arquivo maior que 5MB — escolha um arquivo menor.');
+      } else if (res.status === 400) {
+        setErrorMessage('Tipo de arquivo não aceito — use PDF, JPG ou PNG.');
+      } else if (res.status === 429) {
+        setErrorMessage('Muitas perguntas com anexo em pouco tempo — tente de novo mais tarde.');
+      } else {
+        setErrorMessage(GENERIC_ERROR_MESSAGE);
+      }
       setStatus('erro');
     } catch {
+      setErrorMessage(GENERIC_ERROR_MESSAGE);
       setStatus('erro');
     }
   }
@@ -96,7 +123,7 @@ export function AssistantChat() {
         >
           {status === 'loading' ? 'Consultando...' : 'Perguntar'}
         </button>
-        {status === 'erro' && <p className="text-sm text-red-600">Não foi possível consultar agora. Tente de novo.</p>}
+        {status === 'erro' && <p className="text-sm text-red-600">{errorMessage}</p>}
       </form>
 
       {result && (
@@ -107,7 +134,7 @@ export function AssistantChat() {
           )}
           {result.used_attachment && (
             <p className="mt-2 text-xs font-medium text-brand-700">
-              Parte desta resposta usa o documento/imagem anexado nesta pergunta.
+              Parte desta resposta vem do arquivo que você anexou nesta pergunta, não de uma fonte normativa oficial.
             </p>
           )}
           {result.citations.length > 0 && (

@@ -6,12 +6,14 @@ import {
   HttpStatus,
   Post,
   Req,
+  Res,
   UploadedFile,
   UseInterceptors,
   UsePipes,
   ValidationPipe,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { Response } from 'express';
 import { Roles } from '../common/decorators/roles.decorator';
 import { RateLimit } from '../common/rate-limit/rate-limit.decorator';
 import { envInt } from '../common/env';
@@ -41,6 +43,7 @@ export class NormativeAssistantController {
     @Body() dto: NormativeQueryDto,
     @UploadedFile() file: Express.Multer.File | undefined,
     @Req() req: any,
+    @Res({ passthrough: true }) res: Response,
   ) {
     if (file) {
       if (!ALLOWED_ATTACHMENT_MIME_TYPES.includes(file.mimetype)) {
@@ -68,6 +71,7 @@ export class NormativeAssistantController {
         result = undefined;
       }
       if (result && result.count > limit) {
+        res.setHeader('Retry-After', Math.ceil(result.ttlMs / 1000));
         throw new HttpException(
           'Muitas perguntas com anexo, tente novamente mais tarde',
           HttpStatus.TOO_MANY_REQUESTS,

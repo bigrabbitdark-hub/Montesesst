@@ -172,14 +172,29 @@ export class NormativeAssistantService {
 
     const validChunkIds = new Set(relevant.map((r) => r.chunk_id));
     const validOperationalIds = new Set(operationalItems.map((o) => o.id));
+    // `attachmentInput` (calculado no topo deste método) é a única fonte
+    // de verdade sobre se um anexo de verdade foi processado com sucesso
+    // nesta chamada — undefined tanto quando não veio nenhum arquivo
+    // quanto quando veio um PDF sem texto extraível (aí quem é setado é
+    // attachmentWarning, não attachmentInput). `claim.uses_attachment` é
+    // um campo que o modelo de IA preenche livremente, então nunca pode
+    // por si só provar que existe uma fonte real — sem este guard, uma
+    // pergunta sem anexo (ou com PDF ilegível) que alucinasse
+    // `uses_attachment: true` junto de chunk_ids/operational_ref_ids
+    // vazios passaria pelo Verificador sem ter citado fonte nenhuma
+    // (achado da revisão final da Fase 20 — o bug só existe na costura
+    // entre a extração de anexo, no topo do método, e este filtro).
+    const attachmentIsReal = attachmentInput !== undefined;
     // Regra exata (ver Global Constraints do plano): uma afirmação com
-    // as duas listas vazias E uses_attachment false é descartada mesmo
-    // que nenhuma das duas contenha um id inválido — every() sobre
+    // as duas listas vazias E uses_attachment (real) false é descartada
+    // mesmo que nenhuma das duas contenha um id inválido — every() sobre
     // array vazio dá true em JS, então "tem pelo menos uma fonte" é
     // checado à parte, nunca inferido só das duas every().
     const survivingClaims = claims.filter((claim) => {
       const hasSource =
-        claim.chunk_ids.length > 0 || claim.operational_ref_ids.length > 0 || claim.uses_attachment === true;
+        claim.chunk_ids.length > 0 ||
+        claim.operational_ref_ids.length > 0 ||
+        (attachmentIsReal && claim.uses_attachment === true);
       return (
         hasSource &&
         claim.chunk_ids.every((id) => validChunkIds.has(id)) &&
@@ -203,7 +218,7 @@ export class NormativeAssistantService {
       }
     }
 
-    const usedAttachment = survivingClaims.some((c) => c.uses_attachment);
+    const usedAttachment = attachmentIsReal && survivingClaims.some((c) => c.uses_attachment);
 
     return {
       answer: survivingClaims.map((c) => c.claim).join('\n\n'),

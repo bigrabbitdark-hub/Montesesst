@@ -42,7 +42,13 @@ export class OpenRouterNormativeAnswerService implements NormativeAnswerProvider
     }
 
     if (!response.ok) {
-      this.logger.error(`OpenRouter retornou status ${response.status} (assistente)`);
+      let errorBody = '';
+      try {
+        errorBody = await response.text();
+      } catch {
+        // best-effort — segue mesmo se não conseguir ler o corpo do erro
+      }
+      this.logger.error(`OpenRouter retornou status ${response.status} (assistente): ${errorBody}`);
       throw new BadGatewayException('Não foi possível responder agora');
     }
 

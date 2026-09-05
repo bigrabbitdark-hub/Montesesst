@@ -141,6 +141,20 @@ describe('POST /assistant/normative-query — anexo de documento/imagem (e2e)', 
     expect(res.body.attachment_warning).toBeUndefined();
   });
 
+  it('sem anexo nenhum: uses_attachment alucinado (true) não passa pelo Verificador sem fonte real', async () => {
+    fakeAnswer.mockResolvedValue([
+      { claim: 'Afirmação fabricada sem fonte real.', chunk_ids: [], operational_ref_ids: [], uses_attachment: true },
+    ]);
+
+    const res = await request(app.getHttpServer())
+      .post('/assistant/normative-query')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ question: 'pergunta sem anexo nenhum' });
+
+    expect(res.status).toBe(201);
+    expect(res.body.answer).toBeNull();
+  });
+
   it('pergunta com anexo usa uma chave de rate limit dedicada, separada da rota geral', async () => {
     const redis = app.get(RedisService);
     const fakeImage = Buffer.from('fake-png-bytes-key-test');
