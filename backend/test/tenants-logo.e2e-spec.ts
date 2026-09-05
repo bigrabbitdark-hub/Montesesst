@@ -81,6 +81,12 @@ describe('POST/DELETE /tenants/me/logo, GET /tenants/:id/logo (e2e)', () => {
     expect(res.headers.location).toContain(process.env.R2_ENDPOINT?.replace('https://', '') ?? '');
   });
 
+  it('GET /tenants/:id/logo devolve 404 (não 500) pra um :id que não é um UUID válido', async () => {
+    const res = await request(app.getHttpServer()).get('/tenants/nao-e-um-uuid/logo');
+
+    expect(res.status).toBe(404);
+  });
+
   it('GET /tenants/:id/logo devolve 404 pra tenant sem logo', async () => {
     const otherTenant = await db.createTenantWithUser('Empresa Sem Logo Teste');
 

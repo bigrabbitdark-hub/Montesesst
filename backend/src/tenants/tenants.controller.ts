@@ -4,7 +4,9 @@ import {
   Controller,
   Delete,
   Get,
+  NotFoundException,
   Param,
+  ParseUUIDPipe,
   Patch,
   Post,
   Req,
@@ -23,7 +25,8 @@ import { TenantsService, Tenant } from './tenants.service';
 import { UpdateTenantDto } from './dto/update-tenant.dto';
 
 function withHasLogo(tenant: Tenant) {
-  return { ...tenant, has_logo: tenant.logo_file_key !== null };
+  const { logo_file_key, ...rest } = tenant;
+  return { ...rest, has_logo: !!logo_file_key };
 }
 
 @Controller('tenants')
@@ -75,7 +78,11 @@ export class TenantsController {
 
   @Public()
   @Get(':id/logo')
-  async getLogo(@Param('id') id: string, @Res() res: Response) {
+  async getLogo(
+    @Param('id', new ParseUUIDPipe({ exceptionFactory: () => new NotFoundException('Empresa não encontrada') }))
+    id: string,
+    @Res() res: Response,
+  ) {
     const url = await this.db.withoutTenantContext((client) => this.tenants.getLogoRedirectUrl(client, id));
     res.redirect(302, url);
   }

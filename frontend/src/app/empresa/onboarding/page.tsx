@@ -57,6 +57,16 @@ export default function OnboardingPage() {
     }
   }
 
+  async function refetchTenant() {
+    const token = localStorage.getItem('montese_token');
+    if (!token) return;
+    const res = await fetch('/api/tenants/me', { headers: { Authorization: `Bearer ${token}` } });
+    if (res.ok) {
+      const tenantData: TenantData = await res.json();
+      setTenant(tenantData);
+    }
+  }
+
   useEffect(() => {
     loadAll();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -75,7 +85,7 @@ export default function OnboardingPage() {
         O passo 1 (matriz) é obrigatório. Os demais você pode pular e voltar depois.
       </p>
 
-      {step === 1 && <MatrizForm tenant={tenant} onSaved={loadAll} />}
+      {step === 1 && <MatrizForm tenant={tenant} onSaved={loadAll} onLogoChanged={refetchTenant} />}
 
       {step === 2 && (
         <>

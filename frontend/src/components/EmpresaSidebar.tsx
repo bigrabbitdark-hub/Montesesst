@@ -54,12 +54,17 @@ export function EmpresaSidebar() {
   const [tenant, setTenant] = useState<TenantBranding | null>(null);
 
   useEffect(() => {
-    const token = getToken();
-    if (!token) return;
-    fetch('/api/tenants/me', { headers: { Authorization: `Bearer ${token}` } })
-      .then((res) => (res.ok ? res.json() : null))
-      .then(setTenant)
-      .catch(() => {});
+    function refetch() {
+      const token = getToken();
+      if (!token) return;
+      fetch('/api/tenants/me', { headers: { Authorization: `Bearer ${token}` } })
+        .then((res) => (res.ok ? res.json() : null))
+        .then(setTenant)
+        .catch(() => {});
+    }
+    refetch();
+    window.addEventListener('montese:tenant-updated', refetch);
+    return () => window.removeEventListener('montese:tenant-updated', refetch);
   }, []);
 
   return (

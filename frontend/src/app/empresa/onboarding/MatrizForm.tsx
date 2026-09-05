@@ -24,7 +24,15 @@ export interface TenantData {
 // Passo 1 do onboarding — o único obrigatório de verdade (não dá pra
 // pular). Salva tudo de uma vez (não é mais autosave campo a campo como
 // antes) porque agora é um "avançar" de wizard, não uma tela livre.
-export function MatrizForm({ tenant, onSaved }: { tenant: TenantData; onSaved: () => void }) {
+export function MatrizForm({
+  tenant,
+  onSaved,
+  onLogoChanged,
+}: {
+  tenant: TenantData;
+  onSaved: () => void;
+  onLogoChanged: () => void;
+}) {
   const [tradeName, setTradeName] = useState(tenant.trade_name ?? '');
   const [sector, setSector] = useState(tenant.sector ?? '');
   const [street, setStreet] = useState(tenant.address_street ?? '');
@@ -86,7 +94,8 @@ export function MatrizForm({ tenant, onSaved }: { tenant: TenantData; onSaved: (
       });
       if (res.ok) {
         setLogoStatus('idle');
-        onSaved();
+        onLogoChanged();
+        window.dispatchEvent(new Event('montese:tenant-updated'));
         return;
       }
       setLogoStatus('erro');
@@ -105,7 +114,8 @@ export function MatrizForm({ tenant, onSaved }: { tenant: TenantData; onSaved: (
       });
       if (res.ok) {
         setLogoStatus('idle');
-        onSaved();
+        onLogoChanged();
+        window.dispatchEvent(new Event('montese:tenant-updated'));
         return;
       }
       setLogoStatus('erro');

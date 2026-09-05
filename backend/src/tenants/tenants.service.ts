@@ -321,10 +321,19 @@ export class TenantsService {
     );
     const oldKey = existing.rows[0]?.logo_file_key ?? null;
 
-    if (oldKey) {
-      await this.r2.deleteObject(oldKey);
-    }
     await client.query('UPDATE tenants SET logo_file_key = NULL WHERE id = $1', [tenantId]);
+
+    if (oldKey) {
+      // Best-effort, depois do UPDATE — mesma ordem de segurança do
+      // uploadLogo: a coluna já reflete "sem logo" antes de qualquer
+      // tentativa de apagar o objeto físico, então uma falha aqui nunca
+      // deixa a coluna apontando pra um objeto morto.
+      try {
+        await this.r2.deleteObject(oldKey);
+      } catch {
+        // Ignorado de propósito — objeto órfão aceitável, não sensível.
+      }
+    }
 
     return { has_logo: false };
   }
