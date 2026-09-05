@@ -2,8 +2,11 @@
 
 import { FormEvent, useState } from 'react';
 
+import { getToken } from '@/lib/auth';
+
 export interface TenantData {
   id: string;
+  has_logo: boolean;
   name: string;
   cnpj: string;
   sector: string | null;
@@ -33,11 +36,12 @@ export function MatrizForm({ tenant, onSaved }: { tenant: TenantData; onSaved: (
   const [contactRole, setContactRole] = useState(tenant.contact_role ?? '');
   const [contactPhone, setContactPhone] = useState(tenant.contact_phone ?? '');
   const [status, setStatus] = useState<'idle' | 'loading' | 'erro'>('idle');
+  const [logoStatus, setLogoStatus] = useState<'idle' | 'loading' | 'erro'>('idle');
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
     setStatus('loading');
-    const token = localStorage.getItem('montese_token');
+    const token = getToken();
     try {
       const res = await fetch('/api/tenants/me', {
         method: 'PATCH',
@@ -63,6 +67,50 @@ export function MatrizForm({ tenant, onSaved }: { tenant: TenantData; onSaved: (
       setStatus('erro');
     } catch {
       setStatus('erro');
+    }
+  }
+
+  async function handleLogoUpload(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    setLogoStatus('loading');
+    const token = getToken();
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await fetch('/api/tenants/me/logo', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      });
+      if (res.ok) {
+        setLogoStatus('idle');
+        onSaved();
+        return;
+      }
+      setLogoStatus('erro');
+    } catch {
+      setLogoStatus('erro');
+    }
+  }
+
+  async function handleLogoRemove() {
+    setLogoStatus('loading');
+    const token = getToken();
+    try {
+      const res = await fetch('/api/tenants/me/logo', {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        setLogoStatus('idle');
+        onSaved();
+        return;
+      }
+      setLogoStatus('erro');
+    } catch {
+      setLogoStatus('erro');
     }
   }
 
@@ -98,6 +146,38 @@ export function MatrizForm({ tenant, onSaved }: { tenant: TenantData; onSaved: (
             className="rounded-md border border-brand-100 px-3 py-2"
           />
         </label>
+        <div className="flex flex-col gap-2 text-sm text-brand-900">
+          <span>Logo da empresa (opcional)</span>
+          {tenant.has_logo && (
+            <div className="flex items-center gap-3">
+              <img
+                src={`/api/tenants/${tenant.id}/logo`}
+                alt="Logo atual da empresa"
+                className="h-12 w-12 rounded-lg border border-brand-100 object-cover"
+              />
+              <button
+                type="button"
+                onClick={handleLogoRemove}
+                disabled={logoStatus === 'loading'}
+                className="text-sm font-medium text-red-600 hover:underline disabled:opacity-50"
+              >
+                Remover logo
+              </button>
+            </div>
+          )}
+          <input
+            type="file"
+            accept="image/jpeg,image/png"
+            onChange={handleLogoUpload}
+            disabled={logoStatus === 'loading'}
+            className="text-sm"
+          />
+          {logoStatus === 'erro' && (
+            <p className="text-sm text-red-600">
+              Não foi possível processar a logo. Tente de novo (JPG ou PNG, até 2MB).
+            </p>
+          )}
+        </div>
         <label className="flex flex-col gap-1 text-sm text-brand-900">
           Setor/atividade (opcional)
           <input
