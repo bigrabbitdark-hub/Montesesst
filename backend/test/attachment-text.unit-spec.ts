@@ -37,4 +37,9 @@ describe('extractPdfText (unit)', () => {
     expect(text).not.toBeNull();
     expect(text!.length).toBeLessThanOrEqual(8000);
   });
+
+  it('devolve null (em vez de rejeitar) pra um PDF genuinamente corrompido/malformado', async () => {
+    const notAPdf = Buffer.from('this is definitely not a pdf file, just plain text bytes');
+    await expect(extractPdfText(notAPdf)).resolves.toBeNull();
+  });
 });

@@ -19,6 +19,17 @@ export async function extractPdfText(buffer: Buffer): Promise<string | null> {
     const trimmed = text.trim();
     if (trimmed.length === 0) return null;
     return trimmed.slice(0, MAX_ATTACHMENT_TEXT_CHARS);
+  } catch {
+    // PDF genuinely malformed/corrupto — bytes que não formam um PDF válido
+    // de jeito nenhum (ex.: arquivo truncado, ou não-PDF com content-type
+    // "application/pdf" falsificado). O load() interno do pdf-parse
+    // (chamado dentro de getText()) lança exceções tipadas nesse caso
+    // (InvalidPDFException, FormatError...) — diferente do PDF bem formado
+    // mas sem camada de texto, já tratado acima via string vazia. Trata os
+    // dois casos do mesmo jeito: nenhum texto aproveitável, e deixa o
+    // chamador seguir o mesmo caminho de attachment_warning, em vez de
+    // propagar uma exceção não tratada (500 cru) pro usuário.
+    return null;
   } finally {
     await parser.destroy();
   }

@@ -57,8 +57,17 @@ export class NormativeAssistantController {
       const limit = envInt('ASSISTANT_ATTACHMENT_RATE_LIMIT_MAX', 10);
       const windowSeconds = envInt('ASSISTANT_ATTACHMENT_RATE_LIMIT_WINDOW_SECONDS', 3600);
       const key = `ratelimit:AssistantAttachment:${req.ip ?? 'unknown'}`;
-      const result = await this.redis.incrementWithWindow(key, windowSeconds);
-      if (result.count > limit) {
+      let result: { count: number; ttlMs: number } | undefined;
+      try {
+        result = await this.redis.incrementWithWindow(key, windowSeconds);
+      } catch {
+        // Falha do Redis não pode bloquear uma pergunta com anexo
+        // legítima nem derrubar a rota inteira — se o contador falhar,
+        // deixa passar sem aplicar este limite (mesmo raciocínio de
+        // fail-open do RateLimitGuard global, ver rate-limit.guard.ts).
+        result = undefined;
+      }
+      if (result && result.count > limit) {
         throw new HttpException(
           'Muitas perguntas com anexo, tente novamente mais tarde',
           HttpStatus.TOO_MANY_REQUESTS,
