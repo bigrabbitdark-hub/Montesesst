@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from 'react';
 import { getToken } from '@/lib/auth';
+import { FileInput } from './FileInput';
 
 interface Citation {
   document_id: string;
@@ -107,15 +108,10 @@ export function AssistantChat() {
           rows={3}
           className="rounded-md border border-brand-100 px-3 py-2 text-sm"
         />
-        <label className="flex flex-col gap-1 text-sm text-brand-900">
-          Anexar documento ou imagem (opcional — PDF, JPG ou PNG, até 5MB)
-          <input
-            type="file"
-            accept="application/pdf,image/jpeg,image/png"
-            onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-            className="text-sm"
-          />
-        </label>
+        <div className="flex flex-col gap-1 text-sm text-brand-900">
+          <span>Anexar documento ou imagem (opcional — PDF, JPG ou PNG, até 5MB)</span>
+          <FileInput file={file} onChange={setFile} accept="application/pdf,image/jpeg,image/png" label="Escolher arquivo" />
+        </div>
         <button
           type="submit"
           disabled={status === 'loading' || !question.trim()}
