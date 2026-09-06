@@ -1,6 +1,6 @@
 'use client';
 
-import { FormEvent, useEffect, useState } from 'react';
+import { ChangeEvent, FormEvent, useEffect, useState } from 'react';
 import { FileInput } from './FileInput';
 
 interface DocumentRow {
@@ -33,6 +33,23 @@ interface ComplianceResult {
   score: number | null;
   pendencias: ComplianceItem[];
   avisos: ComplianceItem[];
+}
+
+interface ClassifyBatchItem {
+  filename: string;
+  suggested_category: string | null;
+  suggested_title: string | null;
+  suggested_expires_at: string | null;
+  needs_review: boolean;
+}
+
+interface BatchRow {
+  file: File;
+  category: string;
+  title: string;
+  expiresAt: string;
+  needsReview: boolean;
+  importStatus: 'pendente' | 'sucesso' | 'erro';
 }
 
 // Rótulos de exibição pra QUALQUER categoria que possa aparecer numa
@@ -142,6 +159,10 @@ export function DocumentsPanel({ tenantId }: { tenantId?: string }) {
   const [epis, setEpis] = useState<EpiRow[]>([]);
   const [units, setUnits] = useState<CompanyUnitOption[]>([]);
   const [companyUnitId, setCompanyUnitId] = useState('');
+  const [batchFiles, setBatchFiles] = useState<File[]>([]);
+  const [batchRows, setBatchRows] = useState<BatchRow[]>([]);
+  const [batchStatus, setBatchStatus] = useState<'idle' | 'analisando' | 'importando' | 'erro'>('idle');
+  const [batchError, setBatchError] = useState('');
 
   function currentUserId(): string | null {
     const raw = localStorage.getItem('montese_user');
@@ -269,6 +290,86 @@ export function DocumentsPanel({ tenantId }: { tenantId?: string }) {
     }
   }
 
+  function handleSelectBatchFiles(event: ChangeEvent<HTMLInputElement>) {
+    const selected = event.target.files ? Array.from(event.target.files) : [];
+    event.target.value = '';
+    setBatchFiles(selected);
+    setBatchRows([]);
+    setBatchError('');
+  }
+
+  async function handleAnalyzeBatch() {
+    if (batchFiles.length === 0) return;
+    setBatchStatus('analisando');
+    setBatchError('');
+    const token = localStorage.getItem('montese_token');
+    const formData = new FormData();
+    batchFiles.forEach((file) => formData.append('files', file));
+
+    try {
+      const res = await fetch('/api/documents/classify-batch', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      });
+      if (res.ok) {
+        const items: ClassifyBatchItem[] = await res.json();
+        setBatchRows(
+          items.map((item, i) => ({
+            file: batchFiles[i],
+            category: item.suggested_category ?? '',
+            title: item.suggested_title ?? '',
+            expiresAt: item.suggested_expires_at ?? '',
+            needsReview: item.needs_review,
+            importStatus: 'pendente' as const,
+          })),
+        );
+        setBatchStatus('idle');
+        return;
+      }
+      const body = await res.json().catch(() => null);
+      setBatchError(body?.message ?? 'Não foi possível analisar os documentos.');
+      setBatchStatus('erro');
+    } catch {
+      setBatchError('Não foi possível conectar ao servidor.');
+      setBatchStatus('erro');
+    }
+  }
+
+  function updateBatchRow(index: number, changes: Partial<BatchRow>) {
+    setBatchRows((rows) => rows.map((row, i) => (i === index ? { ...row, ...changes } : row)));
+  }
+
+  async function handleImportBatch() {
+    setBatchStatus('importando');
+    const token = localStorage.getItem('montese_token');
+
+    for (let i = 0; i < batchRows.length; i++) {
+      const row = batchRows[i];
+      const rowFormData = new FormData();
+      rowFormData.append('category', row.category);
+      rowFormData.append('title', row.title);
+      if (row.expiresAt) rowFormData.append('expires_at', row.expiresAt);
+      if (tenantId) rowFormData.append('tenant_id', tenantId);
+      rowFormData.append('file', row.file);
+
+      try {
+        const res = await fetch('/api/documents', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}` },
+          body: rowFormData,
+        });
+        updateBatchRow(i, { importStatus: res.ok ? 'sucesso' : 'erro' });
+      } catch {
+        updateBatchRow(i, { importStatus: 'erro' });
+      }
+    }
+
+    setBatchStatus('idle');
+    loadDocuments();
+    loadCompliance();
+  }
+
   async function handleDownload(id: string) {
     const token = localStorage.getItem('montese_token');
     try {
@@ -306,6 +407,8 @@ export function DocumentsPanel({ tenantId }: { tenantId?: string }) {
 
   const userId = currentUserId();
   const agendaGroups = groupAgendaByMonth([...documentsToAgendaItems(documents), ...episToAgendaItems(epis)]);
+  const canImportBatch =
+    batchRows.length > 0 && batchRows.every((row) => row.category !== '' && row.title.trim() !== '');
 
   if (loading) {
     return <p className="text-brand-700">Carregando documentos...</p>;
@@ -437,6 +540,98 @@ export function DocumentsPanel({ tenantId }: { tenantId?: string }) {
             {status === 'loading' ? 'Enviando...' : 'Enviar documento'}
           </button>
         </form>
+      </section>
+
+      <section className="rounded-lg border border-brand-100 p-6">
+        <h2 className="text-lg font-bold text-brand-900">Upload em lote</h2>
+        <p className="mt-1 text-sm text-brand-700">
+          Selecione vários PDFs de uma vez — vamos sugerir categoria, título e validade pra cada um.
+        </p>
+        <div className="mt-4 flex flex-wrap items-center gap-3">
+          <input
+            id="batch-file-input"
+            type="file"
+            multiple
+            accept=".pdf,application/pdf"
+            onChange={handleSelectBatchFiles}
+            className="hidden"
+          />
+          <label
+            htmlFor="batch-file-input"
+            className="cursor-pointer rounded-md border border-brand-500 px-4 py-2 text-sm font-medium text-brand-500 hover:bg-brand-50"
+          >
+            Escolher arquivos
+          </label>
+          <span className="text-sm text-brand-700">
+            {batchFiles.length === 0 ? 'Nenhum arquivo selecionado' : `${batchFiles.length} arquivo(s) selecionado(s)`}
+          </span>
+          <button
+            type="button"
+            onClick={handleAnalyzeBatch}
+            disabled={batchFiles.length === 0 || batchStatus === 'analisando'}
+            className="rounded-md bg-brand-500 px-6 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50"
+          >
+            {batchStatus === 'analisando' ? 'Analisando...' : 'Analisar documentos'}
+          </button>
+        </div>
+        {batchError && <p className="mt-2 text-sm text-red-600">{batchError}</p>}
+
+        {batchRows.length > 0 && (
+          <div className="mt-4 flex flex-col gap-3">
+            {batchRows.map((row, i) => (
+              <div key={i} className="rounded-md border border-brand-100 p-4">
+                <p className="text-sm font-medium text-brand-900">
+                  {row.file.name}
+                  {row.needsReview && <span className="ml-2 text-xs text-amber-700">⚠️ revisar manualmente</span>}
+                </p>
+                <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-3">
+                  <label className="flex flex-col gap-1 text-sm text-brand-900">
+                    Categoria
+                    <select
+                      value={row.category}
+                      onChange={(e) => updateBatchRow(i, { category: e.target.value })}
+                      className="rounded-md border border-brand-100 px-3 py-2"
+                    >
+                      <option value="">Selecione...</option>
+                      {UPLOAD_CATEGORIES.map((value) => (
+                        <option key={value} value={value}>
+                          {CATEGORY_LABELS[value]}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="flex flex-col gap-1 text-sm text-brand-900">
+                    Título
+                    <input
+                      value={row.title}
+                      onChange={(e) => updateBatchRow(i, { title: e.target.value })}
+                      className="rounded-md border border-brand-100 px-3 py-2"
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1 text-sm text-brand-900">
+                    Vencimento (opcional)
+                    <input
+                      type="date"
+                      value={row.expiresAt}
+                      onChange={(e) => updateBatchRow(i, { expiresAt: e.target.value })}
+                      className="rounded-md border border-brand-100 px-3 py-2"
+                    />
+                  </label>
+                </div>
+                {row.importStatus === 'sucesso' && <p className="mt-2 text-sm text-green-700">Importado.</p>}
+                {row.importStatus === 'erro' && <p className="mt-2 text-sm text-red-600">Falha ao importar.</p>}
+              </div>
+            ))}
+            <button
+              type="button"
+              onClick={handleImportBatch}
+              disabled={!canImportBatch || batchStatus === 'importando'}
+              className="self-start rounded-md bg-brand-500 px-6 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50"
+            >
+              {batchStatus === 'importando' ? 'Importando...' : 'Importar todos'}
+            </button>
+          </div>
+        )}
       </section>
 
       <section className="rounded-lg border border-brand-100 p-6">
