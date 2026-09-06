@@ -1,5 +1,5 @@
 import PDFDocument from 'pdfkit';
-import { extractPdfText } from '../src/normative/attachment-text.util';
+import { extractPdfText } from '../src/common/pdf/pdf-text.util';
 
 // Gera um PDF real em memória com pdfkit (mesma lib já usada em
 // backend/src/cipa/ata-pdf.util.ts) — dá um conteúdo de texto real e

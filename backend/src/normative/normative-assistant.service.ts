@@ -11,7 +11,7 @@ import { envFloat } from '../common/env';
 import { DatabaseService } from '../common/database/database.service';
 import { DashboardService } from '../dashboard/dashboard.service';
 import { AuthenticatedUser } from '../common/types';
-import { extractPdfText } from './attachment-text.util';
+import { extractPdfText } from '../common/pdf/pdf-text.util';
 
 const FALLBACK_MESSAGE = 'Não encontrei nada relevante pra essa pergunta.';
 const PDF_UNREADABLE_WARNING =
