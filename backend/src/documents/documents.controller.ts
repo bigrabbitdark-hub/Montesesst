@@ -4,23 +4,42 @@ import {
   Controller,
   Delete,
   Get,
+  Inject,
   Param,
   Post,
   Query,
   Req,
   UploadedFile,
+  UploadedFiles,
   UseInterceptors,
   UsePipes,
   ValidationPipe,
 } from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
+import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 import { Roles } from '../common/decorators/roles.decorator';
+import { RateLimit } from '../common/rate-limit/rate-limit.decorator';
+import { envInt } from '../common/env';
+import { extractPdfText } from '../common/pdf/pdf-text.util';
 import { DocumentsService } from './documents.service';
 import { CreateDocumentDto } from './dto/create-document.dto';
+import { DOCUMENT_CLASSIFIER_PROVIDER, DocumentClassifierProvider } from './document-classifier-provider.interface';
+
+const MAX_BATCH_FILES = 10;
+
+export interface ClassifyBatchItem {
+  filename: string;
+  suggested_category: string | null;
+  suggested_title: string | null;
+  suggested_expires_at: string | null;
+  needs_review: boolean;
+}
 
 @Controller('documents')
 export class DocumentsController {
-  constructor(private readonly documents: DocumentsService) {}
+  constructor(
+    private readonly documents: DocumentsService,
+    @Inject(DOCUMENT_CLASSIFIER_PROVIDER) private readonly classifier: DocumentClassifierProvider,
+  ) {}
 
   @Roles('empresa', 'tecnico', 'parceiro')
   @UsePipes(new ValidationPipe({ transform: true, whitelist: true, forbidNonWhitelisted: true }))
@@ -49,6 +68,70 @@ export class DocumentsController {
         companyUnitId: dto.company_unit_id,
       }),
     );
+  }
+
+  @Roles('empresa', 'tecnico', 'parceiro')
+  @RateLimit({
+    limit: envInt('DOCUMENTS_CLASSIFY_BATCH_RATE_LIMIT_MAX', 5),
+    windowSeconds: envInt('DOCUMENTS_CLASSIFY_BATCH_RATE_LIMIT_WINDOW_SECONDS', 3600),
+    keyBy: 'ip',
+  })
+  @UseInterceptors(FilesInterceptor('files', MAX_BATCH_FILES, { limits: { fileSize: 10 * 1024 * 1024 } }))
+  @Post('classify-batch')
+  async classifyBatch(@UploadedFiles() files: Express.Multer.File[] | undefined): Promise<ClassifyBatchItem[]> {
+    if (!files || files.length === 0) {
+      throw new BadRequestException('Nenhum arquivo enviado');
+    }
+
+    const results: ClassifyBatchItem[] = [];
+    for (const file of files) {
+      if (file.mimetype !== 'application/pdf') {
+        results.push({
+          filename: file.originalname,
+          suggested_category: null,
+          suggested_title: null,
+          suggested_expires_at: null,
+          needs_review: true,
+        });
+        continue;
+      }
+
+      const text = await extractPdfText(file.buffer);
+      if (!text) {
+        results.push({
+          filename: file.originalname,
+          suggested_category: null,
+          suggested_title: null,
+          suggested_expires_at: null,
+          needs_review: true,
+        });
+        continue;
+      }
+
+      try {
+        const classification = await this.classifier.classify(text);
+        results.push({
+          filename: file.originalname,
+          suggested_category: classification.category,
+          suggested_title: classification.title,
+          suggested_expires_at: classification.expires_at || null,
+          needs_review: classification.category === null,
+        });
+      } catch {
+        // Falha de rede/API na classificação de UM arquivo não pode
+        // derrubar o lote inteiro — marca só esse arquivo pra revisão
+        // manual, os demais continuam sendo processados normalmente.
+        results.push({
+          filename: file.originalname,
+          suggested_category: null,
+          suggested_title: null,
+          suggested_expires_at: null,
+          needs_review: true,
+        });
+      }
+    }
+
+    return results;
   }
 
   @Get()

@@ -1,10 +1,16 @@
 import { Module } from '@nestjs/common';
 import { DocumentsController } from './documents.controller';
 import { DocumentsService } from './documents.service';
+import { DOCUMENT_CLASSIFIER_PROVIDER } from './document-classifier-provider.interface';
+import { MiniMaxDocumentClassifierService } from './minimax-document-classifier.service';
 
 @Module({
   controllers: [DocumentsController],
-  providers: [DocumentsService],
+  providers: [
+    DocumentsService,
+    MiniMaxDocumentClassifierService,
+    { provide: DOCUMENT_CLASSIFIER_PROVIDER, useClass: MiniMaxDocumentClassifierService },
+  ],
   exports: [DocumentsService],
 })
 export class DocumentsModule {}
