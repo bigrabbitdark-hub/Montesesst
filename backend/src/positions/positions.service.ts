@@ -21,8 +21,7 @@ export interface PositionSummary {
 
 export interface LinkSuggestion {
   suggested_name: string;
-  employee_ids: string[];
-  employee_count: number;
+  employees: { id: string; full_name: string }[];
 }
 
 export interface Divergence {
@@ -107,18 +106,21 @@ export class PositionsService {
   }
 
   async getLinkSuggestions(client: PoolClient, tenantId: string): Promise<LinkSuggestion[]> {
-    const result = await client.query<{ id: string; position: string }>(
-      `SELECT id, position FROM employees
+    const result = await client.query<{ id: string; full_name: string; position: string }>(
+      `SELECT id, full_name, position FROM employees
        WHERE tenant_id = $1 AND position_id IS NULL AND position IS NOT NULL AND position != ''`,
       [tenantId],
     );
 
-    const groups = new Map<string, { rawCounts: Map<string, number>; employeeIds: string[] }>();
+    const groups = new Map<
+      string,
+      { rawCounts: Map<string, number>; employees: { id: string; full_name: string }[] }
+    >();
     for (const row of result.rows) {
       const normalized = this.normalizePositionText(row.position);
-      if (!groups.has(normalized)) groups.set(normalized, { rawCounts: new Map(), employeeIds: [] });
+      if (!groups.has(normalized)) groups.set(normalized, { rawCounts: new Map(), employees: [] });
       const group = groups.get(normalized)!;
-      group.employeeIds.push(row.id);
+      group.employees.push({ id: row.id, full_name: row.full_name });
       group.rawCounts.set(row.position, (group.rawCounts.get(row.position) ?? 0) + 1);
     }
 
@@ -136,8 +138,7 @@ export class PositionsService {
       })[0];
       return {
         suggested_name: suggestedName,
-        employee_ids: group.employeeIds,
-        employee_count: group.employeeIds.length,
+        employees: group.employees,
       };
     });
   }

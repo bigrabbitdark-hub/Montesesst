@@ -13,8 +13,7 @@ interface PositionSummary {
 
 interface LinkSuggestion {
   suggested_name: string;
-  employee_ids: string[];
-  employee_count: number;
+  employees: { id: string; full_name: string }[];
 }
 
 interface EpiCatalogItem {
@@ -73,6 +72,7 @@ export function MapaSstPanel() {
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState('');
   const [renameError, setRenameError] = useState('');
+  const [excludedEmployeeIds, setExcludedEmployeeIds] = useState<Set<string>>(new Set());
 
   async function loadPositions() {
     const res = await fetch('/api/positions', { headers: authHeaders() });
@@ -110,22 +110,42 @@ export function MapaSstPanel() {
 
   async function handleConfirmLinks() {
     setLinkError('');
+    // Deriva employee_ids dos funcionários ainda marcados — quem foi
+    // desmarcado fica de fora desta rodada (continua sem position_id, some
+    // do payload). Grupo que fica sem nenhum marcado não entra na
+    // confirmação (não faz sentido criar um cargo vazio).
+    const groups = suggestions
+      .map((s) => ({
+        suggested_name: s.suggested_name,
+        employee_ids: s.employees.filter((e) => !excludedEmployeeIds.has(e.id)).map((e) => e.id),
+      }))
+      .filter((g) => g.employee_ids.length > 0);
     const res = await fetch('/api/positions/confirm-links', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...authHeaders() },
-      body: JSON.stringify({ groups: suggestions }),
+      body: JSON.stringify({ groups }),
     });
     if (!res.ok) {
       setLinkError('Erro ao confirmar vínculos');
       return;
     }
     setShowLinkReview(false);
+    setExcludedEmployeeIds(new Set());
     loadPositions();
     loadSuggestions();
   }
 
   function updateSuggestionName(index: number, name: string) {
     setSuggestions((prev) => prev.map((s, i) => (i === index ? { ...s, suggested_name: name } : s)));
+  }
+
+  function toggleEmployeeExclusion(id: string) {
+    setExcludedEmployeeIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
   }
 
   async function handleRename(id: string) {
@@ -220,7 +240,7 @@ export function MapaSstPanel() {
       {suggestions.length > 0 && !showLinkReview && (
         <div className="rounded-md border border-amber-300 bg-amber-50 p-4">
           <p className="text-sm text-amber-900">
-            {suggestions.reduce((sum, s) => sum + s.employee_count, 0)} funcionário(s) sem cargo vinculado.
+            {suggestions.reduce((sum, s) => sum + s.employees.length, 0)} funcionário(s) sem cargo vinculado.
           </p>
           <button
             type="button"
@@ -238,13 +258,27 @@ export function MapaSstPanel() {
             Grafias parecidas foram agrupadas automaticamente. Edite o nome do cargo se quiser antes de confirmar.
           </p>
           {suggestions.map((s, i) => (
-            <div key={i} className="flex items-center gap-3">
-              <input
-                value={s.suggested_name}
-                onChange={(e) => updateSuggestionName(i, e.target.value)}
-                className="flex-1 rounded-md border border-brand-100 px-3 py-2 text-sm"
-              />
-              <span className="text-xs text-brand-700">{s.employee_count} funcionário(s)</span>
+            <div key={i} className="flex flex-col gap-2 rounded-md border border-brand-50 p-3">
+              <div className="flex items-center gap-3">
+                <input
+                  value={s.suggested_name}
+                  onChange={(e) => updateSuggestionName(i, e.target.value)}
+                  className="flex-1 rounded-md border border-brand-100 px-3 py-2 text-sm"
+                />
+                <span className="text-xs text-brand-700">{s.employees.length} funcionário(s)</span>
+              </div>
+              <div className="flex flex-col gap-1 pl-1">
+                {s.employees.map((employee) => (
+                  <label key={employee.id} className="flex items-center gap-2 text-xs text-brand-900">
+                    <input
+                      type="checkbox"
+                      checked={!excludedEmployeeIds.has(employee.id)}
+                      onChange={() => toggleEmployeeExclusion(employee.id)}
+                    />
+                    {employee.full_name}
+                  </label>
+                ))}
+              </div>
             </div>
           ))}
           <button

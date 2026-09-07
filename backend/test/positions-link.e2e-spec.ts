@@ -57,7 +57,7 @@ describe('GET /positions/link-suggestions e POST /positions/confirm-links (e2e)'
     await app.close();
   });
 
-  it('agrupa funcionários por texto normalizado, ignora quem já tem cpf de outro tenant', async () => {
+  it('agrupa funcionários por texto normalizado, devolve nome de cada um (não só o id)', async () => {
     const res = await request(app.getHttpServer())
       .get('/positions/link-suggestions')
       .set('Authorization', `Bearer ${tokenA}`);
@@ -65,12 +65,13 @@ describe('GET /positions/link-suggestions e POST /positions/confirm-links (e2e)'
     expect(res.status).toBe(200);
     expect(res.body).toHaveLength(2);
 
-    const auxGroup = res.body.find((g: any) => g.employee_count === 2);
+    const auxGroup = res.body.find((g: any) => g.employees.length === 2);
     expect(auxGroup.suggested_name).toBe('Auxiliar Administrativo');
-    expect(auxGroup.employee_ids).toHaveLength(2);
+    expect(auxGroup.employees.map((e: any) => e.full_name).sort()).toEqual(['Ana', 'Bia']);
 
-    const soldadorGroup = res.body.find((g: any) => g.employee_count === 1);
+    const soldadorGroup = res.body.find((g: any) => g.employees.length === 1);
     expect(soldadorGroup.suggested_name).toBe('Soldador');
+    expect(soldadorGroup.employees[0].full_name).toBe('Caio');
   });
 
   it('confirma os grupos: cria cargo (ou reaproveita) e vincula os funcionários', async () => {
@@ -78,10 +79,18 @@ describe('GET /positions/link-suggestions e POST /positions/confirm-links (e2e)'
       .get('/positions/link-suggestions')
       .set('Authorization', `Bearer ${tokenA}`);
 
+    // Payload de confirmação deriva employee_ids da lista de funcionários —
+    // mesma transformação que o frontend faz ao montar o corpo de
+    // POST /positions/confirm-links a partir do estado de checkboxes.
+    const groups = suggestions.body.map((s: any) => ({
+      suggested_name: s.suggested_name,
+      employee_ids: s.employees.map((e: any) => e.id),
+    }));
+
     const confirmRes = await request(app.getHttpServer())
       .post('/positions/confirm-links')
       .set('Authorization', `Bearer ${tokenA}`)
-      .send({ groups: suggestions.body });
+      .send({ groups });
 
     expect(confirmRes.status).toBe(201);
 
@@ -93,16 +102,44 @@ describe('GET /positions/link-suggestions e POST /positions/confirm-links (e2e)'
     expect(auxCargo.employee_count).toBe(2);
 
     // Confirmação repetida (idempotente) não duplica o cargo.
+    const auxGroup = groups.find((g: any) => g.suggested_name === 'Auxiliar Administrativo');
     const secondConfirm = await request(app.getHttpServer())
       .post('/positions/confirm-links')
       .set('Authorization', `Bearer ${tokenA}`)
-      .send({ groups: [{ suggested_name: 'Auxiliar Administrativo', employee_ids: suggestions.body[0].employee_ids }] });
+      .send({ groups: [{ suggested_name: 'Auxiliar Administrativo', employee_ids: auxGroup.employee_ids }] });
     expect(secondConfirm.status).toBe(201);
 
     const listAfter = await request(app.getHttpServer())
       .get('/positions')
       .set('Authorization', `Bearer ${tokenA}`);
     expect(listAfter.body.filter((p: any) => p.name === 'Auxiliar Administrativo')).toHaveLength(1);
+  });
+
+  it('funcionário removido do grupo antes de confirmar não é vinculado', async () => {
+    await (db as any).client.query(
+      `INSERT INTO employees (tenant_id, full_name, cpf, position, status) VALUES
+       ($1, 'Duda', '10000000004', 'Motorista', 'ativo'),
+       ($1, 'Elis', '10000000005', 'Motorista', 'ativo')`,
+      [tenantAId],
+    );
+
+    const suggestions = await request(app.getHttpServer())
+      .get('/positions/link-suggestions')
+      .set('Authorization', `Bearer ${tokenA}`);
+    const motoristaGroup = suggestions.body.find((g: any) => g.suggested_name === 'Motorista');
+    const [keep, remove] = motoristaGroup.employees;
+
+    await request(app.getHttpServer())
+      .post('/positions/confirm-links')
+      .set('Authorization', `Bearer ${tokenA}`)
+      .send({ groups: [{ suggested_name: 'Motorista', employee_ids: [keep.id] }] });
+
+    const employeesAfter = await request(app.getHttpServer())
+      .get('/employees')
+      .set('Authorization', `Bearer ${tokenA}`);
+
+    expect(employeesAfter.body.find((e: any) => e.id === keep.id).position_id).toBeTruthy();
+    expect(employeesAfter.body.find((e: any) => e.id === remove.id).position_id ?? null).toBeNull();
   });
 
   it('rejeita vincular funcionário via position_id de outro tenant no PATCH /employees/:id', async () => {
