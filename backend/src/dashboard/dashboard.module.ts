@@ -3,9 +3,10 @@ import { DashboardController } from './dashboard.controller';
 import { DashboardService } from './dashboard.service';
 import { WeeklyDigestService } from './weekly-digest.service';
 import { DocumentsModule } from '../documents/documents.module';
+import { PositionsModule } from '../positions/positions.module';
 
 @Module({
-  imports: [DocumentsModule],
+  imports: [DocumentsModule, PositionsModule],
   controllers: [DashboardController],
   providers: [DashboardService, WeeklyDigestService],
   exports: [DashboardService],

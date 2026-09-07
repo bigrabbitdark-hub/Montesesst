@@ -16,12 +16,35 @@ export interface PositionSummary {
   employee_count: number;
   epi_requirement_count: number;
   training_requirement_count: number;
+  divergence_count: number;
 }
 
 export interface LinkSuggestion {
   suggested_name: string;
   employee_ids: string[];
   employee_count: number;
+}
+
+export interface Divergence {
+  employee_id: string;
+  employee_name: string;
+  position_id: string;
+  position_name: string;
+  categoria: 'epi' | 'treinamento';
+  requisito: string;
+  empresa_tem_no_catalogo?: boolean;
+}
+
+export interface PositionDetail {
+  id: string;
+  name: string;
+  epi_requirement_ids: string[];
+  training_requirement_tipos: string[];
+  employees: {
+    id: string;
+    full_name: string;
+    divergences: Omit<Divergence, 'employee_id' | 'employee_name' | 'position_id' | 'position_name'>[];
+  }[];
 }
 
 @Injectable()
@@ -39,7 +62,7 @@ export class PositionsService {
   }
 
   async findAll(client: PoolClient, tenantId: string): Promise<PositionSummary[]> {
-    const result = await client.query<PositionSummary>(
+    const result = await client.query<Omit<PositionSummary, 'divergence_count'>>(
       `SELECT p.id, p.name,
          (SELECT COUNT(*)::int FROM employees e WHERE e.position_id = p.id) AS employee_count,
          (SELECT COUNT(*)::int FROM position_epi_requirements per WHERE per.position_id = p.id) AS epi_requirement_count,
@@ -49,7 +72,14 @@ export class PositionsService {
        ORDER BY p.name`,
       [tenantId],
     );
-    return result.rows;
+
+    const divergences = await this.getDivergences(client, tenantId);
+    const countByPosition = new Map<string, number>();
+    for (const divergence of divergences) {
+      countByPosition.set(divergence.position_id, (countByPosition.get(divergence.position_id) ?? 0) + 1);
+    }
+
+    return result.rows.map((row) => ({ ...row, divergence_count: countByPosition.get(row.id) ?? 0 }));
   }
 
   async update(client: PoolClient, id: string, name: string): Promise<Position> {
@@ -191,5 +221,87 @@ export class PositionsService {
     } catch (err) {
       mapPgError(err);
     }
+  }
+
+  async getDivergences(client: PoolClient, tenantId: string): Promise<Divergence[]> {
+    const epiDivergences = await client.query<Divergence>(
+      `SELECT e.id AS employee_id, e.full_name AS employee_name, p.id AS position_id, p.name AS position_name,
+              'epi'::text AS categoria, eci.description AS requisito,
+              EXISTS (SELECT 1 FROM tenant_epis te WHERE te.tenant_id = e.tenant_id
+                      AND te.epi_catalog_item_id = eci.id) AS empresa_tem_no_catalogo
+       FROM employees e
+       JOIN positions p ON p.id = e.position_id
+       JOIN position_epi_requirements per ON per.position_id = p.id
+       JOIN epi_catalog_items eci ON eci.id = per.epi_catalog_item_id
+       WHERE e.tenant_id = $1
+         AND NOT EXISTS (
+           SELECT 1 FROM employee_epi_deliveries eed
+           JOIN tenant_epis te ON te.id = eed.tenant_epi_id
+           WHERE eed.employee_id = e.id AND te.epi_catalog_item_id = eci.id
+         )`,
+      [tenantId],
+    );
+
+    const trainingDivergences = await client.query<Divergence>(
+      `SELECT e.id AS employee_id, e.full_name AS employee_name, p.id AS position_id, p.name AS position_name,
+              'treinamento'::text AS categoria, ptr.tipo AS requisito
+       FROM employees e
+       JOIN positions p ON p.id = e.position_id
+       JOIN position_training_requirements ptr ON ptr.position_id = p.id
+       WHERE e.tenant_id = $1
+         AND NOT EXISTS (
+           SELECT 1 FROM cipa_trainings ct
+           WHERE ct.employee_id = e.id AND ct.tipo = ptr.tipo AND ct.data_validade >= CURRENT_DATE
+         )`,
+      [tenantId],
+    );
+
+    return [...epiDivergences.rows, ...trainingDivergences.rows];
+  }
+
+  async findOne(client: PoolClient, id: string): Promise<PositionDetail> {
+    const positionResult = await client.query<{ id: string; name: string; tenant_id: string }>(
+      'SELECT id, name, tenant_id FROM positions WHERE id = $1',
+      [id],
+    );
+    const position = positionResult.rows[0];
+    if (!position) throw new NotFoundException('Cargo não encontrado');
+
+    const epiReqResult = await client.query<{ epi_catalog_item_id: string }>(
+      'SELECT epi_catalog_item_id FROM position_epi_requirements WHERE position_id = $1',
+      [id],
+    );
+    const trainingReqResult = await client.query<{ tipo: string }>(
+      'SELECT tipo FROM position_training_requirements WHERE position_id = $1',
+      [id],
+    );
+    const employeesResult = await client.query<{ id: string; full_name: string }>(
+      'SELECT id, full_name FROM employees WHERE position_id = $1 ORDER BY full_name',
+      [id],
+    );
+
+    const allDivergences = await this.getDivergences(client, position.tenant_id);
+    const divergencesByEmployee = new Map<string, Divergence[]>();
+    for (const divergence of allDivergences) {
+      if (divergence.position_id !== id) continue;
+      if (!divergencesByEmployee.has(divergence.employee_id)) divergencesByEmployee.set(divergence.employee_id, []);
+      divergencesByEmployee.get(divergence.employee_id)!.push(divergence);
+    }
+
+    return {
+      id: position.id,
+      name: position.name,
+      epi_requirement_ids: epiReqResult.rows.map((r) => r.epi_catalog_item_id),
+      training_requirement_tipos: trainingReqResult.rows.map((r) => r.tipo),
+      employees: employeesResult.rows.map((employee) => ({
+        id: employee.id,
+        full_name: employee.full_name,
+        divergences: (divergencesByEmployee.get(employee.id) ?? []).map((d) => ({
+          categoria: d.categoria,
+          requisito: d.requisito,
+          ...(d.categoria === 'epi' ? { empresa_tem_no_catalogo: d.empresa_tem_no_catalogo } : {}),
+        })),
+      })),
+    };
   }
 }

@@ -47,6 +47,11 @@ export class PositionsController {
     return req.withTenantContext((client: any) => this.positions.confirmLinks(client, tenantId, dto.groups));
   }
 
+  @Get(':id')
+  findOne(@Param('id') id: string, @Req() req: any) {
+    return req.withTenantContext((client: any) => this.positions.findOne(client, id));
+  }
+
   @Roles('empresa', 'admin')
   @Patch(':id')
   update(@Param('id') id: string, @Body() dto: UpdatePositionDto, @Req() req: any) {

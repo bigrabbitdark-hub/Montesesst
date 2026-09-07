@@ -1,13 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import { PoolClient } from 'pg';
 import { DocumentsService } from '../documents/documents.service';
+import { PositionsService } from '../positions/positions.service';
 
 export type DashboardStatus = 'ok' | 'atencao' | 'critico';
 export type AttentionPriority = 'alta' | 'media' | 'baixa';
 export type AttentionResponsible = 'empresa' | 'tecnico';
 
 export interface AttentionItem {
-  tipo: 'documento' | 'epi' | 'acao' | 'inspecao';
+  tipo: 'documento' | 'epi' | 'acao' | 'inspecao' | 'cargo';
   titulo: string;
   prioridade: AttentionPriority;
   data: string | null;
@@ -44,14 +45,18 @@ function toDateString(value: string | Date | null | undefined): string | null {
 
 @Injectable()
 export class DashboardService {
-  constructor(private readonly documents: DocumentsService) {}
+  constructor(
+    private readonly documents: DocumentsService,
+    private readonly positionsService: PositionsService,
+  ) {}
 
   async getSummary(client: PoolClient, tenantId: string): Promise<DashboardSummary> {
-    const [compliance, epis, actionPlans, inspecoesPendentes] = await Promise.all([
+    const [compliance, epis, actionPlans, inspecoesPendentes, positionDivergences] = await Promise.all([
       this.documents.getCompliance(client, tenantId),
       this.getEpiStatus(client, tenantId),
       this.getActionPlans(client, tenantId),
       this.countInspecoesPendentes(client, tenantId),
+      this.positionsService.getDivergences(client, tenantId),
     ]);
 
     const atencao: AttentionItem[] = [
@@ -95,6 +100,17 @@ export class DashboardService {
         responsavel: 'empresa',
         link: '/empresa/inspecoes',
       })),
+      ...positionDivergences.map((divergence): AttentionItem => ({
+        tipo: 'cargo',
+        titulo:
+          divergence.categoria === 'epi'
+            ? `EPI ${divergence.empresa_tem_no_catalogo ? 'não entregue' : 'não cadastrado no catálogo'}: ${divergence.requisito} — ${divergence.employee_name} (${divergence.position_name})`
+            : `Treinamento pendente/vencido: ${divergence.requisito} — ${divergence.employee_name} (${divergence.position_name})`,
+        prioridade: 'alta',
+        data: null,
+        responsavel: 'empresa',
+        link: '/empresa/mapa-sst',
+      })),
     ];
 
     atencao.sort((a, b) => {
@@ -116,7 +132,7 @@ export class DashboardService {
       return data >= hoje && data <= em7Dias;
     });
 
-    const pendencias = compliance.pendencias.length + epis.pendencias.length;
+    const pendencias = compliance.pendencias.length + epis.pendencias.length + positionDivergences.length;
     const avisos = compliance.avisos.length + epis.avisos.length;
 
     let status: DashboardStatus = 'ok';
