@@ -114,27 +114,31 @@ export class PositionsService {
   async confirmLinks(
     client: PoolClient,
     tenantId: string,
-    // Aceita tanto `name` (grupo já "achatado" pro formato de confirmação)
-    // quanto `suggested_name` (o item de LinkSuggestion devolvido por
-    // GET .../link-suggestions, reenviado sem alteração) — o frontend desta
-    // fase reenvia a sugestão como veio (campo `suggested_name`) quando a
-    // empresa não edita o nome, e envia `name` quando edita antes de
-    // confirmar; sem esse fallback o primeiro caso grava `name` NULL.
-    groups: { name?: string; suggested_name?: string; employee_ids: string[] }[],
+    // `suggested_name`, não `name`: nenhum chamador real (nem o teste e2e,
+    // que reenvia o item de LinkSuggestion como veio de GET
+    // .../link-suggestions, nem o frontend da Task 5) produz um campo
+    // `name` de verdade — é sempre a sugestão devolvida, editada ou não.
+    groups: { suggested_name: string; employee_ids: string[] }[],
   ): Promise<void> {
     for (const group of groups) {
-      const name = group.name ?? group.suggested_name;
       const positionResult = await client.query<{ id: string }>(
         `INSERT INTO positions (tenant_id, name) VALUES ($1, $2)
          ON CONFLICT (tenant_id, name) DO UPDATE SET name = EXCLUDED.name
          RETURNING id`,
-        [tenantId, name],
+        [tenantId, group.suggested_name],
       );
       const positionId = positionResult.rows[0].id;
       if (group.employee_ids.length > 0) {
-        await client.query(`UPDATE employees SET position_id = $1 WHERE id = ANY($2)`, [
+        // Filtro de tenant explícito aqui, mesmo padrão do INSERT acima:
+        // sem o `AND tenant_id = $3`, um caller admin (bypass explícito nas
+        // policies de RLS de `positions`/`employees`) poderia vincular
+        // employee_ids de QUALQUER tenant ao position_id recém-criado no
+        // tenant do caller, silenciosamente — a mesma classe de risco que
+        // EmployeesService.update() já blinda pro vínculo manual individual.
+        await client.query(`UPDATE employees SET position_id = $1 WHERE id = ANY($2) AND tenant_id = $3`, [
           positionId,
           group.employee_ids,
+          tenantId,
         ]);
       }
     }

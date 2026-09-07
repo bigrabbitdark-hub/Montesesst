@@ -96,7 +96,7 @@ describe('GET /positions/link-suggestions e POST /positions/confirm-links (e2e)'
     const secondConfirm = await request(app.getHttpServer())
       .post('/positions/confirm-links')
       .set('Authorization', `Bearer ${tokenA}`)
-      .send({ groups: [{ name: 'Auxiliar Administrativo', employee_ids: suggestions.body[0].employee_ids }] });
+      .send({ groups: [{ suggested_name: 'Auxiliar Administrativo', employee_ids: suggestions.body[0].employee_ids }] });
     expect(secondConfirm.status).toBe(201);
 
     const listAfter = await request(app.getHttpServer())
