@@ -2827,16 +2827,22 @@ ruling:**
   cargo nascido de sugestão automática (que pode errar a grafia) não
   tinha como ser corrigido pela tela. Adicionada UI de renomear
   inline.
-- **Important parqueado com ruling**: spec §4.3 não totalmente
-  implementada — a tela de revisão de vínculo pendente mostra só a
-  contagem de funcionários do grupo, não a lista nem permite remover
-  1 antes de confirmar. Motivo do park: corrigir exige mudar a
-  interface de `getLinkSuggestions` (hoje só devolve UUIDs opacos,
-  precisaria devolver nome também) MAIS uma UI nova de
-  seleção/remoção — maior do que cabe com segurança num fix-wave de
-  rodada única. Mitigação já existente: o nome sugerido é editável, e
-  `PATCH /employees/:id` já aceita `position_id` manual como via de
-  correção alternativa. Fica como task futura dedicada.
+- **Important parqueado com ruling, fechado em seguida como fast-follow
+  bounded (commit `4ddb51c`)**: spec §4.3 não totalmente implementada
+  — a tela de revisão de vínculo pendente mostrava só a contagem de
+  funcionários do grupo, não a lista nem permitia remover 1 antes de
+  confirmar. Motivo do park original: corrigir exigia mudar a
+  interface de `getLinkSuggestions` (só devolvia UUIDs opacos) MAIS
+  uma UI nova de seleção/remoção — maior do que cabia com segurança
+  num fix-wave de rodada única. Fechado logo depois, como tarefa
+  bounded separada (sem spec formal): `getLinkSuggestions` passou a
+  devolver `employees: {id, full_name}[]` por grupo em vez de
+  `employee_ids`/`employee_count`; a tela ganhou um checkbox por
+  funcionário (marcado por padrão), e `confirm-links` deriva
+  `employee_ids` só dos marcados no momento de confirmar — grupo sem
+  nenhum marcado não entra na confirmação. Verificado: 5/5 e2e (teste
+  novo confirma que um funcionário desmarcado não é vinculado), 16/16
+  regressão de `positions`, 8/8 Playwright real contra produção.
 - **Important parqueado, não é bug**: `resumo.pendencias` pode somar
   centenas/milhares (funcionários × requisitos configurados), fazendo
   `status:'critico'` aparecer no primeiro dia que uma empresa
