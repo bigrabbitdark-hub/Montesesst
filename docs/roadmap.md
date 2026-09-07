@@ -2498,3 +2498,120 @@ o `loadAll()` completo não rodou mais no fluxo de logo). Guardrail
 permanente de segurança seguiu valendo — o único incidente novo
 desta fase (o `docker compose config` da Task 2) já estava disclosed
 e documentado antes mesmo desta fase retomar.
+
+## Fase 21 — Documentos: upload em lote com classificação automática: status
+
+Primeira fatia real da visão de "Diagnóstico Inicial" (onboarding em
+massa) trazida pelo fundador em 2026-09-06 — não constrói ingestão de
+planilha de funcionários nem o "Mapa SST" (grafo empresa→cargo→
+funcionário), só o pedaço de upload de documentos em lote com
+classificação automática. Antes desta spec, o fundador também decidiu
+substituir o OpenRouter pela MiniMax como provider fixo do Assistente
+(sem Model Gateway central — decisão reconfirmada, ver
+`docs/assistente-montese-principios.md`).
+
+**Fechada em 2026-09-07, 4 tasks + revisão final (opus) com 5 Important
+numa rodada única de correção, mais um incidente crítico de perda de
+dados (não relacionado ao código) resolvido no meio do caminho:**
+
+- **Task 1** — interface pequena `DocumentClassifierProvider` +
+  `MiniMaxDocumentClassifierService`. Diferente de toda capacidade
+  anterior deste projeto, esta ganhou só a implementação MiniMax, sem
+  par OpenRouter — decisão explícita do fundador de não manter dois
+  builds prontos "por precaução" pra capacidades novas, já que o
+  modelo está decidido. Gating de campos: categoria só sai não-nula
+  com confiança alta E dentro das 7 categorias válidas; validade só
+  sai preenchida se bater um regex de data real (nunca calculada);
+  título só se não-vazio.
+- **Task 2** — relocação pura de `extractPdfText`
+  (`normative/attachment-text.util.ts` → `common/pdf/pdf-text.util.ts`,
+  confirmado via hash de blob git idêntico) pra ficar acessível tanto
+  do Assistente (Fase 20) quanto de Documentos (esta fase) — mesmo
+  padrão já usado na Fase 19 (relocação do R2Service).
+- **Task 3** — endpoint `POST /documents/classify-batch`: itera até
+  10 arquivos de até 10MB cada, extrai texto, classifica, isola falha
+  por arquivo (uma exceção não derruba o lote), nunca chama IA pra
+  não-PDF ou PDF sem texto. Rate limit dedicado (5/hora).
+- **Task 4** — `DocumentsPanel.tsx` ganha modo "Upload em lote":
+  tabela de revisão editável, correlação por ÍNDICE do array (nunca
+  por nome de arquivo), confirmação dispara N chamadas sequenciais ao
+  `POST /documents` já existente (nenhum endpoint novo de salvar).
+
+**INCIDENTE CRÍTICO — perda real de dados de produção (durante a
+Task 2), não relacionado ao código desta fase**: o implementador,
+tentando diagnosticar uma falha de teste que não entendia, rodou
+`docker compose down -v redis postgres` — a flag `-v` não é seletiva
+por serviço, apaga TODOS os volumes nomeados do projeto, e este
+projeto não separa volume de teste de produção (mesmo Postgres real
+de sempre). Isso apagou o banco de produção inteiro; os containers
+subiram vazios e as migrations rodaram do zero, parando na `0021`
+(RAG normativo) por falta da extensão `vector`. Toda empresa, usuário,
+documento, assinatura, registro de CIPA/CAEPI real foi perdido, até
+onde a investigação confirmou. **Restaurado com sucesso** a partir do
+backup real e testado deste projeto (`ops/backup-postgres.sh`, cron
+diário 03:00 UTC, `docs/operations/backups.md`) — backup de hoje às
+03:00, ~13h antes do incidente, restaurado via `pg_restore --clean
+--if-exists` com autorização explícita do fundador antes de qualquer
+ação irreversível. Confirmado depois: 38 tabelas de volta, dados reais
+íntegros (16 tenants, 69 usuários, 1760 chunks do RAG, 23282 registros
+CAEPI), suíte do Assistente voltando a passar de verdade. Janela de
+perda real: no máximo ~13h de atividade, se houve alguma. Documentado
+integralmente em memória do projeto (`docker compose down -v` e
+`docker volume rm`/`prune` agora banidos sem exceção pra todo dispatch
+futuro) — 4º incidente real desta sessão, o primeiro de perda de dados
+(os 3 anteriores foram vazamento de segredo).
+
+**Revisão final (opus, dispatch único) achou 0 Critical + 5 Important
++ 6 Minor — todos os Important corrigidos numa rodada única:**
+
+- **Important**: reclicar "Importar todos" reenviava linhas já
+  importadas com sucesso, duplicando documentos (sem constraint de
+  unicidade em `documents`) — corrigido pulando linhas `sucesso` no
+  loop.
+- **Important**: limite de 10 arquivos/10MB só existia no backend —
+  erro chegava em inglês ("Unexpected field"/"File too large") e cada
+  tentativa errada consumia 1 dos 5 slots/hora de rate limit sem
+  nunca chamar a IA — corrigido com validação no frontend antes de
+  qualquer chamada.
+- **Important** (achado de integração, invisível a qualquer revisão
+  de task isolada): botão "Importar todos" desabilitado sem indicar
+  qual linha falta; uma linha com categoria válida mas título vazio
+  não ganhava nenhum aviso visual — corrigido com um indicador por
+  linha computado independentemente do que a IA sinalizou.
+- **Important**: título sugerido não era truncado em 200 caracteres
+  (`CreateDocumentDto` rejeitaria) — corrigido com `.slice(0, 200)`,
+  mesmo padrão já usado no Assistente.
+- **Important** (achado de integração — invisível a qualquer revisão
+  de task isolada): pior caso do lote (10 arquivos × até 45s cada =
+  até 450s) ultrapassava o `proxy_read_timeout` de 300s do nginx —
+  corrigido com um orçamento de tempo de 240s dentro do próprio
+  endpoint (decisão de design do controlador: evita tocar
+  configuração de infra compartilhada e evita reduzir o timeout
+  individual de forma a gerar falso-negativo).
+- 6 Minor, todos parked (triviais, cosméticos, ou fora do escopo
+  explícito da spec): `.env.example` sem as 2 variáveis novas; nomes
+  remanescentes do arquivo relocado na Task 2; sem teste de 429 na
+  rota nova (padrão misto já existente no repo); lote sem
+  `company_unit_id` (fora do pedido da spec); regex de validade aceita
+  datas de calendário inválidas; contador dessincronizado ao trocar
+  seleção durante análise.
+
+Fix-wave final e sua re-revisão escopada confirmados por reprodução
+independente (suíte e2e rodada de novo pelo revisor, estrutura JSX do
+`.map` convertido pra bloco verificada linha por linha pra garantir
+que nenhum `</div>` foi deslocado) — 0 achados novos, sem regressão.
+
+**Achado incidental, fora do escopo desta fase**: durante a
+re-revisão, descobriu-se que `MiniMaxNormativeAnswerService` (ativado
+como provider do Assistente numa sessão anterior) nunca tinha sido
+commitado — só o módulo que o importa foi. Produção dependia de um
+arquivo não rastreado pelo git; corrigido imediatamente.
+
+**Verificação:** backend com suíte e2e real (Postgres real, provider
+de classificação sempre mockado — nenhuma chamada real à API paga da
+MiniMax em nenhum teste automatizado desta fase) — 6/6 na suíte nova,
+regressão completa de `documents` (9 suítes/38 testes) e do Assistente
+pós-restauração, todas verdes. Frontend sem suíte automatizada —
+Playwright contra produção real em todas as 4 tasks e no fix-wave
+final, incluindo prova por contagem exata de chamadas de rede (não
+duplicar POST na reimportação).
