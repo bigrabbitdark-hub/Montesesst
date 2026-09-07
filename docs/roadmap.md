@@ -2738,3 +2738,152 @@ da requisição).
 conhecida de "Diagnóstico Inicial" — o "Mapa SST" (grafo de entidade
 empresa→cargo→funcionário→EPI→treinamento com detecção de
 divergência).
+
+## Fase 23 — Mapa SST: cargo, requisitos e divergência (EPI + treinamento): status
+
+Terceira e última fatia conhecida da visão de "Diagnóstico Inicial"
+trazida pelo fundador em 2026-09-06 (as duas primeiras foram as Fases
+21 e 22). Diferente das duas anteriores, o fundador pediu
+explicitamente pra desenhar as 3 sub-partes desta fase numa spec só
+(cargo como entidade + requisitos de EPI/treinamento + divergência),
+em vez de fatiar o brainstorming — a implementação, porém, foi
+decomposta em 5 tasks incrementais na etapa de planejamento.
+
+**Fechada em 2026-09-07, 5 tasks + revisão final (opus) com 1 fix-wave
+único de rodada final, mais 3 fix rounds durante as tasks (Tasks 2, 3
+e 5):**
+
+- **Task 1** — cargo vira entidade real: `positions` (por tenant,
+  `UNIQUE(tenant_id, name)`), mais o schema completo desta fase numa
+  migration só (`0035_positions.sql`): `employees.position_id`
+  (nullable, `ON DELETE SET NULL`), `position_epi_requirements` e
+  `position_training_requirements` (ainda sem lógica de negócio nesta
+  task). CRUD básico (criar/listar/renomear), RLS idêntica a
+  `tenant_epis_isolation`.
+- **Task 2** — vínculo de funcionário existente a cargo: agrupamento
+  determinístico por texto normalizado (mesma normalização da Fase
+  22), sugestão do nome raw mais frequente do grupo, confirmação em
+  lote (`ON CONFLICT ... DO UPDATE`, idempotente). Vínculo manual
+  individual via `PATCH /employees/:id` (`position_id` novo campo,
+  mesma checagem de posse de tenant que `company_unit_id` já tem).
+  **2 bugs reais encontrados pelo implementador rodando o teste de
+  verdade** (não transcrição cega do brief): desempate `localeCompare`
+  não-determinístico entre ambientes (trocado por comparação de code
+  unit); campo `name`/`suggested_name` incompatível entre produtor e
+  consumidor (padronizado em `suggested_name`). **Fix round 1/5**:
+  revisão achou um gap adicional que nem o próprio debug do
+  implementador pegou — o UPDATE em lote de `confirmLinks` não tinha
+  filtro de tenant, um risco real pro role admin (bypass de RLS);
+  corrigido.
+- **Task 3** — requisitos de EPI/treinamento por cargo: 2 endpoints
+  PUT que substituem a lista inteira (idempotente), reaproveitando
+  `TRAINING_TYPES`/`TrainingType` já existentes (Fase 15), sem
+  redefinir o enum. **Fix round 1/5**: faltava `mapPgError` nos 2
+  métodos novos de escrita, ao contrário do resto do arquivo; corrigido.
+- **Task 4** — divergência: SQL determinístico (EPI "atendido" =
+  qualquer entrega registrada, ignora validade do CA; treinamento
+  "divergente" = nunca feito OU vencido, numa consulta só),
+  `GET /positions/:id` (detalhe com status por funcionário/requisito),
+  integração com o dashboard já existente (`AttentionItem` ganha
+  `tipo:'cargo'`, soma em `resumo.pendencias`). Revisão verificou de
+  forma independente (não só aceitou a autoavaliação do implementador)
+  que `getDivergences` filtra por tenant nas duas branches e que a
+  policy de RLS cobre SELECT — 0 achado, review limpa de primeira.
+- **Task 5** — frontend `/empresa/mapa-sst`: lista de cargos com
+  drill-down (sem biblioteca de grafo visual — cards/tabelas, mesmo
+  padrão do resto do dashboard), banner de vínculo pendente, criação
+  de cargo, configuração de requisitos via checkbox, status de
+  divergência por funcionário. **Fix round 1/5**: 3 Important — falha
+  silenciosa em 3 mutações de escrita (sem checar `res.ok`); corrida
+  de estado no drill-down (`selectedPositionId` setado antes do GET
+  resolver); `/empresa/mapa-sst` ausente de todo menu de navegação do
+  sidebar (lacuna que nenhum brief de task tinha mandato pra pegar,
+  auto-reportada pelo implementador e corrigida como parte deste fix
+  round em vez de empurrada pra revisão final).
+
+**Revisão final (opus, dispatch único) achou 0 Critical + 6 Important
+— 4 corrigidos numa rodada única de fix-wave, 2 parqueados com
+ruling:**
+
+- **Important corrigido**: `PositionsController` sem `ValidationPipe`
+  — 4 dos 8 endpoints devolviam 500 cru em body malformado (NULL em
+  coluna NOT NULL, `for...of undefined`, string iterada como array,
+  nome só-espaço aceito sem trim). Corrigido com o mesmo padrão já
+  usado em 21/37 controllers do projeto, incluindo `company_units`
+  (citado pela própria migration desta fase como modelo).
+- **Important corrigido**: nomes de funcionário/cargo passaram a
+  vazar pro prompt do Assistente de IA via
+  `dashboard.atencao → normative-assistant.service.ts` — efeito de
+  2ª ordem que nenhuma revisão de task isolada conseguia enxergar
+  (Task 4 → dashboard → Assistente → LLM externo), cruzando a
+  proibição explícita da spec desta fase de qualquer uso de IA.
+  Corrigido com um filtro de 1 linha (`tipo !== 'cargo'`).
+- **Important corrigido**: faltava o único teste de regressão de
+  isolamento de tenant que a fase não tinha — o guard de
+  `confirmLinks` (corrigido na Task 2) nunca tinha sido exercitado
+  ponta-a-ponta via HTTP por um teste real. Adicionado.
+- **Important corrigido**: `PATCH /positions/:id` já existia e era
+  testado desde a Task 1, mas nenhum lugar do frontend o chamava —
+  cargo nascido de sugestão automática (que pode errar a grafia) não
+  tinha como ser corrigido pela tela. Adicionada UI de renomear
+  inline.
+- **Important parqueado com ruling**: spec §4.3 não totalmente
+  implementada — a tela de revisão de vínculo pendente mostra só a
+  contagem de funcionários do grupo, não a lista nem permite remover
+  1 antes de confirmar. Motivo do park: corrigir exige mudar a
+  interface de `getLinkSuggestions` (hoje só devolve UUIDs opacos,
+  precisaria devolver nome também) MAIS uma UI nova de
+  seleção/remoção — maior do que cabe com segurança num fix-wave de
+  rodada única. Mitigação já existente: o nome sugerido é editável, e
+  `PATCH /employees/:id` já aceita `position_id` manual como via de
+  correção alternativa. Fica como task futura dedicada.
+- **Important parqueado, não é bug**: `resumo.pendencias` pode somar
+  centenas/milhares (funcionários × requisitos configurados), fazendo
+  `status:'critico'` aparecer no primeiro dia que uma empresa
+  configura a feature. Decisão deliberada já registrada na própria
+  spec (divergência = lacuna real de compliance, mesma prioridade que
+  documento/CA vencido) — só se manifesta depois de configuração
+  ativa da empresa, não é surpresa em dado silencioso já existente.
+  Registrado aqui como característica conhecida pra acompanhamento de
+  produto, não como defeito.
+- Um Minor trivial (drift de tipo `AttentionItem` no dashboard
+  frontend, faltava `'cargo'` no union) foi incluído no fix-wave por
+  ser 1 palavra. Todos os demais Minor das 5 tasks foram triados pelo
+  próprio revisor final e mantidos parqueados (nome duplicado em 2
+  tenants garantido por schema; `Promise.all` em `findOne` seria no-op
+  já que compartilha o mesmo `PoolClient` serializado; `getDivergences`
+  filtrar por posição em JS é o design certo pra reaproveitar 1 query
+  entre 3 consumidores; resto é polimento — falta de índice em
+  `employees.position_id`, mensagem de treinamento com 2 textos
+  diferentes dashboard/página, `tipo:'outro'` não-verificável, HTML
+  cru no e-mail semanal, `position_id:''` vira 500, comparador de sort
+  com 2 nulls).
+
+**Fix-wave final teve 1 desvio real encontrado pelo implementador
+rodando o teste de verdade**: `ConfirmLinksGroupDto` como especificado
+no brief teria quebrado o fluxo feliz real de produção, já que tanto o
+frontend quanto o teste e2e pré-existente reenviam o objeto
+`LinkSuggestion` inteiro (incluindo `employee_count`) — com
+`forbidNonWhitelisted:true` recém-adicionado, o NestJS rejeitaria essa
+chamada real com 400. Corrigido adicionando `employee_count` opcional
+e validado ao DTO, ignorado pelo service. Re-revisão escopada
+confirmou o comportamento do NestJS, a correção mínima, e endossou a
+escolha de corrigir o DTO em vez de mudar frontend+teste.
+
+**Verificação:** backend com suíte e2e real (Postgres real, nenhuma IA
+envolvida em nenhuma parte desta fase — cargo/requisito/divergência
+são 100% determinísticos) — 15/15 na suíte `positions` (4 arquivos),
+22/22 `normative-assistant` (incl. teste novo do filtro de PII), 5/5
+`dashboard`, regressão completa de `employees`. Frontend sem suíte
+automatizada — Playwright contra o bundle real implantado em produção
+em todas as 5 tasks e no fix-wave final (deploy confirmado via grep no
+bundle antes de cada rodada), incluindo prova de que uma falha de
+escrita não é tratada como sucesso e que uma corrida de estado no
+drill-down não grava no cargo errado.
+
+**Achado incidental, fora do escopo desta fase**: 1 falha
+pré-existente em `normative-assistant-attachment.e2e-spec.ts`
+(extração de PDF, feature de anexos da Fase 20), confirmada idêntica
+antes e depois do fix-wave via `git stash`/`git stash pop` — não é
+regressão desta fase, sinalizada como possível task de acompanhamento
+futura.
