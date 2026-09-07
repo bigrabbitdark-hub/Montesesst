@@ -1,10 +1,13 @@
 import { BadGatewayException, Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
 import { DocumentClassification, DocumentClassifierProvider } from './document-classifier-provider.interface';
 import { buildClassifyChatCompletionBody, parseClassifyToolCall, VALID_CATEGORIES } from './document-classifier-shared';
+import { AiUsageLogService } from '../common/ai-usage/ai-usage-log.service';
 
 @Injectable()
 export class MiniMaxDocumentClassifierService implements DocumentClassifierProvider {
   private readonly logger = new Logger(MiniMaxDocumentClassifierService.name);
+
+  constructor(private readonly usageLog: AiUsageLogService) {}
 
   async classify(text: string): Promise<DocumentClassification> {
     const apiKey = process.env.MINIMAX_API_KEY;
@@ -46,6 +49,14 @@ export class MiniMaxDocumentClassifierService implements DocumentClassifierProvi
     } catch (err) {
       this.logger.error('Resposta do MiniMax não é JSON válido (classificação de documento)', (err as Error).stack);
       throw new BadGatewayException('Não foi possível classificar o documento agora');
+    }
+
+    if (body?.usage) {
+      await this.usageLog.log('document_classify', {
+        prompt_tokens: body.usage.prompt_tokens ?? 0,
+        completion_tokens: body.usage.completion_tokens ?? 0,
+        total_tokens: body.usage.total_tokens ?? 0,
+      });
     }
 
     const parsed = parseClassifyToolCall(body);

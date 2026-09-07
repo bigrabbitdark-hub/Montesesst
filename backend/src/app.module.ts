@@ -33,6 +33,7 @@ import { RequestIdMiddleware } from './common/middleware/request-id.middleware';
 import { RedisModule } from './common/redis/redis.module';
 import { EmailModule } from './common/email/email.module';
 import { R2Module } from './common/r2/r2.module';
+import { AiUsageModule } from './common/ai-usage/ai-usage.module';
 import { RateLimitGuard } from './common/rate-limit/rate-limit.guard';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 
@@ -43,6 +44,7 @@ import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
     RedisModule,
     EmailModule,
     R2Module,
+    AiUsageModule,
     AuditModule,
     HealthModule,
     AuthModule,

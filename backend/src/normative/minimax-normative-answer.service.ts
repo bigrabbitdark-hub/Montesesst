@@ -6,6 +6,7 @@ import {
   OperationalItem,
 } from './normative-answer-provider.interface';
 import { buildRagChatCompletionBody, parseRagToolCall } from './normative-answer-shared';
+import { AiUsageLogService } from '../common/ai-usage/ai-usage-log.service';
 
 // Espelha OpenRouterNormativeAnswerService — mesmo formato OpenAI-compatible
 // de chat completions com tool calling, reaproveitando o mesmo
@@ -16,6 +17,8 @@ import { buildRagChatCompletionBody, parseRagToolCall } from './normative-answer
 @Injectable()
 export class MiniMaxNormativeAnswerService implements NormativeAnswerProvider {
   private readonly logger = new Logger(MiniMaxNormativeAnswerService.name);
+
+  constructor(private readonly usageLog: AiUsageLogService) {}
 
   async answer(
     question: string,
@@ -62,6 +65,14 @@ export class MiniMaxNormativeAnswerService implements NormativeAnswerProvider {
     } catch (err) {
       this.logger.error('Resposta do MiniMax não é JSON válido (assistente)', (err as Error).stack);
       throw new BadGatewayException('Não foi possível responder agora');
+    }
+
+    if (body?.usage) {
+      await this.usageLog.log('assistant_normative_query', {
+        prompt_tokens: body.usage.prompt_tokens ?? 0,
+        completion_tokens: body.usage.completion_tokens ?? 0,
+        total_tokens: body.usage.total_tokens ?? 0,
+      });
     }
 
     const parsed = parseRagToolCall(body);
