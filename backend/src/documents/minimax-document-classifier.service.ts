@@ -57,7 +57,7 @@ export class MiniMaxDocumentClassifierService implements DocumentClassifierProvi
     const categoryValid = VALID_CATEGORIES.includes(parsed.category);
     return {
       category: confidence === 'alta' && categoryValid ? parsed.category : null,
-      title: parsed.title.trim().length > 0 ? parsed.title.trim() : null,
+      title: parsed.title.trim().length > 0 ? parsed.title.trim().slice(0, 200) : null,
       expires_at: /^\d{4}-\d{2}-\d{2}$/.test(parsed.expires_at) ? parsed.expires_at : null,
       confidence,
     };

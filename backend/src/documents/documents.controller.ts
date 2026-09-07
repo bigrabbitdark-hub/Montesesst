@@ -25,6 +25,12 @@ import { CreateDocumentDto } from './dto/create-document.dto';
 import { DOCUMENT_CLASSIFIER_PROVIDER, DocumentClassifierProvider } from './document-classifier-provider.interface';
 
 const MAX_BATCH_FILES = 10;
+// 240s de folga segura sob o proxy_read_timeout de 300s do nginx
+// (nginx/conf.d/default.conf) — sem isso, um lote de 10 arquivos sob
+// degradação da MiniMax (até 45s por chamada, o timeout individual da
+// Task 1) poderia levar até 450s, estourando o proxy e descartando
+// classificações já pagas antes de a resposta chegar ao cliente.
+const BATCH_TIME_BUDGET_MS = 240_000;
 
 export interface ClassifyBatchItem {
   filename: string;
@@ -83,8 +89,20 @@ export class DocumentsController {
       throw new BadRequestException('Nenhum arquivo enviado');
     }
 
+    const batchStartedAt = Date.now();
     const results: ClassifyBatchItem[] = [];
     for (const file of files) {
+      if (Date.now() - batchStartedAt > BATCH_TIME_BUDGET_MS) {
+        results.push({
+          filename: file.originalname,
+          suggested_category: null,
+          suggested_title: null,
+          suggested_expires_at: null,
+          needs_review: true,
+        });
+        continue;
+      }
+
       if (file.mimetype !== 'application/pdf') {
         results.push({
           filename: file.originalname,

@@ -78,6 +78,9 @@ const CATEGORY_LABELS: Record<string, string> = {
 // resultam em 400 se enviadas manualmente (gravadas só internamente).
 const UPLOAD_CATEGORIES = ['pgr', 'pcmso', 'laudo', 'ficha_epi', 'treinamento', 'ltcat', 'lip'];
 
+const MAX_BATCH_FILES = 10;
+const MAX_BATCH_FILE_SIZE_BYTES = 10 * 1024 * 1024;
+
 interface AgendaItem {
   id: string;
   category: string;
@@ -293,8 +296,21 @@ export function DocumentsPanel({ tenantId }: { tenantId?: string }) {
   function handleSelectBatchFiles(event: ChangeEvent<HTMLInputElement>) {
     const selected = event.target.files ? Array.from(event.target.files) : [];
     event.target.value = '';
-    setBatchFiles(selected);
     setBatchRows([]);
+
+    if (selected.length > MAX_BATCH_FILES) {
+      setBatchFiles([]);
+      setBatchError(`Selecione no máximo ${MAX_BATCH_FILES} arquivos por vez (você selecionou ${selected.length}).`);
+      return;
+    }
+    const oversized = selected.find((file) => file.size > MAX_BATCH_FILE_SIZE_BYTES);
+    if (oversized) {
+      setBatchFiles([]);
+      setBatchError(`O arquivo "${oversized.name}" tem mais de 10MB — remova-o e selecione novamente.`);
+      return;
+    }
+
+    setBatchFiles(selected);
     setBatchError('');
   }
 
@@ -345,6 +361,7 @@ export function DocumentsPanel({ tenantId }: { tenantId?: string }) {
     const token = localStorage.getItem('montese_token');
 
     for (let i = 0; i < batchRows.length; i++) {
+      if (batchRows[i].importStatus === 'sucesso') continue;
       const row = batchRows[i];
       const rowFormData = new FormData();
       rowFormData.append('category', row.category);
@@ -578,11 +595,14 @@ export function DocumentsPanel({ tenantId }: { tenantId?: string }) {
 
         {batchRows.length > 0 && (
           <div className="mt-4 flex flex-col gap-3">
-            {batchRows.map((row, i) => (
+            {batchRows.map((row, i) => {
+              const rowIncomplete = row.category === '' || row.title.trim() === '';
+              return (
               <div key={i} className="rounded-md border border-brand-100 p-4">
                 <p className="text-sm font-medium text-brand-900">
                   {row.file.name}
                   {row.needsReview && <span className="ml-2 text-xs text-amber-700">⚠️ revisar manualmente</span>}
+                  {rowIncomplete && <span className="ml-2 text-xs text-red-600">⚠️ preencha categoria e título</span>}
                 </p>
                 <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-3">
                   <label className="flex flex-col gap-1 text-sm text-brand-900">
@@ -621,7 +641,8 @@ export function DocumentsPanel({ tenantId }: { tenantId?: string }) {
                 {row.importStatus === 'sucesso' && <p className="mt-2 text-sm text-green-700">Importado.</p>}
                 {row.importStatus === 'erro' && <p className="mt-2 text-sm text-red-600">Falha ao importar.</p>}
               </div>
-            ))}
+              );
+            })}
             <button
               type="button"
               onClick={handleImportBatch}
