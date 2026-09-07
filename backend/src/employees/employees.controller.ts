@@ -13,6 +13,7 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { ColumnMapping } from './spreadsheet-import.util';
 import { Roles } from '../common/decorators/roles.decorator';
 import { EmployeesService } from './employees.service';
 import { CreateEmployeeDto } from './dto/create-employee.dto';
@@ -55,6 +56,38 @@ export class EmployeesController {
 
     return req.withTenantContext((client: any) =>
       this.employees.importCsv(client, tenantId, file.buffer.toString('utf-8')),
+    );
+  }
+
+  @Roles('empresa', 'admin')
+  @Post('import-preview')
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 10 * 1024 * 1024 } }))
+  async previewImport(@UploadedFile() file: Express.Multer.File) {
+    if (!file) throw new BadRequestException('Nenhum arquivo enviado');
+    return this.employees.previewSpreadsheet(file.buffer, file.mimetype);
+  }
+
+  @Roles('empresa', 'admin')
+  @Post('import-mapped')
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 10 * 1024 * 1024 } }))
+  importMapped(
+    @UploadedFile() file: Express.Multer.File,
+    @Body('mapping') mappingRaw: string,
+    @Query('tenant_id') tenantIdParam: string | undefined,
+    @Req() req: any,
+  ) {
+    if (!file) throw new BadRequestException('Nenhum arquivo enviado');
+    let mapping: ColumnMapping;
+    try {
+      mapping = JSON.parse(mappingRaw);
+    } catch {
+      throw new BadRequestException('Mapeamento de colunas inválido');
+    }
+    const tenantId = req.user.role === 'admin' ? tenantIdParam : req.user.tenantId;
+    if (!tenantId) throw new BadRequestException('tenant_id é obrigatório');
+
+    return req.withTenantContext((client: any) =>
+      this.employees.importMapped(client, tenantId, file.buffer, file.mimetype, mapping),
     );
   }
 

@@ -2,7 +2,8 @@ import { BadRequestException, ConflictException, Injectable, NotFoundException }
 import { PoolClient } from 'pg';
 import { mapPgError } from '../common/pg-error.util';
 import { buildSafeSetClause } from '../common/safe-update.util';
-import { parseEmployeesCsv } from './csv-import.util';
+import { parseEmployeesCsv, ParsedCsvRow } from './csv-import.util';
+import { applyColumnMapping, ColumnMapping, MappedEmployeeRow, parseSpreadsheet, suggestColumnMapping } from './spreadsheet-import.util';
 
 // Únicas colunas que update() pode alterar — nunca confiar nas chaves do
 // body pra montar o SET (ver common/safe-update.util.ts).
@@ -172,7 +173,49 @@ export class EmployeesService {
   async importCsv(client: PoolClient, tenantId: string, csvContent: string): Promise<ImportResult> {
     const { rows, formatError } = parseEmployeesCsv(csvContent);
     if (formatError) throw new BadRequestException(formatError);
+    return this.processImportRows(client, tenantId, rows);
+  }
 
+  async previewSpreadsheet(
+    buffer: Buffer,
+    mimetype: string,
+  ): Promise<{ headers: string[]; suggested_mapping: ColumnMapping; sample_rows: string[][]; total_rows: number }> {
+    const { headers, rows, formatError } = await parseSpreadsheet(buffer, mimetype);
+    if (formatError) throw new BadRequestException(formatError);
+
+    return {
+      headers,
+      suggested_mapping: suggestColumnMapping(headers),
+      sample_rows: rows.slice(0, 5),
+      total_rows: rows.length,
+    };
+  }
+
+  async importMapped(
+    client: PoolClient,
+    tenantId: string,
+    buffer: Buffer,
+    mimetype: string,
+    mapping: ColumnMapping,
+  ): Promise<ImportResult> {
+    const { rows, formatError } = await parseSpreadsheet(buffer, mimetype);
+    if (formatError) throw new BadRequestException(formatError);
+
+    const mappedRows = applyColumnMapping(rows, mapping);
+    return this.processImportRows(client, tenantId, mappedRows);
+  }
+
+  // Compartilhado entre importCsv (caminho antigo, cabeçalho fixo) e
+  // importMapped (Fase 22, mapeamento flexível de coluna) — os dois
+  // convergem pro mesmo formato de linha (ParsedCsvRow e
+  // MappedEmployeeRow têm exatamente os mesmos 5 campos) antes de chegar
+  // aqui, então a validação/inserção em si nunca precisou saber de onde a
+  // linha veio.
+  private async processImportRows(
+    client: PoolClient,
+    tenantId: string,
+    rows: (ParsedCsvRow | MappedEmployeeRow)[],
+  ): Promise<ImportResult> {
     const unitsResult = await client.query<{ id: string; name: string }>(
       'SELECT id, name FROM company_units WHERE tenant_id = $1',
       [tenantId],
@@ -197,10 +240,6 @@ export class EmployeesService {
         continue;
       }
 
-      // SAVEPOINT por linha: sem isso, o primeiro erro de INSERT (ex: CPF
-      // duplicado) deixa a transação inteira "aborted" no Postgres, e
-      // toda linha seguinte falharia com "current transaction is
-      // aborted", mesmo capturada pelo catch do lado do Node.
       await client.query('SAVEPOINT import_row');
       try {
         await client.query(
