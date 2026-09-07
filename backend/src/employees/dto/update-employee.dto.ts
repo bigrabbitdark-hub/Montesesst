@@ -5,5 +5,6 @@ export class UpdateEmployeeDto {
   position?: string;
   admission_date?: string;
   company_unit_id?: string;
+  position_id?: string;
   status?: 'ativo' | 'inativo' | 'pendente';
 }

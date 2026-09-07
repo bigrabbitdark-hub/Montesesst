@@ -3,6 +3,7 @@ import { Roles } from '../common/decorators/roles.decorator';
 import { PositionsService } from './positions.service';
 import { CreatePositionDto } from './dto/create-position.dto';
 import { UpdatePositionDto } from './dto/update-position.dto';
+import { ConfirmLinksDto } from './dto/confirm-links.dto';
 
 @Controller('positions')
 export class PositionsController {
@@ -24,6 +25,24 @@ export class PositionsController {
     if (!tenantId) throw new BadRequestException('tenant_id é obrigatório');
 
     return req.withTenantContext((client: any) => this.positions.findAll(client, tenantId));
+  }
+
+  @Roles('empresa', 'admin')
+  @Get('link-suggestions')
+  getLinkSuggestions(@Query('tenant_id') tenantIdParam: string | undefined, @Req() req: any) {
+    const tenantId = req.user.role === 'admin' ? tenantIdParam : req.user.tenantId;
+    if (!tenantId) throw new BadRequestException('tenant_id é obrigatório');
+
+    return req.withTenantContext((client: any) => this.positions.getLinkSuggestions(client, tenantId));
+  }
+
+  @Roles('empresa', 'admin')
+  @Post('confirm-links')
+  confirmLinks(@Body() dto: ConfirmLinksDto, @Query('tenant_id') tenantIdParam: string | undefined, @Req() req: any) {
+    const tenantId = req.user.role === 'admin' ? tenantIdParam : req.user.tenantId;
+    if (!tenantId) throw new BadRequestException('tenant_id é obrigatório');
+
+    return req.withTenantContext((client: any) => this.positions.confirmLinks(client, tenantId, dto.groups));
   }
 
   @Roles('empresa', 'admin')

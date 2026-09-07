@@ -14,6 +14,7 @@ const UPDATABLE_FIELDS = [
   'position',
   'admission_date',
   'company_unit_id',
+  'position_id',
   'status',
 ] as const;
 
@@ -48,6 +49,7 @@ interface UpdateEmployeeData {
   position?: string;
   admission_date?: string;
   company_unit_id?: string;
+  position_id?: string;
   status?: string;
 }
 
@@ -133,6 +135,21 @@ export class EmployeesService {
       ]);
       if (existing.rowCount === 0) throw new NotFoundException('Funcionário não encontrado');
       await this.assertCompanyUnitBelongsToTenant(client, data.company_unit_id, existing.rows[0].tenant_id);
+    }
+    if (data.position_id) {
+      // Mesmo raciocínio de company_unit_id acima: um position_id de outro
+      // tenant não é barrado pela RLS de `positions` pro role admin (bypass
+      // explícito na policy), então precisa de checagem cruzada explícita
+      // aqui, não só confiar na visibilidade de RLS.
+      const existing = await client.query<{ tenant_id: string }>('SELECT tenant_id FROM employees WHERE id = $1', [
+        id,
+      ]);
+      if (existing.rowCount === 0) throw new NotFoundException('Funcionário não encontrado');
+      const positionResult = await client.query('SELECT id FROM positions WHERE id = $1 AND tenant_id = $2', [
+        data.position_id,
+        existing.rows[0].tenant_id,
+      ]);
+      if (positionResult.rowCount === 0) throw new BadRequestException('Cargo não encontrado');
     }
     const { setClauses, values } = buildSafeSetClause(data, UPDATABLE_FIELDS, 2);
     if (setClauses.length === 0) return this.findOne(client, id);
