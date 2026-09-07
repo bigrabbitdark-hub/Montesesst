@@ -18,7 +18,7 @@ export const MAX_IMPORT_ROWS = 2000;
 // vírgula) — não é um parser de CSV completo (não lida com aspas
 // aninhadas em edge cases exóticos), mas cobre o formato de 4 colunas
 // fixas desta importação, que é tudo que este endpoint precisa.
-function splitCsvLine(line: string): string[] {
+export function splitCsvLine(line: string): string[] {
   const fields: string[] = [];
   let current = '';
   let inQuotes = false;
