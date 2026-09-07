@@ -422,4 +422,53 @@ describe('POST /assistant/normative-query (e2e)', () => {
     await (db as any).client.query('DELETE FROM users WHERE tenant_id = $1', [outroTenant.tenantId]);
     await (db as any).client.query('DELETE FROM tenants WHERE id = $1', [outroTenant.tenantId]);
   });
+
+  it('item operacional tipo:"cargo" (Fase 23 — Mapa SST) nunca entra no prompt do Assistente, mesmo contendo nome completo de funcionário (LGPD — spec da Fase 23 exclui qualquer uso de IA)', async () => {
+    const cargoTenant = await db.createTenantWithUser('Empresa Cargo PII Teste');
+    const loginCargo = await request(app.getHttpServer())
+      .post('/auth/login')
+      .send({ email: cargoTenant.email, password: cargoTenant.password });
+    const tokenCargoTenant = loginCargo.body.access_token;
+
+    const client = (db as any).client;
+    const position = await client.query(
+      `INSERT INTO positions (tenant_id, name) VALUES ($1, 'Cargo PII Teste') RETURNING id`,
+      [cargoTenant.tenantId],
+    );
+    const positionId = position.rows[0].id;
+    await client.query(
+      `INSERT INTO position_training_requirements (tenant_id, position_id, tipo) VALUES ($1, $2, 'nr-05')`,
+      [cargoTenant.tenantId, positionId],
+    );
+    // Funcionário vinculado ao cargo, sem treinamento nr-05 registrado ->
+    // gera divergência tipo:'cargo' com nome completo do funcionário no
+    // título (ver DashboardService.getSummary), exatamente o cenário que
+    // vazava pro prompt do Assistente antes desta correção.
+    await client.query(
+      `INSERT INTO employees (tenant_id, full_name, cpf, position_id, status)
+       VALUES ($1, 'Fulano De Tal Nome Completo PII', '99988877766', $2, 'ativo')`,
+      [cargoTenant.tenantId, positionId],
+    );
+
+    fakeAnswer.mockResolvedValue([]);
+
+    await request(app.getHttpServer())
+      .post('/assistant/normative-query')
+      .set('Authorization', `Bearer ${tokenCargoTenant}`)
+      .send({ question: 'quais minhas pendências?' });
+
+    expect(fakeAnswer).toHaveBeenCalled();
+    const lastCall = fakeAnswer.mock.calls[fakeAnswer.mock.calls.length - 1];
+    const operationalItemsArg = lastCall[2];
+    const titulos = operationalItemsArg.map((o: any) => o.titulo);
+
+    expect(titulos.some((t: string) => t.includes('Fulano De Tal Nome Completo PII'))).toBe(false);
+    expect(titulos.some((t: string) => t.includes('Cargo PII Teste'))).toBe(false);
+
+    await client.query('DELETE FROM employees WHERE tenant_id = $1', [cargoTenant.tenantId]);
+    await client.query('DELETE FROM position_training_requirements WHERE tenant_id = $1', [cargoTenant.tenantId]);
+    await client.query('DELETE FROM positions WHERE tenant_id = $1', [cargoTenant.tenantId]);
+    await client.query('DELETE FROM users WHERE tenant_id = $1', [cargoTenant.tenantId]);
+    await client.query('DELETE FROM tenants WHERE id = $1', [cargoTenant.tenantId]);
+  });
 });

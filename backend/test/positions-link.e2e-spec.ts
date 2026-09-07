@@ -118,4 +118,22 @@ describe('GET /positions/link-suggestions e POST /positions/confirm-links (e2e)'
 
     expect(res.status).toBe(400);
   });
+
+  it('rejeita confirm-links vinculando employee_ids de outro tenant a um cargo do tenant chamador', async () => {
+    const employeesB = await request(app.getHttpServer())
+      .get('/employees')
+      .set('Authorization', `Bearer ${tokenB}`);
+    const foreignEmployeeId = employeesB.body[0].id;
+
+    await request(app.getHttpServer())
+      .post('/positions/confirm-links')
+      .set('Authorization', `Bearer ${tokenA}`)
+      .send({ groups: [{ suggested_name: 'Cargo Cross Tenant', employee_ids: [foreignEmployeeId] }] });
+
+    const employeesBAfter = await request(app.getHttpServer())
+      .get('/employees')
+      .set('Authorization', `Bearer ${tokenB}`);
+    const stillOwn = employeesBAfter.body.find((e: any) => e.id === foreignEmployeeId);
+    expect(stillOwn.position_id ?? null).toBeNull();
+  });
 });

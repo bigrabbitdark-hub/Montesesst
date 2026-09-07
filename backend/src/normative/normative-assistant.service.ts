@@ -153,10 +153,16 @@ export class NormativeAssistantService {
       // linha poderia forjar uma linha `[op-N] ...` extra que imita um
       // item real, ou tentar embutir uma instrução dentro do texto que
       // o modelo trata como dado (achado da revisão final da Fase 10).
-      operationalItems = summary.atencao.map((item, i) => ({
-        id: `op-${i}`,
-        titulo: item.titulo.replace(/\s+/g, ' ').trim().slice(0, 200),
-      }));
+      // Itens tipo:'cargo' (Fase 23) contêm nome completo de funcionário —
+      // não fazem sentido pro Assistente normativo responder pergunta
+      // nenhuma, e a spec desta fase exclui qualquer uso de IA. Filtrados
+      // antes de entrar no prompt, não só sanitizados.
+      operationalItems = summary.atencao
+        .filter((item) => item.tipo !== 'cargo')
+        .map((item, i) => ({
+          id: `op-${i}`,
+          titulo: item.titulo.replace(/\s+/g, ' ').trim().slice(0, 200),
+        }));
     }
 
     if (relevant.length === 0 && operationalItems.length === 0 && !attachmentInput) {

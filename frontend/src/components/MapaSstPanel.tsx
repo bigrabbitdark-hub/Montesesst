@@ -70,6 +70,9 @@ export function MapaSstPanel() {
   const [linkError, setLinkError] = useState('');
   const [epiError, setEpiError] = useState('');
   const [trainingError, setTrainingError] = useState('');
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState('');
+  const [renameError, setRenameError] = useState('');
 
   async function loadPositions() {
     const res = await fetch('/api/positions', { headers: authHeaders() });
@@ -123,6 +126,21 @@ export function MapaSstPanel() {
 
   function updateSuggestionName(index: number, name: string) {
     setSuggestions((prev) => prev.map((s, i) => (i === index ? { ...s, suggested_name: name } : s)));
+  }
+
+  async function handleRename(id: string) {
+    setRenameError('');
+    const res = await fetch(`/api/positions/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({ name: renameValue }),
+    });
+    if (!res.ok) {
+      setRenameError(res.status === 409 ? 'Já existe um cargo com esse nome' : 'Erro ao renomear cargo');
+      return;
+    }
+    setRenamingId(null);
+    loadPositions();
   }
 
   async function openDetail(positionId: string) {
@@ -271,7 +289,53 @@ export function MapaSstPanel() {
         <tbody>
           {positions.map((p) => (
             <tr key={p.id} className="cursor-pointer hover:bg-brand-50" onClick={() => openDetail(p.id)}>
-              <td className="px-2 py-1 font-medium text-brand-900">{p.name}</td>
+              <td className="px-2 py-1 font-medium text-brand-900">
+                {renamingId === p.id ? (
+                  <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                    <input
+                      value={renameValue}
+                      onChange={(e) => setRenameValue(e.target.value)}
+                      className="rounded-md border border-brand-100 px-2 py-1 text-sm"
+                      autoFocus
+                    />
+                    <button
+                      type="button"
+                      onClick={() => handleRename(p.id)}
+                      className="text-xs text-brand-700 underline"
+                    >
+                      Salvar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setRenamingId(null);
+                        setRenameError('');
+                      }}
+                      className="text-xs text-brand-700 underline"
+                    >
+                      Cancelar
+                    </button>
+                    {renameError && <p className="text-xs text-red-600">{renameError}</p>}
+                  </div>
+                ) : (
+                  <span className="inline-flex items-center gap-2">
+                    {p.name}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setRenamingId(p.id);
+                        setRenameValue(p.name);
+                        setRenameError('');
+                      }}
+                      className="text-xs text-brand-400 hover:text-brand-700"
+                      aria-label="Renomear cargo"
+                    >
+                      ✏️
+                    </button>
+                  </span>
+                )}
+              </td>
               <td className="px-2 py-1">{p.employee_count}</td>
               <td className="px-2 py-1">{p.epi_requirement_count + p.training_requirement_count}</td>
               <td className="px-2 py-1">

@@ -13,7 +13,7 @@ type DashboardStatus = 'ok' | 'atencao' | 'critico';
 type AttentionPriority = 'alta' | 'media' | 'baixa';
 
 interface AttentionItem {
-  tipo: 'documento' | 'epi' | 'acao' | 'inspecao';
+  tipo: 'documento' | 'epi' | 'acao' | 'inspecao' | 'cargo';
   titulo: string;
   prioridade: AttentionPriority;
   data: string | null;

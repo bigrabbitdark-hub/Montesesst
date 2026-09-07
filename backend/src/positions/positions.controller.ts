@@ -1,4 +1,17 @@
-import { BadRequestException, Body, Controller, Get, Param, Patch, Post, Put, Query, Req } from '@nestjs/common';
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Put,
+  Query,
+  Req,
+  UsePipes,
+  ValidationPipe,
+} from '@nestjs/common';
 import { Roles } from '../common/decorators/roles.decorator';
 import { PositionsService } from './positions.service';
 import { CreatePositionDto } from './dto/create-position.dto';
@@ -8,6 +21,7 @@ import { SetEpiRequirementsDto } from './dto/set-epi-requirements.dto';
 import { SetTrainingRequirementsDto } from './dto/set-training-requirements.dto';
 
 @Controller('positions')
+@UsePipes(new ValidationPipe({ transform: true, whitelist: true, forbidNonWhitelisted: true }))
 export class PositionsController {
   constructor(private readonly positions: PositionsService) {}
 
