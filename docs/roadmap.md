@@ -2615,3 +2615,126 @@ pós-restauração, todas verdes. Frontend sem suíte automatizada —
 Playwright contra produção real em todas as 4 tasks e no fix-wave
 final, incluindo prova por contagem exata de chamadas de rede (não
 duplicar POST na reimportação).
+
+## Fase 22 — Funcionários: importação flexível de planilha: status
+
+Segunda fatia da visão de "Diagnóstico Inicial" trazida pelo fundador
+em 2026-09-06 (a primeira foi a Fase 21, upload de documentos em
+lote). Substitui a importação rígida antiga (CSV de cabeçalho fixo,
+`POST /employees/import`, mantido intacto pra não quebrar nenhum
+consumidor existente) por um fluxo de duas etapas — analisar
+planilha (CSV ou XLSX real, cabeçalho livre) e confirmar um
+mapeamento de coluna — sem nenhuma IA envolvida: mapeamento sugerido
+por dicionário de sinônimos determinístico ("Nível 1 — sem LLM", ver
+`docs/assistente-montese-principios.md`), já que a spec definiu que
+uma tarefa puramente mecânica de correspondência de cabeçalho não
+precisa de um modelo de linguagem.
+
+**Fechada em 2026-09-07, 3 tasks + revisão final (opus) com 0
+Critical + 7 Important + 9 Minor, corrigidos numa rodada única de
+fix-wave + re-revisão escopada:**
+
+- **Task 1** — `spreadsheet-import.util.ts` novo: `parseSpreadsheet`
+  (CSV via reaproveitamento de `splitCsvLine` já existente, XLSX via
+  `exceljs`), `suggestColumnMapping` (dicionário de sinônimos pras 4
+  colunas — nome/cpf/cargo/filial — normalizado sem acento/case) e
+  `applyColumnMapping` (extrai e normaliza CPF). `exceljs` escolhido
+  em vez do `xlsx`(SheetJS) por licença MIT sem a controvérsia de
+  distribuição do SheetJS.
+- **Task 2** — `EmployeesService.importCsv` reduzido a parse+delegação;
+  lógica de validação/inserção (nome obrigatório, CPF 11 dígitos,
+  filial existente, SAVEPOINT por linha) extraída pro método
+  compartilhado `processImportRows`, reaproveitado tanto pelo caminho
+  antigo quanto pelos 2 endpoints novos: `POST /employees/import-preview`
+  (devolve cabeçalho + mapeamento sugerido + amostra de linhas) e
+  `POST /employees/import-mapped` (aplica o mapeamento confirmado pelo
+  usuário e importa). Um bug real no meu próprio brief de teste
+  (assumia que `createTenantWithUser` cria uma `company_unit`
+  automaticamente, o que é falso) foi encontrado pelo implementador via
+  falha real de teste (RED-phase inesperado) e corrigido, confirmado
+  de forma independente pelo revisor lendo `db-test-helper.ts` de
+  ponta a ponta.
+- **Task 3** — `FuncionariosForm.tsx` (onboarding) ganha o fluxo de
+  duas etapas: upload → "Analisar planilha" → grade de 4 `<select>`
+  de mapeamento (pré-preenchidos pela sugestão, valor = índice da
+  coluna, nunca nome — evita ambiguidade de cabeçalho duplicado) →
+  "Confirmar e importar". Único arquivo tocado; interface antiga de
+  upload de CSV rígido substituída por completo (decisão do fundador),
+  endpoint antigo mantido no backend sem nenhum consumidor a mais.
+
+**Revisão final (opus, dispatch único) achou 0 Critical + 7 Important
++ 9 Minor, todos verificados empiricamente (testado de verdade dentro
+do container, não só leitura de código) — 5 Important + a mitigação
+de memória do 6º corrigidos numa rodada única de fix-wave, 1 Important
+parqueado com ruling, todos os 9 Minor parqueados:**
+
+- **Important**: XLSX inválido/corrompido devolvia 500 (com stack
+  trace disparando alarme) em vez de 400 — `parseXlsxRows` não tinha
+  try/catch nem checava se a planilha existia. Corrigido com try/catch
+  + checagem explícita de `worksheets[0]`.
+- **Important**: célula de fórmula/rich-text/hyperlink do `exceljs`
+  virava o literal `"[object Object]"` em vez do texto real (`String
+  (cell).trim()` assumia célula sempre escalar) — risco real de gravar
+  esse literal como nome/cargo do funcionário. Corrigido com um
+  `cellToText()` novo que trata os 4 formatos de objeto do exceljs
+  (`richText`, `{formula,result}`, `{text,hyperlink}`, `{error}`).
+- **Important**: detecção de formato só por mimetype, ignorando o nome
+  do arquivo — regressão em relação ao endpoint antigo, que aceitava
+  qualquer mimetype (browsers/SOs reais mandam mimetype inconsistente
+  pra CSV/XLSX). Corrigido com fallback pra extensão do arquivo
+  (`file.originalname` agora trafega do controller até o parser).
+- **Important** (proteção de memória, mitigação barata em vez da
+  solução completa): `MAX_IMPORT_ROWS` só era checado depois do
+  workbook XLSX inteiro já materializado em memória. Corrigido com um
+  teto de tamanho de arquivo de 3MB pra XLSX, checado antes de tentar
+  carregar — decisão deliberada do controlador de não implementar a
+  solução completa (streaming reader) sugerida pelo revisor, por ser
+  grande demais pra um fix-wave final de rodada única.
+- **Important** (plan-mandated): comentário explicativo do porquê do
+  SAVEPOINT por linha se perdeu na extração da Task 2 (o próprio texto
+  do plano já não tinha o comentário) — restaurado.
+- **Important** (plan-mandated): mensagem de erro duplicada na tela
+  (`FuncionariosForm.tsx` renderizava o mesmo `importError` em dois
+  lugares simultâneos sempre que um erro ocorria na etapa de
+  confirmação) — corrigido tornando o primeiro bloco condicional a
+  `!preview`.
+- **Important parqueado, não corrigido nesta fase**: parsing de CSV
+  com célula multi-linha (campo entre aspas com quebra de linha
+  embutida) desalinha as linhas seguintes — limitação pré-existente do
+  parser de CSV do projeto, mas o raio de alcance cresceu com planilha
+  livre em vez do formato rígido antigo. Correção completa exige
+  reescrever o parser de CSV compartilhado com o caminho antigo —
+  maior do que cabe num fix-wave final de rodada única. Fica como task
+  futura dedicada. Sem risco de perda de dado (linha vira erro de
+  validação visível, não é importada errada).
+- 9 Minor, todos parqueados (triviais ou fora do escopo da spec):
+  `JSON.parse` do mapeamento sem validar o shape; índice de coluna
+  duplicado permitido silenciosamente; `import-preview` registrado
+  pelo `AuditInterceptor` genérico como "create" (ruído de auditoria);
+  CPF com zero à esquerda vira número no Excel; regex de acento com
+  caracteres Unicode literais em vez de range escapado; tipo
+  `string[][]` tecnicamente impreciso pra linha esparsa; `exceljs` traz
+  78 deps transitivas (nota de supply-chain); erro 413 em inglês cru
+  sem pré-checagem no cliente; sinônimo "n do cpf" praticamente
+  inalcançável (herdado da spec).
+
+Fix-wave final e sua re-revisão escopada confirmaram todos os 6 itens
+corrigidos ADDRESSED com evidência file:line cotejada contra o código
+real (não só o relatório do implementador) — 0 quebra nova introduzida
+pelo fix, diff conferido byte-a-byte contra o brief.
+
+**Verificação:** backend com suíte e2e real (Postgres real, sem IA
+envolvida nesta fase — mapeamento é 100% determinístico) — 20/20
+unitários (`spreadsheet-import.unit-spec.ts`, 11 originais + 9 novos
+do fix-wave), 6/6 na suíte nova de endpoints, 16/16 de regressão
+completa da suíte `employees` (incluindo o caminho antigo intacto).
+Frontend sem suíte automatizada — Playwright contra o bundle real
+implantado em produção (deploy confirmado via grep no bundle antes de
+cada rodada), com asserções reais de DOM/FormData (valor de `<select>`
+= índice da coluna, conteúdo do FormData inspecionado no corpo bruto
+da requisição).
+
+**Ainda sem spec, fica pra quando for a vez**: a terceira fatia
+conhecida de "Diagnóstico Inicial" — o "Mapa SST" (grafo de entidade
+empresa→cargo→funcionário→EPI→treinamento com detecção de
+divergência).
