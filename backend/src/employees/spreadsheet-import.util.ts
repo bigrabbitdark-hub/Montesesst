@@ -24,6 +24,22 @@ export interface MappedEmployeeRow {
 
 const CSV_MIME_TYPES = ['text/csv', 'application/vnd.ms-excel'];
 const XLSX_MIME_TYPE = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+const XLSX_MAX_BYTES = 3 * 1024 * 1024;
+
+type SpreadsheetKind = 'csv' | 'xlsx';
+
+// Nem todo navegador/SO manda o mimetype "certo" pra .csv/.xlsx (ex.:
+// text/plain, application/octet-stream) — cai pra extensão do nome do
+// arquivo quando o mimetype não bate com nenhum dos dois formatos
+// suportados.
+function detectKind(mimetype: string, filename?: string): SpreadsheetKind | null {
+  if (CSV_MIME_TYPES.includes(mimetype)) return 'csv';
+  if (mimetype === XLSX_MIME_TYPE) return 'xlsx';
+  const ext = filename?.toLowerCase().split('.').pop();
+  if (ext === 'csv') return 'csv';
+  if (ext === 'xlsx') return 'xlsx';
+  return null;
+}
 
 function parseCsvRows(content: string): string[][] {
   return content
@@ -32,30 +48,83 @@ function parseCsvRows(content: string): string[][] {
     .map((line) => splitCsvLine(line));
 }
 
+// Célula de fórmula/rich text/hyperlink do exceljs não é um valor
+// escalar — é um objeto ({formula, result}, {richText:[...]},
+// {text, hyperlink}, {error}). Sem tratar essas formas, String(cell)
+// virava o literal "[object Object]" gravado como nome/cargo do
+// funcionário.
+function cellToText(cell: unknown): string {
+  if (cell === null || cell === undefined) return '';
+  if (cell instanceof Date) return cell.toISOString();
+  if (typeof cell === 'object') {
+    const obj = cell as Record<string, unknown>;
+    if ('richText' in obj && Array.isArray(obj.richText)) {
+      return (obj.richText as Array<{ text?: string }>).map((part) => part.text ?? '').join('').trim();
+    }
+    if ('result' in obj) {
+      return cellToText(obj.result);
+    }
+    if ('text' in obj && typeof obj.text === 'string') {
+      return obj.text.trim();
+    }
+    if ('error' in obj) {
+      return '';
+    }
+    return '';
+  }
+  return String(cell).trim();
+}
+
 async function parseXlsxRows(buffer: Buffer): Promise<string[][]> {
   const workbook = new ExcelJS.Workbook();
   await workbook.xlsx.load(buffer as any);
   const worksheet = workbook.worksheets[0];
+  if (!worksheet) {
+    throw new Error('Planilha .xlsx sem nenhuma aba');
+  }
   const rows: string[][] = [];
   worksheet.eachRow((row) => {
     const values = row.values as unknown[];
-    // exceljs é 1-indexed — values[0] é sempre undefined, os valores reais
-    // começam em values[1].
-    rows.push(
-      values.slice(1).map((cell) => (cell === null || cell === undefined ? '' : String(cell).trim())),
-    );
+    rows.push(values.slice(1).map((cell) => cellToText(cell)));
   });
   return rows;
 }
 
-export async function parseSpreadsheet(buffer: Buffer, mimetype: string): Promise<SpreadsheetParseResult> {
-  let rows: string[][];
-  if (CSV_MIME_TYPES.includes(mimetype)) {
-    rows = parseCsvRows(buffer.toString('utf-8'));
-  } else if (mimetype === XLSX_MIME_TYPE) {
-    rows = await parseXlsxRows(buffer);
-  } else {
+export async function parseSpreadsheet(
+  buffer: Buffer,
+  mimetype: string,
+  filename?: string,
+): Promise<SpreadsheetParseResult> {
+  const kind = detectKind(mimetype, filename);
+  if (kind === null) {
     return { headers: [], rows: [], formatError: 'Formato de arquivo não suportado — envie um .csv ou .xlsx' };
+  }
+
+  let rows: string[][];
+  if (kind === 'csv') {
+    rows = parseCsvRows(buffer.toString('utf-8'));
+  } else {
+    // Checagem de tamanho ANTES de carregar o workbook: um .xlsx
+    // comprimido pequeno pode expandir bem além do próprio tamanho em
+    // memória — mais barato rejeitar cedo do que confiar só no limite de
+    // MAX_IMPORT_ROWS, que só é checado depois do workbook inteiro já
+    // estar montado.
+    if (buffer.length > XLSX_MAX_BYTES) {
+      return {
+        headers: [],
+        rows: [],
+        formatError: `Arquivo .xlsx muito grande (máximo ${XLSX_MAX_BYTES / (1024 * 1024)}MB)`,
+      };
+    }
+    try {
+      rows = await parseXlsxRows(buffer);
+    } catch {
+      return {
+        headers: [],
+        rows: [],
+        formatError: 'Não foi possível ler o arquivo .xlsx — verifique se não está corrompido',
+      };
+    }
   }
 
   if (rows.length === 0) {
@@ -74,10 +143,6 @@ export async function parseSpreadsheet(buffer: Buffer, mimetype: string): Promis
   return { headers, rows: dataRows };
 }
 
-// Sinônimos reconhecidos, comparação case-insensitive e sem acento (ver
-// normalizeHeader). "setor" entra como sinônimo aproximado de "filial" —
-// se um dia existir um campo "setor" de funcionário separado, revisitar
-// esta entrada (nota já registrada na spec desta fase).
 const SYNONYMS: Record<keyof ColumnMapping, string[]> = {
   nome: ['nome', 'nome completo', 'funcionario', 'colaborador', 'nome do funcionario'],
   cpf: ['cpf', 'documento', 'cpf/mf', 'numero do cpf', 'n do cpf'],
@@ -106,9 +171,6 @@ export function suggestColumnMapping(headers: string[]): ColumnMapping {
 
 export function applyColumnMapping(rows: string[][], mapping: ColumnMapping): MappedEmployeeRow[] {
   return rows.map((row, i) => ({
-    // +2: +1 porque `rows` já excluiu a linha de cabeçalho, +1 porque
-    // linha é 1-indexada pro usuário. Aproximado se houve linha em branco
-    // no meio do arquivo original (simplificação documentada na spec).
     line: i + 2,
     full_name: mapping.nome !== null ? (row[mapping.nome] ?? '') : '',
     cpf: mapping.cpf !== null ? (row[mapping.cpf] ?? '').replace(/\D/g, '') : '',

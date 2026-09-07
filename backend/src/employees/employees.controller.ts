@@ -64,7 +64,7 @@ export class EmployeesController {
   @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 10 * 1024 * 1024 } }))
   async previewImport(@UploadedFile() file: Express.Multer.File) {
     if (!file) throw new BadRequestException('Nenhum arquivo enviado');
-    return this.employees.previewSpreadsheet(file.buffer, file.mimetype);
+    return this.employees.previewSpreadsheet(file.buffer, file.mimetype, file.originalname);
   }
 
   @Roles('empresa', 'admin')
@@ -87,7 +87,7 @@ export class EmployeesController {
     if (!tenantId) throw new BadRequestException('tenant_id é obrigatório');
 
     return req.withTenantContext((client: any) =>
-      this.employees.importMapped(client, tenantId, file.buffer, file.mimetype, mapping),
+      this.employees.importMapped(client, tenantId, file.buffer, file.mimetype, mapping, file.originalname),
     );
   }
 

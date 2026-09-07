@@ -179,8 +179,9 @@ export class EmployeesService {
   async previewSpreadsheet(
     buffer: Buffer,
     mimetype: string,
+    filename?: string,
   ): Promise<{ headers: string[]; suggested_mapping: ColumnMapping; sample_rows: string[][]; total_rows: number }> {
-    const { headers, rows, formatError } = await parseSpreadsheet(buffer, mimetype);
+    const { headers, rows, formatError } = await parseSpreadsheet(buffer, mimetype, filename);
     if (formatError) throw new BadRequestException(formatError);
 
     return {
@@ -197,8 +198,9 @@ export class EmployeesService {
     buffer: Buffer,
     mimetype: string,
     mapping: ColumnMapping,
+    filename?: string,
   ): Promise<ImportResult> {
-    const { rows, formatError } = await parseSpreadsheet(buffer, mimetype);
+    const { rows, formatError } = await parseSpreadsheet(buffer, mimetype, filename);
     if (formatError) throw new BadRequestException(formatError);
 
     const mappedRows = applyColumnMapping(rows, mapping);
@@ -240,6 +242,12 @@ export class EmployeesService {
         continue;
       }
 
+      // SAVEPOINT por linha: sem isso, o primeiro erro de INSERT (ex.: CPF
+      // duplicado) deixa a transação inteira em estado "aborted" pro
+      // Postgres, que rejeita todo comando subsequente até um ROLLBACK —
+      // inclusive o INSERT das linhas seguintes que seriam válidas.
+      // Isolando cada linha em seu próprio savepoint, só a linha que falhou
+      // é desfeita, as demais seguem normalmente.
       await client.query('SAVEPOINT import_row');
       try {
         await client.query(

@@ -59,6 +59,118 @@ describe('spreadsheet-import.util', () => {
       const result = await parseSpreadsheet(Buffer.from('qualquer coisa'), 'application/pdf');
       expect(result.formatError).toContain('não suportado');
     });
+
+    it('devolve formatError (sem lançar) pro mimetype genérico sem filename', async () => {
+      const result = await parseSpreadsheet(Buffer.from('qualquer coisa'), 'application/octet-stream');
+      expect(result.formatError).toContain('não suportado');
+    });
+
+    it('devolve formatError (sem lançar) pro mimetype genérico com extensão desconhecida', async () => {
+      const result = await parseSpreadsheet(
+        Buffer.from('qualquer coisa'),
+        'application/octet-stream',
+        'planilha.pdf',
+      );
+      expect(result.formatError).toContain('não suportado');
+    });
+  });
+
+  describe('parseSpreadsheet — XLSX corrompido/inválido', () => {
+    it('buffer aleatório (não é um zip válido) devolve formatError sem lançar', async () => {
+      const result = await parseSpreadsheet(
+        Buffer.from('isto nao e um arquivo xlsx valido, so bytes aleatorios'),
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      );
+      expect(result.formatError).toContain('corrompido');
+    });
+
+    it('zip válido mas sem nenhuma planilha devolve formatError sem lançar', async () => {
+      const workbook = new ExcelJS.Workbook();
+      const arrayBuffer = await workbook.xlsx.writeBuffer();
+      const buffer = Buffer.from(arrayBuffer);
+      const result = await parseSpreadsheet(
+        buffer,
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      );
+      expect(result.formatError).toContain('corrompido');
+    });
+  });
+
+  describe('parseSpreadsheet — detecção de formato por extensão (fallback)', () => {
+    it('mimetype genérico + filename .csv detecta como CSV', async () => {
+      const csv = 'nome,cpf,cargo,filial\nJoão Silva,12345678900,Eletricista,Matriz\n';
+      const result = await parseSpreadsheet(
+        Buffer.from(csv, 'utf-8'),
+        'application/octet-stream',
+        'funcionarios.csv',
+      );
+      expect(result.formatError).toBeUndefined();
+      expect(result.headers).toEqual(['nome', 'cpf', 'cargo', 'filial']);
+    });
+
+    it('mimetype genérico + filename .xlsx detecta como XLSX', async () => {
+      const buffer = await buildTestXlsx([
+        ['nome', 'cpf', 'cargo', 'filial'],
+        ['João Silva', '12345678900', 'Eletricista', 'Matriz'],
+      ]);
+      const result = await parseSpreadsheet(buffer, 'application/octet-stream', 'funcionarios.xlsx');
+      expect(result.formatError).toBeUndefined();
+      expect(result.headers).toEqual(['nome', 'cpf', 'cargo', 'filial']);
+    });
+  });
+
+  describe('parseSpreadsheet — teto de tamanho do XLSX', () => {
+    it('buffer .xlsx maior que 3MB devolve formatError sem chamar ExcelJS.load', async () => {
+      const bigBuffer = Buffer.alloc(3 * 1024 * 1024 + 1, 'a');
+      const start = Date.now();
+      const result = await parseSpreadsheet(
+        bigBuffer,
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      );
+      const elapsed = Date.now() - start;
+      expect(result.formatError).toContain('muito grande');
+      // Se estivesse tentando carregar 3MB+ de bytes aleatórios como zip via
+      // ExcelJS, levaria (e provavelmente lançaria) — retorno deve ser
+      // imediato, confirmando que o guard de tamanho roda ANTES do parse.
+      expect(elapsed).toBeLessThan(500);
+    });
+  });
+
+  describe('parseSpreadsheet — célula de fórmula/rich text', () => {
+    it('célula de fórmula extrai o result, não "[object Object]"', async () => {
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet('Funcionários');
+      worksheet.addRow(['nome', 'cpf', 'cargo', 'filial']);
+      const row = worksheet.addRow(['João Silva', '12345678900', '', 'Matriz']);
+      row.getCell(3).value = { formula: '=1+1', result: 2 } as any;
+      const arrayBuffer = await workbook.xlsx.writeBuffer();
+      const buffer = Buffer.from(arrayBuffer);
+
+      const result = await parseSpreadsheet(
+        buffer,
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      );
+      expect(result.formatError).toBeUndefined();
+      expect(result.rows[0][2]).toBe('2');
+      expect(result.rows[0][2]).not.toBe('[object Object]');
+    });
+
+    it('célula de rich text concatena os fragmentos de texto', async () => {
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet('Funcionários');
+      worksheet.addRow(['nome', 'cpf', 'cargo', 'filial']);
+      const row = worksheet.addRow(['', '12345678900', 'Eletricista', 'Matriz']);
+      row.getCell(1).value = { richText: [{ text: 'ab' }, { text: 'cd' }] } as any;
+      const arrayBuffer = await workbook.xlsx.writeBuffer();
+      const buffer = Buffer.from(arrayBuffer);
+
+      const result = await parseSpreadsheet(
+        buffer,
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      );
+      expect(result.formatError).toBeUndefined();
+      expect(result.rows[0][0]).toBe('abcd');
+    });
   });
 
   describe('suggestColumnMapping', () => {

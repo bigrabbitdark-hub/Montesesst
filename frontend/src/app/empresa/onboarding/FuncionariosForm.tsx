@@ -227,7 +227,7 @@ export function FuncionariosForm({ units, onChanged }: { units: CompanyUnit[]; o
             accept=".csv,.xlsx"
             label="Escolher planilha"
           />
-          {importError && <p className="text-sm text-red-600">{importError}</p>}
+          {!preview && importError && <p className="text-sm text-red-600">{importError}</p>}
           <button
             type="submit"
             disabled={!file || importStatus === 'analisando'}
