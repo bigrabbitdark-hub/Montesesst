@@ -38,6 +38,21 @@ interface AiUsage {
   error?: string;
 }
 
+interface MiniMaxUsageByCapability {
+  capability: string;
+  calls: number;
+  prompt_tokens: number;
+  completion_tokens: number;
+  total_tokens: number;
+}
+
+interface MiniMaxUsage {
+  total_calls: number;
+  total_tokens: number;
+  by_capability: MiniMaxUsageByCapability[];
+  last_7_days: { date: string; total_tokens: number }[];
+}
+
 function formatCents(cents: number): string {
   return (cents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
@@ -93,6 +108,7 @@ export default function AdminOverviewPage() {
   const [systemStatus, setSystemStatus] = useState<SystemStatus | null>(null);
   const [systemStatusError, setSystemStatusError] = useState('');
   const [aiUsage, setAiUsage] = useState<AiUsage | null>(null);
+  const [miniMaxUsage, setMiniMaxUsage] = useState<MiniMaxUsage | null>(null);
 
   useEffect(() => {
     const token = localStorage.getItem('montese_token');
@@ -125,6 +141,16 @@ export default function AdminOverviewPage() {
       .then(setAiUsage)
       .catch(() => {
         // seção de IA fica oculta; não é crítico o bastante pra um erro de página
+      });
+
+    fetch('/api/admin/ai-usage', { headers: { Authorization: `Bearer ${token}` } })
+      .then((res) => {
+        if (!res.ok) throw new Error();
+        return res.json();
+      })
+      .then(setMiniMaxUsage)
+      .catch(() => {
+        // mesma lógica da seção OpenRouter acima — fica oculta em erro
       });
   }, [router]);
 
@@ -231,6 +257,44 @@ export default function AdminOverviewPage() {
               )}
             </div>
           )}
+        </section>
+      )}
+
+      {miniMaxUsage && (
+        <section className="mt-8 rounded-lg border border-brand-100 p-6">
+          <h3 className="text-lg font-bold text-brand-900">Uso da IA (MiniMax)</h3>
+          <p className="mt-1 text-sm text-brand-700">
+            A MiniMax não expõe uma API de saldo pra contas pay-as-you-go — pra ver o saldo real,
+            use o painel deles diretamente (link abaixo).
+          </p>
+          <div className="mt-4 flex flex-col gap-2 text-sm">
+            <p className="text-brand-900">
+              Total de chamadas: <strong>{miniMaxUsage.total_calls}</strong>
+            </p>
+            <p className="text-brand-900">
+              Total de tokens: <strong>{miniMaxUsage.total_tokens.toLocaleString('pt-BR')}</strong>
+            </p>
+            {miniMaxUsage.by_capability.length > 0 && (
+              <div className="mt-2">
+                <p className="text-xs font-bold uppercase tracking-wide text-brand-700">Por capacidade</p>
+                <ul className="mt-1 flex flex-col gap-1">
+                  {miniMaxUsage.by_capability.map((row) => (
+                    <li key={row.capability} className="text-brand-900">
+                      {row.capability}: {row.calls} chamada(s), {row.total_tokens.toLocaleString('pt-BR')} tokens
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            <a
+              href="https://platform.minimax.io/user-center/payment/balance"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-2 text-brand-500 hover:underline"
+            >
+              Ver saldo real no painel da MiniMax
+            </a>
+          </div>
         </section>
       )}
     </div>
