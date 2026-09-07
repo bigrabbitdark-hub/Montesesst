@@ -30,6 +30,7 @@ const GROUPS: NavGroup[] = [
       { href: '/empresa/epis', label: 'EPIs', emoji: '🦺' },
       { href: '/empresa/consulta-ca', label: 'Consulta de CA', emoji: '🔎' },
       { href: '/empresa/inspecoes', label: 'Inspeções', emoji: '📋' },
+      { href: '/empresa/mapa-sst', label: 'Mapa SST', emoji: '🗺️' },
     ],
   },
   {

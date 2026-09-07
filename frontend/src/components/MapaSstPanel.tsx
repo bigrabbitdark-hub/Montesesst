@@ -67,6 +67,9 @@ export function MapaSstPanel() {
   const [catalogItems, setCatalogItems] = useState<EpiCatalogItem[]>([]);
   const [epiSelection, setEpiSelection] = useState<Set<string>>(new Set());
   const [trainingSelection, setTrainingSelection] = useState<Set<string>>(new Set());
+  const [linkError, setLinkError] = useState('');
+  const [epiError, setEpiError] = useState('');
+  const [trainingError, setTrainingError] = useState('');
 
   async function loadPositions() {
     const res = await fetch('/api/positions', { headers: authHeaders() });
@@ -103,11 +106,16 @@ export function MapaSstPanel() {
   }
 
   async function handleConfirmLinks() {
-    await fetch('/api/positions/confirm-links', {
+    setLinkError('');
+    const res = await fetch('/api/positions/confirm-links', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...authHeaders() },
       body: JSON.stringify({ groups: suggestions }),
     });
+    if (!res.ok) {
+      setLinkError('Erro ao confirmar vínculos');
+      return;
+    }
     setShowLinkReview(false);
     loadPositions();
     loadSuggestions();
@@ -118,33 +126,50 @@ export function MapaSstPanel() {
   }
 
   async function openDetail(positionId: string) {
-    setSelectedPositionId(positionId);
     const res = await fetch(`/api/positions/${positionId}`, { headers: authHeaders() });
     if (!res.ok) return;
     const data: PositionDetail = await res.json();
+    // `selectedPositionId` só é atualizado depois que o GET resolve com
+    // sucesso — se atualizássemos antes (fire-and-forget) e o GET falhasse,
+    // `detail`/`epiSelection`/`trainingSelection` ficariam presos no cargo
+    // anterior enquanto `selectedPositionId` já apontaria pro cargo novo, e
+    // um "Salvar" subsequente gravaria a seleção errada no ID errado.
+    setSelectedPositionId(positionId);
     setDetail(data);
     setEpiSelection(new Set(data.epi_requirement_ids));
     setTrainingSelection(new Set(data.training_requirement_tipos));
+    setEpiError('');
+    setTrainingError('');
   }
 
   async function saveEpiRequirements() {
     if (!selectedPositionId) return;
-    await fetch(`/api/positions/${selectedPositionId}/epi-requirements`, {
+    setEpiError('');
+    const res = await fetch(`/api/positions/${selectedPositionId}/epi-requirements`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json', ...authHeaders() },
       body: JSON.stringify({ epi_catalog_item_ids: Array.from(epiSelection) }),
     });
+    if (!res.ok) {
+      setEpiError('Erro ao salvar EPI exigido');
+      return;
+    }
     openDetail(selectedPositionId);
     loadPositions();
   }
 
   async function saveTrainingRequirements() {
     if (!selectedPositionId) return;
-    await fetch(`/api/positions/${selectedPositionId}/training-requirements`, {
+    setTrainingError('');
+    const res = await fetch(`/api/positions/${selectedPositionId}/training-requirements`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json', ...authHeaders() },
       body: JSON.stringify({ tipos: Array.from(trainingSelection) }),
     });
+    if (!res.ok) {
+      setTrainingError('Erro ao salvar treinamento exigido');
+      return;
+    }
     openDetail(selectedPositionId);
     loadPositions();
   }
@@ -211,6 +236,7 @@ export function MapaSstPanel() {
           >
             Confirmar vínculos
           </button>
+          {linkError && <p className="text-sm text-red-600">{linkError}</p>}
         </div>
       )}
 
@@ -288,6 +314,7 @@ export function MapaSstPanel() {
             >
               Salvar EPI exigido
             </button>
+            {epiError && <p className="mt-1 text-sm text-red-600">{epiError}</p>}
           </div>
 
           <div>
@@ -305,6 +332,7 @@ export function MapaSstPanel() {
             >
               Salvar treinamento exigido
             </button>
+            {trainingError && <p className="mt-1 text-sm text-red-600">{trainingError}</p>}
           </div>
 
           <div>
