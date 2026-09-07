@@ -153,12 +153,16 @@ export class PositionsService {
     if (positionResult.rowCount === 0) throw new NotFoundException('Cargo não encontrado');
     const tenantId = positionResult.rows[0].tenant_id;
 
-    await client.query('DELETE FROM position_epi_requirements WHERE position_id = $1', [positionId]);
-    for (const epiCatalogItemId of epiCatalogItemIds) {
-      await client.query(
-        `INSERT INTO position_epi_requirements (tenant_id, position_id, epi_catalog_item_id) VALUES ($1, $2, $3)`,
-        [tenantId, positionId, epiCatalogItemId],
-      );
+    try {
+      await client.query('DELETE FROM position_epi_requirements WHERE position_id = $1', [positionId]);
+      for (const epiCatalogItemId of epiCatalogItemIds) {
+        await client.query(
+          `INSERT INTO position_epi_requirements (tenant_id, position_id, epi_catalog_item_id) VALUES ($1, $2, $3)`,
+          [tenantId, positionId, epiCatalogItemId],
+        );
+      }
+    } catch (err) {
+      mapPgError(err);
     }
   }
 
@@ -176,12 +180,16 @@ export class PositionsService {
       }
     }
 
-    await client.query('DELETE FROM position_training_requirements WHERE position_id = $1', [positionId]);
-    for (const tipo of tipos) {
-      await client.query(
-        `INSERT INTO position_training_requirements (tenant_id, position_id, tipo) VALUES ($1, $2, $3)`,
-        [tenantId, positionId, tipo],
-      );
+    try {
+      await client.query('DELETE FROM position_training_requirements WHERE position_id = $1', [positionId]);
+      for (const tipo of tipos) {
+        await client.query(
+          `INSERT INTO position_training_requirements (tenant_id, position_id, tipo) VALUES ($1, $2, $3)`,
+          [tenantId, positionId, tipo],
+        );
+      }
+    } catch (err) {
+      mapPgError(err);
     }
   }
 }
