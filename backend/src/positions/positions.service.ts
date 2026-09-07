@@ -1,6 +1,7 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PoolClient } from 'pg';
 import { mapPgError } from '../common/pg-error.util';
+import { TRAINING_TYPES, TrainingType } from '../cipa/trainings.service';
 
 export interface Position {
   id: string;
@@ -141,6 +142,46 @@ export class PositionsService {
           tenantId,
         ]);
       }
+    }
+  }
+
+  async setEpiRequirements(client: PoolClient, positionId: string, epiCatalogItemIds: string[]): Promise<void> {
+    const positionResult = await client.query<{ tenant_id: string }>(
+      'SELECT tenant_id FROM positions WHERE id = $1',
+      [positionId],
+    );
+    if (positionResult.rowCount === 0) throw new NotFoundException('Cargo não encontrado');
+    const tenantId = positionResult.rows[0].tenant_id;
+
+    await client.query('DELETE FROM position_epi_requirements WHERE position_id = $1', [positionId]);
+    for (const epiCatalogItemId of epiCatalogItemIds) {
+      await client.query(
+        `INSERT INTO position_epi_requirements (tenant_id, position_id, epi_catalog_item_id) VALUES ($1, $2, $3)`,
+        [tenantId, positionId, epiCatalogItemId],
+      );
+    }
+  }
+
+  async setTrainingRequirements(client: PoolClient, positionId: string, tipos: string[]): Promise<void> {
+    const positionResult = await client.query<{ tenant_id: string }>(
+      'SELECT tenant_id FROM positions WHERE id = $1',
+      [positionId],
+    );
+    if (positionResult.rowCount === 0) throw new NotFoundException('Cargo não encontrado');
+    const tenantId = positionResult.rows[0].tenant_id;
+
+    for (const tipo of tipos) {
+      if (!TRAINING_TYPES.includes(tipo as TrainingType)) {
+        throw new BadRequestException(`Tipo de treinamento inválido: ${tipo}`);
+      }
+    }
+
+    await client.query('DELETE FROM position_training_requirements WHERE position_id = $1', [positionId]);
+    for (const tipo of tipos) {
+      await client.query(
+        `INSERT INTO position_training_requirements (tenant_id, position_id, tipo) VALUES ($1, $2, $3)`,
+        [tenantId, positionId, tipo],
+      );
     }
   }
 }

@@ -1,9 +1,11 @@
-import { BadRequestException, Body, Controller, Get, Param, Patch, Post, Query, Req } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Get, Param, Patch, Post, Put, Query, Req } from '@nestjs/common';
 import { Roles } from '../common/decorators/roles.decorator';
 import { PositionsService } from './positions.service';
 import { CreatePositionDto } from './dto/create-position.dto';
 import { UpdatePositionDto } from './dto/update-position.dto';
 import { ConfirmLinksDto } from './dto/confirm-links.dto';
+import { SetEpiRequirementsDto } from './dto/set-epi-requirements.dto';
+import { SetTrainingRequirementsDto } from './dto/set-training-requirements.dto';
 
 @Controller('positions')
 export class PositionsController {
@@ -49,5 +51,19 @@ export class PositionsController {
   @Patch(':id')
   update(@Param('id') id: string, @Body() dto: UpdatePositionDto, @Req() req: any) {
     return req.withTenantContext((client: any) => this.positions.update(client, id, dto.name));
+  }
+
+  @Roles('empresa', 'admin')
+  @Put(':id/epi-requirements')
+  setEpiRequirements(@Param('id') id: string, @Body() dto: SetEpiRequirementsDto, @Req() req: any) {
+    return req.withTenantContext((client: any) =>
+      this.positions.setEpiRequirements(client, id, dto.epi_catalog_item_ids),
+    );
+  }
+
+  @Roles('empresa', 'admin')
+  @Put(':id/training-requirements')
+  setTrainingRequirements(@Param('id') id: string, @Body() dto: SetTrainingRequirementsDto, @Req() req: any) {
+    return req.withTenantContext((client: any) => this.positions.setTrainingRequirements(client, id, dto.tipos));
   }
 }
