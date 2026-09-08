@@ -1,8 +1,14 @@
+export interface PlanBullet {
+  text: string;
+  isNote?: boolean;
+}
+
 export interface PlanContent {
   positioning: string;
   subtitle: string;
-  bullets: string[];
+  bullets: PlanBullet[];
   ctaLabel: string;
+  ctaHref?: string;
 }
 
 export const PLAN_CONTENT: Record<string, PlanContent> = {
@@ -11,26 +17,27 @@ export const PLAN_CONTENT: Record<string, PlanContent> = {
     subtitle:
       'Para pequenas empresas que querem estruturar a rotina de Segurança do Trabalho sem manter um técnico dedicado internamente.',
     bullets: [
-      'Assistente Montese SST (dúvidas, análise de documentos, localização de pendências, acompanhamento de prazos)',
-      'Central de documentos (upload, organização, histórico)',
-      'Cadastro de funcionários, cargos e filiais',
-      'Gestão de EPIs (registro e entrega)',
-      'Inspeções com checklist e plano de ação',
-      'Calendário SST e central de pendências',
-      'Atendimento técnico avulso sob consulta (online ou presencial, conforme disponibilidade e região)',
+      { text: 'Assistente Montese SST (dúvidas, análise de documentos, localização de pendências, acompanhamento de prazos)' },
+      { text: 'Central de documentos (upload, organização, histórico)' },
+      { text: 'Cadastro de funcionários, cargos e filiais' },
+      { text: 'Gestão de EPIs (registro e entrega)' },
+      { text: 'Inspeções com checklist e plano de ação' },
+      { text: 'Calendário SST e central de pendências' },
+      { text: 'Atendimento técnico avulso online, sob consulta (conforme disponibilidade)' },
     ],
     ctaLabel: 'Começar gratuitamente',
+    ctaHref: '/cadastro',
   },
   'empresa-premium': {
     positioning: 'Plataforma + técnico SST online.',
     subtitle:
       'Para empresas que precisam de acompanhamento profissional sem manter um técnico de segurança contratado em tempo integral.',
     bullets: [
-      'Tudo do Start, mais:',
-      'Técnico responsável acompanhando sua empresa, atendimento remoto',
-      'A inteligência organiza. O técnico avalia. A empresa decide.',
-      'Atendimento online (videochamada, histórico de solicitações)',
-      'Técnico com visão completa de pendências, inspeções, documentos, EPIs e treinamentos',
+      { text: 'Tudo do Start, mais:', isNote: true },
+      { text: 'Técnico responsável acompanhando sua empresa, atendimento remoto' },
+      { text: 'A inteligência organiza. O técnico avalia. A empresa decide.', isNote: true },
+      { text: 'Atendimento online (videochamada, histórico de solicitações)' },
+      { text: 'Técnico com visão completa de pendências, inspeções, documentos, EPIs e treinamentos' },
     ],
     ctaLabel: 'Quero SST + técnico',
   },
@@ -38,10 +45,10 @@ export const PLAN_CONTENT: Record<string, PlanContent> = {
     positioning: 'Acompanhamento contínuo de SST.',
     subtitle: 'Para empresas que precisam de uma atuação mais próxima e estruturada de Segurança do Trabalho.',
     bullets: [
-      'Tudo do Premium, mais:',
-      'O técnico acompanha ativamente os alertas e pendências da plataforma — não só responde quando chamado',
-      'Gestão ativa: revisão de ações, acompanhamento de inspeções e treinamentos, reuniões periódicas',
-      'Visitas presenciais incluídas conforme modalidade contratada e região',
+      { text: 'Tudo do Premium, mais:', isNote: true },
+      { text: 'O técnico acompanha ativamente os alertas e pendências da plataforma — não só responde quando chamado' },
+      { text: 'Gestão ativa: revisão de ações, acompanhamento de inspeções e treinamentos, reuniões periódicas' },
+      { text: 'Visitas presenciais incluídas conforme modalidade contratada e região' },
     ],
     ctaLabel: 'Quero acompanhamento completo',
   },
@@ -50,10 +57,11 @@ export const PLAN_CONTENT: Record<string, PlanContent> = {
     subtitle:
       'Para empresas com múltiplas unidades, operações complexas ou necessidade de estrutura personalizada de SST.',
     bullets: [
-      'Tudo do Super Premium, mais:',
-      'Gestão multiunidade (matriz, filiais, obras)',
-      'Acesso à rede de técnicos parceiros da Montese (visitas presenciais em múltiplas unidades/regiões)',
-      'Atendimento e relatórios personalizados conforme contrato',
+      { text: 'Tudo do Super Premium, mais:', isNote: true },
+      { text: 'Gestão multiunidade (matriz, filiais, obras)' },
+      { text: 'Acesso à rede de técnicos parceiros da Montese (visitas presenciais em múltiplas unidades/regiões)' },
+      { text: 'Integrações com sistemas de RH, ERP e outros sistemas corporativos, sob consulta' },
+      { text: 'Atendimento e relatórios personalizados conforme contrato' },
     ],
     ctaLabel: 'Falar com especialista',
   },
@@ -113,7 +121,7 @@ export const COMPARISON_TABLE: ComparisonRow[] = [
   { feature: 'Reuniões periódicas', start: false, premium: false, superPremium: true, enterprise: true },
   {
     feature: 'Visitas presenciais',
-    start: 'Sob consulta',
+    start: false,
     premium: false,
     superPremium: 'Conforme contrato',
     enterprise: 'Multiunidade',

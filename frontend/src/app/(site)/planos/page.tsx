@@ -102,6 +102,9 @@ export default function PlanosPage() {
             <p>
               🔔 <strong>Alertas e acompanhamento</strong> — datas, pendências e pontos de atenção.
             </p>
+            <p className="sm:col-span-2 sm:text-center">
+              🔐 <strong>Histórico e rastreabilidade</strong> — tudo registrado para consulta e acompanhamento.
+            </p>
           </div>
           <p className="mt-6 text-[15px] font-semibold text-brand-900">
             Qual nível de acompanhamento sua empresa precisa?
@@ -157,9 +160,7 @@ export default function PlanosPage() {
                   ) : (
                     <div className="flex items-baseline gap-1">
                       <span className="text-sm font-semibold text-brand-700">R$</span>
-                      <span
-                        className={`text-[38px] font-extrabold ${isEnterprise ? 'text-white' : 'text-brand-900'}`}
-                      >
+                      <span className="text-[38px] font-extrabold text-brand-900">
                         {(plan.price_cents / 100).toLocaleString('pt-BR', { maximumFractionDigits: 0 })}
                       </span>
                       <span className="text-[13px] text-brand-700">/mês</span>
@@ -169,26 +170,35 @@ export default function PlanosPage() {
 
                 {content && (
                   <ul className="mt-6 flex flex-col gap-2.5">
-                    {content.bullets.map((bullet, i) => (
-                      <li
-                        key={i}
-                        className={`flex items-start gap-2 text-[13px] leading-snug ${
-                          isEnterprise ? 'text-brand-100' : 'text-brand-700'
-                        }`}
-                      >
-                        <span className={`mt-0.5 ${isEnterprise ? 'text-brand-300' : 'text-brand-500'}`}>
-                          <CheckIcon />
-                        </span>
-                        {bullet}
-                      </li>
-                    ))}
+                    {content.bullets.map((bullet, i) =>
+                      bullet.isNote ? (
+                        <li
+                          key={i}
+                          className={`text-[12.5px] font-semibold italic ${
+                            isEnterprise ? 'text-brand-200' : 'text-brand-600'
+                          }`}
+                        >
+                          {bullet.text}
+                        </li>
+                      ) : (
+                        <li
+                          key={i}
+                          className={`flex items-start gap-2 text-[13px] leading-snug ${
+                            isEnterprise ? 'text-brand-100' : 'text-brand-700'
+                          }`}
+                        >
+                          <span className={`mt-0.5 ${isEnterprise ? 'text-brand-300' : 'text-brand-500'}`}>
+                            <CheckIcon />
+                          </span>
+                          {bullet.text}
+                        </li>
+                      ),
+                    )}
                   </ul>
                 )}
 
                 {plan.employee_limit && (
-                  <p className={`mt-4 text-[11.5px] ${isEnterprise ? 'text-brand-400' : 'text-brand-400'}`}>
-                    Até {plan.employee_limit} funcionários
-                  </p>
+                  <p className="mt-4 text-[11.5px] text-brand-400">Até {plan.employee_limit} funcionários</p>
                 )}
 
                 <div className="flex-1" />
@@ -214,7 +224,7 @@ export default function PlanosPage() {
                   </button>
                 ) : (
                   <Link
-                    href="/login"
+                    href={content?.ctaHref ?? '/login'}
                     className={`mt-7 rounded-[9px] px-4 py-3 text-center text-sm font-semibold transition-colors ${
                       isRecommended
                         ? 'bg-brand-500 text-white hover:bg-brand-700'
