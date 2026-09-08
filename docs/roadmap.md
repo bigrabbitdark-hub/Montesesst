@@ -2893,3 +2893,101 @@ pré-existente em `normative-assistant-attachment.e2e-spec.ts`
 antes e depois do fix-wave via `git stash`/`git stash pop` — não é
 regressão desta fase, sinalizada como possível task de acompanhamento
 futura.
+
+## Planos — Proposta comercial e reescrita de `/planos`: status
+
+Primeiro sub-projeto de uma frente maior que o fundador identificou em
+brainstorming: reposicionar a venda dos 4 planos de empresa de
+"quantidade de funcionários" pra "nível de suporte/acompanhamento
+humano" — o fundador enviou um rascunho extenso e já bem desenvolvido
+nessa direção. O segundo sub-projeto (sistema real de enforcement:
+limite de funcionário que bloqueia, cota de atendimento técnico
+rastreada, limite de uso de IA por plano, comissão do técnico por
+visita) foi deliberadamente separado como projeto arquitetural futuro,
+ainda sem spec — decisão confirmada com o fundador logo no início do
+brainstorming, pra não misturar cópia comercial com arquitetura de
+banco/permissões nova.
+
+**Fechada em 2026-09-08, 1 task + revisão final (opus) com 4 Important
++ 3 Minor, todos corrigidos numa rodada única de fix-wave:**
+
+- Reescrita completa de `frontend/src/app/(site)/planos/page.tsx`
+  (seção intro nova, 4 cards com posicionamento/subtítulo/bullets
+  próprios, bloco comum "Assistente Montese SST" em 3 passos + 1
+  opcional, tabela comparativa completa, frase de trial reformulada) +
+  módulo de dados novo `plan-content.ts` (conteúdo estático por
+  `slug`, já que não existe coluna pra isso em `plans` e criar uma
+  ficou fora de escopo). Nenhuma mudança de preço, `employee_limit`,
+  schema, fluxo de assinatura (`handleSubscribe`/`POST /subscriptions`)
+  ou `/tecnico/planos` — confirmado por diff/md5 byte-idêntico ao
+  código anterior.
+- **2 imprecisões corrigidas já durante o brainstorming, antes de
+  qualquer código** (achadas pelo próprio processo de perguntas, não
+  pela revisão): o "monitoramento inteligente" (alertas de
+  pendência/vencimento) já é universal a todo plano hoje — o rascunho
+  original do fundador colocava isso como exclusivo do Super Premium;
+  corrigido pra: alerta universal na tabela, o que o Super Premium
+  acrescenta é o técnico humano acompanhando ativamente. Preço do
+  Enterprise segue "sob consulta" — o R$2.997/mês do rascunho era só
+  ilustrativo, não uma mudança de preço real (confirmado com o
+  fundador).
+- **Revisão final (opus) achou 0 Critical + 4 Important + 3 Minor**,
+  todos verificados de forma independente (diff/md5/`git show
+  --stat`, não só leitura de código):
+  - **Important**: `MountainDivider.tsx` nunca tinha sido commitado no
+    git (usado por 5 páginas do site, não só `/planos`) — um clone
+    limpo quebraria o build inteiro, mesmo produção funcionando (usa o
+    working tree local). Corrigido, adicionado ao commit.
+  - **Important**: CTA "Começar gratuitamente" do Start, pra visitante
+    deslogado, apontava pra `/login` em vez de `/cadastro` como a spec
+    mandava — bug que entrou no texto do próprio plano, não desvio do
+    implementador. Corrigido com um campo `ctaHref` opcional, só no
+    Start.
+  - **Important** (decisão do fundador): o bullet do Start mencionava
+    atendimento avulso presencial, mas o card do Premium ("tudo do
+    Start, mais") herda isso enquanto a tabela marcava "Visitas
+    presenciais" como não incluída no Premium — contradição real.
+    Fundador decidiu: Start passa a oferecer só atendimento avulso
+    ONLINE, sem presencial — resolve a contradição nos dois lugares
+    (bullet + célula da tabela).
+  - **Important** (decisão do fundador): a linha "Integrações /
+    customização" da tabela prometia algo (só Enterprise) sem nenhum
+    bullet correspondente no card. Fundador decidiu manter a promessa
+    comercial ("sob consulta") — corrigido adicionando o bullet
+    faltante.
+  - 3 Minor corrigidos por serem baratos: título de seção ("Tudo do X,
+    mais:") e frase de efeito ganhavam checkmark de recurso real igual
+    aos bullets de verdade (corrigido com um tipo `PlanBullet`
+    distinguindo nota de recurso); 2 ternários mortos (`isEnterprise
+    ? 'text-white' : 'text-brand-900'` dentro de uma branch que só
+    roda quando `!isEnterprise`); lista da intro tinha só 4 dos 5
+    itens que a própria spec pedia (faltava "Histórico e
+    rastreabilidade").
+  - Demais Minor (acessibilidade da tabela — `scope`/`aria-hidden`
+    faltando; tabela de cabeçalho estático vs. cards dinâmicos da API;
+    tipagem do lookup sem `| undefined`; `employee_limit` renderizando
+    `0` cru; menção a "videochamada"/"histórico de solicitações" no
+    Premium sem correspondência exata no produto; manter "Até N
+    funcionários" visível apesar do redesenho de-enfatizar isso)
+    ficaram parqueados, fora do fix-wave.
+
+Fix-wave final e sua re-revisão escopada confirmados por reprodução
+independente (revisor conferiu cada bullet palavra por palavra contra
+a versão anterior, `git show --stat` direto no commit real pra
+confirmar que `MountainDivider.tsx` genuinamente entrou) — 0 achados
+novos, sem regressão.
+
+**Verificação:** frontend sem suíte automatizada — Playwright contra o
+bundle real implantado em produção na task e no fix-wave final (deploy
+confirmado via grep no bundle antes de cada rodada): 20/20 cenários
+originais + 18/18 do fix-wave, incluindo asserção de `href` (não só
+texto do botão) e confirmação de que o CTA do Premium com sessão
+logada ainda dispara `POST /api/subscriptions` com o `plan_id` certo
+(fluxo de assinatura intocado).
+
+**Fora de escopo, fica pra quando for a vez**: o sistema real de
+enforcement (limite de funcionário que bloqueia, cota de atendimento
+técnico rastreada, limite de uso de IA por plano, comissão do técnico
+por visita presencial) — segundo sub-projeto desta frente, ainda sem
+spec, precisa de brainstorming próprio (decisões de banco de dados,
+permissões, economia).
