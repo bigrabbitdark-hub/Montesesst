@@ -26,6 +26,7 @@ import { CipaModule } from './cipa/cipa.module';
 import { CaepiModule } from './caepi/caepi.module';
 import { PositionsModule } from './positions/positions.module';
 import { FireSafetyEquipmentModule } from './fire-safety-equipment/fire-safety-equipment.module';
+import { FireBrigadeModule } from './fire-brigade/fire-brigade.module';
 import { JwtAuthGuard } from './auth/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 import { TenantContextInterceptor } from './common/interceptors/tenant-context.interceptor';
@@ -71,6 +72,7 @@ import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
     CaepiModule,
     PositionsModule,
     FireSafetyEquipmentModule,
+    FireBrigadeModule,
   ],
   providers: [
     // Ordem importa: RateLimitGuard barra abuso antes de qualquer auth;
