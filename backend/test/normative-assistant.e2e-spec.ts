@@ -1,6 +1,7 @@
 import { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
+import Redis from 'ioredis';
 import { AppModule } from '../src/app.module';
 import { EMBEDDING_PROVIDER } from '../src/normative/embedding-provider.interface';
 import { NORMATIVE_ANSWER_PROVIDER } from '../src/normative/normative-answer-provider.interface';
@@ -8,9 +9,20 @@ import { toVectorLiteral } from '../src/normative/vector.util';
 import { TestDb } from './db-test-helper';
 import { DatabaseService } from '../src/common/database/database.service';
 
+// Mesmo motivo do CONTACT_RATE_LIMIT_KEY em contact.e2e-spec.ts — este
+// arquivo faz muitas chamadas a /assistant/normative-query (rota com
+// @RateLimit próprio, contador isolado por rota no RateLimitGuard), todas
+// do mesmo IP de loopback, e o limite padrão (ASSISTANT_RATE_LIMIT_MAX=20)
+// é facilmente ultrapassado pela soma dos testes deste arquivo somada a
+// qualquer execução anterior dentro da mesma janela de 1h — sem isso, uma
+// segunda rodada da suíte dentro da mesma hora falha com 429 em vez do
+// status esperado, mascarando qualquer regressão real.
+const ASSISTANT_RATE_LIMIT_KEY = 'ratelimit:NormativeAssistantController.query:::ffff:127.0.0.1';
+
 describe('POST /assistant/normative-query (e2e)', () => {
   let app: INestApplication;
   let db: TestDb;
+  let redis: Redis;
   let tokenAdmin: string;
   let tokenEmpresa: string;
   let tokenTecnico: string;
@@ -55,6 +67,9 @@ describe('POST /assistant/normative-query (e2e)', () => {
 
     db = new TestDb();
     await db.connect();
+
+    redis = new Redis(process.env.REDIS_URL as string);
+    await redis.del(ASSISTANT_RATE_LIMIT_KEY);
 
     const admin = await db.createUserWithRole('admin', 'Admin Assistente Teste');
     const loginAdmin = await request(app.getHttpServer())
@@ -104,8 +119,9 @@ describe('POST /assistant/normative-query (e2e)', () => {
     chunkId = chunk.rows[0].id;
   });
 
-  afterEach(() => {
+  afterEach(async () => {
     fakeAnswer.mockReset();
+    await redis.del(ASSISTANT_RATE_LIMIT_KEY);
   });
 
   afterAll(async () => {
@@ -116,6 +132,8 @@ describe('POST /assistant/normative-query (e2e)', () => {
     await client.query('DELETE FROM official_sources WHERE id = $1', [sourceId]);
     await db.cleanup();
     await db.disconnect();
+    await redis.del(ASSISTANT_RATE_LIMIT_KEY);
+    redis.disconnect();
     await app.close();
   });
 
@@ -470,5 +488,59 @@ describe('POST /assistant/normative-query (e2e)', () => {
     await client.query('DELETE FROM positions WHERE tenant_id = $1', [cargoTenant.tenantId]);
     await client.query('DELETE FROM users WHERE tenant_id = $1', [cargoTenant.tenantId]);
     await client.query('DELETE FROM tenants WHERE id = $1', [cargoTenant.tenantId]);
+  });
+
+  it('item operacional tipo:"brigada_incendio" (integração da brigada de incêndio no dashboard) nunca entra no prompt do Assistente, mesmo contendo nome completo de funcionário (LGPD — mesma razão do filtro de tipo:"cargo")', async () => {
+    const brigadaTenant = await db.createTenantWithUser('Empresa Brigada PII Teste');
+    const loginBrigada = await request(app.getHttpServer())
+      .post('/auth/login')
+      .send({ email: brigadaTenant.email, password: brigadaTenant.password });
+    const tokenBrigadaTenant = loginBrigada.body.access_token;
+
+    const client = (db as any).client;
+    const unit = await client.query(
+      `INSERT INTO company_units (tenant_id, name, address_street, address_city, address_state, address_zip)
+       VALUES ($1, 'Filial Brigada PII Teste', 'Rua C', 'Cidade C', 'RS', '90000001') RETURNING id`,
+      [brigadaTenant.tenantId],
+    );
+    const companyUnitId = unit.rows[0].id;
+
+    const employee = await client.query(
+      `INSERT INTO employees (tenant_id, full_name, cpf, status) VALUES ($1, 'Brigadista PII Nome Completo Teste', '44455566677', 'ativo') RETURNING id`,
+      [brigadaTenant.tenantId],
+    );
+    const employeeId = employee.rows[0].id;
+
+    // Brigadista cadastrado sem nenhum treinamento -> conta como "vencido"
+    // (nunca treinou) e gera divergência tipo:'brigada_incendio' com nome
+    // completo do funcionário no título (ver DashboardService.getSummary /
+    // getFireBrigadeStatus), o mesmo cenário de PII que o filtro de
+    // tipo:'cargo' já cobria — este teste prova que a extensão do filtro
+    // cobre esse tipo também.
+    const memberRes = await request(app.getHttpServer())
+      .post('/fire-brigade/members')
+      .set('Authorization', `Bearer ${tokenBrigadaTenant}`)
+      .send({ employee_id: employeeId, company_unit_id: companyUnitId, funcao_brigada: 'brigadista' });
+    expect(memberRes.status).toBe(201);
+
+    fakeAnswer.mockResolvedValue([]);
+
+    await request(app.getHttpServer())
+      .post('/assistant/normative-query')
+      .set('Authorization', `Bearer ${tokenBrigadaTenant}`)
+      .send({ question: 'quais minhas pendências?' });
+
+    expect(fakeAnswer).toHaveBeenCalled();
+    const lastCall = fakeAnswer.mock.calls[fakeAnswer.mock.calls.length - 1];
+    const operationalItemsArg = lastCall[2];
+    const titulos = operationalItemsArg.map((o: any) => o.titulo);
+
+    expect(titulos.some((t: string) => t.includes('Brigadista PII Nome Completo Teste'))).toBe(false);
+
+    await client.query('DELETE FROM fire_brigade_members WHERE tenant_id = $1', [brigadaTenant.tenantId]);
+    await client.query('DELETE FROM employees WHERE tenant_id = $1', [brigadaTenant.tenantId]);
+    await client.query('DELETE FROM company_units WHERE tenant_id = $1', [brigadaTenant.tenantId]);
+    await client.query('DELETE FROM users WHERE tenant_id = $1', [brigadaTenant.tenantId]);
+    await client.query('DELETE FROM tenants WHERE id = $1', [brigadaTenant.tenantId]);
   });
 });

@@ -153,12 +153,19 @@ export class NormativeAssistantService {
       // linha poderia forjar uma linha `[op-N] ...` extra que imita um
       // item real, ou tentar embutir uma instrução dentro do texto que
       // o modelo trata como dado (achado da revisão final da Fase 10).
-      // Itens tipo:'cargo' (Fase 23) contêm nome completo de funcionário —
-      // não fazem sentido pro Assistente normativo responder pergunta
-      // nenhuma, e a spec desta fase exclui qualquer uso de IA. Filtrados
-      // antes de entrar no prompt, não só sanitizados.
+      // Itens tipo:'cargo' (Fase 23) e tipo:'brigada_incendio' (integração
+      // da brigada de incêndio no dashboard) contêm nome completo de
+      // funcionário no título (`employee_name`/`employee_full_name`) — não
+      // fazem sentido pro Assistente normativo responder pergunta nenhuma,
+      // e a spec de ambas as fases exclui qualquer uso de IA sobre esse
+      // dado. Filtrados antes de entrar no prompt, não só sanitizados.
+      // Qualquer AttentionItem['tipo'] futuro que embuta PII de funcionário
+      // no título precisa entrar nesta lista também — não é suficiente
+      // sanitizar/truncar o texto, porque o nome completo em si é o dado
+      // sensível, não formatação hostil (essa é tratada separadamente,
+      // ver comentário acima sobre normalização de espaços/quebras de linha).
       operationalItems = summary.atencao
-        .filter((item) => item.tipo !== 'cargo')
+        .filter((item) => item.tipo !== 'cargo' && item.tipo !== 'brigada_incendio')
         .map((item, i) => ({
           id: `op-${i}`,
           titulo: item.titulo.replace(/\s+/g, ' ').trim().slice(0, 200),
