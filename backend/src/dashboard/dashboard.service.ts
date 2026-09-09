@@ -3,13 +3,14 @@ import { PoolClient } from 'pg';
 import { DocumentsService } from '../documents/documents.service';
 import { PositionsService } from '../positions/positions.service';
 import { EQUIPMENT_TYPE_LABEL, FireSafetyEquipmentService } from '../fire-safety-equipment/fire-safety-equipment.service';
+import { FireBrigadeService } from '../fire-brigade/fire-brigade.service';
 
 export type DashboardStatus = 'ok' | 'atencao' | 'critico';
 export type AttentionPriority = 'alta' | 'media' | 'baixa';
 export type AttentionResponsible = 'empresa' | 'tecnico';
 
 export interface AttentionItem {
-  tipo: 'documento' | 'epi' | 'acao' | 'inspecao' | 'cargo' | 'equipamento_incendio';
+  tipo: 'documento' | 'epi' | 'acao' | 'inspecao' | 'cargo' | 'equipamento_incendio' | 'brigada_incendio';
   titulo: string;
   prioridade: AttentionPriority;
   data: string | null;
@@ -50,10 +51,11 @@ export class DashboardService {
     private readonly documents: DocumentsService,
     private readonly positionsService: PositionsService,
     private readonly fireSafetyEquipmentService: FireSafetyEquipmentService,
+    private readonly fireBrigadeService: FireBrigadeService,
   ) {}
 
   async getSummary(client: PoolClient, tenantId: string): Promise<DashboardSummary> {
-    const [compliance, epis, actionPlans, inspecoesPendentes, positionDivergences, fireSafetyEquipment] =
+    const [compliance, epis, actionPlans, inspecoesPendentes, positionDivergences, fireSafetyEquipment, fireBrigade] =
       await Promise.all([
         this.documents.getCompliance(client, tenantId),
         this.getEpiStatus(client, tenantId),
@@ -61,6 +63,7 @@ export class DashboardService {
         this.countInspecoesPendentes(client, tenantId),
         this.positionsService.getDivergences(client, tenantId),
         this.getFireSafetyEquipmentStatus(client, tenantId),
+        this.getFireBrigadeStatus(client, tenantId),
       ]);
 
     const atencao: AttentionItem[] = [
@@ -131,6 +134,22 @@ export class DashboardService {
         responsavel: 'empresa',
         link: '/empresa/equipamentos-incendio',
       })),
+      ...fireBrigade.pendencias.map((m): AttentionItem => ({
+        tipo: 'brigada_incendio',
+        titulo: `Brigadista sem treinamento válido: ${m.employee_full_name}`,
+        prioridade: 'alta',
+        data: null,
+        responsavel: 'empresa',
+        link: '/empresa/brigada',
+      })),
+      ...fireBrigade.avisos.map((m): AttentionItem => ({
+        tipo: 'brigada_incendio',
+        titulo: `Treinamento de brigada vencendo: ${m.employee_full_name}`,
+        prioridade: 'media',
+        data: null,
+        responsavel: 'empresa',
+        link: '/empresa/brigada',
+      })),
     ];
 
     atencao.sort((a, b) => {
@@ -153,8 +172,13 @@ export class DashboardService {
     });
 
     const pendencias =
-      compliance.pendencias.length + epis.pendencias.length + positionDivergences.length + fireSafetyEquipment.pendencias.length;
-    const avisos = compliance.avisos.length + epis.avisos.length + fireSafetyEquipment.avisos.length;
+      compliance.pendencias.length +
+      epis.pendencias.length +
+      positionDivergences.length +
+      fireSafetyEquipment.pendencias.length +
+      fireBrigade.pendencias.length;
+    const avisos =
+      compliance.avisos.length + epis.avisos.length + fireSafetyEquipment.avisos.length + fireBrigade.avisos.length;
 
     let status: DashboardStatus = 'ok';
     if (pendencias > 0) status = 'critico';
@@ -217,6 +241,13 @@ export class DashboardService {
     const equipment = await this.fireSafetyEquipmentService.findAll(client, tenantId);
     const pendencias = equipment.filter((eq) => eq.status === 'vencido');
     const avisos = equipment.filter((eq) => eq.status === 'vencendo');
+    return { pendencias, avisos };
+  }
+
+  private async getFireBrigadeStatus(client: PoolClient, tenantId: string) {
+    const members = await this.fireBrigadeService.getMembersWithTrainingStatus(client, { tenantId });
+    const pendencias = members.filter((m) => m.status === 'vencido');
+    const avisos = members.filter((m) => m.status === 'vencendo');
     return { pendencias, avisos };
   }
 

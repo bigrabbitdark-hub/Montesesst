@@ -297,4 +297,27 @@ describe('Brigada de incêndio (e2e)', () => {
     expect(historyRes.status).toBe(200);
     expect(historyRes.body[0].certificado_document_id).toBe(trainingRes.body.certificado_document_id);
   });
+
+  it('brigadista sem treinamento válido aparece no dashboard existente como item de atenção', async () => {
+    const freshEmployee = await (db as any).client.query(
+      `INSERT INTO employees (tenant_id, full_name, cpf, status) VALUES ($1, 'Funcionário Dashboard Brigada', '55566677799', 'ativo') RETURNING id`,
+      [tenantId],
+    );
+    const member = await request(app.getHttpServer())
+      .post('/fire-brigade/members')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ employee_id: freshEmployee.rows[0].id, company_unit_id: companyUnitId, funcao_brigada: 'brigadista' });
+    expect(member.status).toBe(201);
+    // Sem nenhum treinamento cadastrado — conta como "vencido" (nunca treinou).
+
+    const res = await request(app.getHttpServer())
+      .get('/dashboard/summary')
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(200);
+    const brigadeItems = res.body.atencao.filter((i: any) => i.tipo === 'brigada_incendio');
+    expect(brigadeItems.length).toBeGreaterThan(0);
+    expect(brigadeItems[0].prioridade).toBe('alta');
+    expect(brigadeItems[0].link).toBe('/empresa/brigada');
+  });
 });
