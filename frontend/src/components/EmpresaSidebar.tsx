@@ -31,6 +31,7 @@ const GROUPS: NavGroup[] = [
       { href: '/empresa/consulta-ca', label: 'Consulta de CA', emoji: '🔎' },
       { href: '/empresa/inspecoes', label: 'Inspeções', emoji: '📋' },
       { href: '/empresa/mapa-sst', label: 'Mapa SST', emoji: '🗺️' },
+      { href: '/empresa/equipamentos-incendio', label: 'Equipamentos contra incêndio', emoji: '🧯' },
     ],
   },
   {
