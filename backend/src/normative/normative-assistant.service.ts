@@ -9,7 +9,7 @@ import {
 import { toVectorLiteral } from './vector.util';
 import { envFloat } from '../common/env';
 import { DatabaseService } from '../common/database/database.service';
-import { DashboardService } from '../dashboard/dashboard.service';
+import { ATTENTION_TIPO_AI_SAFE, DashboardService } from '../dashboard/dashboard.service';
 import { AuthenticatedUser } from '../common/types';
 import { extractPdfText } from '../common/pdf/pdf-text.util';
 
@@ -158,14 +158,22 @@ export class NormativeAssistantService {
       // funcionário no título (`employee_name`/`employee_full_name`) — não
       // fazem sentido pro Assistente normativo responder pergunta nenhuma,
       // e a spec de ambas as fases exclui qualquer uso de IA sobre esse
-      // dado. Filtrados antes de entrar no prompt, não só sanitizados.
-      // Qualquer AttentionItem['tipo'] futuro que embuta PII de funcionário
-      // no título precisa entrar nesta lista também — não é suficiente
-      // sanitizar/truncar o texto, porque o nome completo em si é o dado
-      // sensível, não formatação hostil (essa é tratada separadamente,
-      // ver comentário acima sobre normalização de espaços/quebras de linha).
+      // dado. Filtrados antes de entrar no prompt, não só sanitizados —
+      // não é suficiente sanitizar/truncar o texto, porque o nome completo
+      // em si é o dado sensível, não formatação hostil (essa é tratada
+      // separadamente, ver comentário acima sobre normalização de espaços/
+      // quebras de linha).
+      //
+      // Isso já vazou PII duas vezes ('cargo', depois 'brigada_incendio')
+      // porque o filtro era um denylist de manutenção manual: um
+      // AttentionItem['tipo'] novo compilava de boa e, se ninguém lembrasse
+      // de excluí-lo aqui, ia direto pro provedor de IA externo por padrão.
+      // ATTENTION_TIPO_AI_SAFE (dashboard.service.ts) inverte isso pra um
+      // allowlist tipado com `satisfies Record<AttentionItem['tipo'],
+      // boolean>` — um tipo novo na union sem entrada explícita ali quebra
+      // a COMPILAÇÃO do backend inteiro, não só silenciosamente vaza dado.
       operationalItems = summary.atencao
-        .filter((item) => item.tipo !== 'cargo' && item.tipo !== 'brigada_incendio')
+        .filter((item) => ATTENTION_TIPO_AI_SAFE[item.tipo])
         .map((item, i) => ({
           id: `op-${i}`,
           titulo: item.titulo.replace(/\s+/g, ' ').trim().slice(0, 200),

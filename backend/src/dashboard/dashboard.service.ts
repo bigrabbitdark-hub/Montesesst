@@ -18,6 +18,25 @@ export interface AttentionItem {
   link: string;
 }
 
+// Cada tipo precisa de uma entrada explícita aqui — true = seguro pra
+// mandar pro provedor de IA externo (MiniMax/OpenRouter) via o
+// Assistente normativo, false = embute PII de funcionário (nome
+// completo) e nunca deve sair do produto pra terceiro (LGPD). Usar
+// `satisfies` força o TypeScript a recusar a compilação se um tipo
+// novo for adicionado à union sem entrar aqui — não depende de alguém
+// lembrar de atualizar um filtro separado (achado da revisão final:
+// isso já vazou PII duas vezes, 'cargo' e 'brigada_incendio', porque
+// era um denylist de manutenção manual).
+export const ATTENTION_TIPO_AI_SAFE = {
+  documento: true,
+  epi: true,
+  acao: true,
+  inspecao: true,
+  cargo: false,
+  equipamento_incendio: true,
+  brigada_incendio: false,
+} satisfies Record<AttentionItem['tipo'], boolean>;
+
 export interface DashboardSummary {
   status: DashboardStatus;
   score: number | null;
