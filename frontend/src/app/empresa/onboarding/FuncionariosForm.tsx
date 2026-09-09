@@ -34,6 +34,7 @@ export function FuncionariosForm({ units, onChanged }: { units: CompanyUnit[]; o
   const [position, setPosition] = useState('');
   const [unitId, setUnitId] = useState('');
   const [status, setStatus] = useState<'idle' | 'loading' | 'ok' | 'erro'>('idle');
+  const [createError, setCreateError] = useState('');
 
   const [file, setFile] = useState<File | null>(null);
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
@@ -45,6 +46,7 @@ export function FuncionariosForm({ units, onChanged }: { units: CompanyUnit[]; o
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
     setStatus('loading');
+    setCreateError('');
     const token = localStorage.getItem('montese_token');
     try {
       const res = await fetch('/api/employees', {
@@ -65,8 +67,11 @@ export function FuncionariosForm({ units, onChanged }: { units: CompanyUnit[]; o
         onChanged();
         return;
       }
+      const body = await res.json().catch(() => null);
+      setCreateError(body?.message ?? 'Não foi possível salvar. Tente de novo.');
       setStatus('erro');
     } catch {
+      setCreateError('Não foi possível conectar ao servidor.');
       setStatus('erro');
     }
   }
@@ -195,7 +200,7 @@ export function FuncionariosForm({ units, onChanged }: { units: CompanyUnit[]; o
             ))}
           </select>
         </label>
-        {status === 'erro' && <p className="text-sm text-red-600">Não foi possível salvar. Tente de novo.</p>}
+        {status === 'erro' && <p className="text-sm text-red-600">{createError}</p>}
         <button
           type="submit"
           disabled={status === 'loading'}

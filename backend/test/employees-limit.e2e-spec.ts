@@ -233,4 +233,65 @@ describe('Limite de funcionário por plano (e2e)', () => {
     expect(res.body.importados).toBe(1);
     expect(res.body.erros).toHaveLength(0);
   });
+
+  it('assinatura Enterprise ativa (employee_limit NULL) misturada com uma numérica resulta em sem limite', async () => {
+    const tenant = await db.createTenantWithUser('Empresa Enterprise Misturada');
+    await authorizeSubscription(db, tenant.tenantId, 'empresa-start');
+    await authorizeSubscription(db, tenant.tenantId, 'empresa-enterprise');
+
+    const existing = await countActiveEmployees(db, tenant.tenantId);
+    await insertActiveEmployees(db, tenant.tenantId, 10 - existing, 40000007000);
+    // Tenant já tem 10 funcionários (o limite do Start), mas também tem uma
+    // assinatura Enterprise ativa (employee_limit NULL) — não deveria ser
+    // bloqueado, já que qualquer assinatura sem limite faz o resultado ser
+    // "sem limite", mesmo com outra numérica também ativa.
+
+    const login = await request(app.getHttpServer())
+      .post('/auth/login')
+      .send({ email: tenant.email, password: tenant.password });
+    const token = login.body.access_token;
+
+    const res = await request(app.getHttpServer())
+      .post('/employees')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ full_name: 'Funcionário 11 Com Enterprise Ativo', cpf: '40000007999' });
+
+    expect(res.status).toBe(201);
+  });
+
+  it('importação via import-mapped (endpoint que o frontend usa de verdade) também respeita o limite', async () => {
+    const tenant = await db.createTenantWithUser('Empresa Limite Import Mapped');
+    await authorizeSubscription(db, tenant.tenantId, 'empresa-start');
+    const existing = await countActiveEmployees(db, tenant.tenantId);
+    await insertActiveEmployees(db, tenant.tenantId, 9 - existing, 40000008000);
+    // Tenant com 9 funcionários ativos, limite Start = 10 — só a 1ª linha cabe.
+
+    const unitRes = await (db as any).client.query(
+      `INSERT INTO company_units (tenant_id, name, address_street, address_city, address_state, address_zip)
+       VALUES ($1, 'Matriz Limite Import Mapped', 'Rua Teste', 'Cidade Teste', 'SC', '88800000') RETURNING name`,
+      [tenant.tenantId],
+    );
+    const unitName = unitRes.rows[0].name;
+
+    const login = await request(app.getHttpServer())
+      .post('/auth/login')
+      .send({ email: tenant.email, password: tenant.password });
+    const token = login.body.access_token;
+
+    const csv =
+      'Documento,Nome Completo,Unidade,Função\n' +
+      `40000008900,Linha Um,${unitName},Cargo\n` +
+      `40000008901,Linha Dois,${unitName},Cargo\n`;
+
+    const res = await request(app.getHttpServer())
+      .post('/employees/import-mapped')
+      .set('Authorization', `Bearer ${token}`)
+      .field('mapping', JSON.stringify({ nome: 1, cpf: 0, cargo: 3, filial: 2 }))
+      .attach('file', Buffer.from(csv, 'utf-8'), { filename: 'funcionarios.csv', contentType: 'text/csv' });
+
+    expect(res.status).toBe(201);
+    expect(res.body.importados).toBe(1);
+    expect(res.body.erros).toHaveLength(1);
+    expect(res.body.erros[0].motivo).toBe('Limite de funcionários do plano atingido');
+  });
 });
