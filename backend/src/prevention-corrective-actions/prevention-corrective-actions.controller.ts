@@ -1,4 +1,5 @@
 import { Body, Controller, Get, Param, Patch, Query, Req, UsePipes, ValidationPipe } from '@nestjs/common';
+import { Roles } from '../common/decorators/roles.decorator';
 import { PreventionCorrectiveActionsService } from './prevention-corrective-actions.service';
 import { UpdateCorrectiveActionStatusDto } from './dto/update-corrective-action-status.dto';
 
@@ -15,6 +16,7 @@ export class PreventionCorrectiveActionsController {
     return req.withTenantContext((client: any) => this.correctiveActions.findAll(client, { tenantId, status }));
   }
 
+  @Roles('empresa', 'tecnico', 'parceiro', 'admin')
   @UsePipes(new ValidationPipe({ transform: true, whitelist: true, forbidNonWhitelisted: true }))
   @Patch(':id')
   updateStatus(@Param('id') id: string, @Body() dto: UpdateCorrectiveActionStatusDto, @Req() req: any) {
