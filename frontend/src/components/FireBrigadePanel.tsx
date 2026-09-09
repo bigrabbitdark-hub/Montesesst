@@ -149,7 +149,29 @@ export function FireBrigadePanel() {
     loadCoverage(selectedUnitId);
   }
 
+  // Toggle não-destrutivo de status ('ativo' <-> 'inativo') — spec (Seção
+  // 2/3 de docs/specs/prevencao-emergencia-brigada.md) modela saída/reingresso
+  // da brigada como esse PATCH, preservando o histórico de treinamentos do
+  // brigadista (fire_brigade_trainings). O backend já suporta isso via
+  // UpdateFireBrigadeMemberDto/updateMember — esta era a única peça faltando
+  // (achado Important da revisão final: só "Excluir" existia na UI, que
+  // apaga o histórico via ON DELETE CASCADE).
+  async function handleToggleStatus(member: Member) {
+    const novoStatus = member.status === 'ativo' ? 'inativo' : 'ativo';
+    await fetch(`/api/fire-brigade/members/${member.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({ status: novoStatus }),
+    });
+    loadMembers();
+    loadCoverage(selectedUnitId);
+  }
+
   async function handleDelete(id: string) {
+    const confirmado = window.confirm(
+      'Excluir este brigadista apaga também todo o histórico de treinamentos dele (certificados incluídos) — essa ação não pode ser desfeita. Se o brigadista só saiu da brigada e pode voltar depois, use "Inativar" em vez de excluir. Quer mesmo excluir?',
+    );
+    if (!confirmado) return;
     await fetch(`/api/fire-brigade/members/${id}`, { method: 'DELETE', headers: authHeaders() });
     loadMembers();
     loadCoverage(selectedUnitId);
@@ -360,6 +382,13 @@ export function FireBrigadePanel() {
                   {TRAINING_STATUS_LABEL[member.training_status].emoji} {TRAINING_STATUS_LABEL[member.training_status].text}
                 </td>
                 <td className="px-2 py-1 whitespace-nowrap">
+                  <button
+                    type="button"
+                    onClick={() => handleToggleStatus(member)}
+                    className="mr-2 text-xs font-medium text-brand-700 underline"
+                  >
+                    {member.status === 'ativo' ? 'Inativar' : 'Reativar'}
+                  </button>
                   <button
                     type="button"
                     onClick={() => openTrainingForm(member.id)}
