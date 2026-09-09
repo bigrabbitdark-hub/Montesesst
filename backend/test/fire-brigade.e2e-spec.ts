@@ -173,4 +173,76 @@ describe('Brigada de incêndio (e2e)', () => {
     await (db as any).client.query('DELETE FROM tenant_technicians WHERE technician_id = $1', [technicianRow.rows[0].id]);
     await (db as any).client.query('DELETE FROM technicians WHERE id = $1', [technicianRow.rows[0].id]);
   });
+
+  it('registra treinamento e o painel de cobertura reflete vencido/vencendo/treinado', async () => {
+    const memberRes = await request(app.getHttpServer())
+      .post('/fire-brigade/members')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ employee_id: employeeId, company_unit_id: companyUnitId, funcao_brigada: 'brigadista' });
+
+    // employeeId já usado em testes anteriores é rejeitado por UNIQUE —
+    // então cria um funcionário novo específico pra este teste.
+    const freshEmployee = await (db as any).client.query(
+      `INSERT INTO employees (tenant_id, full_name, cpf, status) VALUES ($1, 'Funcionário Cobertura', '98765432100', 'ativo') RETURNING id`,
+      [tenantId],
+    );
+    const freshMember = await request(app.getHttpServer())
+      .post('/fire-brigade/members')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ employee_id: freshEmployee.rows[0].id, company_unit_id: companyUnitId, funcao_brigada: 'brigadista' });
+    expect(freshMember.status).toBe(201);
+    const memberId = freshMember.body.id;
+
+    const today = new Date();
+    const past = new Date(today);
+    past.setDate(past.getDate() - 400);
+    const pastValidade = new Date(today);
+    pastValidade.setDate(pastValidade.getDate() - 1);
+
+    const trainingRes = await request(app.getHttpServer())
+      .post(`/fire-brigade/members/${memberId}/trainings`)
+      .set('Authorization', `Bearer ${token}`)
+      .field('data_realizacao', past.toISOString().slice(0, 10))
+      .field('data_validade', pastValidade.toISOString().slice(0, 10));
+    expect(trainingRes.status).toBe(201);
+
+    await request(app.getHttpServer())
+      .put('/fire-brigade/coverage-target')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ company_unit_id: companyUnitId, quantidade_necessaria: 5 });
+
+    const coverageRes = await request(app.getHttpServer())
+      .get(`/fire-brigade/coverage?company_unit_id=${companyUnitId}`)
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(coverageRes.status).toBe(200);
+    expect(coverageRes.body.necessarios).toBe(5);
+    expect(coverageRes.body.vagas_necessarias).toBeGreaterThan(0);
+  });
+
+  it('histórico de treinamento lista os registros do brigadista', async () => {
+    const freshEmployee = await (db as any).client.query(
+      `INSERT INTO employees (tenant_id, full_name, cpf, status) VALUES ($1, 'Funcionário Historico', '11122233344', 'ativo') RETURNING id`,
+      [tenantId],
+    );
+    const member = await request(app.getHttpServer())
+      .post('/fire-brigade/members')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ employee_id: freshEmployee.rows[0].id, company_unit_id: companyUnitId, funcao_brigada: 'brigadista' });
+    const memberId = member.body.id;
+
+    await request(app.getHttpServer())
+      .post(`/fire-brigade/members/${memberId}/trainings`)
+      .set('Authorization', `Bearer ${token}`)
+      .field('data_realizacao', '2026-01-01')
+      .field('data_validade', '2027-01-01');
+
+    const historyRes = await request(app.getHttpServer())
+      .get(`/fire-brigade/members/${memberId}/trainings`)
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(historyRes.status).toBe(200);
+    expect(historyRes.body.length).toBe(1);
+    expect(historyRes.body[0].data_validade).toContain('2027-01-01');
+  });
 });
