@@ -60,7 +60,7 @@ export class EmployeesController {
     if (!tenantId) throw new BadRequestException('tenant_id é obrigatório');
 
     return req.withTenantContext((client: any) =>
-      this.employees.importCsv(client, tenantId, file.buffer.toString('utf-8')),
+      this.employees.importCsv(client, tenantId, file.buffer.toString('utf-8'), req.user.role),
     );
   }
 
@@ -92,7 +92,15 @@ export class EmployeesController {
     if (!tenantId) throw new BadRequestException('tenant_id é obrigatório');
 
     return req.withTenantContext((client: any) =>
-      this.employees.importMapped(client, tenantId, file.buffer, file.mimetype, mapping, file.originalname),
+      this.employees.importMapped(
+        client,
+        tenantId,
+        file.buffer,
+        file.mimetype,
+        mapping,
+        file.originalname,
+        req.user.role,
+      ),
     );
   }
 

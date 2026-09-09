@@ -215,10 +215,10 @@ export class EmployeesService {
     }
   }
 
-  async importCsv(client: PoolClient, tenantId: string, csvContent: string): Promise<ImportResult> {
+  async importCsv(client: PoolClient, tenantId: string, csvContent: string, callerRole: string): Promise<ImportResult> {
     const { rows, formatError } = parseEmployeesCsv(csvContent);
     if (formatError) throw new BadRequestException(formatError);
-    return this.processImportRows(client, tenantId, rows);
+    return this.processImportRows(client, tenantId, rows, callerRole);
   }
 
   async previewSpreadsheet(
@@ -243,13 +243,14 @@ export class EmployeesService {
     buffer: Buffer,
     mimetype: string,
     mapping: ColumnMapping,
-    filename?: string,
+    filename: string | undefined,
+    callerRole: string,
   ): Promise<ImportResult> {
     const { rows, formatError } = await parseSpreadsheet(buffer, mimetype, filename);
     if (formatError) throw new BadRequestException(formatError);
 
     const mappedRows = applyColumnMapping(rows, mapping);
-    return this.processImportRows(client, tenantId, mappedRows);
+    return this.processImportRows(client, tenantId, mappedRows, callerRole);
   }
 
   // Compartilhado entre importCsv (caminho antigo, cabeçalho fixo) e
@@ -262,12 +263,26 @@ export class EmployeesService {
     client: PoolClient,
     tenantId: string,
     rows: (ParsedCsvRow | MappedEmployeeRow)[],
+    callerRole: string,
   ): Promise<ImportResult> {
     const unitsResult = await client.query<{ id: string; name: string }>(
       'SELECT id, name FROM company_units WHERE tenant_id = $1',
       [tenantId],
     );
     const unitsByName = new Map(unitsResult.rows.map((u) => [u.name, u.id]));
+
+    // Limite e contagem atual buscados UMA vez antes do loop (mesmo padrão
+    // de unitsByName acima) — callerRole admin pula a checagem inteira.
+    const limit =
+      callerRole === 'admin' ? null : await this.subscriptions.getActiveEmployeeLimit(client, tenantId);
+    let currentActiveCount = 0;
+    if (limit !== null) {
+      const countResult = await client.query<{ count: string }>(
+        `SELECT COUNT(*) FROM employees WHERE tenant_id = $1 AND status = 'ativo'`,
+        [tenantId],
+      );
+      currentActiveCount = parseInt(countResult.rows[0].count, 10);
+    }
 
     const erros: ImportRowError[] = [];
     let importados = 0;
@@ -284,6 +299,10 @@ export class EmployeesService {
       const unitId = unitsByName.get(row.company_unit_name);
       if (!unitId) {
         erros.push({ linha: row.line, motivo: `Filial "${row.company_unit_name}" não encontrada` });
+        continue;
+      }
+      if (limit !== null && currentActiveCount + importados >= limit) {
+        erros.push({ linha: row.line, motivo: 'Limite de funcionários do plano atingido' });
         continue;
       }
 

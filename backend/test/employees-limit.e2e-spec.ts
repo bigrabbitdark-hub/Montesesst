@@ -161,4 +161,76 @@ describe('Limite de funcionário por plano (e2e)', () => {
 
     expect(res.status).toBe(201);
   });
+
+  it('importação em lote: parte aceita, parte rejeitada por limite, resto do lote continua', async () => {
+    const tenant = await db.createTenantWithUser('Empresa Limite Import');
+    await authorizeSubscription(db, tenant.tenantId, 'empresa-start');
+    const existing = await countActiveEmployees(db, tenant.tenantId);
+    await insertActiveEmployees(db, tenant.tenantId, 8 - existing, 40000005000);
+    // Tenant agora tem exatamente 8 funcionários ativos, limite Start = 10.
+
+    const unitRes = await (db as any).client.query(
+      `INSERT INTO company_units (tenant_id, name, address_street, address_city, address_state, address_zip)
+       VALUES ($1, 'Matriz Limite Import', 'Rua Teste', 'Cidade Teste', 'SC', '88800000') RETURNING name`,
+      [tenant.tenantId],
+    );
+    const unitName = unitRes.rows[0].name;
+
+    const login = await request(app.getHttpServer())
+      .post('/auth/login')
+      .send({ email: tenant.email, password: tenant.password });
+    const token = login.body.access_token;
+
+    // 4 linhas: só as 2 primeiras cabem no limite (8 + 2 = 10), as 2
+    // últimas devem ser rejeitadas por limite, não por outro motivo.
+    const csv =
+      'nome,cpf,cargo,filial\n' +
+      `Linha Um,40000005900,Cargo,${unitName}\n` +
+      `Linha Dois,40000005901,Cargo,${unitName}\n` +
+      `Linha Tres,40000005902,Cargo,${unitName}\n` +
+      `Linha Quatro,40000005903,Cargo,${unitName}\n`;
+
+    const res = await request(app.getHttpServer())
+      .post('/employees/import')
+      .set('Authorization', `Bearer ${token}`)
+      .attach('file', Buffer.from(csv, 'utf-8'), { filename: 'funcionarios.csv', contentType: 'text/csv' });
+
+    expect(res.status).toBe(201);
+    expect(res.body.importados).toBe(2);
+    expect(res.body.erros).toHaveLength(2);
+    expect(res.body.erros[0].motivo).toBe('Limite de funcionários do plano atingido');
+    expect(res.body.erros[1].motivo).toBe('Limite de funcionários do plano atingido');
+    expect(await countActiveEmployees(db, tenant.tenantId)).toBe(10);
+  });
+
+  it('admin bypassa o limite na importação em lote', async () => {
+    const tenant = await db.createTenantWithUser('Empresa Limite Import Admin');
+    await authorizeSubscription(db, tenant.tenantId, 'empresa-start');
+    const existing = await countActiveEmployees(db, tenant.tenantId);
+    await insertActiveEmployees(db, tenant.tenantId, 10 - existing, 40000006000);
+
+    const unitRes = await (db as any).client.query(
+      `INSERT INTO company_units (tenant_id, name, address_street, address_city, address_state, address_zip)
+       VALUES ($1, 'Matriz Limite Import Admin', 'Rua Teste', 'Cidade Teste', 'SC', '88800000') RETURNING name`,
+      [tenant.tenantId],
+    );
+    const unitName = unitRes.rows[0].name;
+
+    const adminUser = await db.createUserWithRole('admin', 'Admin Limite Import');
+    const login = await request(app.getHttpServer())
+      .post('/auth/login')
+      .send({ email: adminUser.email, password: adminUser.password });
+    const token = login.body.access_token;
+
+    const csv = 'nome,cpf,cargo,filial\n' + `Via Admin,40000006900,Cargo,${unitName}\n`;
+
+    const res = await request(app.getHttpServer())
+      .post(`/employees/import?tenant_id=${tenant.tenantId}`)
+      .set('Authorization', `Bearer ${token}`)
+      .attach('file', Buffer.from(csv, 'utf-8'), { filename: 'funcionarios.csv', contentType: 'text/csv' });
+
+    expect(res.status).toBe(201);
+    expect(res.body.importados).toBe(1);
+    expect(res.body.erros).toHaveLength(0);
+  });
 });
