@@ -1,6 +1,7 @@
 import { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
+import { S3Client, DeleteObjectCommand } from '@aws-sdk/client-s3';
 import { AppModule } from '../src/app.module';
 import { TestDb } from './db-test-helper';
 
@@ -11,6 +12,8 @@ describe('Brigada de incêndio (e2e)', () => {
   let tenantId: string;
   let employeeId: string;
   let companyUnitId: string;
+  let s3: S3Client;
+  let uploadedCertificadoFileKey: string | undefined;
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
@@ -34,9 +37,21 @@ describe('Brigada de incêndio (e2e)', () => {
       [tenantId],
     );
     companyUnitId = unitResult.rows[0].id;
+
+    s3 = new S3Client({
+      region: 'auto',
+      endpoint: process.env.R2_ENDPOINT,
+      credentials: {
+        accessKeyId: process.env.R2_ACCESS_KEY_ID!,
+        secretAccessKey: process.env.R2_SECRET_ACCESS_KEY!,
+      },
+    });
   });
 
   afterAll(async () => {
+    if (uploadedCertificadoFileKey) {
+      await s3.send(new DeleteObjectCommand({ Bucket: process.env.R2_BUCKET, Key: uploadedCertificadoFileKey }));
+    }
     await db.cleanup();
     await db.disconnect();
     await app.close();
@@ -244,5 +259,42 @@ describe('Brigada de incêndio (e2e)', () => {
     expect(historyRes.status).toBe(200);
     expect(historyRes.body.length).toBe(1);
     expect(historyRes.body[0].data_validade).toContain('2027-01-01');
+  });
+
+  it('registra treinamento com certificado real (upload) e o documento fica vinculado', async () => {
+    const freshEmployee = await (db as any).client.query(
+      `INSERT INTO employees (tenant_id, full_name, cpf, status) VALUES ($1, 'Funcionário Certificado', '55566677788', 'ativo') RETURNING id`,
+      [tenantId],
+    );
+    const member = await request(app.getHttpServer())
+      .post('/fire-brigade/members')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ employee_id: freshEmployee.rows[0].id, company_unit_id: companyUnitId, funcao_brigada: 'brigadista' });
+    expect(member.status).toBe(201);
+    const memberId = member.body.id;
+
+    const fakePdf = Buffer.from('%PDF-1.4 certificado de treinamento de teste', 'utf-8');
+
+    const trainingRes = await request(app.getHttpServer())
+      .post(`/fire-brigade/members/${memberId}/trainings`)
+      .set('Authorization', `Bearer ${token}`)
+      .field('data_realizacao', '2026-01-01')
+      .field('data_validade', '2027-01-01')
+      .attach('certificado', fakePdf, { filename: 'certificado-teste.pdf', contentType: 'application/pdf' });
+
+    expect(trainingRes.status).toBe(201);
+    expect(typeof trainingRes.body.certificado_document_id).toBe('string');
+
+    const docResult = await (db as any).client.query('SELECT file_key FROM documents WHERE id = $1', [
+      trainingRes.body.certificado_document_id,
+    ]);
+    expect(docResult.rows.length).toBe(1);
+    uploadedCertificadoFileKey = docResult.rows[0].file_key;
+
+    const historyRes = await request(app.getHttpServer())
+      .get(`/fire-brigade/members/${memberId}/trainings`)
+      .set('Authorization', `Bearer ${token}`);
+    expect(historyRes.status).toBe(200);
+    expect(historyRes.body[0].certificado_document_id).toBe(trainingRes.body.certificado_document_id);
   });
 });
