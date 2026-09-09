@@ -2991,3 +2991,94 @@ técnico rastreada, limite de uso de IA por plano, comissão do técnico
 por visita presencial) — segundo sub-projeto desta frente, ainda sem
 spec, precisa de brainstorming próprio (decisões de banco de dados,
 permissões, economia).
+
+## Limite de funcionário por plano (enforcement real): status
+
+Primeiro dos 4 sub-projetos da frente de enforcement que a proposta
+comercial de `/planos` deixou de fora (limite de funcionário, cota de
+atendimento técnico, limite de uso de IA, comissão do técnico por
+visita) — os outros 3 continuam sem spec, cada um vai precisar do seu
+próprio brainstorming.
+
+**Fechada em 2026-09-09, 2 tasks + revisão final (opus) com 2
+Important + 8 Minor, os 2 Important corrigidos numa rodada única de
+fix-wave:**
+
+- `plans.employee_limit` existia desde a Fase de Planos+Assinaturas
+  (2026-08-18/19), mas era só informativo — nenhum código lia essa
+  coluna pra decidir se um cadastro devia ser aceito. Esta fase faz
+  valer de verdade, em 3 pontos: criação única (`POST /employees`),
+  reativação de funcionário inativo (`PATCH /employees/:id` mudando
+  `status` pra `'ativo'`), e importação em lote (`processImportRows`,
+  compartilhado por `import`/`import-mapped`).
+- **Decisões de produto fechadas em brainstorming**: trial (sem
+  assinatura `authorized`) continua sem limite nenhum; só
+  funcionário `status='ativo'` conta; reativar conta igual criar,
+  mas só quando é uma mudança real de status; `admin` tem bypass
+  total; múltiplas assinaturas `authorized` simultâneas (gap já
+  conhecido, não corrigido) usam o MAIOR `employee_limit` entre elas
+  — qualquer uma sem limite (Enterprise, `NULL`) faz o resultado ser
+  sem limite; importação em lote nunca aborta o lote inteiro (erro
+  por linha, mesmo padrão já usado pra CPF/filial inválidos).
+- **Task 1** — `SubscriptionsService.getActiveEmployeeLimit` (novo,
+  no módulo `payments`, já existente), `EmployeesModule` passa a
+  importar `PaymentsModule`, `EmployeesService` ganha o helper
+  `assertEmployeeLimitNotExceeded` aplicado em criação única e
+  reativação. Revisão de task confirmou a mensagem de 403 caractere
+  por caractere e a lógica MAX/NULL-vence linha a linha contra o
+  schema real — 0 achado.
+- **Task 2** — mesmo enforcement na importação em lote, via
+  contagem rodante (`currentActiveCount + importados >= limit`)
+  calculada uma vez antes do loop, mesmo padrão já usado pra
+  `unitsByName`. Revisão de task confirmou que o código de criação/
+  reativação da Task 1 ficou intocado e que nenhum outro caller de
+  `importCsv`/`importMapped` existia fora do controller — 0 achado.
+- **Revisão final (opus) achou 0 Critical + 2 Important + 8 Minor**,
+  ambos os Important corrigidos:
+  - **Important**: a mensagem de 403 nunca chegava ao usuário na
+    ÚNICA tela de criação de funcionário do produto
+    (`FuncionariosForm.tsx`'s `handleSubmit` descartava o corpo da
+    resposta de erro, mostrava texto fixo genérico) — a premissa da
+    spec ("frontend já mostra a mensagem de erro") era verdadeira só
+    pra importação, não pra criação única. Corrigido espelhando o
+    padrão já usado pelos outros 2 handlers do mesmo arquivo.
+  - **Important**: o cenário de teste "Enterprise + assinatura
+    numérica simultânea", explicitamente listado na spec, sumiu
+    silenciosamente na tradução spec→plano — falha do controlador
+    desta fase, não dos implementadores nem das revisões de task
+    (cada uma só via o próprio brief). Corrigido, teste adicionado.
+  - Incluído no mesmo fix-wave, por ser barato: um teste novo
+    exercitando o limite especificamente via `POST
+    /employees/import-mapped` (o endpoint que o frontend de verdade
+    chama — o único teste de lote anterior usava o endpoint legado
+    `POST /employees/import`, que nenhuma tela usa).
+  - 8 Minor parqueados: mensagem do lote sem número/CTA; tipo
+    `callerRole: string` em vez do union já existente; query de
+    contagem duplicada em 2 lugares; `update()` com até 3 SELECTs
+    redundantes no mesmo payload; teste de lote não provando
+    continuação heterogênea após uma rejeição; e uma condição de
+    corrida check-then-insert (herdada da Task 1, mantida parqueada
+    — overshoot limitado e autocorretivo no próximo request, dado o
+    tamanho declarado do produto).
+  - **Decisão registrada, não é bug**: uma assinatura
+    `cancelled`/`paused` faz o tenant voltar a ficar sem limite
+    (mesmo comportamento fail-open do trial) — coerente com o
+    produto hoje, que não tem nenhum gating pra quem cancela.
+    Relevante pro próximo sub-projeto de enforcement não tropeçar
+    nisso.
+
+Fix-wave final e sua re-revisão escopada confirmados por reprodução
+independente (revisor leu o controller real pra confirmar que o teste
+novo de `import-mapped` usa exatamente o formato de payload esperado,
+e confirmou via `git diff --stat` que o fix não tocou nenhum
+serviço/controller de backend) — 0 achados novos, sem regressão.
+
+**Verificação:** backend com suíte e2e real (Postgres real, fixture
+de "assinatura ativa" inserida direto via superuser do `TestDb`, sem
+chamar a API real do Mercado Pago) — 9/9 na suíte nova
+(`employees-limit`), regressão completa de `employees` (25/25, 5
+suítes) e `payments`/`plans`/`subscriptions` (26/26, 9 suítes).
+Frontend sem suíte automatizada — Playwright contra o bundle real
+implantado em produção, confirmando que a mensagem de erro real
+(com o número do limite e o convite a fazer upgrade) chega até a
+tela, não um texto genérico.
