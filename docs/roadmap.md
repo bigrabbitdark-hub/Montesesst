@@ -3191,3 +3191,140 @@ automatizada — deploy real confirmado via grep dentro do container
 antes de qualquer Playwright, 29 checagens originais da Task 3 + 12
 focadas na re-verificação do fix-wave, todas contra
 `https://montesesst.com.br` em produção.
+
+## Prevenção e Emergência — Gestão da brigada de incêndio (sub-projeto B): status
+
+Segundo dos 7 sub-projetos do "Centro de Gestão de Prevenção e
+Emergências" (sub-projeto A, equipamentos contra incêndio, já
+concluído — ver seção acima). Os outros 5 (checklists de prevenção +
+simulados de emergência; Plano de Ação de Emergência; documentos
+PPCI/PSPCI/APPCI; dashboard "índice de prevenção"; agente especialista
+em incêndio) continuam sem spec.
+
+**Fechada em 2026-09-09, 4 tasks + revisão final (opus) com 3 Important
++ 10 Minor, os 3 Important corrigidos numa rodada única de fix-wave:**
+
+- Brigadista é sempre vinculado a um funcionário já cadastrado
+  (`employee_id`, nunca nome livre) — decisão explícita do fundador,
+  ao contrário do precedente `cipa_members` (nome digitado à mão).
+  Sem entidade "brigada" própria com ciclo/mandato: lista plana de
+  membros por filial (`fire_brigade_members`). Treinamento tem tabela
+  própria (`fire_brigade_trainings`), não reaproveita `cipa_trainings`
+  — decisão explícita do fundador, ao contrário da recomendação
+  inicial de reaproveitar a tabela genérica já existente. Número
+  "necessário" do painel de cobertura é sempre definido manualmente
+  por filial (`fire_brigade_coverage_targets`), nunca calculado a
+  partir de headcount/norma. Vencido/vencendo usam a MAIOR
+  `data_validade` entre todos os treinamentos do membro (não o mais
+  recente por data de realização).
+- **Task 1** — migration (as 3 tabelas da feature completa) + CRUD de
+  membro, mesmos papéis do sub-projeto A. Descobriu e corrigiu, como
+  parte necessária pro próprio cenário de aceite da task (técnico
+  cadastrando brigadista), um bug pré-existente de RLS em
+  `company_units` — a policy dessa tabela compartilhada (migration
+  0007, anterior ao padrão `assigned_tenant_ids_for_current_user()`
+  existir no projeto) nunca ganhou a terceira cláusula que toda tabela
+  irmã mais nova já tem, então nenhum técnico/parceiro vinculado
+  conseguia ver `company_units` de nenhum tenant. Corrigido via
+  migration nova (`0038_company_units_assigned_tenant_ids.sql`,
+  `DROP`+`CREATE POLICY`, puramente aditiva — nunca restringe nada que
+  já funcionava). Verificado independentemente duas vezes (pelo
+  controlador antes de aceitar, e de novo pelo revisor final) contra o
+  texto real da policy antiga, a atomicidade da migration, e a
+  confirmação de que nenhuma rota alcançável por técnico/parceiro
+  escreve em `company_units` hoje (o alargamento também vale pra
+  INSERT/UPDATE/DELETE, já que a policy é `USING`-only numa `ALL`) —
+  registrar aqui pra quem abrir a próxima rota de escrita de filial
+  pra técnico: ela vai herdar esse acesso silenciosamente.
+- **Task 2** — treinamento (upload de certificado via `DocumentsService`,
+  mesmo padrão de `cipa_trainings.certificado_document_id`, não R2
+  direto), painel de cobertura (`GET /fire-brigade/coverage`) e meta
+  por filial (`PUT /coverage-target`). Revisão de task achou 1
+  Important (plan-mandated: o caminho de upload de certificado nunca
+  era exercitado por e2e, só `.field()` sem `.attach()`) — corrigido
+  na mesma rodada (não parqueado, por ser barato e load-bearing pra
+  Task 4 já depender desse endpoint).
+- **Task 3** — integração no dashboard já existente, mesmo formato do
+  sub-projeto A. Revisão de task achou 1 **Critical**: o novo tipo
+  `AttentionItem['tipo'] = 'brigada_incendio'` embute nome completo de
+  funcionário no título, e o filtro de PII do Assistente normativo
+  (`normative-assistant.service.ts`, guarda de LGPD desde a Fase 23,
+  com teste e2e dedicado) só excluía `'cargo'` — um vazamento real e
+  explorável de nome de funcionário pra API de IA externa paga
+  (MiniMax/OpenRouter) na primeira vez que uma empresa com brigadista
+  vencido usasse o Assistente. Corrigido imediatamente (não parqueado,
+  não deferido pra revisão final): filtro estendido, teste e2e novo
+  espelhando o de `'cargo'`.
+- **Task 4** — frontend `/empresa/brigada`, mesmo padrão de arquivo
+  único já usado em EPI/Mapa SST/sub-projeto A: painel de cobertura,
+  seletor de funcionário (nunca texto livre), status de treinamento
+  por linha (🟢/🟡/🔴, calculado só no backend), ação inline de
+  registrar treinamento. 0 achado bloqueante na revisão de task.
+- **Revisão final (opus) achou 0 Critical + 3 Important + 10 Minor**,
+  os 3 Important corrigidos numa única fix-wave:
+  - **Important**: o filtro de PII do Assistente (Task 3) era um
+    denylist de manutenção manual — já tinha vazado duas vezes
+    seguidas do mesmo jeito (`'cargo'`, depois `'brigada_incendio'`),
+    e os 5 sub-projetos restantes vão introduzir mais tipos de
+    `AttentionItem`. Corrigido: allowlist tipado
+    (`ATTENTION_TIPO_AI_SAFE`, com `satisfies Record<AttentionItem['tipo'],
+    boolean>`) — um tipo novo sem entrada explícita agora falha a
+    compilação em vez de vazar silenciosamente.
+  - **Important**: zero cobertura e2e de RLS/cross-tenant pras 3
+    tabelas novas, diferente do sub-projeto A (que já tem
+    `fire-safety-equipment-rls.e2e-spec.ts`). Corrigido: arquivo novo
+    espelhando o do irmão (5 casos) + 2 casos extras pro sub-recurso
+    aninhado de treinamento e pro upsert de meta.
+  - **Important**: só existia exclusão destrutiva (`DELETE`, que
+    apaga o histórico de treinamento em cascata) pro vínculo de
+    brigada, sem confirmação — mesmo a spec modelando explicitamente
+    um toggle não-destrutivo (`status` `ativo`/`inativo`) já suportado
+    de ponta a ponta pelo backend. Corrigido: botão "Inativar"/
+    "Reativar" + `window.confirm()` no Excluir avisando explicitamente
+    sobre a perda do histórico.
+  - 10 Minor parqueados: `GET /coverage` sem checagem de posse de
+    `company_unit_id` (200 em vez de 404, sem vazamento — RLS já zera);
+    `GET .../trainings` devolve 200 vazio em vez de 404 pro mesmo caso
+    cross-tenant que `GET /:id` trata com 404 (inconsistência de
+    sinalização, sem vazamento); union `AttentionItem['tipo']` do
+    dashboard do frontend continua sem `'equipamento_incendio'` (já
+    parqueado no sub-projeto A) e agora também sem
+    `'brigada_incendio'` — segunda parcela do mesmo drift, sinalizado
+    pra não virar hábito de reparquear; itens de brigada nascem com
+    `data: null` (paridade com `'cargo'`, não regressão desta fase);
+    membro inativo indistinguível de ativo na tabela do frontend;
+    painel sem loading/error/empty state (paridade com o irmão,
+    dívida já reconhecida); duas implementações SQL diferentes do
+    mesmo cálculo de `MAX(data_validade)`; sexta cópia de
+    `assertCompanyUnitBelongsToTenant` no projeto; `position_name`/
+    `is_matriz` buscados e nunca exibidos no frontend.
+  - **Follow-up sinalizado, não corrigido nesta fase** (pertence ao
+    sub-projeto A, disparado pela migration 0038 desta fase, não
+    exigido pela spec desta fase): `GET /company-units` não tem
+    parâmetro `tenant_id`, e é por isso que
+    `FireSafetyEquipmentPanel.tsx` pula essa chamada pra técnico/
+    parceiro com um comentário que ficou desatualizado depois da 0038
+    ("essa chamada não traria nada útil hoje" — agora traria). O
+    revisor final alertou explicitamente: **não** remover esse guard
+    sem antes adicionar o filtro `tenant_id` ao endpoint, porque hoje
+    isso devolveria a lista achatada de todas as filiais de todos os
+    tenants vinculados ao técnico.
+
+Fix-wave e sua re-revisão escopada confirmados por reprodução
+independente (revisor releu o código real de `assertCompanyUnitBelongsToTenant`/
+`findTrainings`/RLS pra confirmar os dois comportamentos "derivados do
+código, não assumidos por analogia" que o teste novo previa — 400 em
+vez de 403 pro técnico sem vínculo, 200-vazio em vez de 404 pro
+histórico de treinamento cross-tenant — e confirmou que `satisfies` é
+de fato usado, não um objeto literal comum) — 0 achados novos, sem
+regressão.
+
+**Verificação:** backend com suíte e2e real (Postgres real via
+`TestDb`) — 16/16 (`fire-brigade` + `fire-brigade-rls`), 16/16
+(`normative-assistant`, incluindo os 2 testes dedicados de LGPD pra
+`'cargo'` e `'brigada_incendio'`), regressão completa do dashboard sem
+alteração. Frontend sem suíte automatizada — deploy real confirmado
+via grep dentro do container antes de qualquer Playwright, 26
+checagens originais da Task 4 + 16 focadas na re-verificação do
+fix-wave (incluindo aceitar/cancelar o `confirm()` nativo), todas
+contra `https://montesesst.com.br` em produção.
