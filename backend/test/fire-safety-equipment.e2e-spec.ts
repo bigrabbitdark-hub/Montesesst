@@ -199,6 +199,75 @@ describe('Equipamentos contra incêndio (e2e)', () => {
     expect(res.body.foto_r2_key).toContain(id);
   });
 
+  it('GET /:id/foto devolve 404 quando o equipamento ainda não tem foto, e uma URL não-vazia depois do upload', async () => {
+    const created = await request(app.getHttpServer())
+      .post('/fire-safety-equipment')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ tipo: 'extintor', codigo: 'EXT-FOTO-DOWNLOAD' });
+    const id = created.body.id;
+
+    const beforeUpload = await request(app.getHttpServer())
+      .get(`/fire-safety-equipment/${id}/foto`)
+      .set('Authorization', `Bearer ${token}`);
+    expect(beforeUpload.status).toBe(404);
+
+    const uploadRes = await request(app.getHttpServer())
+      .post(`/fire-safety-equipment/${id}/foto`)
+      .set('Authorization', `Bearer ${token}`)
+      .attach('file', Buffer.from('fake-image-bytes'), { filename: 'extintor.jpg', contentType: 'image/jpeg' });
+    expect(uploadRes.status).toBe(201);
+
+    const afterUpload = await request(app.getHttpServer())
+      .get(`/fire-safety-equipment/${id}/foto`)
+      .set('Authorization', `Bearer ${token}`);
+    expect(afterUpload.status).toBe(200);
+    expect(typeof afterUpload.body.url).toBe('string');
+    expect(afterUpload.body.url.length).toBeGreaterThan(0);
+  });
+
+  it('PATCH que muda tipo pra algo diferente de extintor não persiste agente_extintor mesmo enviado junto', async () => {
+    const created = await request(app.getHttpServer())
+      .post('/fire-safety-equipment')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ tipo: 'sprinkler', codigo: 'SPK-PATCH-001' });
+    const id = created.body.id;
+
+    const updateRes = await request(app.getHttpServer())
+      .patch(`/fire-safety-equipment/${id}`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ tipo: 'alarme', agente_extintor: 'PQS' });
+
+    expect(updateRes.status).toBe(200);
+    expect(updateRes.body.tipo).toBe('alarme');
+    expect(updateRes.body.agente_extintor).toBeNull();
+  });
+
+  it('PATCH que muda o tipo de um extintor existente limpa os três campos de extintor pra null', async () => {
+    const created = await request(app.getHttpServer())
+      .post('/fire-safety-equipment')
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        tipo: 'extintor',
+        codigo: 'EXT-PATCH-TIPO',
+        agente_extintor: 'PQS',
+        capacidade: '6kg',
+        classe_fogo: 'ABC',
+      });
+    const id = created.body.id;
+    expect(created.body.agente_extintor).toBe('PQS');
+
+    const updateRes = await request(app.getHttpServer())
+      .patch(`/fire-safety-equipment/${id}`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ tipo: 'hidrante' });
+
+    expect(updateRes.status).toBe(200);
+    expect(updateRes.body.tipo).toBe('hidrante');
+    expect(updateRes.body.agente_extintor).toBeNull();
+    expect(updateRes.body.capacidade).toBeNull();
+    expect(updateRes.body.classe_fogo).toBeNull();
+  });
+
   it('equipamento vencido aparece no dashboard existente como item de atenção', async () => {
     await request(app.getHttpServer())
       .post('/fire-safety-equipment')

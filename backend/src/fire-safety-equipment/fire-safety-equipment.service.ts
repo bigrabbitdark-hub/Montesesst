@@ -102,9 +102,9 @@ interface UpdateEquipmentData {
   proxima_manutencao?: string;
   empresa_responsavel?: string;
   observacoes?: string;
-  agente_extintor?: string;
-  capacidade?: string;
-  classe_fogo?: string;
+  agente_extintor?: string | null;
+  capacidade?: string | null;
+  classe_fogo?: string | null;
 }
 
 const UPDATABLE_FIELDS = [
@@ -206,15 +206,43 @@ export class FireSafetyEquipmentService {
   }
 
   async update(client: PoolClient, id: string, data: UpdateEquipmentData): Promise<FireSafetyEquipment> {
-    if (data.company_unit_id) {
-      const existing = await client.query<{ tenant_id: string }>(
-        'SELECT tenant_id FROM fire_safety_equipment WHERE id = $1',
+    // Mesma invariante do create() (comentário lá em cima): campos de
+    // extintor só valem pra tipo='extintor'. Só precisamos saber o tipo
+    // atual da linha quando o PATCH pode alterar essa invariante — ou seja,
+    // quando ele muda `tipo` sem repetir os campos de extintor, ou envia
+    // campo de extintor sem repetir `tipo` (nesses casos o tipo "efetivo"
+    // depende do que já está no banco).
+    const touchesExtintorInvariant =
+      data.tipo !== undefined ||
+      data.agente_extintor !== undefined ||
+      data.capacidade !== undefined ||
+      data.classe_fogo !== undefined;
+    const needsCurrentTipo = touchesExtintorInvariant && data.tipo === undefined;
+
+    let currentRow: { tenant_id: string; tipo: string } | undefined;
+    if (data.company_unit_id || needsCurrentTipo) {
+      const existing = await client.query<{ tenant_id: string; tipo: string }>(
+        'SELECT tenant_id, tipo FROM fire_safety_equipment WHERE id = $1',
         [id],
       );
       if (existing.rowCount === 0) throw new NotFoundException('Equipamento não encontrado');
-      await this.assertCompanyUnitBelongsToTenant(client, data.company_unit_id, existing.rows[0].tenant_id);
+      currentRow = existing.rows[0];
     }
-    const { setClauses, values } = buildSafeSetClause(data, UPDATABLE_FIELDS, 2);
+    if (data.company_unit_id) {
+      await this.assertCompanyUnitBelongsToTenant(client, data.company_unit_id, currentRow!.tenant_id);
+    }
+
+    const updateData: UpdateEquipmentData = { ...data };
+    if (touchesExtintorInvariant) {
+      const effectiveTipo = data.tipo ?? currentRow!.tipo;
+      if (effectiveTipo !== 'extintor') {
+        updateData.agente_extintor = null;
+        updateData.capacidade = null;
+        updateData.classe_fogo = null;
+      }
+    }
+
+    const { setClauses, values } = buildSafeSetClause(updateData, UPDATABLE_FIELDS, 2);
     if (setClauses.length === 0) return this.findOne(client, id);
 
     const result = await client.query<FireSafetyEquipmentRow>(
@@ -249,5 +277,12 @@ export class FireSafetyEquipmentService {
       [id, fileKey],
     );
     return withStatus(result.rows[0]);
+  }
+
+  async getFotoUrl(client: PoolClient, id: string): Promise<{ url: string }> {
+    const equipment = await this.findOne(client, id);
+    if (!equipment.foto_r2_key) throw new NotFoundException('Nenhuma foto cadastrada pra esse equipamento');
+    const url = await this.r2.getPresignedDownloadUrl(equipment.foto_r2_key);
+    return { url };
   }
 }

@@ -89,4 +89,9 @@ export class FireSafetyEquipmentController {
     if (!file) throw new BadRequestException('Nenhum arquivo enviado');
     return req.withTenantContext((client: any) => this.equipment.uploadFoto(client, id, file));
   }
+
+  @Get(':id/foto')
+  getFoto(@Param('id') id: string, @Req() req: any) {
+    return req.withTenantContext((client: any) => this.equipment.getFotoUrl(client, id));
+  }
 }

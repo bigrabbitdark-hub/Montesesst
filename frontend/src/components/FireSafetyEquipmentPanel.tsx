@@ -58,7 +58,7 @@ function formatDate(isoDate: string): string {
   return `${day}/${month}/${year}`;
 }
 
-export function FireSafetyEquipmentPanel() {
+export function FireSafetyEquipmentPanel({ tenantId }: { tenantId?: string }) {
   const [items, setItems] = useState<Equipment[]>([]);
   const [units, setUnits] = useState<CompanyUnitOption[]>([]);
   const [tipo, setTipo] = useState<string>('extintor');
@@ -72,12 +72,22 @@ export function FireSafetyEquipmentPanel() {
   const [createError, setCreateError] = useState('');
   const [filterTipo, setFilterTipo] = useState('');
 
+  function equipmentUrl(): string {
+    return tenantId ? `/api/fire-safety-equipment?tenant_id=${tenantId}` : '/api/fire-safety-equipment';
+  }
+
   async function loadItems() {
-    const res = await fetch('/api/fire-safety-equipment', { headers: authHeaders() });
+    const res = await fetch(equipmentUrl(), { headers: authHeaders() });
     if (res.ok) setItems(await res.json());
   }
 
   async function loadUnits() {
+    // GET /company-units não tem parâmetro tenant_id (só enxerga via RLS do
+    // próprio contexto) — mesmo caso já tratado em DocumentsPanel.tsx. Pra
+    // técnico/parceiro vendo equipamentos de uma empresa vinculada
+    // (tenantId setado) essa chamada não traria nada útil hoje, então nem
+    // busca; o seletor de filial fica vazio, sem bloquear o resto do painel.
+    if (tenantId) return;
     const res = await fetch('/api/company-units', { headers: authHeaders() });
     if (res.ok) setUnits(await res.json());
   }
@@ -107,6 +117,7 @@ export function FireSafetyEquipmentPanel() {
         agente_extintor: tipo === 'extintor' ? agenteExtintor || undefined : undefined,
         capacidade: tipo === 'extintor' ? capacidade || undefined : undefined,
         classe_fogo: tipo === 'extintor' ? classeFogo || undefined : undefined,
+        tenant_id: tenantId,
       }),
     });
     if (!res.ok) {
