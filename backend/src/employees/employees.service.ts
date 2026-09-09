@@ -1,9 +1,10 @@
-import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PoolClient } from 'pg';
 import { mapPgError } from '../common/pg-error.util';
 import { buildSafeSetClause } from '../common/safe-update.util';
 import { parseEmployeesCsv, ParsedCsvRow } from './csv-import.util';
 import { applyColumnMapping, ColumnMapping, MappedEmployeeRow, parseSpreadsheet, suggestColumnMapping } from './spreadsheet-import.util';
+import { SubscriptionsService } from '../payments/subscriptions.service';
 
 // Únicas colunas que update() pode alterar — nunca confiar nas chaves do
 // body pra montar o SET (ver common/safe-update.util.ts).
@@ -65,6 +66,8 @@ export interface ImportResult {
 
 @Injectable()
 export class EmployeesService {
+  constructor(private readonly subscriptions: SubscriptionsService) {}
+
   // Uma FK do Postgres sozinha não garante que a filial referenciada
   // pertence ao mesmo tenant do funcionário (checagem de FK roda sem
   // filtrar pela RLS da tabela referenciada). Também não dá pra confiar só
@@ -85,7 +88,22 @@ export class EmployeesService {
     if (result.rowCount === 0) throw new BadRequestException('Filial não encontrada');
   }
 
-  async create(client: PoolClient, tenantId: string, data: CreateEmployeeData): Promise<Employee> {
+  private async assertEmployeeLimitNotExceeded(client: PoolClient, tenantId: string, callerRole: string): Promise<void> {
+    if (callerRole === 'admin') return;
+    const limit = await this.subscriptions.getActiveEmployeeLimit(client, tenantId);
+    if (limit === null) return;
+    const countResult = await client.query<{ count: string }>(
+      `SELECT COUNT(*) FROM employees WHERE tenant_id = $1 AND status = 'ativo'`,
+      [tenantId],
+    );
+    const count = parseInt(countResult.rows[0].count, 10);
+    if (count >= limit) {
+      throw new ForbiddenException(`Limite de ${limit} funcionários do plano atingido. Faça upgrade para adicionar mais.`);
+    }
+  }
+
+  async create(client: PoolClient, tenantId: string, data: CreateEmployeeData, callerRole: string): Promise<Employee> {
+    await this.assertEmployeeLimitNotExceeded(client, tenantId, callerRole);
     if (data.company_unit_id) {
       await this.assertCompanyUnitBelongsToTenant(client, data.company_unit_id, tenantId);
     }
@@ -125,7 +143,17 @@ export class EmployeesService {
     return employee;
   }
 
-  async update(client: PoolClient, id: string, data: UpdateEmployeeData): Promise<Employee> {
+  async update(client: PoolClient, id: string, data: UpdateEmployeeData, callerRole: string): Promise<Employee> {
+    if (data.status === 'ativo') {
+      const existing = await client.query<{ tenant_id: string; status: string }>(
+        'SELECT tenant_id, status FROM employees WHERE id = $1',
+        [id],
+      );
+      if (existing.rowCount === 0) throw new NotFoundException('Funcionário não encontrado');
+      if (existing.rows[0].status !== 'ativo') {
+        await this.assertEmployeeLimitNotExceeded(client, existing.rows[0].tenant_id, callerRole);
+      }
+    }
     if (data.company_unit_id) {
       // O tenant relevante aqui é o do funcionário ALVO (id), não necessariamente o do
       // caller — um admin pode atualizar funcionário de qualquer tenant, então é preciso

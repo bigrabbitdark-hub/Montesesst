@@ -179,4 +179,17 @@ export class SubscriptionsService {
     );
     return result.rows;
   }
+
+  async getActiveEmployeeLimit(client: PoolClient, tenantId: string): Promise<number | null> {
+    const result = await client.query<{ employee_limit: number | null }>(
+      `SELECT p.employee_limit
+       FROM subscriptions s
+       JOIN plans p ON p.id = s.plan_id
+       WHERE s.tenant_id = $1 AND s.status = 'authorized'`,
+      [tenantId],
+    );
+    if (result.rows.length === 0) return null;
+    if (result.rows.some((row) => row.employee_limit === null)) return null;
+    return Math.max(...result.rows.map((row) => row.employee_limit as number));
+  }
 }

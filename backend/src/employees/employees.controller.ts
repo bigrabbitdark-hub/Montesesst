@@ -31,14 +31,19 @@ export class EmployeesController {
     if (!tenantId) throw new BadRequestException('tenant_id é obrigatório');
 
     return req.withTenantContext((client: any) =>
-      this.employees.create(client, tenantId, {
-        full_name: dto.full_name,
-        cpf: dto.cpf,
-        birth_date: dto.birth_date,
-        position: dto.position,
-        admission_date: dto.admission_date,
-        company_unit_id: dto.company_unit_id,
-      }),
+      this.employees.create(
+        client,
+        tenantId,
+        {
+          full_name: dto.full_name,
+          cpf: dto.cpf,
+          birth_date: dto.birth_date,
+          position: dto.position,
+          admission_date: dto.admission_date,
+          company_unit_id: dto.company_unit_id,
+        },
+        user.role,
+      ),
     );
   }
 
@@ -107,7 +112,7 @@ export class EmployeesController {
   @Roles('empresa', 'admin')
   @Patch(':id')
   update(@Param('id') id: string, @Body() dto: UpdateEmployeeDto, @Req() req: any) {
-    return req.withTenantContext((client: any) => this.employees.update(client, id, dto));
+    return req.withTenantContext((client: any) => this.employees.update(client, id, dto, req.user.role));
   }
 
   @Roles('empresa', 'admin')

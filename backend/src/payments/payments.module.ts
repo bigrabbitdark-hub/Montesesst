@@ -9,6 +9,6 @@ import { WebhookController } from './webhook.controller';
 @Module({
   controllers: [PlansController, SubscriptionsController, WebhookController],
   providers: [MercadoPagoService, PlansService, SubscriptionsService],
-  exports: [MercadoPagoService],
+  exports: [MercadoPagoService, SubscriptionsService],
 })
 export class PaymentsModule {}
