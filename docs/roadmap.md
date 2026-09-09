@@ -3082,3 +3082,112 @@ Frontend sem suíte automatizada — Playwright contra o bundle real
 implantado em produção, confirmando que a mensagem de erro real
 (com o número do limite e o convite a fazer upgrade) chega até a
 tela, não um texto genérico.
+
+## Prevenção e Emergência — Equipamentos contra incêndio (sub-projeto A): status
+
+Primeiro dos 7 sub-projetos do "Centro de Gestão de Prevenção e
+Emergências" que o fundador propôs (extintores/equipamentos; brigada
+de incêndio; checklists de prevenção + simulados de emergência; Plano
+de Ação de Emergência; documentos PPCI/PSPCI/APPCI; dashboard "índice
+de prevenção"; agente especialista em incêndio) — os outros 6
+continuam sem spec, cada um vai precisar do seu próprio brainstorming
+quando for a vez. A arquitetura multi-estado (legislação de Corpo de
+Bombeiros por UF) foi deliberadamente tratada como uma frente à parte,
+de conteúdo/curadoria normativa, fora da sequência de 7 sub-projetos.
+
+**Fechada em 2026-09-09, 3 tasks + revisão final (opus) com 4
+Important + 5 Minor, os 4 Important corrigidos numa rodada única de
+fix-wave:**
+
+- Tabela nova `fire_safety_equipment` — uma tabela só pros ~11 tipos
+  de equipamento contra incêndio (extintor, hidrante, mangueira,
+  alarme, detector, iluminação de emergência, saída de emergência,
+  porta corta-fogo, sprinkler, central de alarme, outro), ao
+  contrário da recomendação inicial de começar só por extintor —
+  decisão explícita do fundador em brainstorming. Sem catálogo de
+  referência fixo (diferente do EPI). Localização por filial
+  (`company_unit_id`) + texto livre, sem hierarquia de andar/setor
+  nem planta/posicionamento visual. Status (`regular`/`vencendo`/
+  `vencido`) sempre calculado a partir de `proxima_manutencao`
+  (janela de 30 dias), nunca persistido.
+- **Task 1** — migration + módulo backend completo
+  (`backend/src/fire-safety-equipment/`), CRUD com os mesmos papéis
+  do EPI (`empresa`/`tecnico`/`parceiro`, resolução de `tenant_id`
+  idêntica), upload de foto reaproveitando `R2Service` já existente.
+  Revisão de task confirmou o código byte a byte contra o brief e
+  verificou o único desvio (fixture de teste do técnico precisando
+  de vínculo em `technicians`/`tenant_technicians`, mesmo padrão já
+  usado em `epis-crud.e2e-spec.ts`) — 0 achado bloqueante.
+- **Task 2** — integração no dashboard já existente
+  (`DashboardService.getSummary`), mesmo formato de
+  `getEpiStatus`/`epis.pendencias`/`epis.avisos`: vencido entra em
+  `atencao` como `prioridade: 'alta'` (conta em
+  `resumo.pendencias`), vencendo como `media`. TDD confirmado
+  (RED 8/9 → GREEN 9/9), regressão completa do dashboard sem
+  alteração — 0 achado.
+- **Task 3** — frontend `/empresa/equipamentos-incendio`, mesmo
+  padrão de arquivo único já usado em EPI/Mapa SST. Verificado via
+  deploy real + grep dentro do container + Playwright (29
+  checagens) contra produção, executado duas vezes (antes/depois de
+  um redeploy `--no-cache`) — 0 achado bloqueante.
+- **Revisão final (opus) achou 0 Critical + 4 Important + 5 Minor**,
+  os 4 Important corrigidos:
+  - **Important**: `update()` não protegia a invariante "campos de
+    extintor só persistem quando `tipo = 'extintor'`" — só `create()`
+    zerava esses campos; um PATCH podia setar `agente_extintor` numa
+    linha não-extintor, ou trocar o `tipo` de um extintor sem limpar
+    os campos antigos. Corrigido: `update()` agora resolve o tipo
+    efetivo (do PATCH ou da linha atual) e força os 3 campos pra
+    `null` quando não é extintor.
+  - **Important**: nenhum teste de RLS negativo/cross-tenant pra
+    tabela nova, contra a convenção já usada em quase toda tabela
+    deste produto (`documents-rls`, `epi-catalog-rls`,
+    `positions-link`, etc.). Corrigido: novo
+    `fire-safety-equipment-rls.e2e-spec.ts` com 5 casos, o mais
+    importante provando que um técnico SEM vínculo em
+    `technicians`/`tenant_technicians` é rejeitado (403, via
+    `WITH CHECK` da RLS) ao tentar mandar `tenant_id` de outro
+    tenant no corpo do POST.
+  - **Important**: upload de foto (`POST :id/foto`) sem nenhum
+    caminho de leitura — metade de uma feature, gravando no R2 sem
+    ninguém conseguir consumir. Corrigido: novo `GET :id/foto`
+    reaproveitando `R2Service.getPresignedDownloadUrl`, mesmo padrão
+    de `documents.controller.ts`'s `GET :id/download`.
+  - **Important**: painel do frontend não aceitava `tenantId`, ao
+    contrário de `EpisPanel`/`DocumentsPanel` — mesmo a spec
+    fechando que técnico/parceiro pode cadastrar equipamento durante
+    uma visita, o componente não tinha caminho pra isso. Corrigido:
+    prop `tenantId?` opcional, mesmo padrão exato dos dois
+    componentes-irmãos (inclusive o contorno já usado em
+    `DocumentsPanel` pra `GET /company-units` não aceitar
+    `tenant_id`). Nenhuma página nova de técnico foi criada — só o
+    componente ficou pronto pra ser montado numa, no futuro.
+  - 5 Minor parqueados: `getFireSafetyEquipmentStatus` do dashboard
+    usa `findAll` (sem filtro/projeção) em vez de uma query própria
+    mais magra — parqueado por escala declarada do produto; union
+    de `AttentionItem['tipo']` do dashboard do frontend sem o novo
+    valor (drift de tipo, sem quebra em runtime); painel novo bem
+    menos robusto que `EpisPanel` (sem loading/error state,
+    confirmação de exclusão); itens de equipamento entram sem limite
+    no digest semanal e no contexto do assistente (mesmo
+    comportamento já existente do EPI, paridade não regressão);
+    `codigo` obrigatório só a nível de DTO, não `NOT NULL` no schema
+    (decisão da própria spec aprovada, não do implementador).
+  - **Achado na spec, corrigido diretamente**: a Seção 4.3 da spec
+    citava uma "checagem explícita de posse de tenant" em EPI/
+    funcionário que não existe — os dois `remove()` dependem só de
+    RLS, igual ao módulo novo. Spec corrigida (commit `a2ac567`) pra
+    não propagar a premissa falsa pros outros 6 sub-projetos.
+
+Fix-wave e sua re-revisão escopada confirmados por reprodução
+independente (revisor rastreou a mecânica real de RLS —
+`TenantContextInterceptor`, `assigned_tenant_ids_for_current_user()`
+— em vez de confiar no relato) — 0 achados novos, sem regressão.
+
+**Verificação:** backend com suíte e2e real (Postgres real via
+`TestDb`) — 17/17 (`fire-safety-equipment` + `fire-safety-equipment-rls`),
+regressão completa do dashboard sem alteração. Frontend sem suíte
+automatizada — deploy real confirmado via grep dentro do container
+antes de qualquer Playwright, 29 checagens originais da Task 3 + 12
+focadas na re-verificação do fix-wave, todas contra
+`https://montesesst.com.br` em produção.
