@@ -28,6 +28,7 @@ import { PositionsModule } from './positions/positions.module';
 import { FireSafetyEquipmentModule } from './fire-safety-equipment/fire-safety-equipment.module';
 import { FireBrigadeModule } from './fire-brigade/fire-brigade.module';
 import { PreventionCorrectiveActionsModule } from './prevention-corrective-actions/prevention-corrective-actions.module';
+import { PreventionChecklistModule } from './prevention-checklist/prevention-checklist.module';
 import { JwtAuthGuard } from './auth/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 import { TenantContextInterceptor } from './common/interceptors/tenant-context.interceptor';
@@ -75,6 +76,7 @@ import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
     FireSafetyEquipmentModule,
     FireBrigadeModule,
     PreventionCorrectiveActionsModule,
+    PreventionChecklistModule,
   ],
   providers: [
     // Ordem importa: RateLimitGuard barra abuso antes de qualquer auth;
