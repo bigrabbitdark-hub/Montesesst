@@ -198,4 +198,21 @@ describe('Equipamentos contra incêndio (e2e)', () => {
     expect(res.status).toBe(201);
     expect(res.body.foto_r2_key).toContain(id);
   });
+
+  it('equipamento vencido aparece no dashboard existente como item de atenção', async () => {
+    await request(app.getHttpServer())
+      .post('/fire-safety-equipment')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ tipo: 'extintor', codigo: 'EXT-DASHBOARD', proxima_manutencao: daysFromToday(-3) });
+
+    const res = await request(app.getHttpServer())
+      .get('/dashboard/summary')
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(200);
+    const equipmentItems = res.body.atencao.filter((i: any) => i.tipo === 'equipamento_incendio');
+    expect(equipmentItems.length).toBeGreaterThan(0);
+    expect(equipmentItems[0].prioridade).toBe('alta');
+    expect(equipmentItems[0].link).toBe('/empresa/equipamentos-incendio');
+  });
 });

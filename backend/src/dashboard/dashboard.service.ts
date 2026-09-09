@@ -2,13 +2,14 @@ import { Injectable } from '@nestjs/common';
 import { PoolClient } from 'pg';
 import { DocumentsService } from '../documents/documents.service';
 import { PositionsService } from '../positions/positions.service';
+import { EQUIPMENT_TYPE_LABEL, FireSafetyEquipmentService } from '../fire-safety-equipment/fire-safety-equipment.service';
 
 export type DashboardStatus = 'ok' | 'atencao' | 'critico';
 export type AttentionPriority = 'alta' | 'media' | 'baixa';
 export type AttentionResponsible = 'empresa' | 'tecnico';
 
 export interface AttentionItem {
-  tipo: 'documento' | 'epi' | 'acao' | 'inspecao' | 'cargo';
+  tipo: 'documento' | 'epi' | 'acao' | 'inspecao' | 'cargo' | 'equipamento_incendio';
   titulo: string;
   prioridade: AttentionPriority;
   data: string | null;
@@ -48,16 +49,19 @@ export class DashboardService {
   constructor(
     private readonly documents: DocumentsService,
     private readonly positionsService: PositionsService,
+    private readonly fireSafetyEquipmentService: FireSafetyEquipmentService,
   ) {}
 
   async getSummary(client: PoolClient, tenantId: string): Promise<DashboardSummary> {
-    const [compliance, epis, actionPlans, inspecoesPendentes, positionDivergences] = await Promise.all([
-      this.documents.getCompliance(client, tenantId),
-      this.getEpiStatus(client, tenantId),
-      this.getActionPlans(client, tenantId),
-      this.countInspecoesPendentes(client, tenantId),
-      this.positionsService.getDivergences(client, tenantId),
-    ]);
+    const [compliance, epis, actionPlans, inspecoesPendentes, positionDivergences, fireSafetyEquipment] =
+      await Promise.all([
+        this.documents.getCompliance(client, tenantId),
+        this.getEpiStatus(client, tenantId),
+        this.getActionPlans(client, tenantId),
+        this.countInspecoesPendentes(client, tenantId),
+        this.positionsService.getDivergences(client, tenantId),
+        this.getFireSafetyEquipmentStatus(client, tenantId),
+      ]);
 
     const atencao: AttentionItem[] = [
       ...compliance.pendencias.map((doc): AttentionItem => ({
@@ -111,6 +115,22 @@ export class DashboardService {
         responsavel: 'empresa',
         link: '/empresa/mapa-sst',
       })),
+      ...fireSafetyEquipment.pendencias.map((eq): AttentionItem => ({
+        tipo: 'equipamento_incendio',
+        titulo: `Equipamento vencido: ${EQUIPMENT_TYPE_LABEL[eq.tipo]} (${eq.codigo})`,
+        prioridade: 'alta',
+        data: toDateString(eq.proxima_manutencao),
+        responsavel: 'empresa',
+        link: '/empresa/equipamentos-incendio',
+      })),
+      ...fireSafetyEquipment.avisos.map((eq): AttentionItem => ({
+        tipo: 'equipamento_incendio',
+        titulo: `Equipamento vencendo: ${EQUIPMENT_TYPE_LABEL[eq.tipo]} (${eq.codigo})`,
+        prioridade: 'media',
+        data: toDateString(eq.proxima_manutencao),
+        responsavel: 'empresa',
+        link: '/empresa/equipamentos-incendio',
+      })),
     ];
 
     atencao.sort((a, b) => {
@@ -132,8 +152,9 @@ export class DashboardService {
       return data >= hoje && data <= em7Dias;
     });
 
-    const pendencias = compliance.pendencias.length + epis.pendencias.length + positionDivergences.length;
-    const avisos = compliance.avisos.length + epis.avisos.length;
+    const pendencias =
+      compliance.pendencias.length + epis.pendencias.length + positionDivergences.length + fireSafetyEquipment.pendencias.length;
+    const avisos = compliance.avisos.length + epis.avisos.length + fireSafetyEquipment.avisos.length;
 
     let status: DashboardStatus = 'ok';
     if (pendencias > 0) status = 'critico';
@@ -189,6 +210,13 @@ export class DashboardService {
       if (diffDays < 0) pendencias.push(row);
       else if (diffDays <= 30) avisos.push(row);
     }
+    return { pendencias, avisos };
+  }
+
+  private async getFireSafetyEquipmentStatus(client: PoolClient, tenantId: string) {
+    const equipment = await this.fireSafetyEquipmentService.findAll(client, tenantId);
+    const pendencias = equipment.filter((eq) => eq.status === 'vencido');
+    const avisos = equipment.filter((eq) => eq.status === 'vencendo');
     return { pendencias, avisos };
   }
 
