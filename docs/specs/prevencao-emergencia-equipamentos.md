@@ -120,8 +120,16 @@ leitura (service layer, não SQL gerado).
    (`'regular' | 'vencendo' | 'vencido'`) derivado de
    `proxima_manutencao`; filtro opcional por `tipo`/`status` na query.
 3. **Edição/exclusão** (`PATCH`/`DELETE /fire-safety-equipment/:id`):
-   mesmo padrão de posse de tenant já usado em EPI/funcionário
-   (checagem explícita, não só RLS, já que RLS tem bypass de admin).
+   mesmo padrão já usado em EPI/funcionário — posse de tenant garantida
+   por RLS (não há checagem explícita de tenant em `epi.service.ts`
+   `remove()` nem em `employees.service.ts` `remove()`; a verificação
+   citada anteriormente aqui como precedente não existe nesses dois
+   métodos — correção feita na revisão final do sub-projeto A, ver
+   `docs/plans/prevencao-emergencia-equipamentos.md`). A checagem
+   explícita cruzada (buscar o tenant da linha alvo antes de validar
+   uma FK como `company_unit_id`) segue sendo necessária onde a FK em
+   si não é protegida por RLS — esse é o precedente real, usado em
+   `employees.service.ts` `update()` pra `company_unit_id`/`position_id`.
 4. **Integração com o dashboard**: `DashboardService.getSummary` ganha
    uma nova fonte (`FireSafetyEquipmentService.getStatusSummary`,
    ao lado de `getEpiStatus`/`getActionPlans` já existentes no mesmo
