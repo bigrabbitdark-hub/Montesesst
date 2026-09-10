@@ -86,8 +86,31 @@ export class EmergencyDrillService {
     if (result.rowCount === 0) throw new BadRequestException('Filial não encontrada');
   }
 
+  // Mesmo raciocínio de FireBrigadeService.createMember (fire-brigade.service.ts:133-139):
+  // participants vem do corpo da requisição, então precisa ser validado contra o
+  // tenant ANTES de qualquer INSERT — senão um employee_id de outro tenant entraria
+  // em emergency_drill_participants (a FK employees(id) não impede isso, só garante
+  // que o funcionário existe em algum tenant). Uma única query cobre todos os
+  // participantes de uma vez em vez de checar um por um.
+  private async assertParticipantsBelongToTenant(
+    client: PoolClient,
+    participants: { employeeId: string; presente: boolean }[],
+    tenantId: string,
+  ): Promise<void> {
+    if (participants.length === 0) return;
+    const uniqueIds = [...new Set(participants.map((p) => p.employeeId))];
+    const result = await client.query<{ id: string }>(
+      `SELECT id FROM employees WHERE id = ANY($1::uuid[]) AND tenant_id = $2`,
+      [uniqueIds, tenantId],
+    );
+    if (result.rowCount !== uniqueIds.length) {
+      throw new BadRequestException('Um ou mais funcionários da lista de presença não pertencem a este tenant');
+    }
+  }
+
   async create(client: PoolClient, data: CreateDrillData): Promise<EmergencyDrillReport> {
     await this.assertCompanyUnitBelongsToTenant(client, data.companyUnitId, data.tenantId);
+    await this.assertParticipantsBelongToTenant(client, data.participants, data.tenantId);
 
     try {
       const drillResult = await client.query<EmergencyDrill>(

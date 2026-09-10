@@ -6,6 +6,7 @@ interface EmployeeOption {
   id: string;
   full_name: string;
   status: string;
+  company_unit_id: string | null;
 }
 
 interface CompanyUnitOption {
@@ -81,9 +82,7 @@ export function EmergencyDrillPanel() {
     const res = await fetch('/api/employees', { headers: authHeaders() });
     if (res.ok) {
       const all: EmployeeOption[] = await res.json();
-      const active = all.filter((e) => e.status === 'ativo');
-      setEmployees(active);
-      setPresenca(Object.fromEntries(active.map((e) => [e.id, true])));
+      setEmployees(all.filter((e) => e.status === 'ativo'));
     }
   }
 
@@ -109,6 +108,16 @@ export function EmergencyDrillPanel() {
     loadCorrectiveActions();
   }, []);
 
+  // Lista de presença = todo funcionário status='ativo' DA FILIAL
+  // selecionada, não do tenant inteiro — sem isso, trocar de filial no
+  // formulário não muda quem aparece pra marcar presença.
+  const filialEmployees = employees.filter((e) => e.company_unit_id === companyUnitId);
+
+  useEffect(() => {
+    setPresenca(Object.fromEntries(filialEmployees.map((e) => [e.id, true])));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [companyUnitId, employees]);
+
   async function handleCreate(e: FormEvent) {
     e.preventDefault();
     setCreateError('');
@@ -126,7 +135,7 @@ export function EmergencyDrillPanel() {
         portas_bloqueadas: portasBloqueadas,
         extintores_obstruidos: extintoresObstruidos,
         observacoes: observacoes || undefined,
-        participants: employees.map((emp) => ({ employee_id: emp.id, presente: presenca[emp.id] ?? true })),
+        participants: filialEmployees.map((emp) => ({ employee_id: emp.id, presente: presenca[emp.id] ?? true })),
       }),
     });
     if (!res.ok) {
@@ -252,7 +261,7 @@ export function EmergencyDrillPanel() {
         <div className="flex flex-col gap-2">
           <span className="text-sm font-medium text-brand-900">Lista de presença</span>
           <div className="max-h-64 overflow-y-auto rounded-md border border-brand-100">
-            {employees.map((emp) => (
+            {filialEmployees.map((emp) => (
               <label key={emp.id} className="flex items-center gap-2 border-b border-brand-50 px-3 py-2 text-sm">
                 <input
                   type="checkbox"

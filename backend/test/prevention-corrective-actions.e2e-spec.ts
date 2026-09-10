@@ -151,11 +151,26 @@ describe('Ações corretivas de prevenção (e2e)', () => {
       .set('Authorization', `Bearer ${token}`);
 
     expect(res.status).toBe(200);
+    // Task 6 do fix wave final: o título precisa deixar claro que é uma
+    // pendência (prefixo "Ação corretiva pendente:"/"Ação corretiva vencendo:"),
+    // não só repetir a description crua (que é o item_label do checklist ou a
+    // descrição do simulado, sem indicar que algo está errado).
     const items = res.body.atencao.filter((i: any) => i.tipo === 'acao_corretiva_prevencao');
-    expect(items.find((i: any) => i.titulo === 'Ação vencida pro dashboard').prioridade).toBe('alta');
-    expect(items.find((i: any) => i.titulo === 'Ação vencendo pro dashboard').prioridade).toBe('media');
-    expect(items.find((i: any) => i.titulo === 'Ação sem prazo pro dashboard').prioridade).toBe('media');
-    expect(items.some((i: any) => i.titulo === 'Ação distante demais pro dashboard')).toBe(false);
+    expect(items.find((i: any) => i.titulo === 'Ação corretiva pendente: Ação vencida pro dashboard').prioridade).toBe(
+      'alta',
+    );
+    expect(items.find((i: any) => i.titulo === 'Ação corretiva vencendo: Ação vencendo pro dashboard').prioridade).toBe(
+      'media',
+    );
+    expect(
+      items.find((i: any) => i.titulo === 'Ação corretiva vencendo: Ação sem prazo pro dashboard').prioridade,
+    ).toBe('media');
+    expect(
+      items.some((i: any) => i.titulo === 'Ação corretiva pendente: Ação distante demais pro dashboard'),
+    ).toBe(false);
+    expect(
+      items.some((i: any) => i.titulo === 'Ação corretiva vencendo: Ação distante demais pro dashboard'),
+    ).toBe(false);
   });
 
 });

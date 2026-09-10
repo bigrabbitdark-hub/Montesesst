@@ -135,6 +135,46 @@ describe('Simulado de emergência (e2e)', () => {
     expect(res.status).toBe(400);
   });
 
+  // Finding 4 do fix wave final: participants vem do corpo da requisição
+  // (employee_id arbitrário), então precisa ser validado contra o tenant
+  // ANTES de qualquer INSERT — senão um funcionário de outro tenant entraria
+  // em emergency_drill_participants. Mesmo raciocínio de
+  // FireBrigadeService.createMember (fire-brigade.service.ts:133-139).
+  it('rejeita participante cujo employee_id pertence a outro tenant, e não insere nada (nem o simulado)', async () => {
+    const otherTenant = await db.createTenantWithUser('Empresa Simulado Participante Outro Tenant');
+
+    const res = await request(app.getHttpServer())
+      .post('/emergency-drills')
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        company_unit_id: companyUnitId,
+        data_realizacao: '2026-03-04',
+        participants: [
+          { employee_id: employeeId, presente: true },
+          { employee_id: otherTenant.employeeId, presente: true },
+        ],
+      });
+
+    expect(res.status).toBe(400);
+
+    // Confirma que a rejeição acontece ANTES do INSERT em emergency_drills
+    // (não é um rollback parcial pós-INSERT de participants) — nenhum
+    // simulado com esta data foi criado.
+    const drillCheck = await (db as any).client.query(
+      `SELECT id FROM emergency_drills WHERE tenant_id = $1 AND data_realizacao = '2026-03-04'`,
+      [tenantId],
+    );
+    expect(drillCheck.rowCount).toBe(0);
+
+    // E o funcionário de outro tenant não aparece em nenhuma linha de
+    // emergency_drill_participants.
+    const participantCheck = await (db as any).client.query(
+      `SELECT id FROM emergency_drill_participants WHERE employee_id = $1`,
+      [otherTenant.employeeId],
+    );
+    expect(participantCheck.rowCount).toBe(0);
+  });
+
   it('lista simulados do tenant', async () => {
     const res = await request(app.getHttpServer())
       .get(`/emergency-drills?tenant_id=${tenantId}`)

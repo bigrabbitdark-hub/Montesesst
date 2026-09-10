@@ -102,6 +102,18 @@ describe('Checklist de prevenção (e2e)', () => {
     expect(photoUpload.status).toBe(201);
     expect(photoUpload.body.foto_r2_key).toContain(checklistId);
 
+    const photoGet = await request(app.getHttpServer())
+      .get(`/prevention-checklists/${checklistId}/items/${ncItem.id}/foto`)
+      .set('Authorization', `Bearer ${technicianToken}`);
+    expect(photoGet.status).toBe(200);
+    expect(typeof photoGet.body.url).toBe('string');
+    expect(photoGet.body.url.length).toBeGreaterThan(0);
+
+    const photoGetNoPhoto = await request(app.getHttpServer())
+      .get(`/prevention-checklists/${checklistId}/items/${okItem.id}/foto`)
+      .set('Authorization', `Bearer ${technicianToken}`);
+    expect(photoGetNoPhoto.status).toBe(404);
+
     await request(app.getHttpServer())
       .patch(`/prevention-checklists/${checklistId}/items/${okItem.id}`)
       .set('Authorization', `Bearer ${technicianToken}`)

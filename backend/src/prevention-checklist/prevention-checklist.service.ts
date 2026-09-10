@@ -185,6 +185,17 @@ export class PreventionChecklistService {
     return result.rows[0];
   }
 
+  async getItemFotoUrl(client: PoolClient, checklistId: string, itemId: string): Promise<{ url: string }> {
+    const result = await client.query<PreventionChecklistItem>(
+      'SELECT * FROM prevention_checklist_items WHERE id = $1 AND checklist_id = $2',
+      [itemId, checklistId],
+    );
+    const item = result.rows[0];
+    if (!item || !item.foto_r2_key) throw new NotFoundException('Nenhuma foto cadastrada pra esse item');
+    const url = await this.r2.getPresignedDownloadUrl(item.foto_r2_key);
+    return { url };
+  }
+
   async concluir(client: PoolClient, id: string): Promise<PreventionChecklistDetail> {
     const { tenant_id: tenantId } = await this.assertDraft(client, id);
 

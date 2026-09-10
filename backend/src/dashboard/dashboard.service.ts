@@ -194,7 +194,7 @@ export class DashboardService {
       })),
       ...preventionCorrectiveActions.pendencias.map((a): AttentionItem => ({
         tipo: 'acao_corretiva_prevencao',
-        titulo: a.description,
+        titulo: `Ação corretiva pendente: ${a.description}`,
         prioridade: 'alta',
         data: toDateString(a.deadline),
         responsavel: 'empresa',
@@ -202,7 +202,7 @@ export class DashboardService {
       })),
       ...preventionCorrectiveActions.avisos.map((a): AttentionItem => ({
         tipo: 'acao_corretiva_prevencao',
-        titulo: a.description,
+        titulo: `Ação corretiva vencendo: ${a.description}`,
         prioridade: 'media',
         data: toDateString(a.deadline),
         responsavel: 'empresa',

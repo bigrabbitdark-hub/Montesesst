@@ -71,6 +71,11 @@ export class PreventionChecklistController {
     return req.withTenantContext((client: any) => this.checklists.uploadItemPhoto(client, id, itemId, file));
   }
 
+  @Get(':id/items/:itemId/foto')
+  getItemFoto(@Param('id') id: string, @Param('itemId') itemId: string, @Req() req: any) {
+    return req.withTenantContext((client: any) => this.checklists.getItemFotoUrl(client, id, itemId));
+  }
+
   @Roles('tecnico', 'parceiro')
   @Post(':id/concluir')
   concluir(@Param('id') id: string, @Req() req: any) {
