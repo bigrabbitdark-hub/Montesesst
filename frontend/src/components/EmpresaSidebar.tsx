@@ -33,6 +33,7 @@ const GROUPS: NavGroup[] = [
       { href: '/empresa/mapa-sst', label: 'Mapa SST', emoji: '🗺️' },
       { href: '/empresa/equipamentos-incendio', label: 'Equipamentos contra incêndio', emoji: '🧯' },
       { href: '/empresa/brigada', label: 'Brigada de incêndio', emoji: '👨‍🚒' },
+      { href: '/empresa/checklist-prevencao', label: 'Checklist de prevenção', emoji: '📋' },
     ],
   },
   {
