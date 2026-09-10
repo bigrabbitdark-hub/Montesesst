@@ -4,13 +4,22 @@ import { DocumentsService } from '../documents/documents.service';
 import { PositionsService } from '../positions/positions.service';
 import { EQUIPMENT_TYPE_LABEL, FireSafetyEquipmentService } from '../fire-safety-equipment/fire-safety-equipment.service';
 import { FireBrigadeService } from '../fire-brigade/fire-brigade.service';
+import { PreventionCorrectiveActionsService } from '../prevention-corrective-actions/prevention-corrective-actions.service';
 
 export type DashboardStatus = 'ok' | 'atencao' | 'critico';
 export type AttentionPriority = 'alta' | 'media' | 'baixa';
 export type AttentionResponsible = 'empresa' | 'tecnico';
 
 export interface AttentionItem {
-  tipo: 'documento' | 'epi' | 'acao' | 'inspecao' | 'cargo' | 'equipamento_incendio' | 'brigada_incendio';
+  tipo:
+    | 'documento'
+    | 'epi'
+    | 'acao'
+    | 'inspecao'
+    | 'cargo'
+    | 'equipamento_incendio'
+    | 'brigada_incendio'
+    | 'acao_corretiva_prevencao';
   titulo: string;
   prioridade: AttentionPriority;
   data: string | null;
@@ -24,9 +33,12 @@ export interface AttentionItem {
 // completo) e nunca deve sair do produto pra terceiro (LGPD). Usar
 // `satisfies` força o TypeScript a recusar a compilação se um tipo
 // novo for adicionado à union sem entrar aqui — não depende de alguém
-// lembrar de atualizar um filtro separado (achado da revisão final:
-// isso já vazou PII duas vezes, 'cargo' e 'brigada_incendio', porque
-// era um denylist de manutenção manual).
+// lembrar de atualizar um filtro separado (achado da revisão final do
+// sub-projeto B: isso já vazou PII duas vezes, 'cargo' e
+// 'brigada_incendio', porque era um denylist de manutenção manual).
+// 'acao_corretiva_prevencao' é seguro: a descrição vem de item_label
+// (texto fixo do checklist) ou de um texto gerado (flags do simulado),
+// nunca de employee_full_name.
 export const ATTENTION_TIPO_AI_SAFE = {
   documento: true,
   epi: true,
@@ -35,6 +47,7 @@ export const ATTENTION_TIPO_AI_SAFE = {
   cargo: false,
   equipamento_incendio: true,
   brigada_incendio: false,
+  acao_corretiva_prevencao: true,
 } satisfies Record<AttentionItem['tipo'], boolean>;
 
 export interface DashboardSummary {
@@ -71,19 +84,29 @@ export class DashboardService {
     private readonly positionsService: PositionsService,
     private readonly fireSafetyEquipmentService: FireSafetyEquipmentService,
     private readonly fireBrigadeService: FireBrigadeService,
+    private readonly preventionCorrectiveActionsService: PreventionCorrectiveActionsService,
   ) {}
 
   async getSummary(client: PoolClient, tenantId: string): Promise<DashboardSummary> {
-    const [compliance, epis, actionPlans, inspecoesPendentes, positionDivergences, fireSafetyEquipment, fireBrigade] =
-      await Promise.all([
-        this.documents.getCompliance(client, tenantId),
-        this.getEpiStatus(client, tenantId),
-        this.getActionPlans(client, tenantId),
-        this.countInspecoesPendentes(client, tenantId),
-        this.positionsService.getDivergences(client, tenantId),
-        this.getFireSafetyEquipmentStatus(client, tenantId),
-        this.getFireBrigadeStatus(client, tenantId),
-      ]);
+    const [
+      compliance,
+      epis,
+      actionPlans,
+      inspecoesPendentes,
+      positionDivergences,
+      fireSafetyEquipment,
+      fireBrigade,
+      preventionCorrectiveActions,
+    ] = await Promise.all([
+      this.documents.getCompliance(client, tenantId),
+      this.getEpiStatus(client, tenantId),
+      this.getActionPlans(client, tenantId),
+      this.countInspecoesPendentes(client, tenantId),
+      this.positionsService.getDivergences(client, tenantId),
+      this.getFireSafetyEquipmentStatus(client, tenantId),
+      this.getFireBrigadeStatus(client, tenantId),
+      this.preventionCorrectiveActionsService.getStatusSummary(client, tenantId),
+    ]);
 
     const atencao: AttentionItem[] = [
       ...compliance.pendencias.map((doc): AttentionItem => ({
@@ -169,6 +192,22 @@ export class DashboardService {
         responsavel: 'empresa',
         link: '/empresa/brigada',
       })),
+      ...preventionCorrectiveActions.pendencias.map((a): AttentionItem => ({
+        tipo: 'acao_corretiva_prevencao',
+        titulo: a.description,
+        prioridade: 'alta',
+        data: toDateString(a.deadline),
+        responsavel: 'empresa',
+        link: a.checklist_item_id ? '/empresa/checklist-prevencao' : '/empresa/simulados',
+      })),
+      ...preventionCorrectiveActions.avisos.map((a): AttentionItem => ({
+        tipo: 'acao_corretiva_prevencao',
+        titulo: a.description,
+        prioridade: 'media',
+        data: toDateString(a.deadline),
+        responsavel: 'empresa',
+        link: a.checklist_item_id ? '/empresa/checklist-prevencao' : '/empresa/simulados',
+      })),
     ];
 
     atencao.sort((a, b) => {
@@ -195,9 +234,14 @@ export class DashboardService {
       epis.pendencias.length +
       positionDivergences.length +
       fireSafetyEquipment.pendencias.length +
-      fireBrigade.pendencias.length;
+      fireBrigade.pendencias.length +
+      preventionCorrectiveActions.pendencias.length;
     const avisos =
-      compliance.avisos.length + epis.avisos.length + fireSafetyEquipment.avisos.length + fireBrigade.avisos.length;
+      compliance.avisos.length +
+      epis.avisos.length +
+      fireSafetyEquipment.avisos.length +
+      fireBrigade.avisos.length +
+      preventionCorrectiveActions.avisos.length;
 
     let status: DashboardStatus = 'ok';
     if (pendencias > 0) status = 'critico';

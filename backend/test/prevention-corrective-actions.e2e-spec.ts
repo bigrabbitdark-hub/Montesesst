@@ -116,4 +116,46 @@ describe('Ações corretivas de prevenção (e2e)', () => {
     ).rejects.toThrow();
   });
 
+  it('ações corretivas vencida/vencendo/sem-prazo aparecem no dashboard existente com a prioridade certa', async () => {
+    const today = new Date();
+    const past = new Date(today);
+    past.setDate(past.getDate() - 1);
+    const soon = new Date(today);
+    soon.setDate(soon.getDate() + 10);
+    const farFuture = new Date(today);
+    farFuture.setDate(farFuture.getDate() + 90);
+
+    await (db as any).client.query(
+      `INSERT INTO prevention_corrective_actions (tenant_id, checklist_item_id, description, deadline)
+       VALUES ($1, $2, 'Ação vencida pro dashboard', $3)`,
+      [tenantId, checklistItemId, past.toISOString().slice(0, 10)],
+    );
+    await (db as any).client.query(
+      `INSERT INTO prevention_corrective_actions (tenant_id, checklist_item_id, description, deadline)
+       VALUES ($1, $2, 'Ação vencendo pro dashboard', $3)`,
+      [tenantId, checklistItemId, soon.toISOString().slice(0, 10)],
+    );
+    await (db as any).client.query(
+      `INSERT INTO prevention_corrective_actions (tenant_id, checklist_item_id, description)
+       VALUES ($1, $2, 'Ação sem prazo pro dashboard')`,
+      [tenantId, checklistItemId],
+    );
+    await (db as any).client.query(
+      `INSERT INTO prevention_corrective_actions (tenant_id, checklist_item_id, description, deadline)
+       VALUES ($1, $2, 'Ação distante demais pro dashboard', $3)`,
+      [tenantId, checklistItemId, farFuture.toISOString().slice(0, 10)],
+    );
+
+    const res = await request(app.getHttpServer())
+      .get('/dashboard/summary')
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(200);
+    const items = res.body.atencao.filter((i: any) => i.tipo === 'acao_corretiva_prevencao');
+    expect(items.find((i: any) => i.titulo === 'Ação vencida pro dashboard').prioridade).toBe('alta');
+    expect(items.find((i: any) => i.titulo === 'Ação vencendo pro dashboard').prioridade).toBe('media');
+    expect(items.find((i: any) => i.titulo === 'Ação sem prazo pro dashboard').prioridade).toBe('media');
+    expect(items.some((i: any) => i.titulo === 'Ação distante demais pro dashboard')).toBe(false);
+  });
+
 });
