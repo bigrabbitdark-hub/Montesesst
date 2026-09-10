@@ -3328,3 +3328,129 @@ via grep dentro do container antes de qualquer Playwright, 26
 checagens originais da Task 4 + 16 focadas na re-verificação do
 fix-wave (incluindo aceitar/cancelar o `confirm()` nativo), todas
 contra `https://montesesst.com.br` em produção.
+
+## Prevenção e Emergência — Checklist de prevenção + Simulado de emergência (sub-projeto C): status
+
+Terceiro dos 7 sub-projetos do "Centro de Gestão de Prevenção e
+Emergências" (sub-projetos A e B já concluídos — ver seções acima). Os
+outros 4 (Plano de Ação de Emergência; documentos PPCI/PSPCI/APPCI;
+dashboard "índice de prevenção"; agente especialista em incêndio)
+continuam sem spec.
+
+**Fechada em 2026-09-10, 6 tasks + revisão final (opus) com 6
+Important + 15 Minor, 5 dos 6 Important corrigidos numa rodada única
+de fix-wave — o 6º ficou de fora deliberadamente, ver abaixo:**
+
+- Duas entidades relacionadas mas com forma de dado bem diferente,
+  agrupadas num sub-projeto só por proximidade temática: checklist de
+  prevenção (vistoria técnica periódica, 14 itens fixos C/NC/NA com
+  foto opcional, fluxo rascunho→conclusão espelhando Inspeções) e
+  simulado de emergência (registrado pela própria empresa, lista de
+  presença nominal cobrindo todo funcionário ativo — inclusive
+  ausentes — decisão explícita do fundador ao contrário da
+  recomendação inicial de só contagem numérica, relatório calculado
+  cruzando `fire_brigade_members` pra "brigadistas presentes"). Ambos
+  geram ações corretivas numa tabela nova e própria
+  (`prevention_corrective_actions`), não reaproveitando `action_plans`
+  — mesmo padrão de "tabela nova em vez de alterar tabela legada" já
+  usado nos sub-projetos A/B.
+- **Task 1** — migration (as 5 tabelas da feature completa) + módulo
+  de ações corretivas (fundação consumida pelas Tasks 2/3). Revisão de
+  task achou 1 Important: `PATCH /prevention-corrective-actions/:id`
+  sem `@Roles()` nenhum (meu próprio código de plano omitiu) —
+  corrigido na hora. A própria instrução de correção do controlador
+  também estava errada (assumiu bypass implícito de admin no
+  `RolesGuard`, que não existe) — o implementador conferiu o código
+  real e corrigiu a instrução também, evitando uma regressão de acesso
+  de admin.
+- **Task 2** — checklist de prevenção (CRUD + item + foto R2 direta +
+  `concluir` gerando ação corretiva por item NC, só técnico/parceiro).
+  0 achado bloqueante na revisão de task.
+- **Task 3** — simulado de emergência (registro com lista de presença
+  aninhada + geração de ação corretiva por flag de problema +
+  relatório calculado). Revisão de task achou 1 Important: um `Date`
+  bruto do `pg` sendo interpolado numa descrição de ação corretiva via
+  `.replace()`, corrompendo o texto persistido com um sufixo de data
+  verboso em todo simulado com problema marcado — corrigido na hora
+  com o `toDateString()` já estabelecido em `cipa/committees.service.ts`,
+  e o teste fortalecido de asserção por substring pra igualdade exata.
+- **Task 4** — integração no dashboard já existente, incluindo
+  extensão do `ATTENTION_TIPO_AI_SAFE` (guarda de PII do sub-projeto B)
+  com o tipo novo. 0 achado bloqueante.
+- **Tasks 5/6** — frontend `/empresa/checklist-prevencao` (read-only
+  pra empresa, já que cadastro é só técnico/parceiro) e
+  `/empresa/simulados` (registro completo pela empresa). 0 achado
+  bloqueante em nenhuma das duas.
+- **Revisão final (opus) achou 0 Critical + 6 Important + 15 Minor**,
+  5 Important corrigidos numa única fix-wave:
+  - **Important**: zero cobertura e2e de RLS/cross-tenant nas 5
+    tabelas novas — **terceira vez seguida** que essa exata lacuna
+    aparece nesta mesma iniciativa (já achada e corrigida nos
+    sub-projetos A e B). Corrigido: dois arquivos novos espelhando
+    `fire-brigade-rls.e2e-spec.ts`.
+  - **Important, NÃO corrigido nesta fase — decisão do fundador, não
+    conserto de código**: o checklist de prevenção não tem NENHUMA
+    tela de técnico. Criar/preencher/fotografar/concluir são só
+    `@Roles('tecnico', 'parceiro')` no backend, mas só páginas de
+    empresa foram construídas (Tasks 5/6) — o backend inteiro do
+    checklist está hoje inalcançável por qualquer humano no produto.
+    A justificativa do meu próprio plano ("mesma disciplina de
+    Inspeções, que também não tem formulário de criação pela empresa")
+    estava factualmente errada: Inspeções TEM uma UI de técnico
+    completa (`/tecnico/empresas/[tenantId]/inspecoes/...`). Construir
+    essa tela é trabalho substancial (uma página nova espelhando o
+    fluxo de técnico de Inspeções) — comparável a uma 7ª task, não um
+    bug — por isso não entrou na fix-wave. **Recomendação prioritária:
+    esta é a próxima coisa a fazer antes de considerar o sub-projeto C
+    utilizável de ponta a ponta.**
+  - **Important**: foto de item de checklist era write-only (sem
+    endpoint de leitura) — corrigido com `GET .../items/:itemId/foto`
+    espelhando `fire-safety-equipment`'s `getFotoUrl`. (Achado
+    corrigido durante a fix-wave: `fire-safety-equipment` também não
+    apaga o objeto R2 antigo ao substituir a foto — não é precedente
+    estabelecido, então essa parte do achado original não foi
+    replicada como "correção".)
+  - **Important**: simulado não validava que os `employee_id` da lista
+    de presença pertenciam ao tenant — um técnico vinculado a dois
+    tenants podia registrar um simulado do tenant A listando
+    funcionários do tenant B, e o nome completo vazava no relatório.
+    Corrigido espelhando a validação já existente em
+    `FireBrigadeService.createMember`.
+  - **Important**: lista de presença do frontend não filtrava por
+    filial — mostrava (e enviava) funcionários de todas as unidades do
+    tenant. Corrigido com filtro por `company_unit_id` + recálculo de
+    presença ao trocar a filial.
+  - **Important**: título da ação corretiva de checklist no dashboard
+    era só o `item_label` cru (ex. "Extintores acessíveis") com
+    prioridade alta — lia como se estivesse tudo certo. Corrigido com
+    prefixo, mesmo estilo já usado por todo outro tipo de
+    `AttentionItem`.
+  - 15 Minor parqueados, entre eles: relatório do simulado no
+    frontend nunca mostra a lista nominal de quem faltou (o motivo que
+    o fundador deu pra exigir lista nominal em vez de contagem);
+    `assertCompanyUnitBelongsToTenant`/`toDateString` duplicados uma
+    5ª vez cada; `ON DELETE CASCADE` em `emergency_drill_participants.
+    employee_id` reescreve retroativamente relatórios de simulados já
+    realizados se um funcionário for apagado (decisão já aprovada na
+    spec, não defeito); dependência implícita de containers rodarem em
+    UTC pro corte de data funcionar.
+
+Fix-wave e sua re-revisão escopada confirmados por reprodução
+independente (revisor releu o código real de `assertCompanyUnitBelongsToTenant`/
+`updateStatus`/RLS pra confirmar a divergência 404-vs-400 e que o PATCH
+cross-tenant de ação corretiva de simulado realmente passa pela RLS, não
+por uma camada anterior) — 1 lacuna residual de cobertura de teste
+parqueada (`emergency-drill-rls.e2e-spec.ts` sem o caso de técnico sem
+vínculo que o arquivo irmão de checklist tem — garantia de segurança já
+confirmada por leitura de código, não é regressão).
+
+**Verificação:** backend com suíte e2e real (Postgres real via
+`TestDb`) — 26/26 nos arquivos tocados pela fix-wave
+(`prevention-checklist` + `prevention-checklist-rls`,
+`emergency-drill` + `emergency-drill-rls`,
+`prevention-corrective-actions`, `dashboard`), regressão completa sem
+alteração. Frontend sem suíte automatizada — deploy real confirmado
+via grep dentro do container antes de qualquer Playwright, 49
+checagens originais das Tasks 5/6 + 15 focadas na re-verificação do
+filtro por filial, todas contra `https://montesesst.com.br` em
+produção.
