@@ -11,8 +11,8 @@ export interface CompanyChunk {
 // Anexo de uma pergunta específica do Assistente (Fase 20) — nunca
 // persistido, existe só durante o processamento desta chamada.
 export interface AttachmentInput {
-  kind: 'pdf_text' | 'image';
-  content: string; // texto extraído (pdf_text) ou dado base64 (image)
+  kind: 'pdf_text' | 'docx_text' | 'xlsx_text' | 'image';
+  content: string; // texto extraído (pdf_text/docx_text/xlsx_text) ou dado base64 (image)
   mimeType?: string; // obrigatório quando kind === 'image'
 }
 

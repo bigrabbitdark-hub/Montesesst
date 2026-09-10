@@ -20,8 +20,10 @@ import { envInt } from '../common/env';
 import { RedisService } from '../common/redis/redis.service';
 import { NormativeAssistantService } from './normative-assistant.service';
 import { NormativeQueryDto } from './dto/normative-query.dto';
+import { DOCX_MIME_TYPE } from '../common/docx/docx-text.util';
+import { XLSX_MIME_TYPE } from '../common/xlsx/xlsx-text.util';
 
-const ALLOWED_ATTACHMENT_MIME_TYPES = ['application/pdf', 'image/jpeg', 'image/png'];
+const ALLOWED_ATTACHMENT_MIME_TYPES = ['application/pdf', 'image/jpeg', 'image/png', DOCX_MIME_TYPE, XLSX_MIME_TYPE];
 
 @Controller('assistant')
 export class NormativeAssistantController {
@@ -47,7 +49,7 @@ export class NormativeAssistantController {
   ) {
     if (file) {
       if (!ALLOWED_ATTACHMENT_MIME_TYPES.includes(file.mimetype)) {
-        throw new BadRequestException('Tipo de arquivo não permitido (só PDF, JPG ou PNG)');
+        throw new BadRequestException('Tipo de arquivo não permitido (só PDF, JPG, PNG, DOCX ou XLSX)');
       }
 
       // Limite dedicado e mais apertado que ASSISTANT_RATE_LIMIT_MAX

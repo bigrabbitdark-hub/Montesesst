@@ -13,10 +13,16 @@ import { DatabaseService } from '../common/database/database.service';
 import { ATTENTION_TIPO_AI_SAFE, DashboardService } from '../dashboard/dashboard.service';
 import { AuthenticatedUser } from '../common/types';
 import { extractPdfText } from '../common/pdf/pdf-text.util';
+import { extractDocxText, DOCX_MIME_TYPE } from '../common/docx/docx-text.util';
+import { extractXlsxRows, XLSX_MIME_TYPE } from '../common/xlsx/xlsx-text.util';
 
 const FALLBACK_MESSAGE = 'Não encontrei nada relevante pra essa pergunta.';
 const PDF_UNREADABLE_WARNING =
   'Não consegui ler texto deste PDF (pode ser um documento escaneado sem texto real) — a resposta abaixo não considera o conteúdo do anexo.';
+const DOCX_UNREADABLE_WARNING =
+  'Não consegui ler texto deste DOCX (pode estar corrompido) — a resposta abaixo não considera o conteúdo do anexo.';
+const XLSX_UNREADABLE_WARNING =
+  'Não consegui ler linhas desta planilha (pode estar corrompida ou vazia) — a resposta abaixo não considera o conteúdo do anexo.';
 
 // Trechos normativos buscados por padrão, sem anexo — mesmo valor de
 // sempre (Fase 9/10).
@@ -104,10 +110,24 @@ export class NormativeAssistantService {
         } else {
           attachmentWarning = PDF_UNREADABLE_WARNING;
         }
+      } else if (attachment.mimetype === DOCX_MIME_TYPE) {
+        const text = await extractDocxText(attachment.buffer);
+        if (text) {
+          attachmentInput = { kind: 'docx_text', content: text };
+        } else {
+          attachmentWarning = DOCX_UNREADABLE_WARNING;
+        }
+      } else if (attachment.mimetype === XLSX_MIME_TYPE) {
+        const rows = await extractXlsxRows(attachment.buffer);
+        if (rows.length > 0) {
+          attachmentInput = { kind: 'xlsx_text', content: rows.join('\n') };
+        } else {
+          attachmentWarning = XLSX_UNREADABLE_WARNING;
+        }
       } else {
         // image/jpeg ou image/png (únicos outros mimetypes aceitos pelo
-        // controller) — sem extração, vai direto como bloco de imagem
-        // pro modelo multimodal.
+        // controller além de PDF/DOCX/XLSX) — sem extração, vai direto
+        // como bloco de imagem pro modelo multimodal.
         attachmentInput = {
           kind: 'image',
           content: attachment.buffer.toString('base64'),

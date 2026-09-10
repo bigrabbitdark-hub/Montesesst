@@ -2,6 +2,8 @@ import { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import PDFDocument from 'pdfkit';
+import { Document, Packer, Paragraph } from 'docx';
+import ExcelJS from 'exceljs';
 import { AppModule } from '../src/app.module';
 import { EMBEDDING_PROVIDER } from '../src/common/embedding/embedding-provider.interface';
 import { NORMATIVE_ANSWER_PROVIDER } from '../src/normative/normative-answer-provider.interface';
@@ -59,7 +61,13 @@ describe('POST /assistant/normative-query — anexo de documento/imagem (e2e)', 
   it('PDF com texto real: extrai e passa como attachment pdf_text pro provedor de resposta', async () => {
     const pdf = await buildTestPdf('Conteúdo real de teste no PDF anexado.');
     fakeAnswer.mockResolvedValue([
-      { claim: 'O documento anexado confirma X.', chunk_ids: [], operational_ref_ids: [], uses_attachment: true },
+      {
+        claim: 'O documento anexado confirma X.',
+        chunk_ids: [],
+        operational_ref_ids: [],
+        company_chunk_ids: [],
+        uses_attachment: true,
+      },
     ]);
 
     const res = await request(app.getHttpServer())
@@ -73,7 +81,7 @@ describe('POST /assistant/normative-query — anexo de documento/imagem (e2e)', 
     expect(res.body.used_attachment).toBe(true);
 
     const lastCall = fakeAnswer.mock.calls[fakeAnswer.mock.calls.length - 1];
-    const attachmentArg = lastCall[3];
+    const attachmentArg = lastCall[4];
     expect(attachmentArg.kind).toBe('pdf_text');
     expect(attachmentArg.content).toContain('Conteúdo real de teste no PDF anexado.');
   });
@@ -96,7 +104,13 @@ describe('POST /assistant/normative-query — anexo de documento/imagem (e2e)', 
   it('imagem: passa como attachment image (base64) pro provedor de resposta', async () => {
     const fakeImage = Buffer.from('fake-png-bytes-for-test');
     fakeAnswer.mockResolvedValue([
-      { claim: 'A imagem mostra um capacete.', chunk_ids: [], operational_ref_ids: [], uses_attachment: true },
+      {
+        claim: 'A imagem mostra um capacete.',
+        chunk_ids: [],
+        operational_ref_ids: [],
+        company_chunk_ids: [],
+        uses_attachment: true,
+      },
     ]);
 
     const res = await request(app.getHttpServer())
@@ -109,7 +123,7 @@ describe('POST /assistant/normative-query — anexo de documento/imagem (e2e)', 
     expect(res.body.used_attachment).toBe(true);
 
     const lastCall = fakeAnswer.mock.calls[fakeAnswer.mock.calls.length - 1];
-    const attachmentArg = lastCall[3];
+    const attachmentArg = lastCall[4];
     expect(attachmentArg.kind).toBe('image');
     expect(attachmentArg.mimeType).toBe('image/png');
     expect(attachmentArg.content).toBe(fakeImage.toString('base64'));
@@ -143,7 +157,13 @@ describe('POST /assistant/normative-query — anexo de documento/imagem (e2e)', 
 
   it('sem anexo nenhum: uses_attachment alucinado (true) não passa pelo Verificador sem fonte real', async () => {
     fakeAnswer.mockResolvedValue([
-      { claim: 'Afirmação fabricada sem fonte real.', chunk_ids: [], operational_ref_ids: [], uses_attachment: true },
+      {
+        claim: 'Afirmação fabricada sem fonte real.',
+        chunk_ids: [],
+        operational_ref_ids: [],
+        company_chunk_ids: [],
+        uses_attachment: true,
+      },
     ]);
 
     const res = await request(app.getHttpServer())
@@ -184,5 +204,74 @@ describe('POST /assistant/normative-query — anexo de documento/imagem (e2e)', 
     // Limpeza — não deixa a chave de teste pendurada influenciando
     // execuções futuras desta mesma suíte no mesmo Redis compartilhado.
     await redis.client.del(keysAfter[0]);
+  });
+
+  it('DOCX com texto real: extrai e passa como attachment docx_text pro provedor de resposta', async () => {
+    const doc = new Document({
+      sections: [{ children: [new Paragraph('Conteúdo real de teste no DOCX anexado.')] }],
+    });
+    const buffer = await Packer.toBuffer(doc);
+
+    fakeAnswer.mockResolvedValue([
+      {
+        claim: 'O documento anexado confirma X.',
+        chunk_ids: [],
+        operational_ref_ids: [],
+        company_chunk_ids: [],
+        uses_attachment: true,
+      },
+    ]);
+
+    const res = await request(app.getHttpServer())
+      .post('/assistant/normative-query')
+      .set('Authorization', `Bearer ${token}`)
+      .field('question', 'o que este documento diz?')
+      .attach('file', buffer, {
+        filename: 'doc.docx',
+        contentType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      });
+
+    expect(res.status).toBe(201);
+    expect(res.body.used_attachment).toBe(true);
+
+    const lastCall = fakeAnswer.mock.calls[fakeAnswer.mock.calls.length - 1];
+    const attachmentArg = lastCall[4];
+    expect(attachmentArg.kind).toBe('docx_text');
+    expect(attachmentArg.content).toContain('Conteúdo real de teste no DOCX anexado.');
+  });
+
+  it('XLSX: extrai linhas e passa como attachment xlsx_text pro provedor de resposta', async () => {
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet('Ruído');
+    sheet.addRow(['Função', 'Medição']);
+    sheet.addRow(['Soldador', '92 dB(A)']);
+    const buffer = Buffer.from(await workbook.xlsx.writeBuffer());
+
+    fakeAnswer.mockResolvedValue([
+      {
+        claim: 'A planilha mostra 92 dB(A) para soldador.',
+        chunk_ids: [],
+        operational_ref_ids: [],
+        company_chunk_ids: [],
+        uses_attachment: true,
+      },
+    ]);
+
+    const res = await request(app.getHttpServer())
+      .post('/assistant/normative-query')
+      .set('Authorization', `Bearer ${token}`)
+      .field('question', 'o que esta planilha mostra?')
+      .attach('file', buffer, {
+        filename: 'medicoes.xlsx',
+        contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      });
+
+    expect(res.status).toBe(201);
+    expect(res.body.used_attachment).toBe(true);
+
+    const lastCall = fakeAnswer.mock.calls[fakeAnswer.mock.calls.length - 1];
+    const attachmentArg = lastCall[4];
+    expect(attachmentArg.kind).toBe('xlsx_text');
+    expect(attachmentArg.content).toContain('Soldador');
   });
 });
