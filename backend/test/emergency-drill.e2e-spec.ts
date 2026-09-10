@@ -96,8 +96,22 @@ describe('Simulado de emergência (e2e)', () => {
 
     const drillActions = actionsRes.body.filter((a: any) => a.drill_id === res.body.id);
     expect(drillActions.length).toBe(2);
-    expect(drillActions.some((a: any) => a.description.includes('iluminação'))).toBe(true);
-    expect(drillActions.some((a: any) => a.description.includes('bloqueada'))).toBe(true);
+    // Assert the exact full description (not just a substring) — a Postgres
+    // `date` column comes back from `pg` as a JS Date, not a string, so a
+    // naive `.replace('{data}', drill.data_realizacao)` would silently
+    // coerce it via Date.prototype.toString() into something like
+    // "Sun Mar 01 2026 00:00:00 GMT+0000 (Coordinated Universal Time)"
+    // instead of "2026-03-02". A substring check on a word like
+    // "iluminação" wouldn't catch that regression; the exact-string
+    // comparison does.
+    const descriptions = drillActions.map((a: any) => a.description).sort();
+    expect(descriptions).toEqual(
+      [
+        'Falha de iluminação de emergência identificada no simulado de 2026-03-02',
+        'Porta de emergência bloqueada identificada no simulado de 2026-03-02',
+      ].sort(),
+    );
+    expect(descriptions.some((d: string) => /GMT/.test(d))).toBe(false);
   });
 
   it('rejeita company_unit_id de outro tenant', async () => {

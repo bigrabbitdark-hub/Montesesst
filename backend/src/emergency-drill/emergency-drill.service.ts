@@ -53,6 +53,17 @@ interface CreateDrillData {
   participants: { employeeId: string; presente: boolean }[];
 }
 
+// Colunas `date` do Postgres chegam via node-pg como objeto Date (não
+// string), não 'YYYY-MM-DD' — String.prototype.replace() coagiria isso via
+// Date.prototype.toString() (ex.: "Sun Mar 01 2026 00:00:00 GMT+0000...")
+// dentro da descrição da ação corretiva. Mesmo padrão de normalização
+// usado em committees.service.ts (toDateString).
+function toDateString(value: string | Date | null | undefined): string | null {
+  if (!value) return null;
+  if (value instanceof Date) return value.toISOString().slice(0, 10);
+  return value;
+}
+
 const PROBLEM_FLAG_DESCRIPTIONS: Record<
   'falhas_sinalizacao' | 'falhas_iluminacao' | 'portas_bloqueadas' | 'extintores_obstruidos',
   string
@@ -124,7 +135,7 @@ export class EmergencyDrillService {
           await this.correctiveActions.create(client, {
             tenantId: data.tenantId,
             drillId: drill.id,
-            description: template.replace('{data}', drill.data_realizacao),
+            description: template.replace('{data}', toDateString(drill.data_realizacao) as string),
           });
         }
       }
