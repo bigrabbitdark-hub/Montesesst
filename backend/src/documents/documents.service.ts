@@ -3,8 +3,10 @@ import { PoolClient } from 'pg';
 import { randomUUID } from 'crypto';
 import { R2Service } from '../common/r2/r2.service';
 import { mapPgError } from '../common/pg-error.util';
+import { DOCX_MIME_TYPE } from '../common/docx/docx-text.util';
+import { XLSX_MIME_TYPE } from '../common/xlsx/xlsx-text.util';
 
-const ALLOWED_MIME_TYPES = ['application/pdf', 'image/jpeg', 'image/png'];
+const ALLOWED_MIME_TYPES = ['application/pdf', 'image/jpeg', 'image/png', DOCX_MIME_TYPE, XLSX_MIME_TYPE];
 const ALLOWED_CATEGORIES = [
   'pgr', 'pcmso', 'laudo', 'ficha_epi', 'treinamento',
   'cipa_ata', 'cipa_comunicado', 'cipa_documento_eleitoral', 'cipa_anexo',
@@ -81,7 +83,7 @@ export class DocumentsService {
 
   async upload(client: PoolClient, data: UploadData): Promise<Document> {
     if (!ALLOWED_MIME_TYPES.includes(data.file.mimetype)) {
-      throw new BadRequestException('Tipo de arquivo não permitido (só PDF, JPG ou PNG)');
+      throw new BadRequestException('Tipo de arquivo não permitido (só PDF, JPG, PNG, DOCX ou XLSX)');
     }
     if (!ALLOWED_CATEGORIES.includes(data.category)) {
       throw new BadRequestException('Categoria inválida');

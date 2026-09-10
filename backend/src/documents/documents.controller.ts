@@ -23,6 +23,7 @@ import { extractPdfText } from '../common/pdf/pdf-text.util';
 import { DocumentsService } from './documents.service';
 import { CreateDocumentDto } from './dto/create-document.dto';
 import { DOCUMENT_CLASSIFIER_PROVIDER, DocumentClassifierProvider } from './document-classifier-provider.interface';
+import { CompanyDocumentIndexerService } from './company-document-indexer.service';
 
 const MAX_BATCH_FILES = 10;
 // 240s de folga segura sob o proxy_read_timeout de 300s do nginx
@@ -44,6 +45,7 @@ export interface ClassifyBatchItem {
 export class DocumentsController {
   constructor(
     private readonly documents: DocumentsService,
+    private readonly indexer: CompanyDocumentIndexerService,
     @Inject(DOCUMENT_CLASSIFIER_PROVIDER) private readonly classifier: DocumentClassifierProvider,
   ) {}
 
@@ -51,13 +53,13 @@ export class DocumentsController {
   @UsePipes(new ValidationPipe({ transform: true, whitelist: true, forbidNonWhitelisted: true }))
   @Post()
   @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 10 * 1024 * 1024 } }))
-  upload(@UploadedFile() file: Express.Multer.File, @Body() dto: CreateDocumentDto, @Req() req: any) {
+  async upload(@UploadedFile() file: Express.Multer.File, @Body() dto: CreateDocumentDto, @Req() req: any) {
     if (!file) throw new BadRequestException('Nenhum arquivo enviado');
     const user = req.user;
     const tenantId = user.role === 'tecnico' || user.role === 'parceiro' ? dto.tenant_id : user.tenantId;
     if (!tenantId) throw new BadRequestException('tenant_id é obrigatório');
 
-    return req.withTenantContext((client: any) =>
+    const document = await req.withTenantContext((client: any) =>
       this.documents.upload(client, {
         tenantId,
         category: dto.category,
@@ -74,6 +76,17 @@ export class DocumentsController {
         companyUnitId: dto.company_unit_id,
       }),
     );
+
+    // 2ª transação, separada da de upload (já commitada acima) — nunca
+    // segura uma conexão do pool aberta durante a chamada de embedding,
+    // que é HTTP externa e lenta (mesmo raciocínio do Finding C1a da
+    // Fase 9). indexDocument nunca lança exceção, então uma falha de
+    // indexação não derruba a resposta do upload (spec §2).
+    if (this.indexer.shouldIndex(document.category, document.mime_type)) {
+      await req.withTenantContext((client: any) => this.indexer.indexDocument(client, document, file.buffer));
+    }
+
+    return document;
   }
 
   @Roles('empresa', 'tecnico', 'parceiro')
