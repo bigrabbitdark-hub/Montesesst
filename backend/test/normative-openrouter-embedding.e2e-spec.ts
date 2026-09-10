@@ -1,5 +1,5 @@
 import { Test } from '@nestjs/testing';
-import { OpenRouterEmbeddingService } from '../src/normative/openrouter-embedding.service';
+import { OpenRouterEmbeddingService } from '../src/common/embedding/openrouter-embedding.service';
 
 describe('OpenRouterEmbeddingService', () => {
   let service: OpenRouterEmbeddingService;

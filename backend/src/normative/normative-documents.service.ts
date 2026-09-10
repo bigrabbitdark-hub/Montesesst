@@ -2,9 +2,9 @@ import { BadRequestException, ConflictException, Inject, Injectable, Logger, Not
 import { PoolClient } from 'pg';
 import { randomUUID, createHash } from 'crypto';
 import { R2Service } from '../common/r2/r2.service';
-import { EMBEDDING_PROVIDER, EmbeddingProvider } from './embedding-provider.interface';
-import { splitIntoChunks } from './chunking.util';
-import { toVectorLiteral } from './vector.util';
+import { EMBEDDING_PROVIDER, EmbeddingProvider } from '../common/embedding/embedding-provider.interface';
+import { splitIntoChunks } from '../common/chunking/chunking.util';
+import { toVectorLiteral } from '../common/vector/vector.util';
 
 export type NormativeDocumentStatus = 'aguardando_validacao' | 'vigente' | 'rejeitado' | 'substituido';
 

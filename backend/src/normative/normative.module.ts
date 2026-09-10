@@ -6,8 +6,6 @@ import { NormativeDocumentsController } from './normative-documents.controller';
 import { NormativeMonitorService } from './normative-monitor.service';
 import { NormativeAssistantService } from './normative-assistant.service';
 import { NormativeAssistantController } from './normative-assistant.controller';
-import { EMBEDDING_PROVIDER } from './embedding-provider.interface';
-import { OpenRouterEmbeddingService } from './openrouter-embedding.service';
 import { NORMATIVE_ANSWER_PROVIDER } from './normative-answer-provider.interface';
 import { OpenRouterNormativeAnswerService } from './openrouter-normative-answer.service';
 import { MiniMaxNormativeAnswerService } from './minimax-normative-answer.service';
@@ -29,6 +27,12 @@ import { DashboardModule } from '../dashboard/dashboard.module';
 // quando ele mesmo rodar ou destravar a permissão. OpenRouterNormativeAnswerService
 // continua registrado, pronto pra reverter (mudar só a linha `useClass`
 // abaixo), mesmo padrão do AiCopilotModule (Fase 8).
+//
+// EmbeddingProvider/OpenRouterEmbeddingService não são mais registrados
+// aqui — extraídos pra common/embedding (Fase 24) e disponíveis
+// globalmente via EmbeddingModule, pra DocumentsModule poder consumir
+// EMBEDDING_PROVIDER sem fechar um ciclo (NormativeModule → DashboardModule
+// → DocumentsModule já existe).
 @Module({
   imports: [DashboardModule],
   controllers: [OfficialSourcesController, NormativeDocumentsController, NormativeAssistantController],
@@ -37,8 +41,6 @@ import { DashboardModule } from '../dashboard/dashboard.module';
     NormativeDocumentsService,
     NormativeMonitorService,
     NormativeAssistantService,
-    OpenRouterEmbeddingService,
-    { provide: EMBEDDING_PROVIDER, useClass: OpenRouterEmbeddingService },
     OpenRouterNormativeAnswerService,
     MiniMaxNormativeAnswerService,
     { provide: NORMATIVE_ANSWER_PROVIDER, useClass: MiniMaxNormativeAnswerService },

@@ -1,12 +1,12 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { EMBEDDING_PROVIDER, EmbeddingProvider } from './embedding-provider.interface';
+import { EMBEDDING_PROVIDER, EmbeddingProvider } from '../common/embedding/embedding-provider.interface';
 import {
   AttachmentInput,
   NORMATIVE_ANSWER_PROVIDER,
   NormativeAnswerProvider,
   OperationalItem,
 } from './normative-answer-provider.interface';
-import { toVectorLiteral } from './vector.util';
+import { toVectorLiteral } from '../common/vector/vector.util';
 import { envFloat } from '../common/env';
 import { DatabaseService } from '../common/database/database.service';
 import { ATTENTION_TIPO_AI_SAFE, DashboardService } from '../dashboard/dashboard.service';

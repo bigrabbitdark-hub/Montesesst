@@ -2,7 +2,7 @@ import { ConflictException, INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { AppModule } from '../src/app.module';
-import { EMBEDDING_PROVIDER } from '../src/normative/embedding-provider.interface';
+import { EMBEDDING_PROVIDER } from '../src/common/embedding/embedding-provider.interface';
 import { NormativeDocumentsService } from '../src/normative/normative-documents.service';
 import { TestDb } from './db-test-helper';
 

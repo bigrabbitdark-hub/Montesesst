@@ -1,5 +1,5 @@
-import { splitIntoChunks } from '../src/normative/chunking.util';
-import { toVectorLiteral } from '../src/normative/vector.util';
+import { splitIntoChunks } from '../src/common/chunking/chunking.util';
+import { toVectorLiteral } from '../src/common/vector/vector.util';
 
 function buildIndexedText(charLength: number): string {
   const tokens: string[] = [];

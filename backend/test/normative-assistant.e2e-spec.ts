@@ -3,9 +3,9 @@ import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import Redis from 'ioredis';
 import { AppModule } from '../src/app.module';
-import { EMBEDDING_PROVIDER } from '../src/normative/embedding-provider.interface';
+import { EMBEDDING_PROVIDER } from '../src/common/embedding/embedding-provider.interface';
 import { NORMATIVE_ANSWER_PROVIDER } from '../src/normative/normative-answer-provider.interface';
-import { toVectorLiteral } from '../src/normative/vector.util';
+import { toVectorLiteral } from '../src/common/vector/vector.util';
 import { TestDb } from './db-test-helper';
 import { DatabaseService } from '../src/common/database/database.service';
 
