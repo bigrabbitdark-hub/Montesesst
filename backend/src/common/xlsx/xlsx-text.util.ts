@@ -38,27 +38,34 @@ export async function extractXlsxRows(buffer: Buffer): Promise<string[]> {
   const workbook = new ExcelJS.Workbook();
   try {
     await workbook.xlsx.load(buffer as any);
+
+    const sentences: string[] = [];
+    for (const worksheet of workbook.worksheets) {
+      const rows: string[][] = [];
+      worksheet.eachRow((row) => {
+        const values = row.values as unknown[];
+        rows.push(values.slice(1).map((cell) => cellToText(cell)));
+      });
+      if (rows.length < 2) continue;
+
+      const [headers, ...dataRows] = rows;
+      for (const row of dataRows) {
+        const parts = headers
+          .map((header, i) => (header && row[i] ? `${header}: ${row[i]}` : null))
+          .filter((p): p is string => p !== null);
+        if (parts.length === 0) continue;
+        sentences.push(`Aba: ${worksheet.name} | ${parts.join(' | ')}`);
+      }
+    }
+    return sentences;
   } catch {
+    // Cobre tanto workbook.xlsx.load() (buffer não é um .xlsx válido)
+    // quanto a iteração de linhas/abas (ex.: tabela de shared-strings
+    // corrompida faz o workbook carregar mas eachRow() lançar depois) —
+    // mesmo padrão de employees/spreadsheet-import.util.ts, onde o
+    // chamador de parseXlsxRows() envolve load() E eachRow() num único
+    // try/catch. Nunca deve propagar exceção pro chamador (restrição
+    // global da Fase 24: falha de extração sempre vira null/vazio).
     return [];
   }
-
-  const sentences: string[] = [];
-  for (const worksheet of workbook.worksheets) {
-    const rows: string[][] = [];
-    worksheet.eachRow((row) => {
-      const values = row.values as unknown[];
-      rows.push(values.slice(1).map((cell) => cellToText(cell)));
-    });
-    if (rows.length < 2) continue;
-
-    const [headers, ...dataRows] = rows;
-    for (const row of dataRows) {
-      const parts = headers
-        .map((header, i) => (header && row[i] ? `${header}: ${row[i]}` : null))
-        .filter((p): p is string => p !== null);
-      if (parts.length === 0) continue;
-      sentences.push(`Aba: ${worksheet.name} | ${parts.join(' | ')}`);
-    }
-  }
-  return sentences;
 }
