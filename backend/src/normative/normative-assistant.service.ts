@@ -2,6 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import { EMBEDDING_PROVIDER, EmbeddingProvider } from '../common/embedding/embedding-provider.interface';
 import {
   AttachmentInput,
+  CompanyChunk,
   NORMATIVE_ANSWER_PROVIDER,
   NormativeAnswerProvider,
   OperationalItem,
@@ -30,10 +31,17 @@ export interface NormativeQueryCitation {
   official_url: string;
 }
 
+export interface CompanyDocumentCitation {
+  document_id: string;
+  title: string;
+  category: string;
+}
+
 export interface NormativeQueryResult {
   answer: string | null;
   message?: string;
   citations: NormativeQueryCitation[];
+  company_citations: CompanyDocumentCitation[];
   // true quando alguma afirmação sobrevivente usou o anexo desta
   // pergunta como evidência (Fase 20) — omitido (undefined) quando não
   // há anexo ou nenhuma afirmação o usou.
@@ -59,6 +67,15 @@ interface RetrievedChunk {
   document_id: string;
   source_title: string;
   official_url: string;
+  similarity: number;
+}
+
+interface RetrievedCompanyChunk {
+  chunk_id: string;
+  content: string;
+  document_id: string;
+  category: string;
+  document_title: string;
   similarity: number;
 }
 
@@ -180,19 +197,55 @@ export class NormativeAssistantService {
         }));
     }
 
-    if (relevant.length === 0 && operationalItems.length === 0 && !attachmentInput) {
-      return { answer: null, message: FALLBACK_MESSAGE, citations: [], attachment_warning: attachmentWarning };
+    // Busca de trechos de documento da própria empresa (PGR/PCMSO/LTCAT/
+    // LIP, Fase 24), mesma restrição e mesmo motivo do bloco operacional
+    // acima: só empresa tem um tenant_id fixo pra restringir a busca —
+    // técnico/parceiro atendem várias empresas e o endpoint do
+    // Assistente não recebe tenant_id, então não há como saber de qual
+    // empresa buscar (limitação conhecida, gap documentado pra uma fase
+    // futura). Transação curta e separada, mesma regra de nunca segurar
+    // conexão durante chamada de IA (ver Finding C1a acima).
+    let companyChunks: RetrievedCompanyChunk[] = [];
+    if (user.role === 'empresa' && user.tenantId) {
+      const tenantId = user.tenantId;
+      const { rows: companyRows } = await this.db.withTenantContext(
+        { userId: user.id, tenantId, role: user.role },
+        (client) =>
+          client.query<RetrievedCompanyChunk>(
+            `SELECT c.id AS chunk_id, c.content, c.document_id, c.category, d.title AS document_title,
+                    1 - (c.embedding <=> $1::vector) AS similarity
+             FROM company_document_chunks c
+             JOIN documents d ON d.id = c.document_id
+             WHERE c.tenant_id = $2
+             ORDER BY c.embedding <=> $1::vector
+             LIMIT $3`,
+            [toVectorLiteral(questionEmbedding), tenantId, chunkLimit],
+          ),
+      );
+      companyChunks = companyRows.filter((r) => r.similarity >= threshold);
+    }
+
+    if (relevant.length === 0 && operationalItems.length === 0 && companyChunks.length === 0 && !attachmentInput) {
+      return {
+        answer: null,
+        message: FALLBACK_MESSAGE,
+        citations: [],
+        company_citations: [],
+        attachment_warning: attachmentWarning,
+      };
     }
 
     const claims = await this.answerer.answer(
       question,
       relevant.map((r) => ({ id: r.chunk_id, content: r.content })),
       operationalItems,
+      companyChunks.map((c): CompanyChunk => ({ id: c.chunk_id, content: c.content })),
       attachmentInput,
     );
 
     const validChunkIds = new Set(relevant.map((r) => r.chunk_id));
     const validOperationalIds = new Set(operationalItems.map((o) => o.id));
+    const validCompanyChunkIds = new Set(companyChunks.map((c) => c.chunk_id));
     // `attachmentInput` (calculado no topo deste método) é a única fonte
     // de verdade sobre se um anexo de verdade foi processado com sucesso
     // nesta chamada — undefined tanto quando não veio nenhum arquivo
@@ -215,16 +268,24 @@ export class NormativeAssistantService {
       const hasSource =
         claim.chunk_ids.length > 0 ||
         claim.operational_ref_ids.length > 0 ||
+        claim.company_chunk_ids.length > 0 ||
         (attachmentIsReal && claim.uses_attachment === true);
       return (
         hasSource &&
         claim.chunk_ids.every((id) => validChunkIds.has(id)) &&
-        claim.operational_ref_ids.every((id) => validOperationalIds.has(id))
+        claim.operational_ref_ids.every((id) => validOperationalIds.has(id)) &&
+        claim.company_chunk_ids.every((id) => validCompanyChunkIds.has(id))
       );
     });
 
     if (survivingClaims.length === 0) {
-      return { answer: null, message: FALLBACK_MESSAGE, citations: [], attachment_warning: attachmentWarning };
+      return {
+        answer: null,
+        message: FALLBACK_MESSAGE,
+        citations: [],
+        company_citations: [],
+        attachment_warning: attachmentWarning,
+      };
     }
 
     const usedChunkIds = new Set(survivingClaims.flatMap((c) => c.chunk_ids));
@@ -239,11 +300,24 @@ export class NormativeAssistantService {
       }
     }
 
+    const usedCompanyChunkIds = new Set(survivingClaims.flatMap((c) => c.company_chunk_ids));
+    const companyCitationsByDocument = new Map<string, CompanyDocumentCitation>();
+    for (const chunk of companyChunks) {
+      if (usedCompanyChunkIds.has(chunk.chunk_id)) {
+        companyCitationsByDocument.set(chunk.document_id, {
+          document_id: chunk.document_id,
+          title: chunk.document_title,
+          category: chunk.category,
+        });
+      }
+    }
+
     const usedAttachment = attachmentIsReal && survivingClaims.some((c) => c.uses_attachment);
 
     return {
       answer: survivingClaims.map((c) => c.claim).join('\n\n'),
       citations: Array.from(citationsByDocument.values()),
+      company_citations: Array.from(companyCitationsByDocument.values()),
       used_attachment: usedAttachment ? true : undefined,
       attachment_warning: attachmentWarning,
     };

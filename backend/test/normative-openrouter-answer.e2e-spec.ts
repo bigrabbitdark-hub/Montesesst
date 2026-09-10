@@ -46,7 +46,7 @@ describe('OpenRouterNormativeAnswerService', () => {
     delete process.env.OPENROUTER_API_KEY;
     fetchSpy = jest.spyOn(global, 'fetch');
 
-    await expect(service.answer('pergunta', [], [])).rejects.toThrow(
+    await expect(service.answer('pergunta', [], [], [])).rejects.toThrow(
       'Assistente ainda não está disponível',
     );
     expect(fetchSpy).not.toHaveBeenCalled();
@@ -60,6 +60,7 @@ describe('OpenRouterNormativeAnswerService', () => {
       'estou em conformidade?',
       [{ id: 'chunk-1', content: 'Trecho normativo.' }],
       [{ id: 'op-0', titulo: 'Documento vencido: PGR' }],
+      [],
     );
 
     const [, requestInit] = fetchSpy.mock.calls[0];
@@ -83,6 +84,7 @@ describe('OpenRouterNormativeAnswerService', () => {
       'estou em conformidade?',
       [{ id: 'chunk-1', content: 'Trecho normativo.' }],
       [{ id: 'op-0', titulo: 'Documento vencido: PGR' }],
+      [],
     );
 
     const [, requestInit] = fetchSpy.mock.calls[0];
@@ -101,7 +103,7 @@ describe('OpenRouterNormativeAnswerService', () => {
     process.env.OPENROUTER_API_KEY = 'chave-de-teste-fake';
     fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValue(fakeToolCallResponse([]));
 
-    await service.answer('pergunta normativa', [{ id: 'chunk-1', content: 'Trecho.' }], []);
+    await service.answer('pergunta normativa', [{ id: 'chunk-1', content: 'Trecho.' }], [], []);
 
     const [, requestInit] = fetchSpy.mock.calls[0];
     const sentBody = JSON.parse((requestInit as RequestInit).body as string);
@@ -123,6 +125,7 @@ describe('OpenRouterNormativeAnswerService', () => {
       'pergunta',
       [{ id: 'c1', content: 'trecho' }],
       [{ id: 'op-0', titulo: 'item' }],
+      [],
     );
 
     expect(result).toEqual([{ claim: 'Afirmação válida.', chunk_ids: ['c1'], operational_ref_ids: ['op-0'] }]);
@@ -132,6 +135,6 @@ describe('OpenRouterNormativeAnswerService', () => {
     process.env.OPENROUTER_API_KEY = 'chave-de-teste-fake';
     fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValue(new Response('erro', { status: 500 }));
 
-    await expect(service.answer('pergunta', [], [])).rejects.toThrow('Não foi possível responder agora');
+    await expect(service.answer('pergunta', [], [], [])).rejects.toThrow('Não foi possível responder agora');
   });
 });

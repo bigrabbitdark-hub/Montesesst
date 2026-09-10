@@ -3,6 +3,11 @@ export interface OperationalItem {
   titulo: string;
 }
 
+export interface CompanyChunk {
+  id: string;
+  content: string;
+}
+
 // Anexo de uma pergunta específica do Assistente (Fase 20) — nunca
 // persistido, existe só durante o processamento desta chamada.
 export interface AttachmentInput {
@@ -15,6 +20,9 @@ export interface NormativeClaim {
   claim: string;
   chunk_ids: string[];
   operational_ref_ids: string[];
+  // ids dos trechos de documento da própria empresa (PGR/PCMSO/LTCAT/LIP,
+  // Fase 24) que sustentam esta afirmação.
+  company_chunk_ids: string[];
   // true se esta afirmação usa o documento/imagem anexado nesta
   // pergunta como evidência — obrigatório no schema (o modelo sempre
   // preenche), não opcional, pra o Verificador poder confiar no valor
@@ -27,6 +35,7 @@ export interface NormativeAnswerProvider {
     question: string,
     chunks: { id: string; content: string }[],
     operationalItems: OperationalItem[],
+    companyChunks: CompanyChunk[],
     attachment?: AttachmentInput,
   ): Promise<NormativeClaim[]>;
 }

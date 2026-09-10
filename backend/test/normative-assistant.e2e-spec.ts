@@ -147,7 +147,7 @@ describe('POST /assistant/normative-query (e2e)', () => {
 
   it('responde com citação quando o Verificador confirma o chunk_id', async () => {
     fakeAnswer.mockResolvedValue([
-      { claim: 'É obrigatório o uso de capacete.', chunk_ids: [chunkId], operational_ref_ids: [] },
+      { claim: 'É obrigatório o uso de capacete.', chunk_ids: [chunkId], operational_ref_ids: [], company_chunk_ids: [] },
     ]);
 
     const res = await request(app.getHttpServer())
@@ -168,6 +168,7 @@ describe('POST /assistant/normative-query (e2e)', () => {
         claim: 'Afirmação sem fonte válida.',
         chunk_ids: ['00000000-0000-0000-0000-000000000000'],
         operational_ref_ids: [],
+        company_chunk_ids: [],
       },
     ]);
 
@@ -184,7 +185,7 @@ describe('POST /assistant/normative-query (e2e)', () => {
 
   it('claim com chunk_ids vazio é descartada', async () => {
     fakeAnswer.mockResolvedValue([
-      { claim: 'Afirmação sem citação nenhuma.', chunk_ids: [], operational_ref_ids: [] },
+      { claim: 'Afirmação sem citação nenhuma.', chunk_ids: [], operational_ref_ids: [], company_chunk_ids: [] },
     ]);
 
     const res = await request(app.getHttpServer())
@@ -238,7 +239,7 @@ describe('POST /assistant/normative-query (e2e)', () => {
     try {
       fakeAnswer.mockImplementationOnce(async () => {
         order.push('answer-called');
-        return [{ claim: 'Resposta de teste.', chunk_ids: [chunkId], operational_ref_ids: [] }];
+        return [{ claim: 'Resposta de teste.', chunk_ids: [chunkId], operational_ref_ids: [], company_chunk_ids: [] }];
       });
 
       const res = await request(app.getHttpServer())
@@ -247,7 +248,19 @@ describe('POST /assistant/normative-query (e2e)', () => {
         .send({ question: 'preciso usar capacete?' });
 
       expect(res.status).toBe(201);
-      expect(order).toEqual(['operational-start', 'operational-end', 'answer-called']);
+      // Duas transações curtas e separadas agora (busca operacional +
+      // busca de trechos de documento da empresa, Fase 24) — o spy
+      // genérico em withTenantContext captura as duas, cada uma com seu
+      // próprio par start/end, ambas completas antes de "answer-called".
+      // Prova a mesma disciplina do Finding C1a original: nenhuma delas
+      // segura conexão aberta durante a chamada de IA.
+      expect(order).toEqual([
+        'operational-start',
+        'operational-end',
+        'operational-start',
+        'operational-end',
+        'answer-called',
+      ]);
     } finally {
       withTenantContextSpy.mockRestore();
     }
@@ -348,7 +361,7 @@ describe('POST /assistant/normative-query (e2e)', () => {
 
   it('claim que cita só operational_ref_ids (sem chunk_ids) sobrevive ao Verificador', async () => {
     fakeAnswer.mockResolvedValue([
-      { claim: 'Você tem um documento vencido.', chunk_ids: [], operational_ref_ids: ['op-0'] },
+      { claim: 'Você tem um documento vencido.', chunk_ids: [], operational_ref_ids: ['op-0'], company_chunk_ids: [] },
     ]);
 
     const res = await request(app.getHttpServer())
@@ -367,6 +380,7 @@ describe('POST /assistant/normative-query (e2e)', () => {
         claim: 'Você tem capacete obrigatório e um documento vencido pra regularizar.',
         chunk_ids: [chunkId],
         operational_ref_ids: ['op-0'],
+        company_chunk_ids: [],
       },
     ]);
 
@@ -388,6 +402,7 @@ describe('POST /assistant/normative-query (e2e)', () => {
         claim: 'Afirmação com referência operacional inventada.',
         chunk_ids: [chunkId],
         operational_ref_ids: ['op-999-nao-existe'],
+        company_chunk_ids: [],
       },
     ]);
 
@@ -402,7 +417,9 @@ describe('POST /assistant/normative-query (e2e)', () => {
   });
 
   it('técnico nunca recebe busca operacional — operationalItems sempre vazio', async () => {
-    fakeAnswer.mockResolvedValue([{ claim: 'Resposta normativa.', chunk_ids: [chunkId], operational_ref_ids: [] }]);
+    fakeAnswer.mockResolvedValue([
+      { claim: 'Resposta normativa.', chunk_ids: [chunkId], operational_ref_ids: [], company_chunk_ids: [] },
+    ]);
 
     const res = await request(app.getHttpServer())
       .post('/assistant/normative-query')

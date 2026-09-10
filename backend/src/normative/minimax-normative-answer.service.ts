@@ -1,6 +1,7 @@
 import { BadGatewayException, Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
 import {
   AttachmentInput,
+  CompanyChunk,
   NormativeAnswerProvider,
   NormativeClaim,
   OperationalItem,
@@ -24,6 +25,7 @@ export class MiniMaxNormativeAnswerService implements NormativeAnswerProvider {
     question: string,
     chunks: { id: string; content: string }[],
     operationalItems: OperationalItem[],
+    companyChunks: CompanyChunk[],
     attachment?: AttachmentInput,
   ): Promise<NormativeClaim[]> {
     const apiKey = process.env.MINIMAX_API_KEY;
@@ -40,7 +42,9 @@ export class MiniMaxNormativeAnswerService implements NormativeAnswerProvider {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${apiKey}`,
         },
-        body: JSON.stringify(buildRagChatCompletionBody(model, question, chunks, operationalItems, attachment)),
+        body: JSON.stringify(
+          buildRagChatCompletionBody(model, question, chunks, operationalItems, companyChunks, attachment),
+        ),
         signal: AbortSignal.timeout(45_000),
       });
     } catch (err) {
@@ -85,6 +89,7 @@ export class MiniMaxNormativeAnswerService implements NormativeAnswerProvider {
         typeof candidate.claim === 'string' &&
         Array.isArray(candidate.chunk_ids) &&
         Array.isArray(candidate.operational_ref_ids) &&
+        Array.isArray(candidate.company_chunk_ids) &&
         typeof candidate.uses_attachment === 'boolean'
       );
     });
