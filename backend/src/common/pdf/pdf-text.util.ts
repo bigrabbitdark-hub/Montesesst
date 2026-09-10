@@ -43,3 +43,21 @@ export async function extractPdfText(buffer: Buffer): Promise<string | null> {
     await parser.destroy();
   }
 }
+
+// Sem o corte de MAX_ATTACHMENT_TEXT_CHARS de extractPdfText — usado pra
+// indexação (Fase 24), onde o chunking cobre o documento inteiro, não
+// pra caber no orçamento de contexto de uma única pergunta anexada.
+// Mesma extração (pageJoiner: '' pelo mesmo motivo), só sem truncar.
+export async function extractPdfTextFull(buffer: Buffer): Promise<string | null> {
+  const parser = new PDFParse({ data: buffer });
+  try {
+    const { text } = await parser.getText({ pageJoiner: '' });
+    const trimmed = text.trim();
+    return trimmed.length === 0 ? null : trimmed;
+  } catch (err) {
+    logger.warn(`Falha ao extrair texto completo de PDF: ${(err as Error).message}`);
+    return null;
+  } finally {
+    await parser.destroy();
+  }
+}
