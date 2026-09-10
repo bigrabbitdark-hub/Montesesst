@@ -145,39 +145,77 @@ Novos utilitários compartilhados (mesmo padrão de
 - `common/xlsx/xlsx-text.util.ts` — `extractXlsxRows(buffer)`, via
   `exceljs`, devolve um array de linhas já formatadas como frase
   (cabeçalho como rótulo de coluna), uma aba por vez.
-- PDF: reaproveita `extractPdfText`, sem mudança.
+- PDF: nova função `extractPdfTextFull` — **não** reaproveita
+  `extractPdfText` como versões anteriores desta spec previam.
+  `extractPdfText` trunca em 8000 caracteres (existe pra caber no
+  orçamento de contexto de uma única pergunta anexada, Fase 20); usar
+  esse corte na indexação perderia a maior parte de um PGR grande, já
+  que o chunking existe justamente pra cobrir o documento inteiro.
+  Mesma extração por baixo (`pdf-parse`, `pageJoiner: ''`), só sem
+  truncar o resultado.
 
 Falha de extração (arquivo corrompido, planilha sem cabeçalho
 reconhecível, DOCX inválido) devolve vazio/`null` — nunca lança exceção
-que derruba o upload.
+que derruba o upload. Documento sem chunks fica invisível à busca do
+Assistente, sem alerta especial nessa consulta — mesmo comportamento já
+existente pra norma oficial que falha na indexação (Fase 9): a ausência
+é silenciosa, não um aviso dedicado por documento.
 
 ## 5. Pipeline de indexação (novo `CompanyDocumentIndexerService`, módulo `documents`)
 
-Disparado dentro de `DocumentsService.create`, depois que o arquivo já
-foi salvo no R2 e o registro em `documents` já existe — só quando
-`category` é uma das 4 e `mime_type` é PDF/DOCX/XLSX (imagem nunca
-indexa, sem OCR):
+Disparado a partir de `DocumentsController.upload`, **depois** que a
+transação de upload (`DocumentsService.upload`, arquivo já salvo no R2,
+registro em `documents` já commitado) resolve — numa **segunda
+transação, separada**. Só quando `category` é uma das 4 e `mime_type` é
+PDF/DOCX/XLSX (imagem nunca indexa, sem OCR):
 
 1. Extrai texto (extrator correspondente ao mimetype).
 2. Se não extraiu nada: encerra, documento fica sem chunks.
-3. `splitIntoChunks` (reaproveitado de `normative/chunking.util.ts`,
+3. `splitIntoChunks` (reaproveitado de `common/chunking/chunking.util.ts`,
    sem mudança no PDF/DOCX; entrada já vem pré-quebrada por linha no
    caso de XLSX, ver §2).
 4. Pra cada chunk: `EmbeddingProvider.embed()` (mesma interface e
    provider — OpenRouter `text-embedding-3-small` — já usados pelo RAG
-   normativo; `NormativeModule` passa a exportar `EMBEDDING_PROVIDER`
-   pra `DocumentsModule` importar).
+   normativo, agora em `common/embedding`, módulo `@Global()`, ver nota
+   abaixo).
 5. Insere em `company_document_chunks` (uma linha por chunk).
 
 Falha em qualquer passo é capturada e logada, nunca propagada pra fora
-do `POST /documents` — o response de upload não muda.
+— nem derruba o upload (já commitado antes desta etapa começar) nem
+muda o response.
+
+**Por que uma segunda transação:** rodar a indexação dentro da mesma
+transação do upload seguraria a conexão do pool aberta durante a
+chamada de embedding, que é HTTP externa e lenta — exatamente o
+problema que a Fase 9 já teve que resolver (Finding C1a da sua revisão
+final) pro retrieval normativo. Mesma lógica aplicada aqui.
+
+**Sobre reaproveitar `EmbeddingProvider`:** `NormativeModule` já importa
+`DashboardModule`, que importa `DocumentsModule` — se `DocumentsModule`
+importasse `NormativeModule` de volta pra reaproveitar
+`EMBEDDING_PROVIDER`, fecharia uma dependência circular. A correção:
+`EmbeddingProvider`/`OpenRouterEmbeddingService` (e, por consistência,
+`chunking.util.ts`/`vector.util.ts`) saem de `normative/` e viram um
+módulo `common/embedding` `@Global()`, registrado uma vez em
+`AppModule` — mesmo padrão já usado neste projeto pro `R2Service`
+(`common/r2`, Fase 20). Nenhum módulo precisa listar `EmbeddingModule`
+em `imports` pra injetar `EMBEDDING_PROVIDER`.
 
 ## 6. Integração no Assistente
 
 `NormativeAssistantService.query()` ganha um terceiro branch de
-retrieval, só pra `user.role === 'empresa'` ou `'tecnico'`/`'parceiro'`
-com vínculo (mesmo escopo de tenant que já rege a visibilidade de
-`documents`):
+retrieval, numa transação curta e separada da chamada ao provedor de
+resposta (mesmo raciocínio da nota sobre segunda transação em §5).
+**Restrito a `user.role === 'empresa'` nesta fase** — diferente do que
+uma versão anterior desta spec previa: o endpoint
+`POST /assistant/normative-query` não recebe `tenant_id`, e
+técnico/parceiro não têm um tenant fixo (atendem vários), então não há
+como saber de qual empresa vinculada a pergunta é. É a mesma limitação
+que o bloco de dado operacional da Fase 10 já tem. Fica registrado como
+limitação conhecida — técnico é a persona central da auditoria
+"Pente-Fino" que motivou esta fase inteira, então a Fase C
+provavelmente precisa resolver isso (endpoint aceitar `tenant_id`
+quando quem pergunta é técnico/parceiro vinculado):
 
 ```sql
 SELECT c.id AS chunk_id, c.content, c.document_id, c.category, d.title
