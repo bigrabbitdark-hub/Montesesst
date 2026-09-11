@@ -14,6 +14,10 @@ describe('Isolamento multi-tenant via RLS em company_document_chunks (e2e)', () 
   let technicianLinkedId: string;
   let technicianUnlinkedUserId: string;
   let technicianUnlinkedId: string;
+  let partnerLinkedUserId: string;
+  let partnerLinkedId: string;
+  let partnerUnlinkedUserId: string;
+  let partnerUnlinkedId: string;
 
   beforeAll(async () => {
     db = new TestDb();
@@ -43,6 +47,28 @@ describe('Isolamento multi-tenant via RLS em company_document_chunks (e2e)', () 
     await (db as any).client.query(
       'INSERT INTO tenant_technicians (tenant_id, technician_id) VALUES ($1, $2)',
       [tenantAId, technicianLinkedId],
+    );
+
+    const linkedPartner = await db.createUserWithRole('parceiro', 'Parceiro Vinculado Chunk RLS');
+    const unlinkedPartner = await db.createUserWithRole('parceiro', 'Parceiro Nao Vinculado Chunk RLS');
+    partnerLinkedUserId = linkedPartner.userId;
+    partnerUnlinkedUserId = unlinkedPartner.userId;
+
+    const linkedPartnerResult = await (db as any).client.query(
+      `INSERT INTO partners (user_id, service_region) VALUES ($1, 'Sul de SC') RETURNING id`,
+      [partnerLinkedUserId],
+    );
+    partnerLinkedId = linkedPartnerResult.rows[0].id;
+
+    const unlinkedPartnerResult = await (db as any).client.query(
+      `INSERT INTO partners (user_id, service_region) VALUES ($1, 'Sul de SC') RETURNING id`,
+      [partnerUnlinkedUserId],
+    );
+    partnerUnlinkedId = unlinkedPartnerResult.rows[0].id;
+
+    await (db as any).client.query(
+      'INSERT INTO tenant_partners (tenant_id, partner_id) VALUES ($1, $2)',
+      [tenantAId, partnerLinkedId],
     );
 
     const insertDocA = await (db as any).client.query(
@@ -83,6 +109,9 @@ describe('Isolamento multi-tenant via RLS em company_document_chunks (e2e)', () 
     await (db as any).client.query('DELETE FROM technicians WHERE id = ANY($1)', [
       [technicianLinkedId, technicianUnlinkedId],
     ]);
+    await (db as any).client.query('DELETE FROM partners WHERE id = ANY($1)', [
+      [partnerLinkedId, partnerUnlinkedId],
+    ]);
     await db.cleanup();
     await db.disconnect();
   });
@@ -116,6 +145,22 @@ describe('Isolamento multi-tenant via RLS em company_document_chunks (e2e)', () 
 
   it('técnico NÃO vinculado a nenhuma empresa não vê chunk nenhum', async () => {
     const ids = await queryAsContext('tecnico', null, technicianUnlinkedUserId);
+    expect(ids).not.toContain(chunkAId);
+    expect(ids).not.toContain(chunkBId);
+  });
+
+  // Achado #2 da revisão final da Fase 24: a policy original (0040)
+  // espelhou documents da Fase 4, sem o branch de parceiro adicionado só
+  // na Fase 6 (0011_partner_access.sql). 0041 corrige isso — estes casos
+  // provam o 4º branch.
+  it('parceiro vinculado à empresa A vê o chunk dela', async () => {
+    const ids = await queryAsContext('parceiro', null, partnerLinkedUserId);
+    expect(ids).toContain(chunkAId);
+    expect(ids).not.toContain(chunkBId);
+  });
+
+  it('parceiro NÃO vinculado a nenhuma empresa não vê chunk nenhum', async () => {
+    const ids = await queryAsContext('parceiro', null, partnerUnlinkedUserId);
     expect(ids).not.toContain(chunkAId);
     expect(ids).not.toContain(chunkBId);
   });
