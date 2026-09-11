@@ -198,7 +198,18 @@ export class PenteFinoComparisonService {
         [document.id],
       ),
     );
-    if (existing.rows.length > 0) return existing.rows;
+    // Re-deriva o position_id contra a lista de cargos ATUAL em vez de
+    // confiar no que está gravado: o valor persistido foi resolvido uma única
+    // vez, na primeira extração. Sem isto, cadastrar o cargo que faltava —
+    // exatamente a ação que o status 'nome_sem_correspondencia' pede — e
+    // rodar o Pente-Fino de novo devolveria o mesmo relatório velho, porque o
+    // caminho de cache nunca reavaliaria o casamento.
+    if (existing.rows.length > 0) {
+      return existing.rows.map((row) => ({
+        ...row,
+        position_id: this.extractor.matchPosition(row.function_text_raw, positions),
+      }));
+    }
 
     const extracted: ExtractedRow[] = await this.extractor.extractRows(document, kind, positions);
     await this.db.withTenantContext(ctx, (client) => this.extractor.persistRows(client, document, kind, extracted));

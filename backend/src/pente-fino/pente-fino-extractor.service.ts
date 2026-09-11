@@ -110,7 +110,12 @@ export class PenteFinoExtractorService {
     return null;
   }
 
-  private matchPosition(functionText: string, positions: { id: string; name: string }[]): string | null {
+  // Público porque PenteFinoComparisonService precisa re-derivar o
+  // position_id de uma extração já persistida: o valor guardado foi resolvido
+  // contra a lista de cargos de quando a extração rodou, e cadastrar o cargo
+  // que faltava (a ação que o status 'nome_sem_correspondencia' justamente
+  // pede) não pode continuar devolvendo o mesmo resultado velho.
+  matchPosition(functionText: string, positions: { id: string; name: string }[]): string | null {
     const normalized = normalizePositionText(functionText);
     const match = positions.find((p) => normalizePositionText(p.name) === normalized);
     return match?.id ?? null;
