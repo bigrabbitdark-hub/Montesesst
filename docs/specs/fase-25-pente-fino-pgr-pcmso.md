@@ -90,11 +90,14 @@ por checagem determinística, nunca por julgamento de IA).
   quebra, só pra este endpoint, a limitação registrada na Fase 24 (o
   chat do Assistente não sabe pra qual empresa o técnico está
   perguntando) — aqui o endpoint já pede `tenant_id` explicitamente.
-- **RLS com os 4 branches desde a criação** (admin, tenant direto,
-  técnico via `tenant_technicians`, parceiro via `tenant_partners`) —
-  a Fase 24 esqueceu o branch de parceiro na primeira versão da
-  policy e teve que corrigir numa migration separada depois; aqui
-  entra certo desde o início.
+- **RLS cobrindo admin/tenant/técnico/parceiro desde a criação**, via
+  `assigned_tenant_ids_for_current_user()` (função já existente desde
+  `0001_init.sql`, padrão das migrations mais recentes antes desta) —
+  não o EXISTS repetido em duas cláusulas separadas que
+  `company_document_chunks_isolation` usa (mais antigo, e a Fase 24
+  esqueceu o branch de parceiro nessa versão na primeira tentativa,
+  corrigido depois numa migration separada). Esta fase usa o padrão
+  atual certo desde o início.
 
 ## 3. Modelo de dados
 
@@ -128,26 +131,22 @@ CREATE INDEX pgr_function_risks_document_id_idx ON pgr_function_risks (document_
 CREATE INDEX pcmso_function_exams_tenant_id_idx ON pcmso_function_exams (tenant_id);
 CREATE INDEX pcmso_function_exams_document_id_idx ON pcmso_function_exams (document_id);
 
--- RLS: 4 branches desde a criação (admin, tenant direto, técnico,
--- parceiro) — mesma policy nas duas tabelas, mesmo padrão de
--- company_document_chunks_isolation (Fase 24) já corrigido.
+-- RLS: cobre admin/tenant/técnico/parceiro desde a criação, usando
+-- assigned_tenant_ids_for_current_user() — função SQL já existente
+-- desde 0001_init.sql (SECURITY DEFINER, une tenant_technicians e
+-- tenant_partners numa única subquery), já é o padrão usado pelas
+-- migrations mais recentes antes desta (0035-0039: positions,
+-- fire_safety_equipment, fire_brigade, company_units,
+-- prevention_checklist). Mais limpo que o EXISTS repetido em duas
+-- cláusulas separadas que documents_isolation/company_document_chunks_isolation
+-- usam (padrão mais antigo, pré-existente, não é o que esta fase
+-- deveria copiar).
 ALTER TABLE pgr_function_risks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE pgr_function_risks FORCE ROW LEVEL SECURITY;
 CREATE POLICY pgr_function_risks_isolation ON pgr_function_risks USING (
   current_setting('app.role', true) = 'admin'
   OR tenant_id = NULLIF(current_setting('app.tenant_id', true), '')::UUID
-  OR EXISTS (
-    SELECT 1 FROM tenant_technicians tt JOIN technicians t ON t.id = tt.technician_id
-    WHERE tt.tenant_id = pgr_function_risks.tenant_id
-      AND t.user_id = NULLIF(current_setting('app.user_id', true), '')::UUID
-      AND current_setting('app.role', true) = 'tecnico'
-  )
-  OR EXISTS (
-    SELECT 1 FROM tenant_partners tp JOIN partners p ON p.id = tp.partner_id
-    WHERE tp.tenant_id = pgr_function_risks.tenant_id
-      AND p.user_id = NULLIF(current_setting('app.user_id', true), '')::UUID
-      AND current_setting('app.role', true) = 'parceiro'
-  )
+  OR tenant_id IN (SELECT assigned_tenant_ids_for_current_user())
 );
 -- (mesma policy, trocando o nome da tabela, em pcmso_function_exams)
 ```
