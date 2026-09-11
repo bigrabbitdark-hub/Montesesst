@@ -21,11 +21,43 @@ export interface FunctionReportItem {
   exams: { description: string; source_excerpt: string }[];
 }
 
+export interface PenteFinoDocumentRef {
+  id: string;
+  title: string;
+  // Quando a extração deste documento foi gravada (MAX(created_at) das linhas
+  // dele). NULL quando não há linha nenhuma — extração falhou, o documento não
+  // tinha texto aproveitável, ou ela ainda não rodou.
+  extracted_at: string | null;
+}
+
 export interface PenteFinoReport {
-  pgr_document: { id: string; title: string } | null;
-  pcmso_document: { id: string; title: string } | null;
+  pgr_document: PenteFinoDocumentRef | null;
+  pcmso_document: PenteFinoDocumentRef | null;
   functions: FunctionReportItem[];
   warnings: string[];
+}
+
+interface ExtractionResult {
+  rows: StoredRow[];
+  extractedAt: string | null;
+}
+
+// 'nome_sem_correspondencia' vem por último de propósito (spec §2, item 5):
+// sem o cargo canônico confirmando os dois lados, não dá pra afirmar que é um
+// achado real, então ele não pode competir por atenção com os dois achados que
+// são. 'ok' fica acima dele porque é um resultado confirmado, ainda que sem
+// ação pendente.
+const STATUS_PRIORITY: Record<FunctionReportItem['status'], number> = {
+  risco_sem_exame: 0,
+  exame_sem_risco: 1,
+  ok: 2,
+  nome_sem_correspondencia: 3,
+};
+
+export function sortFunctionsByPriority(functions: FunctionReportItem[]): FunctionReportItem[] {
+  // .sort() do V8 é estável, então funções de mesmo status mantêm a ordem de
+  // agrupamento (PGR primeiro, depois PCMSO) em vez de embaralhar a cada run.
+  return [...functions].sort((a, b) => STATUS_PRIORITY[a.status] - STATUS_PRIORITY[b.status]);
 }
 
 // Função pura — sem I/O, testável isolada (unit-spec cobre a lógica de
@@ -139,13 +171,17 @@ export class PenteFinoComparisonService {
     if (!pgr) warnings.push('Nenhum PGR encontrado — cruzamento de risco fica limitado até um PGR ser enviado.');
     if (!pcmso) warnings.push('Nenhum PCMSO encontrado — cruzamento de exame fica limitado até um PCMSO ser enviado.');
 
-    const pgrRows = pgr ? await this.ensureExtracted(ctx, pgr, 'risco', positions) : [];
-    const pcmsoRows = pcmso ? await this.ensureExtracted(ctx, pcmso, 'exame', positions) : [];
+    const pgrExtraction = pgr ? await this.ensureExtracted(ctx, pgr, 'risco', positions) : null;
+    const pcmsoExtraction = pcmso ? await this.ensureExtracted(ctx, pcmso, 'exame', positions) : null;
 
     return {
-      pgr_document: pgr ? { id: pgr.id, title: pgr.title } : null,
-      pcmso_document: pcmso ? { id: pcmso.id, title: pcmso.title } : null,
-      functions: buildFunctionReport(pgrRows, pcmsoRows, positions),
+      pgr_document: pgr ? { id: pgr.id, title: pgr.title, extracted_at: pgrExtraction?.extractedAt ?? null } : null,
+      pcmso_document: pcmso
+        ? { id: pcmso.id, title: pcmso.title, extracted_at: pcmsoExtraction?.extractedAt ?? null }
+        : null,
+      functions: sortFunctionsByPriority(
+        buildFunctionReport(pgrExtraction?.rows ?? [], pcmsoExtraction?.rows ?? [], positions),
+      ),
       warnings,
     };
   }
@@ -187,13 +223,13 @@ export class PenteFinoComparisonService {
     document: Document,
     kind: 'risco' | 'exame',
     positions: { id: string; name: string }[],
-  ): Promise<StoredRow[]> {
+  ): Promise<ExtractionResult> {
     const table = kind === 'risco' ? 'pgr_function_risks' : 'pcmso_function_exams';
     const descriptionColumn = kind === 'risco' ? 'risk_description' : 'exam_description';
 
     const existing = await this.db.withTenantContext(ctx, (client) =>
-      client.query<{ position_id: string | null; function_text_raw: string; description: string; source_excerpt: string }>(
-        `SELECT position_id, function_text_raw, ${descriptionColumn} AS description, source_excerpt
+      client.query<StoredRow & { created_at: Date }>(
+        `SELECT position_id, function_text_raw, ${descriptionColumn} AS description, source_excerpt, created_at
          FROM ${table} WHERE document_id = $1`,
         [document.id],
       ),
@@ -205,20 +241,56 @@ export class PenteFinoComparisonService {
     // rodar o Pente-Fino de novo devolveria o mesmo relatório velho, porque o
     // caminho de cache nunca reavaliaria o casamento.
     if (existing.rows.length > 0) {
-      return existing.rows.map((row) => ({
-        ...row,
-        position_id: this.extractor.matchPosition(row.function_text_raw, positions),
-      }));
+      return {
+        rows: existing.rows.map((row) => ({
+          position_id: this.extractor.matchPosition(row.function_text_raw, positions),
+          function_text_raw: row.function_text_raw,
+          description: row.description,
+          source_excerpt: row.source_excerpt,
+        })),
+        extractedAt: maxCreatedAt(existing.rows),
+      };
     }
 
     const extracted: ExtractedRow[] = await this.extractor.extractRows(document, kind, positions);
-    await this.db.withTenantContext(ctx, (client) => this.extractor.persistRows(client, document, kind, extracted));
+    // O MAX(created_at) sai da mesma transação que acabou de gravar as linhas
+    // (índice por document_id, criado na migration 0042). Fica NULL quando a
+    // extração legitimamente não produziu linha nenhuma — que é exatamente o
+    // que 'extracted_at: null' comunica no relatório.
+    const extractedAt = await this.db.withTenantContext(ctx, async (client) => {
+      await this.extractor.persistRows(client, document, kind, extracted);
+      const result = await client.query<{ extracted_at: Date | null }>(
+        `SELECT MAX(created_at) AS extracted_at FROM ${table} WHERE document_id = $1`,
+        [document.id],
+      );
+      return toIsoOrNull(result.rows[0]?.extracted_at);
+    });
 
-    return extracted.map((row) => ({
-      position_id: row.positionId,
-      function_text_raw: row.functionTextRaw,
-      description: row.description,
-      source_excerpt: row.sourceExcerpt,
-    }));
+    return {
+      rows: extracted.map((row) => ({
+        position_id: row.positionId,
+        function_text_raw: row.functionTextRaw,
+        description: row.description,
+        source_excerpt: row.sourceExcerpt,
+      })),
+      extractedAt,
+    };
   }
+}
+
+function toIsoOrNull(value: Date | string | null | undefined): string | null {
+  return value == null ? null : new Date(value).toISOString();
+}
+
+function maxCreatedAt(rows: { created_at: Date | string }[]): string | null {
+  let max: number | null = null;
+  for (const row of rows) {
+    const time = new Date(row.created_at).getTime();
+    // created_at é NOT NULL no schema, mas uma data inválida aqui viraria um
+    // RangeError no toISOString() e derrubaria o relatório inteiro por causa
+    // de um campo informativo — não vale o risco.
+    if (Number.isNaN(time)) continue;
+    if (max === null || time > max) max = time;
+  }
+  return max === null ? null : new Date(max).toISOString();
 }

@@ -191,6 +191,13 @@ describe('POST /pente-fino/run (e2e)', () => {
     ]);
     expect(res.body.warnings).toEqual([]);
 
+    // extracted_at sai do MAX(created_at) das linhas de extração daquele
+    // documento: o PGR tem uma linha persistida (timestamp real do Postgres),
+    // o PCMSO extraiu e não achou nada, então continua null — é assim que o
+    // relatório diferencia "extraí e tenho isto" de "não tenho linha nenhuma".
+    expect(new Date(res.body.pgr_document.extracted_at).toString()).not.toBe('Invalid Date');
+    expect(res.body.pcmso_document.extracted_at).toBeNull();
+
     // Confirma que o resultado vazio pro PCMSO veio de fato do path
     // "extrai pela primeira vez" (download via R2 fakeado + provider
     // fake chamado e devolvendo []), não de uma falha silenciosa de

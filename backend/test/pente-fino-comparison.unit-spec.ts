@@ -1,7 +1,9 @@
 import { Test } from '@nestjs/testing';
 import {
+  FunctionReportItem,
   PenteFinoComparisonService,
   buildFunctionReport,
+  sortFunctionsByPriority,
   StoredRow,
 } from '../src/pente-fino/pente-fino-comparison.service';
 import { PenteFinoExtractorService } from '../src/pente-fino/pente-fino-extractor.service';
@@ -80,7 +82,7 @@ describe('PenteFinoComparisonService — reaproveitamento de extração já pers
 
   async function buildService(options: {
     positions: { id: string; name: string }[];
-    cachedRows: StoredRow[];
+    cachedRows: (StoredRow & { created_at: Date })[];
   }): Promise<{ service: PenteFinoComparisonService; extractRows: jest.Mock }> {
     const fakeClient = {
       query: jest.fn(async (sql: string) => {
@@ -116,12 +118,13 @@ describe('PenteFinoComparisonService — reaproveitamento de extração já pers
 
   const empresaUser = { id: 'user-1', tenantId: 'tenant-1', role: 'empresa' };
 
-  function cachedRow(overrides: Partial<StoredRow> = {}): StoredRow {
+  function cachedRow(overrides: Partial<StoredRow & { created_at: Date }> = {}): StoredRow & { created_at: Date } {
     return {
       position_id: null,
       function_text_raw: 'Soldador',
       description: 'Fumos metálicos',
       source_excerpt: 'trecho pgr',
+      created_at: new Date('2026-09-01T10:00:00.000Z'),
       ...overrides,
     };
   }
@@ -167,5 +170,71 @@ describe('PenteFinoComparisonService — reaproveitamento de extração já pers
 
     expect(report.functions[0].position_id).toBeNull();
     expect(report.functions[0].status).toBe('nome_sem_correspondencia');
+  });
+
+  it('extracted_at do documento é o created_at mais recente das linhas em cache; documento ausente vira null', async () => {
+    const { service } = await buildService({
+      positions: [{ id: 'pos-1', name: 'Soldador' }],
+      cachedRows: [
+        cachedRow({ created_at: new Date('2026-09-01T10:00:00.000Z') }),
+        cachedRow({ created_at: new Date('2026-09-03T08:30:00.000Z'), description: 'Ruído' }),
+      ],
+    });
+
+    const report = await service.run('tenant-1', empresaUser);
+
+    expect(report.pgr_document).toEqual({
+      id: 'doc-pgr',
+      title: 'PGR Teste',
+      extracted_at: '2026-09-03T08:30:00.000Z',
+    });
+    // O fake não devolve PCMSO nenhum — documento ausente continua null
+    // inteiro, não um objeto com extracted_at null.
+    expect(report.pcmso_document).toBeNull();
+  });
+});
+
+describe('sortFunctionsByPriority', () => {
+  function item(status: FunctionReportItem['status'], functionTextRaw: string): FunctionReportItem {
+    return {
+      position_id: null,
+      position_name: null,
+      function_text_raw: functionTextRaw,
+      status,
+      risks: [],
+      exams: [],
+    };
+  }
+
+  it('ordena risco_sem_exame, exame_sem_risco, ok e por último nome_sem_correspondencia', () => {
+    const sorted = sortFunctionsByPriority([
+      item('nome_sem_correspondencia', 'Ajudante'),
+      item('ok', 'Pedreiro'),
+      item('exame_sem_risco', 'Pintor'),
+      item('risco_sem_exame', 'Soldador'),
+    ]);
+
+    expect(sorted.map((f) => f.status)).toEqual([
+      'risco_sem_exame',
+      'exame_sem_risco',
+      'ok',
+      'nome_sem_correspondencia',
+    ]);
+  });
+
+  it('mantém a ordem original entre funções de mesmo status (sort estável)', () => {
+    const sorted = sortFunctionsByPriority([
+      item('risco_sem_exame', 'Soldador'),
+      item('risco_sem_exame', 'Pintor'),
+      item('risco_sem_exame', 'Pedreiro'),
+    ]);
+
+    expect(sorted.map((f) => f.function_text_raw)).toEqual(['Soldador', 'Pintor', 'Pedreiro']);
+  });
+
+  it('não muta o array recebido', () => {
+    const original = [item('nome_sem_correspondencia', 'Ajudante'), item('risco_sem_exame', 'Soldador')];
+    sortFunctionsByPriority(original);
+    expect(original.map((f) => f.status)).toEqual(['nome_sem_correspondencia', 'risco_sem_exame']);
   });
 });
