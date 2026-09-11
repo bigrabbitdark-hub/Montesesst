@@ -25,6 +25,7 @@ import { VisitsModule } from './visits/visits.module';
 import { CipaModule } from './cipa/cipa.module';
 import { CaepiModule } from './caepi/caepi.module';
 import { PositionsModule } from './positions/positions.module';
+import { PenteFinoModule } from './pente-fino/pente-fino.module';
 import { FireSafetyEquipmentModule } from './fire-safety-equipment/fire-safety-equipment.module';
 import { FireBrigadeModule } from './fire-brigade/fire-brigade.module';
 import { PreventionCorrectiveActionsModule } from './prevention-corrective-actions/prevention-corrective-actions.module';
@@ -76,6 +77,7 @@ import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
     CipaModule,
     CaepiModule,
     PositionsModule,
+    PenteFinoModule,
     FireSafetyEquipmentModule,
     FireBrigadeModule,
     PreventionCorrectiveActionsModule,
