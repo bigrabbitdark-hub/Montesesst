@@ -251,4 +251,28 @@ describe('POST /pente-fino/run (e2e)', () => {
     ]);
     expect(res.body.warnings).toEqual([]);
   });
+
+  // Mesmo formato do teste de 429 de register-technician.e2e-spec.ts. Aqui o
+  // teto importa mais que o normal: cada chamada pode disparar 2 chamadas de
+  // LLM (PGR + PCMSO) e 2 downloads no R2, e o limite global de 300/300s não
+  // segura custo nenhum nessa ordem de grandeza.
+  it('bloqueia com 429 depois do limite de execuções por IP', async () => {
+    fakeExtract.mockResolvedValue([]);
+    const limit = Number(process.env.PENTE_FINO_RUN_RATE_LIMIT_MAX ?? 5);
+
+    for (let i = 0; i < limit; i++) {
+      const ok = await request(app.getHttpServer())
+        .post('/pente-fino/run')
+        .set('Authorization', `Bearer ${token}`)
+        .send({});
+      expect(ok.status).toBe(201);
+    }
+
+    const res = await request(app.getHttpServer())
+      .post('/pente-fino/run')
+      .set('Authorization', `Bearer ${token}`)
+      .send({});
+
+    expect(res.status).toBe(429);
+  });
 });

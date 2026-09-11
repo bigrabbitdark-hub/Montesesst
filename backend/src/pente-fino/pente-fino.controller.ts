@@ -1,5 +1,7 @@
 import { BadRequestException, Body, Controller, Post, Req, UsePipes, ValidationPipe } from '@nestjs/common';
 import { Roles } from '../common/decorators/roles.decorator';
+import { RateLimit } from '../common/rate-limit/rate-limit.decorator';
+import { envInt } from '../common/env';
 import { PenteFinoComparisonService } from './pente-fino-comparison.service';
 import { RunPenteFinoDto } from './dto/run-pente-fino.dto';
 
@@ -8,6 +10,15 @@ export class PenteFinoController {
   constructor(private readonly comparison: PenteFinoComparisonService) {}
 
   @Roles('empresa', 'tecnico', 'parceiro')
+  // Teto próprio, bem mais apertado que o limite global de 300/300s: cada
+  // chamada pode disparar até 2 chamadas de LLM (PGR + PCMSO, até 60s cada)
+  // mais os downloads no R2. Mesmo padrão/convenção de env de
+  // POST /documents/classify-batch (Fase 21).
+  @RateLimit({
+    limit: envInt('PENTE_FINO_RUN_RATE_LIMIT_MAX', 5),
+    windowSeconds: envInt('PENTE_FINO_RUN_RATE_LIMIT_WINDOW_SECONDS', 3600),
+    keyBy: 'ip',
+  })
   @UsePipes(new ValidationPipe({ transform: true, whitelist: true, forbidNonWhitelisted: true }))
   @Post('run')
   run(@Body() dto: RunPenteFinoDto, @Req() req: any) {
