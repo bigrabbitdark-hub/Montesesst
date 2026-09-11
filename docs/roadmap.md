@@ -3454,3 +3454,80 @@ via grep dentro do container antes de qualquer Playwright, 49
 checagens originais das Tasks 5/6 + 15 focadas na re-verificação do
 filtro por filial, todas contra `https://montesesst.com.br` em
 produção.
+
+## Fase 24 — Indexação de documentos da empresa (PGR/PCMSO/LTCAT/LIP) + upload de Word/Excel: status
+
+Primeira fatia de uma visão ampla trazida pelo fundador em 2026-09-10
+("MONTESESST — Especificação Mestre do Sistema"): múltiplos agentes de
+IA cooperando, cruzamento de dados entre PGR/PCMSO/LTCAT/LIP (auditoria
+"Pente-Fino"), upload de Word/Excel, RAG robusto sem alucinação. Escopo
+grande demais pra uma spec só — decomposto em 4 sub-projetos
+independentes: **(A+B, esta fase)** ingestão Word/Excel + indexação de
+conteúdo dos documentos da empresa; **(C)** motor de cruzamento entre
+esses documentos; **(D)** cooperação entre os agentes de IA existentes
++ memória de conversa — C e D ainda sem spec.
+
+Spec em [`docs/specs/fase-24-indexacao-documentos-empresa.md`](specs/fase-24-indexacao-documentos-empresa.md),
+plano em [`docs/plans/fase-24-indexacao-documentos-empresa.md`](plans/fase-24-indexacao-documentos-empresa.md).
+Executado via Subagent-Driven Development: 7 tasks + revisão final de
+todo o branch + 1 onda de correção + re-revisão escopada.
+
+**Fechada em 2026-09-11, commits `4c02fe7..7bc675a` direto em `main`**
+(sem worktree — o stack Docker deste projeto usa nomes de container
+fixos e a imagem de produção não tem devDependencies/test/, então
+worktree isolado não tem como rodar a suíte real; consentimento
+explícito do fundador pra trabalhar direto na main, mesmo padrão já
+usado em fases anteriores):
+
+- Extração de `EmbeddingProvider`/chunking/vetor pra `common/`
+  (`@Global()`, mesmo padrão de `R2Module`) — necessária pra evitar
+  ciclo `NormativeModule → DashboardModule → DocumentsModule`.
+- Tabela `company_document_chunks` (RLS por tenant, mesmo padrão de
+  `documents`) + extratores de PDF completo/DOCX (`mammoth`)/XLSX
+  (`exceljs`, linha vira frase com aba+cabeçalho como rótulo).
+- `CompanyDocumentIndexerService` + wire no upload — indexação nunca
+  bloqueia o upload nem propaga exceção.
+- Terceira fonte no Assistente (`NormativeAssistantService`): chunks de
+  documento da empresa somados a norma oficial + dado operacional, com
+  o mesmo Verificador determinístico anti-alucinação estendido pro novo
+  tipo de citação. Restrito a `user.role === 'empresa'` nesta fase —
+  técnico/parceiro não têm como indicar de qual empresa vinculada estão
+  perguntando (o endpoint não recebe `tenant_id`); fica pra Fase C, já
+  que técnico é a persona central da auditoria "Pente-Fino".
+- Anexo efêmero do Assistente (Fase 20) também ganha DOCX/XLSX.
+
+**Revisão final do branch (achado real, não coberto por nenhuma revisão
+por task porque o próprio plano prescrevia o código):** a "segunda
+transação" que separava a indexação do upload ainda segurava uma
+conexão do pool aberta durante todas as chamadas de embedding —
+recriava o Finding C1a da Fase 9 sob um comentário que afirmava o
+contrário. Corrigido numa onda de correção só (sem segunda rodada,
+conforme o processo): `extractAndEmbed` (sem `PoolClient`, computa
+todos os embeddings antes de qualquer transação) + `persistChunks`
+(transação curta, só INSERT) — mesmo padrão já usado em
+`NormativeDocumentsService.computeEmbeddedChunks`/`replaceChunks`
+(Fase 9). Mais 5 achados Important corrigidos junto: RLS de
+`company_document_chunks` sem branch de `parceiro` (spec referenciou a
+policy antiga de `documents`, que ganhou esse branch na Fase 6); teto
+de chunks (500) + orçamento de tempo (240s) na indexação síncrona;
+`withTenantContext` da 2ª transação sem try/catch próprio; faltavam
+índices btree em `tenant_id`/`document_id` (risco de recall degradado
+do HNSW filtrado por tenant em escala); XLSX cortava linha no meio ao
+reusar o chunker genérico de PDF/DOCX (nova `groupLinesIntoChunks`,
+nunca corta uma linha).
+
+**Pendência não-bloqueante, registrada como gate de anúncio de
+produção (não de merge):** o frontend (`AssistantChat.tsx`) ainda não
+consome `company_citations` — uma resposta baseada só em documento da
+empresa aparece na tela sem nenhuma fonte visível. Fase de frontend
+separada, ainda sem spec.
+
+**Verificação:** unit 71/71; e2e das áreas tocadas (documents,
+normative, company-document-chunks) 101/102 — a 1 falha é um bug
+pré-existente da Fase 10 (regex `DADO`/`DADOS`), não relacionado a esta
+fase; e2e completo (única rodada, pós-correção) 442/468, as 26 falhas
+restantes todas rastreadas a ruído de rate-limit compartilhado entre
+~100 arquivos de teste contra o mesmo Redis real (padrão já conhecido
+deste projeto) ou ao mesmo bug pré-existente da Fase 10 — nenhuma
+regressão nova. `npx tsc --noEmit` limpo. Migrations `0040` e `0041`
+aplicadas com sucesso (aditivas, sem migração de dado).
