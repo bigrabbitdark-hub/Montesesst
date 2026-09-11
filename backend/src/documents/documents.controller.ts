@@ -5,6 +5,7 @@ import {
   Delete,
   Get,
   Inject,
+  Logger,
   Param,
   Post,
   Query,
@@ -43,6 +44,8 @@ export interface ClassifyBatchItem {
 
 @Controller('documents')
 export class DocumentsController {
+  private readonly logger = new Logger(DocumentsController.name);
+
   constructor(
     private readonly documents: DocumentsService,
     private readonly indexer: CompanyDocumentIndexerService,
@@ -77,13 +80,27 @@ export class DocumentsController {
       }),
     );
 
-    // 2ª transação, separada da de upload (já commitada acima) — nunca
+    // extractAndEmbed roda TOTALMENTE fora de qualquer transação — nunca
     // segura uma conexão do pool aberta durante a chamada de embedding,
-    // que é HTTP externa e lenta (mesmo raciocínio do Finding C1a da
-    // Fase 9). indexDocument nunca lança exceção, então uma falha de
-    // indexação não derruba a resposta do upload (spec §2).
+    // que é HTTP externa e lenta (mesmo raciocínio do Finding C1a da Fase
+    // 9 / Finding #1 da revisão final da Fase 24 — a versão anterior desta
+    // rota passava um PoolClient pro método que fazia o laço de embedding,
+    // recriando o mesmo problema). Só depois de já ter todos os embeddings
+    // computados é que abrimos a 2ª transação (persistChunks), dedicada só
+    // a INSERTs — curta e rápida.
     if (this.indexer.shouldIndex(document.category, document.mime_type)) {
-      await req.withTenantContext((client: any) => this.indexer.indexDocument(client, document, file.buffer));
+      const embeddedChunks = await this.indexer.extractAndEmbed(document, file.buffer);
+      // persistChunks nunca lança exceção (mesma garantia de sempre), mas
+      // a própria chamada a withTenantContext pode lançar por motivos fora
+      // do controle do serviço (ex.: pool esgotado, falha no BEGIN) —
+      // Finding #4 da revisão final da Fase 24. Sem este try/catch, essa
+      // falha se propagaria e derrubaria a resposta de um upload que já
+      // foi commitado com sucesso.
+      try {
+        await req.withTenantContext((client: any) => this.indexer.persistChunks(client, document, embeddedChunks));
+      } catch (err) {
+        this.logger.warn(`Falha ao persistir chunks do documento ${document.id}: ${(err as Error).message}`);
+      }
     }
 
     return document;
