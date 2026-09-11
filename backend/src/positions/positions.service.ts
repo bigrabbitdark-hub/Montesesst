@@ -2,6 +2,7 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { PoolClient } from 'pg';
 import { mapPgError } from '../common/pg-error.util';
 import { TRAINING_TYPES, TrainingType } from '../cipa/trainings.service';
+import { normalizePositionText } from '../common/text/normalize-position-text.util';
 
 export interface Position {
   id: string;
@@ -96,15 +97,6 @@ export class PositionsService {
     }
   }
 
-  private normalizePositionText(value: string): string {
-    return value
-      .normalize('NFD')
-      .replace(/[̀-ͯ]/g, '')
-      .toLowerCase()
-      .trim()
-      .replace(/\s+/g, ' ');
-  }
-
   async getLinkSuggestions(client: PoolClient, tenantId: string): Promise<LinkSuggestion[]> {
     const result = await client.query<{ id: string; full_name: string; position: string }>(
       `SELECT id, full_name, position FROM employees
@@ -117,7 +109,7 @@ export class PositionsService {
       { rawCounts: Map<string, number>; employees: { id: string; full_name: string }[] }
     >();
     for (const row of result.rows) {
-      const normalized = this.normalizePositionText(row.position);
+      const normalized = normalizePositionText(row.position);
       if (!groups.has(normalized)) groups.set(normalized, { rawCounts: new Map(), employees: [] });
       const group = groups.get(normalized)!;
       group.employees.push({ id: row.id, full_name: row.full_name });

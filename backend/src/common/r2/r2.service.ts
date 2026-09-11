@@ -40,4 +40,15 @@ export class R2Service {
   async deleteObject(key: string): Promise<void> {
     await this.client.send(new DeleteObjectCommand({ Bucket: process.env.R2_BUCKET, Key: key }));
   }
+
+  // Lê o conteúdo do objeto de volta pro servidor (diferente de
+  // getPresignedDownloadUrl, que devolve uma URL pro CLIENTE baixar
+  // direto) — usado pela Fase 25 pra reler um documento já enviado e
+  // extrair texto dele sob demanda, fora do fluxo de upload (onde o
+  // buffer já está em memória).
+  async getObject(key: string): Promise<Buffer> {
+    const result = await this.client.send(new GetObjectCommand({ Bucket: process.env.R2_BUCKET, Key: key }));
+    const bytes = await result.Body!.transformToByteArray();
+    return Buffer.from(bytes);
+  }
 }
