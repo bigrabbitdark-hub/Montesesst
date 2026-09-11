@@ -2,10 +2,19 @@ import { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import PDFDocument from 'pdfkit';
+import Redis from 'ioredis';
 import { AppModule } from '../src/app.module';
 import { FUNCTION_EXTRACTION_PROVIDER } from '../src/pente-fino/function-extraction-provider.interface';
 import { R2Service } from '../src/common/r2/r2.service';
 import { TestDb } from './db-test-helper';
+
+// Mesmo motivo do RATE_LIMIT_KEY em documents-classify-batch.e2e-spec.ts —
+// /pente-fino/run tem contador próprio por rota (RateLimitGuard), com teto
+// baixo (5/hora) porque cada chamada pode disparar 2 chamadas de LLM. Sem
+// zerar o contador entre os testes, o 6º request deste arquivo (ou uma
+// segunda execução da suíte dentro da mesma hora) receberia 429 em vez do
+// status esperado.
+const RATE_LIMIT_KEY = 'ratelimit:PenteFinoController.run:::ffff:127.0.0.1';
 
 // Mesmo helper de pente-fino-extractor.unit-spec.ts: gera um PDF de
 // verdade em memória pra que a extração de texto (pdf-parse) tenha algo
@@ -33,11 +42,16 @@ function buildTestPdf(text: string): Promise<Buffer> {
 describe('POST /pente-fino/run (e2e)', () => {
   let app: INestApplication;
   let db: TestDb;
+  let redis: Redis;
   let token: string;
   let tenantId: string;
   let pgrDocId: string;
   let pcmsoDocId: string;
   let positionId: string;
+  let linkedTechnicianToken: string;
+  let unlinkedTechnicianToken: string;
+  let linkedTechnicianId: string;
+  let unlinkedTechnicianId: string;
   const fakeExtract = jest.fn();
   const fakeGetObject = jest.fn();
 
@@ -101,6 +115,45 @@ describe('POST /pente-fino/run (e2e)', () => {
        VALUES ($1, $2, $3, 'Soldador', 'Fumos metálicos', 'trecho pgr')`,
       [tenantId, pgrDocId, positionId],
     );
+
+    // Dois técnicos com o MESMO cenário do ponto de vista do atacante —
+    // ambos conhecem (ou chutam) o tenant_id desta empresa e mandam ele no
+    // corpo. A única diferença é o vínculo em tenant_technicians; é ele, e
+    // não o tenant_id do corpo, que precisa decidir quem consegue rodar o
+    // Pente-Fino nesta empresa. Mesmo padrão de fixture de
+    // pente-fino-function-extraction-rls.e2e-spec.ts.
+    const linkedTechUser = await db.createUserWithRole('tecnico', 'Tecnico Vinculado PenteFino Run');
+    const unlinkedTechUser = await db.createUserWithRole('tecnico', 'Tecnico Nao Vinculado PenteFino Run');
+
+    const linkedTech = await client.query('INSERT INTO technicians (user_id) VALUES ($1) RETURNING id', [
+      linkedTechUser.userId,
+    ]);
+    linkedTechnicianId = linkedTech.rows[0].id;
+    const unlinkedTech = await client.query('INSERT INTO technicians (user_id) VALUES ($1) RETURNING id', [
+      unlinkedTechUser.userId,
+    ]);
+    unlinkedTechnicianId = unlinkedTech.rows[0].id;
+
+    await client.query('INSERT INTO tenant_technicians (tenant_id, technician_id) VALUES ($1, $2)', [
+      tenantId,
+      linkedTechnicianId,
+    ]);
+
+    const linkedLogin = await request(app.getHttpServer())
+      .post('/auth/login')
+      .send({ email: linkedTechUser.email, password: linkedTechUser.password });
+    linkedTechnicianToken = linkedLogin.body.access_token;
+
+    const unlinkedLogin = await request(app.getHttpServer())
+      .post('/auth/login')
+      .send({ email: unlinkedTechUser.email, password: unlinkedTechUser.password });
+    unlinkedTechnicianToken = unlinkedLogin.body.access_token;
+
+    redis = new Redis(process.env.REDIS_URL as string);
+  });
+
+  beforeEach(async () => {
+    await redis.del(RATE_LIMIT_KEY);
   });
 
   afterAll(async () => {
@@ -108,8 +161,13 @@ describe('POST /pente-fino/run (e2e)', () => {
     await (db as any).client.query('DELETE FROM pcmso_function_exams WHERE document_id = $1', [pcmsoDocId]);
     await (db as any).client.query('DELETE FROM documents WHERE id = ANY($1)', [[pgrDocId, pcmsoDocId]]);
     await (db as any).client.query('DELETE FROM positions WHERE id = $1', [positionId]);
+    await (db as any).client.query('DELETE FROM technicians WHERE id = ANY($1)', [
+      [linkedTechnicianId, unlinkedTechnicianId],
+    ]);
     await db.cleanup();
     await db.disconnect();
+    await redis.del(RATE_LIMIT_KEY);
+    redis.disconnect();
     await app.close();
   });
 
@@ -147,5 +205,50 @@ describe('POST /pente-fino/run (e2e)', () => {
   it('bloqueia sem token com 401', async () => {
     const res = await request(app.getHttpServer()).post('/pente-fino/run').send({});
     expect(res.status).toBe(401);
+  });
+
+  // Regressão da vulnerabilidade de bypass de RLS multi-tenant encontrada na
+  // revisão final da Fase 25: o service montava o TenantContext com o
+  // tenant_id ALVO (vindo do corpo, controlado por quem chama) em vez do
+  // tenant_id do JWT. Como toda policy de RLS deste projeto aceita
+  // `tenant_id = current_setting('app.tenant_id')`, qualquer técnico
+  // autenticado que soubesse o UUID de uma empresa lia os documentos, o PGR e
+  // o PCMSO dela. Este teste tem que dar 403 — nunca 200 com relatório, nunca
+  // 200 com relatório vazio (vazio esconderia uma regressão parcial).
+  it('técnico NÃO vinculado à empresa recebe 403 mesmo mandando o tenant_id real no corpo', async () => {
+    fakeExtract.mockResolvedValue([]);
+
+    const res = await request(app.getHttpServer())
+      .post('/pente-fino/run')
+      .set('Authorization', `Bearer ${unlinkedTechnicianToken}`)
+      .send({ tenant_id: tenantId });
+
+    expect(res.status).toBe(403);
+    expect(JSON.stringify(res.body)).not.toContain(pgrDocId);
+    expect(JSON.stringify(res.body)).not.toContain('Fumos metálicos');
+  });
+
+  // Contraprova do teste acima: o vínculo real em tenant_technicians (e não o
+  // tenant_id do corpo) é o que libera o acesso — o caminho legítimo do
+  // técnico continua funcionando e devolve o MESMO relatório que a empresa vê.
+  it('técnico vinculado à empresa roda o Pente-Fino dela e recebe o relatório completo', async () => {
+    fakeExtract.mockResolvedValue([]);
+
+    const res = await request(app.getHttpServer())
+      .post('/pente-fino/run')
+      .set('Authorization', `Bearer ${linkedTechnicianToken}`)
+      .send({ tenant_id: tenantId });
+
+    expect(res.status).toBe(201);
+    expect(res.body.pgr_document.id).toBe(pgrDocId);
+    expect(res.body.pcmso_document.id).toBe(pcmsoDocId);
+    expect(res.body.functions).toEqual([
+      expect.objectContaining({
+        position_id: positionId,
+        position_name: 'Soldador',
+        status: 'risco_sem_exame',
+      }),
+    ]);
+    expect(res.body.warnings).toEqual([]);
   });
 });

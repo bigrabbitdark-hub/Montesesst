@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { ForbiddenException, Injectable } from '@nestjs/common';
 import { PoolClient } from 'pg';
 import { DatabaseService, TenantContext } from '../common/database/database.service';
 import { normalizePositionText } from '../common/text/normalize-position-text.util';
@@ -95,8 +95,41 @@ export class PenteFinoComparisonService {
     private readonly db: DatabaseService,
   ) {}
 
-  async run(tenantId: string, userId: string, role: string): Promise<PenteFinoReport> {
-    const ctx: TenantContext = { userId, tenantId, role };
+  // `tenantId` é o ALVO do cruzamento (qual empresa analisar) e só pode ser
+  // usado como parâmetro de WHERE em SQL. O contexto de RLS sai SEMPRE do
+  // usuário autenticado (`user`, montado a partir do JWT pelo JwtAuthGuard),
+  // igual ao que o TenantContextInterceptor faz em todas as outras rotas.
+  //
+  // Isso não é estilo, é segurança: pra técnico/parceiro o `tenantId` alvo vem
+  // do corpo da requisição. Se ele fosse pra `TenantContext.tenantId`, o
+  // `SET LOCAL app.tenant_id` satisfaria sozinho o ramo
+  // `tenant_id = current_setting('app.tenant_id')` de TODA policy de RLS do
+  // projeto, e qualquer técnico autenticado leria a empresa de quem quisesse
+  // só sabendo o UUID dela. Com o tenant_id do JWT (NULL pra
+  // técnico/parceiro), `app.tenant_id` fica vazio e a RLS cai no ramo
+  // `assigned_tenant_ids_for_current_user()`, que é a checagem de vínculo de
+  // verdade.
+  async run(
+    tenantId: string,
+    user: { id: string; tenantId: string | null; role: string },
+  ): Promise<PenteFinoReport> {
+    const ctx: TenantContext = { userId: user.id, tenantId: user.tenantId ?? undefined, role: user.role };
+
+    // A RLS sozinha já devolveria relatório vazio pra um técnico não
+    // vinculado; esta checagem existe pra ele receber um 403 explícito em vez
+    // de um "nenhum documento encontrado" ambíguo (mesma função SQL que as
+    // policies usam, então não há regra de autorização duplicada aqui).
+    if (user.role !== 'empresa') {
+      const linked = await this.db.withTenantContext(ctx, (client) =>
+        client.query<{ linked: boolean }>(
+          `SELECT $1::uuid IN (SELECT assigned_tenant_ids_for_current_user()) AS linked`,
+          [tenantId],
+        ),
+      );
+      if (!linked.rows[0]?.linked) {
+        throw new ForbiddenException('Você não está vinculado a esta empresa');
+      }
+    }
 
     const { pgr, pcmso, positions } = await this.db.withTenantContext(ctx, (client) =>
       this.loadContext(client, tenantId),
