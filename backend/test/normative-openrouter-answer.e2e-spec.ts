@@ -73,6 +73,8 @@ describe('OpenRouterNormativeAnswerService', () => {
       'claim',
       'chunk_ids',
       'operational_ref_ids',
+      'company_chunk_ids',
+      'uses_attachment',
     ]);
   });
 
@@ -116,7 +118,13 @@ describe('OpenRouterNormativeAnswerService', () => {
     process.env.OPENROUTER_API_KEY = 'chave-de-teste-fake';
     fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValue(
       fakeToolCallResponse([
-        { claim: 'Afirmação válida.', chunk_ids: ['c1'], operational_ref_ids: ['op-0'] },
+        {
+          claim: 'Afirmação válida.',
+          chunk_ids: ['c1'],
+          operational_ref_ids: ['op-0'],
+          company_chunk_ids: [],
+          uses_attachment: false,
+        },
         { claim: 'Sem operational_ref_ids — deve ser descartada.', chunk_ids: ['c1'] },
       ]),
     );
@@ -128,7 +136,15 @@ describe('OpenRouterNormativeAnswerService', () => {
       [],
     );
 
-    expect(result).toEqual([{ claim: 'Afirmação válida.', chunk_ids: ['c1'], operational_ref_ids: ['op-0'] }]);
+    expect(result).toEqual([
+      {
+        claim: 'Afirmação válida.',
+        chunk_ids: ['c1'],
+        operational_ref_ids: ['op-0'],
+        company_chunk_ids: [],
+        uses_attachment: false,
+      },
+    ]);
   });
 
   it('propaga erro HTTP do OpenRouter como 502', async () => {

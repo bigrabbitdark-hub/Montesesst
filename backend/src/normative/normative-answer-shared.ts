@@ -83,11 +83,14 @@ export const TOOL_SCHEMA = {
   },
 };
 
-export interface AttachmentInput {
-  kind: 'pdf_text' | 'docx_text' | 'xlsx_text' | 'image';
-  content: string;
-  mimeType?: string;
-}
+// Achado #10 da revisão final da Fase 24: este tipo era declarado aqui E
+// em normative-answer-provider.interface.ts, sem import compartilhado —
+// a Task 7 teve que editar os dois em lockstep pra adicionar
+// docx_text/xlsx_text, e nada garantia que ficassem em sincronia.
+// normative-answer-provider.interface.ts é a fonte da verdade (é o
+// arquivo de interface pública); aqui só importamos e reexportamos.
+import type { AttachmentInput } from './normative-answer-provider.interface';
+export type { AttachmentInput };
 
 export function buildRagChatCompletionBody(
   model: string,
