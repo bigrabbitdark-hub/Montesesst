@@ -3531,3 +3531,100 @@ restantes todas rastreadas a ruído de rate-limit compartilhado entre
 deste projeto) ou ao mesmo bug pré-existente da Fase 10 — nenhuma
 regressão nova. `npx tsc --noEmit` limpo. Migrations `0040` e `0041`
 aplicadas com sucesso (aditivas, sem migração de dado).
+
+## Fase 25 — Motor de cruzamento "Pente-Fino": checklist de nomes + PGR↔PCMSO: status
+
+Segunda fatia da mesma visão ampla da Fase 24 ("MONTESESST —
+Especificação Mestre do Sistema"): o fundador descreveu 4 checagens de
+cruzamento (PGR↔PCMSO, PCMSO/LIP↔insalubridade, LIP↔LTCAT) mais um
+checklist preliminar (nomes de função, datas, assinatura de
+profissional habilitado). Esta fase cobre só o checklist preliminar de
+**nomes de função** + a checagem **PGR↔PCMSO** (risco sem exame
+correspondente) — a auditoria "Pente-Fino" que o técnico hoje faz
+manualmente, lendo os dois documentos lado a lado. Datas, assinatura,
+insalubridade e LTCAT ficam pra fatias futuras (spec §7); Fase D
+(cooperação entre agentes de IA + memória de conversa) segue sem spec.
+
+Spec em [`docs/specs/fase-25-pente-fino-pgr-pcmso.md`](specs/fase-25-pente-fino-pgr-pcmso.md),
+plano em [`docs/plans/fase-25-pente-fino-pgr-pcmso.md`](plans/fase-25-pente-fino-pgr-pcmso.md).
+Executado via Subagent-Driven Development: 5 tasks + revisão final de
+todo o branch + 1 onda de correção + re-revisão escopada.
+
+**Fechada em 2026-09-13, commits `af6f9b1..e684f52` direto em `main`**
+(sem worktree — mesmo padrão e mesmo consentimento das fases
+anteriores):
+
+- `FunctionExtractionProvider` (interface + implementação MiniMax):
+  uma IA lê o PGR inteiro e devolve `[{função, risco, trecho-fonte}]`,
+  outra lê o PCMSO inteiro e devolve `[{função, exame, trecho-fonte}]`.
+  Cada item citado é verificado deterministicamente como substring real
+  do texto do documento antes de confiar nele — nunca confia na IA
+  sozinha (mesmo princípio do Verificador da Fase 8/9).
+- Tabelas `pgr_function_risks`/`pcmso_function_exams` (RLS por tenant,
+  mesmo padrão de `documents`) cacheiam a extração por documento — só
+  reextrai quando o documento muda.
+- Casamento de função: usa `positions` (Fase 23) como cargo canônico
+  quando disponível, cai pra comparação de texto normalizado
+  (`normalizePositionText`, extraído pra `common/` nesta fase) quando
+  não.
+- `PenteFinoComparisonService` + `POST /pente-fino/run`: relatório fim
+  a fim classificando cada função em `risco_sem_exame`,
+  `exame_sem_risco`, `ok` ou `nome_sem_correspondencia`, ordenado por
+  prioridade, com `extracted_at` de cada documento fonte.
+
+**Revisão final do branch (achado real, não coberto por nenhuma
+revisão por task porque cada task seguiu exatamente a assinatura que o
+próprio plano prescrevia) — 1 Crítico:** `PenteFinoComparisonService.run`
+montava o `TenantContext` da sessão Postgres usando o `tenant_id`
+*alvo* vindo do corpo da requisição (controlado pelo chamador pra
+técnico/parceiro) em vez do tenant do usuário autenticado (JWT). Como
+toda policy de RLS deste projeto tem o ramo `OR tenant_id =
+app.tenant_id`, um técnico sem nenhum vínculo real bastava mandar o
+UUID de outra empresa no corpo pra ler documents/pgr_function_risks/
+pcmso_function_exams dela, incluindo trechos literais do PGR/PCMSO da
+vítima — provado empiricamente pelo revisor contra o Postgres real.
+Corrigido separando o `tenantId` alvo (só parâmetro de `WHERE`) do
+`TenantContext` (sempre do JWT), com checagem explícita de vínculo via
+`assigned_tenant_ids_for_current_user()` pra técnico/parceiro — mesma
+função SQL que já protege ~100 outras rotas, sem SQL novo. Mais 3
+Importantes corrigidos junto: cache de extração nunca re-casava
+`position_id` contra os cargos atuais (cadastrar o cargo depois de ver
+`nome_sem_correspondencia` não resolvia nada sem reenviar o
+documento); endpoint caro (2 downloads R2 + 2 chamadas de LLM por
+execução) sem rate limit dedicado; ordenação por prioridade e
+`extracted_at` prometidos na spec e ausentes na resposta. Achado #2 da
+revisão (sem teto de entrada/saída na extração de documento inteiro)
+ficou deliberadamente em aberto — decisão de design sobre truncamento
+que não deveria ser apressada, mitigada no meio tempo pelo rate limit
+novo; registrado como o próximo custo real desta fatia.
+
+**Re-revisão escopada da correção:** todos os 5 achados endereçados
+com evidência RED→GREEN verificada file:line contra o diff e contra o
+código adjacente (JWT strategy, `TenantContextInterceptor`,
+`RateLimitGuard`, `assigned_tenant_ids_for_current_user()` em
+`0001_init.sql`); nenhuma quebra nova. Duas observações não
+bloqueantes: falta teste e2e de nível de rota específico pra `parceiro`
+(código idêntico ao de técnico, já coberto em nível de tabela por outra
+suíte); achado #2 permanece propositalmente em aberto.
+
+**Pendências não-bloqueantes, fora do escopo desta fase:** relatório
+só via endpoint dedicado, sem integração ao chat do Assistente
+(depende do gap de `tenant_id` no endpoint do Assistente, registrado na
+Fase 24); frontend — spec é backend-only, mesma decisão da Fase 24.
+
+**Verificação:** unit 98/98 (14 suítes, suíte inteira). e2e completo,
+2 rodadas — a 1ª (343/483) expôs uma lacuna real no script de ambiente
+desta sessão (`AUTH_RATE_LIMIT_MAX` não definido antes do Jest subir,
+divergindo do default real de `auth.controller.ts`), corrigida no
+script; a 2ª rodada, já corrigida, deu **478/483, 103/105 suítes
+limpas**. As 5 falhas restantes foram diagnosticadas individualmente
+(não descartadas por padrão): 1 é o mesmo bug pré-existente da Fase 10
+já documentado no fechamento da Fase 24; as outras 4, em
+`cipa-ata-ai.e2e-spec.ts` (transcrição de áudio da Fase 13, código não
+tocado por esta fase), vêm de o próprio arquivo nunca resetar seu
+contador de rate limit dedicado entre casos de teste — mesma classe de
+lacuna que a Task 5 desta fase corrigiu em `pente-fino-run.e2e-spec.ts`,
+só que num arquivo de fase anterior, fora de escopo pra corrigir aqui.
+Nenhuma das 5 falhas toca código desta fase — regressão zero
+confirmada. `npx tsc --noEmit` limpo. Migration `0042` aplicada com
+sucesso (aditiva, sem migração de dado).
