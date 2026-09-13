@@ -5,6 +5,7 @@ import { PositionsService } from '../positions/positions.service';
 import { EQUIPMENT_TYPE_LABEL, FireSafetyEquipmentService } from '../fire-safety-equipment/fire-safety-equipment.service';
 import { FireBrigadeService } from '../fire-brigade/fire-brigade.service';
 import { PreventionCorrectiveActionsService } from '../prevention-corrective-actions/prevention-corrective-actions.service';
+import { buildFunctionReport, StoredRow } from '../pente-fino/pente-fino-comparison.service';
 
 export type DashboardStatus = 'ok' | 'atencao' | 'critico';
 export type AttentionPriority = 'alta' | 'media' | 'baixa';
@@ -19,7 +20,9 @@ export interface AttentionItem {
     | 'cargo'
     | 'equipamento_incendio'
     | 'brigada_incendio'
-    | 'acao_corretiva_prevencao';
+    | 'acao_corretiva_prevencao'
+    | 'cipa_pendencia'
+    | 'pente_fino';
   titulo: string;
   prioridade: AttentionPriority;
   data: string | null;
@@ -48,6 +51,16 @@ export const ATTENTION_TIPO_AI_SAFE = {
   equipamento_incendio: true,
   brigada_incendio: false,
   acao_corretiva_prevencao: true,
+  // 'descricao' de cipa_pendencias é texto livre digitado por um humano
+  // (CreatePendenciaDto.descricao, sem restrição de conteúdo) — pode
+  // conter nome de funcionário ("cobrar do João a ata assinada"), então
+  // nunca sai pro provedor de IA externo. 'pente_fino' só referencia
+  // position_name/function_text_raw (cargo, não pessoa) e descrições de
+  // risco/exame extraídas do PGR/PCMSO — sem campo de nome de
+  // funcionário em FunctionReportItem, seguro como os outros tipos
+  // técnicos.
+  cipa_pendencia: false,
+  pente_fino: true,
 } satisfies Record<AttentionItem['tipo'], boolean>;
 
 export interface DashboardSummary {
@@ -97,6 +110,8 @@ export class DashboardService {
       fireSafetyEquipment,
       fireBrigade,
       preventionCorrectiveActions,
+      cipaPendencias,
+      penteFino,
     ] = await Promise.all([
       this.documents.getCompliance(client, tenantId),
       this.getEpiStatus(client, tenantId),
@@ -106,6 +121,8 @@ export class DashboardService {
       this.getFireSafetyEquipmentStatus(client, tenantId),
       this.getFireBrigadeStatus(client, tenantId),
       this.preventionCorrectiveActionsService.getStatusSummary(client, tenantId),
+      this.getCipaPendenciasStatus(client, tenantId),
+      this.getPenteFinoFindings(client, tenantId),
     ]);
 
     const atencao: AttentionItem[] = [
@@ -208,6 +225,33 @@ export class DashboardService {
         responsavel: 'empresa',
         link: a.checklist_item_id ? '/empresa/checklist-prevencao' : '/empresa/simulados',
       })),
+      ...cipaPendencias.pendencias.map((p): AttentionItem => ({
+        tipo: 'cipa_pendencia',
+        titulo: `Pendência da CIPA atrasada: ${p.descricao}`,
+        prioridade: 'alta',
+        data: toDateString(p.prazo),
+        responsavel: 'empresa',
+        link: '/empresa/cipa/pendencias',
+      })),
+      ...cipaPendencias.avisos.map((p): AttentionItem => ({
+        tipo: 'cipa_pendencia',
+        titulo: `Pendência da CIPA vencendo: ${p.descricao}`,
+        prioridade: 'media',
+        data: toDateString(p.prazo),
+        responsavel: 'empresa',
+        link: '/empresa/cipa/pendencias',
+      })),
+      ...penteFino.map((item): AttentionItem => ({
+        tipo: 'pente_fino',
+        titulo:
+          item.status === 'risco_sem_exame'
+            ? `Pente-Fino: risco sem exame correspondente — ${item.position_name ?? item.function_text_raw}`
+            : `Pente-Fino: exame sem risco correspondente — ${item.position_name ?? item.function_text_raw}`,
+        prioridade: item.status === 'risco_sem_exame' ? 'alta' : 'media',
+        data: null,
+        responsavel: 'empresa',
+        link: '/empresa/pente-fino',
+      })),
     ];
 
     atencao.sort((a, b) => {
@@ -229,19 +273,26 @@ export class DashboardService {
       return data >= hoje && data <= em7Dias;
     });
 
+    const penteFinoPendencias = penteFino.filter((item) => item.status === 'risco_sem_exame').length;
+    const penteFinoAvisos = penteFino.filter((item) => item.status === 'exame_sem_risco').length;
+
     const pendencias =
       compliance.pendencias.length +
       epis.pendencias.length +
       positionDivergences.length +
       fireSafetyEquipment.pendencias.length +
       fireBrigade.pendencias.length +
-      preventionCorrectiveActions.pendencias.length;
+      preventionCorrectiveActions.pendencias.length +
+      cipaPendencias.pendencias.length +
+      penteFinoPendencias;
     const avisos =
       compliance.avisos.length +
       epis.avisos.length +
       fireSafetyEquipment.avisos.length +
       fireBrigade.avisos.length +
-      preventionCorrectiveActions.avisos.length;
+      preventionCorrectiveActions.avisos.length +
+      cipaPendencias.avisos.length +
+      penteFinoAvisos;
 
     let status: DashboardStatus = 'ok';
     if (pendencias > 0) status = 'critico';
@@ -346,5 +397,72 @@ export class DashboardService {
       [tenantId],
     );
     return Number(rows[0].count);
+  }
+
+  // Nenhum job hoje muda cipa_pendencias.status pra 'atrasada'
+  // automaticamente (só um humano via PATCH) — calcula atraso pelo
+  // `prazo` aqui, mesmo padrão de `getActionPlans`. Mas se um humano
+  // já marcou 'atrasada' manualmente, isso conta como pendência mesmo
+  // sem `prazo` cadastrado — não é seguro assumir que falta de data
+  // signifique falta de atraso quando alguém já afirmou o atraso.
+  private async getCipaPendenciasStatus(client: PoolClient, tenantId: string) {
+    const { rows } = await client.query<{
+      descricao: string;
+      prazo: string | null;
+      status: 'aberta' | 'andamento' | 'atrasada';
+    }>(
+      `SELECT descricao, prazo, status FROM cipa_pendencias
+       WHERE tenant_id = $1 AND status IN ('aberta', 'andamento', 'atrasada')`,
+      [tenantId],
+    );
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const em7Dias = new Date(today);
+    em7Dias.setDate(em7Dias.getDate() + 7);
+
+    const pendencias: typeof rows = [];
+    const avisos: typeof rows = [];
+    for (const row of rows) {
+      if (row.status === 'atrasada') {
+        pendencias.push(row);
+        continue;
+      }
+      if (!row.prazo) continue;
+      const prazo = new Date(row.prazo);
+      prazo.setHours(0, 0, 0, 0);
+      if (prazo < today) pendencias.push(row);
+      else if (prazo <= em7Dias) avisos.push(row);
+    }
+    return { pendencias, avisos };
+  }
+
+  // Reaproveita a extração já cacheada do Pente-Fino (Fase 25) — nunca
+  // dispara uma extração nova aqui (custaria chamada de LLM numa rota
+  // de dashboard). Se a empresa nunca rodou o Pente-Fino pra um dos dois
+  // documentos (ou pros dois), `buildFunctionReport` recebendo um lado
+  // vazio marcaria toda função do outro lado como risco/exame "sem
+  // par" — falso positivo, não um achado real. Só considera achado
+  // quando os dois lados já têm pelo menos uma linha cacheada.
+  private async getPenteFinoFindings(client: PoolClient, tenantId: string) {
+    const [pgrResult, pcmsoResult, positionsResult] = await Promise.all([
+      client.query<StoredRow>(
+        `SELECT position_id, function_text_raw, risk_description AS description, source_excerpt
+         FROM pgr_function_risks WHERE tenant_id = $1`,
+        [tenantId],
+      ),
+      client.query<StoredRow>(
+        `SELECT position_id, function_text_raw, exam_description AS description, source_excerpt
+         FROM pcmso_function_exams WHERE tenant_id = $1`,
+        [tenantId],
+      ),
+      client.query<{ id: string; name: string }>(`SELECT id, name FROM positions WHERE tenant_id = $1`, [tenantId]),
+    ]);
+
+    if (pgrResult.rows.length === 0 || pcmsoResult.rows.length === 0) return [];
+
+    return buildFunctionReport(pgrResult.rows, pcmsoResult.rows, positionsResult.rows).filter(
+      (item) => item.status === 'risco_sem_exame' || item.status === 'exame_sem_risco',
+    );
   }
 }
