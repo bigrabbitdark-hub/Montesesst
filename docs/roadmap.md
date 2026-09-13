@@ -3628,3 +3628,95 @@ só que num arquivo de fase anterior, fora de escopo pra corrigir aqui.
 Nenhuma das 5 falhas toca código desta fase — regressão zero
 confirmada. `npx tsc --noEmit` limpo. Migration `0042` aplicada com
 sucesso (aditiva, sem migração de dado).
+
+## Fase 26 — Frontend do Pente-Fino (PGR↔PCMSO): status
+
+Primeira tela que consome `POST /pente-fino/run` (Fase 25, backend
+fechado no dia anterior) — até aqui o relatório só existia via chamada
+HTTP direta, sem nenhuma interface pro técnico ou pra empresa usar.
+
+Spec em [`docs/specs/fase-26-pente-fino-frontend.md`](specs/fase-26-pente-fino-frontend.md),
+plano em [`docs/plans/fase-26-pente-fino-frontend.md`](plans/fase-26-pente-fino-frontend.md).
+Executado via Subagent-Driven Development: 2 tasks + revisão final de
+todo o branch + 1 onda de correção + re-revisão escopada.
+
+**Fechada em 2026-09-13, commits `7dfb162..6b34107` direto em `main`**
+(sem worktree, mesmo consentimento e mesmo padrão de toda fase
+anterior):
+
+- `PenteFinoPanel` (`frontend/src/components/PenteFinoPanel.tsx`) —
+  componente único reutilizável entre papéis via `{ tenantId }: {
+  tenantId?: string }` (mesmo padrão de `DocumentsPanel`/`EpisPanel`),
+  disparo do relatório sempre manual via botão (nunca `useEffect`
+  automático — o endpoint é limitado a 5 execuções/hora por IP e pode
+  levar ~2min), tratamento de 403/429 (lê `Retry-After`)/erro
+  genérico, `source_excerpt` de cada risco/exame sempre citado ao
+  expandir uma linha.
+- Duas páginas finas montam o mesmo componente: `/empresa/pente-fino`
+  (sem prop, backend resolve o tenant do JWT) e
+  `/tecnico/empresas/[tenantId]/pente-fino` (com `tenantId`,
+  reaproveitando a área já existente de navegação por empresa
+  vinculada). `nome_sem_correspondencia` mostra link pro Mapa SST só
+  no contexto empresa; texto informativo sem link no contexto
+  técnico/parceiro (Mapa SST não existe nessa área — cadastro de cargo
+  é ação da própria empresa).
+- Navegação: entrada nova em `EmpresaSidebar.tsx` (grupo "Segurança",
+  logo após Mapa SST) e uma seção nova na página já existente
+  `/tecnico/empresas/[tenantId]` (entre "Documentos da empresa" e
+  "Inspeções") — `TecnicoSidebar.tsx` não muda, mesmo padrão de
+  Inspeções/Documentos/EPIs.
+
+**Achado operacional descoberto durante a Task 1 (não é código desta
+fase): o backend de produção estava desatualizado desde antes da Fase
+25** — a imagem Docker rodando não incluía `PenteFinoController`
+(confirmado pelos logs de boot e por um 404 real na rota), apesar do
+banco já ter a migration `0042` aplicada. Fundador autorizou o
+redeploy explicitamente; controlador rodou `docker compose build
+backend && docker compose up -d backend`, confirmado depois que a rota
+responde `401` (não mais `404`) e que `PenteFinoController {/pente-fino}`
+aparece nos logs de boot. A Fase 25 está, a partir de agora,
+finalmente em produção de verdade.
+
+**Segundo achado operacional, descoberto durante a Task 2: não existe
+nenhuma conta admin em produção hoje**, e o runbook documentado
+(`docs/operations/admin-provisioning.md`) pra criar a primeira exige
+INSERT direto em `users`, bloqueado pelo classificador de segurança do
+ambiente — impede qualquer vínculo técnico↔empresa pelo fluxo real de
+admin. Registrado como pendência separada pro fundador (fora do escopo
+desta fase); contornado na verificação com métodos honestos (técnico
+real sem vínculo pra provar o 403 genuíno; token real da própria
+empresa de teste na rota técnica pra provar a renderização do caminho
+de sucesso, sem forjar a checagem de autorização de backend) — a
+revisão de ambas as tasks avaliou a metodologia como suficiente pra
+provar o comportamento de frontend.
+
+**Revisão final do branch:** 0 Crítico, 0 Importante, 8 Menores.
+Isolamento entre papéis/tenants verificado caminho a caminho e
+confirmado correto (o backend, nunca o prop `tenantId` do componente,
+é quem decide RLS). Onda de correção única aplicou 4 dos 8 achados,
+recomendados explicitamente pelo revisor por serem baratos e reais:
+data de `extracted_at` exibida em UTC podia mostrar um dia a mais
+(bug do próprio spec, não da implementação — corrigido reaproveitando
+o padrão de `formatSyncedAt` já usado em `consulta-ca/page.tsx`);
+mensagem de erro crua do backend vazando pra tela em qualquer status
+não-2xx (agora só usa `body.message` quando `status === 403` e é
+string; qualquer outro caso usa mensagem genérica em português);
+relatório de execução anterior não era limpo quando uma chamada
+seguinte falhava; `key={tenantId}` defensiva adicionada no painel da
+rota técnica. Os outros 4 achados (CTA de cargo faltante preso atrás
+de "Ver detalhes"; tela técnica não identifica qual empresa está sendo
+analisada; convenção de sessão dividida entre `getToken()` e
+`localStorage` direto no projeto; polimento pequeno de
+acessibilidade/responsivo) ficaram registrados como recomendação pra
+fase futura — nenhum reproduzível hoje ou todos pré-existentes no
+padrão do projeto. Re-revisão escopada confirmou os 4 endereçados sem
+quebra nova.
+
+**Verificação:** sem suíte automatizada de frontend (mesma situação
+desde a Fase 12b) — verificação manual via Playwright real contra
+produção em cada task e na onda de correção, incluindo o caminho de
+sucesso completo (relatório real com PGR/PCMSO extraídos, 3 funções de
+teste, `source_excerpt` visível, link Mapa SST navegando), o 429 real
+forçado via `curl` com reset da chave no Redis depois, e o 403 real
+com um técnico genuinamente sem vínculo. `npx tsc --noEmit` limpo em
+cada task e na correção. Nenhuma migration nesta fase (frontend-only).
