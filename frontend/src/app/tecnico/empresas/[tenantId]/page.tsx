@@ -89,6 +89,21 @@ export default function TecnicoEmpresaDocumentosPage() {
 
       <section className="mt-10 rounded-lg border border-brand-100 p-6">
         <div className="flex items-center justify-between">
+          <h2 className="text-lg font-bold text-brand-900">Pente-Fino</h2>
+          <Link
+            href={`/tecnico/empresas/${params.tenantId}/pente-fino`}
+            className="rounded-md bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700"
+          >
+            Abrir Pente-Fino
+          </Link>
+        </div>
+        <p className="mt-2 text-sm text-brand-700">
+          Cruza as funções do PGR com os exames do PCMSO desta empresa.
+        </p>
+      </section>
+
+      <section className="mt-10 rounded-lg border border-brand-100 p-6">
+        <div className="flex items-center justify-between">
           <h2 className="text-lg font-bold text-brand-900">Inspeções</h2>
           <button
             onClick={handleNovaInspecao}
