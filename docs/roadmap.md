@@ -3720,3 +3720,70 @@ teste, `source_excerpt` visível, link Mapa SST navegando), o 429 real
 forçado via `curl` com reset da chave no Redis depois, e o 403 real
 com um técnico genuinamente sem vínculo. `npx tsc --noEmit` limpo em
 cada task e na correção. Nenhuma migration nesta fase (frontend-only).
+
+## Fase D (parte 1) — CIPA e Pente-Fino no resumo operacional: status
+
+Fundador escolheu "Fase D — cooperação entre agentes de IA + memória
+de conversa" (mencionada desde a Fase 24, nunca especificada) como
+prioridade após a Fase 26. Brainstorming em chat revelou que a visão
+inicial ("orquestrador central" roteando entre os 6 pontos de IA
+existentes) era prematura: levantamento factual mostrou que nenhum dos
+6 (Assistente, extração Pente-Fino, classificação de documento,
+rascunho de inspeção, transcrição de ata da CIPA, embeddings) tem
+qualquer noção de conversa hoje, e nenhum chama outro diretamente — só
+acoplamento indireto via tabela compartilhada. O fundador então
+corrigiu o rumo: o que ele queria de verdade era o Assistente ter
+visão completa e unificada de tudo sobre o cliente, venha a informação
+de onde vier no sistema (CIPA, brigada, documentos, laudos), ajudando
+com pendências e datas — não literalmente "memória de mensagens de
+chat".
+
+Investigação confirmou um buraco real: `DashboardService.getSummary`
+(que o Assistente já consulta hoje pra responder perguntas de empresa)
+já agregava documentos, EPI, ações corretivas, Mapa SST, equipamentos
+contra incêndio, brigada de incêndio e prevenção — mas **não CIPA nem
+Pente-Fino**. Escopo reclassificado de arquitetural pra **bounded**
+(mudança contida num arquivo já existente, seguindo padrão já
+estabelecido pras outras 8 fontes) — sem spec formal, desenho de
+poucas frases aprovado em chat, implementação direta.
+
+**Fechada em 2026-09-13, commit `3e56155` direto em `main`:**
+
+- `cipa_pendencias` (status `aberta`/`andamento`/`atrasada`, exclui
+  `concluida`) entra como pendência (atraso calculado por `prazo`,
+  mesmo padrão de `getActionPlans` — nenhum job muda o status sozinho
+  hoje) ou aviso (prazo nos próximos 7 dias). Achado corrigido durante
+  a implementação: uma pendência marcada `atrasada` manualmente mas
+  sem `prazo` cadastrado ficava invisível — corrigido antes do commit,
+  com teste dedicado.
+- Achados já cacheados do Pente-Fino (`risco_sem_exame`/`exame_sem_risco`)
+  entram via `buildFunctionReport` (Fase 25, reaproveitado) contra o
+  que já estiver em `pgr_function_risks`/`pcmso_function_exams` —
+  **nunca dispara extração nova** numa rota de dashboard. Só considera
+  achado quando os dois documentos já têm pelo menos uma linha
+  cacheada (evita falso-positivo de "documento nunca extraído" virar
+  "sem par").
+- `cipa_pendencia` marcado como **não seguro pra IA externa** em
+  `ATTENTION_TIPO_AI_SAFE` (`descricao` é texto livre, pode conter
+  nome de funcionário); `pente_fino` marcado seguro (só referencia
+  cargo/função e descrição de risco/exame, sem campo de nome de
+  pessoa) — o Assistente já filtra por esse mapa antes de mandar
+  qualquer coisa pro provedor de IA (MiniMax/OpenRouter), então isso
+  já vale a partir deste commit sem nenhuma mudança no Assistente.
+
+**Verificação:** unit 98/98; `dashboard-summary.e2e-spec.ts` 8/8 (3
+casos novos: CIPA+Pente-Fino agregados corretamente, atrasada-sem-prazo,
+achado de Pente-Fino ausente quando só um dos dois documentos foi
+extraído); regressão de áreas relacionadas (dashboard, cipa-pendencias,
+pente-fino, positions, normative-assistant) 74/74. `npx tsc --noEmit`
+limpo. Backend redeployado em produção (autorizado pelo fundador),
+confirmado com `GET /dashboard/summary` real. Nenhuma migration —
+tabelas já existiam desde a Fase 12a (CIPA) e Fase 25 (Pente-Fino).
+
+**Fora desta fatia, registrado pra quando for a vez**: comportamento
+proativo do Assistente (avisar sem o usuário perguntar — hoje ele só
+responde quando perguntado, mesmo com esse dado novo disponível);
+mandato de comissão da CIPA vencendo (`cipa_committees.data_termino`)
+não entra no resumo, só pendências explícitas da tabela
+`cipa_pendencias`; a ideia de "orquestrador central" roteando entre
+agentes segue sem spec, caso o fundador queira retomá-la depois.
