@@ -25,7 +25,7 @@ export default function TecnicoEmpresaPenteFinoPage() {
     <div className="mx-auto max-w-4xl px-4 py-16">
       <h1 className="text-2xl font-bold text-brand-900">Pente-Fino</h1>
       <div className="mt-8">
-        <PenteFinoPanel tenantId={params.tenantId} />
+        <PenteFinoPanel key={params.tenantId} tenantId={params.tenantId} />
       </div>
     </div>
   );

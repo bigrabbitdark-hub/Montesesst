@@ -41,9 +41,12 @@ const STATUS_CLASSES: Record<FunctionReportItem['status'], string> = {
   nome_sem_correspondencia: 'text-slate-500',
 };
 
-function formatDate(isoDateTime: string): string {
-  const [year, month, day] = isoDateTime.slice(0, 10).split('-');
-  return `${day}/${month}/${year}`;
+function formatExtractedAt(isoDateTime: string): string {
+  return new Date(isoDateTime).toLocaleString('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  });
 }
 
 export function PenteFinoPanel({ tenantId }: { tenantId?: string }) {
@@ -82,14 +85,20 @@ export function PenteFinoPanel({ tenantId }: { tenantId?: string }) {
       if (res.status === 429) {
         const retryAfter = Number(res.headers.get('Retry-After'));
         setRetryAfterSeconds(Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter : null);
+        setReport(null);
         setErrorMessage('Limite de execuções do Pente-Fino atingido. Tente novamente mais tarde.');
         setRunStatus('error');
         return;
       }
       const body = await res.json().catch(() => null);
-      setErrorMessage(body?.message ?? 'Não foi possível rodar o Pente-Fino agora. Tente novamente.');
+      const genericMessage = 'Não foi possível rodar o Pente-Fino agora. Tente novamente.';
+      const message =
+        res.status === 403 && typeof body?.message === 'string' ? body.message : genericMessage;
+      setReport(null);
+      setErrorMessage(message);
       setRunStatus('error');
     } catch {
+      setReport(null);
       setErrorMessage('Não foi possível conectar ao servidor.');
       setRunStatus('error');
     }
@@ -128,12 +137,12 @@ export function PenteFinoPanel({ tenantId }: { tenantId?: string }) {
             <p className="mt-2 text-sm text-brand-900">
               PGR: {report.pgr_document ? report.pgr_document.title : 'nenhum PGR encontrado'}
               {report.pgr_document?.extracted_at &&
-                ` (extraído em ${formatDate(report.pgr_document.extracted_at)})`}
+                ` (extraído em ${formatExtractedAt(report.pgr_document.extracted_at)})`}
             </p>
             <p className="mt-1 text-sm text-brand-900">
               PCMSO: {report.pcmso_document ? report.pcmso_document.title : 'nenhum PCMSO encontrado'}
               {report.pcmso_document?.extracted_at &&
-                ` (extraído em ${formatDate(report.pcmso_document.extracted_at)})`}
+                ` (extraído em ${formatExtractedAt(report.pcmso_document.extracted_at)})`}
             </p>
             {report.warnings.length > 0 && (
               <ul className="mt-3 flex flex-col gap-1 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
