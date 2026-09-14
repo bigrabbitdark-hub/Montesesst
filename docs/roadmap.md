@@ -3889,3 +3889,131 @@ resposta e a mesma citação** pra a mesma pergunta; técnico sem vínculo
 recebeu 403 real sem vazar nada; clique na citação abriu o download
 real numa aba nova. Backend e frontend redeployados em produção
 (autorizado pelo fundador). Nenhuma migration.
+
+## Fase 27 — Pente-Fino: checklist preliminar (datas + profissional habilitado): status
+
+Próxima fatia do motor "Pente-Fino" (Fases 25-26 já fechadas, checklist
+por nome de função + PGR↔PCMSO). A spec original da Fase 25 já listava
+"datas de documento e assinatura de profissional habilitado" como
+pendência de checklist preliminar incompleto — esta fase fecha essa
+lacuna pros 4 documentos PGR/PCMSO/LTCAT/LIP.
+
+**Achado de pesquisa que mudou o escopo, ainda em brainstorming**: a
+ideia original era o sistema "julgar validade/prazo de revisão" dos
+documentos. Consultando o texto real indexado de NR-01/NR-07
+(`normative_document_chunks`, não memória do modelo), descobrimos que
+não existe um prazo fixo simples de revalidação pro documento como um
+todo — NR-01 §1.5.7.3.3 só exige "manter atualizado" (obrigação
+contínua, sem calendário fixo); os prazos de 1-2 anos da NR-07 §7.5.8
+são por exame médico individual, não pelo PCMSO como documento. Escopo
+reformulado pra uma exibição neutra ("há quanto tempo desde a última
+atualização"), deliberadamente sem cor de alerta nem linguagem de
+vencimento/validade.
+
+Spec em [`docs/specs/fase-27-pente-fino-checklist-preliminar.md`](specs/fase-27-pente-fino-checklist-preliminar.md),
+plano em [`docs/plans/fase-27-pente-fino-checklist-preliminar.md`](plans/fase-27-pente-fino-checklist-preliminar.md).
+Executado via Subagent-Driven Development: 4 tasks + 2 ondas de
+correção durante a Task 3 + 1 onda de correção na Task 4 + revisão
+final de todo o branch + 1 onda de correção final + re-revisão
+escopada.
+
+**Fechada em 2026-09-14, commits `21a668e..08c5e44` direto em `main`**
+(sem worktree, mesmo consentimento e mesmo padrão de toda fase
+anterior):
+
+- Migration `0043_document_checklist_findings.sql` — tabela nova, uma
+  linha por documento (nunca ambígua como `pgr_function_risks`/
+  `pcmso_function_exams`, que têm o problema "zero linhas = nunca rodou
+  ou não achou nada"), RLS idêntica ao padrão de `0042`.
+- Camada de extração isolada
+  (`document-checklist-shared.ts`/`-provider.interface.ts`/
+  `minimax-document-checklist.service.ts`/`-extractor.service.ts`):
+  extrai data de elaboração + nome/registro/papel do profissional
+  habilitado via MiniMax, nunca lança exceção (devolve linha vazia em
+  qualquer falha), valida cada excerto citado contra o texto real do
+  documento (mesmo princípio "nunca inventar" da extração de
+  função/risco/exame) e a data contra formato + calendário real.
+- `PenteFinoComparisonService`/`pente-fino.module.ts` — `loadContext`
+  passa a buscar também LTCAT/LIP (só pra alimentar o checklist, nunca
+  entram na comparação função↔risco↔exame); `PenteFinoReport` ganha
+  `ltcat_document`/`lip_document`; ausência de LTCAT/LIP nunca gera
+  warning (decisão da spec — nem todo cliente tem os dois).
+- `PenteFinoPanel.tsx` — 4 cards de documento (era 2), cada um com data
+  de elaboração + "há quanto tempo" em linguagem e cor sempre neutras,
+  dados do profissional ou "não identificado".
+
+**2 bugs reais encontrados e corrigidos durante a execução (nenhum
+achado por revisão superficial — os dois exigiram reproduzir o
+comportamento, não só ler o código):**
+
+1. **Fuso horário na exibição de `elaboration_date`** (achado na
+   revisão da Task 4): a coluna é um `DATE` puro do Postgres
+   (`"AAAA-MM-DD"`, sem hora); `new Date(...)` direto nessa string é
+   interpretado como meia-noite UTC, e em qualquer fuso negativo (ex.:
+   `America/Sao_Paulo`, UTC-3 — o fuso de praticamente todo usuário
+   real do Montese SST) a data exibida ficava 1 dia atrás da real. O
+   bug não apareceu no teste manual original porque o ambiente de QA
+   roda em UTC. Corrigido reaproveitando o padrão já existente em
+   `admin/empresas/[id]/page.tsx` (`new Date(\`${iso}T00:00:00\`)`).
+   Confirmado depois do redeploy, em produção real, com Playwright
+   forçando `timezoneId: 'America/Sao_Paulo'`: HTML/screenshot da
+   seção "Documentos-fonte" ficaram byte-a-byte idênticos entre
+   `America/Sao_Paulo` e `UTC` — prova de que a exibição agora é
+   independente de fuso.
+2. **Validação de data aceitava calendário inexistente** (achado na
+   revisão final de branch inteira): `isValidIsoDate` checava só
+   formato + ausência de `NaN`, mas o `Date` do JS faz *rollover*
+   silencioso de datas de calendário inexistentes em vez de devolver
+   inválido (`new Date('2025-02-30')` vira `2025-03-02`, não `NaN`). Se
+   a IA errasse uma conversão de data por extenso, o valor passaria na
+   validação, o `INSERT` falharia no Postgres (que valida calendário de
+   verdade), e o `try/catch` de `persist()` engoliria o erro em
+   silêncio — reintroduzindo, só pra aquele documento, exatamente a
+   ambiguidade "zero linhas" que esta tabela foi desenhada pra eliminar,
+   com reprocessamento (custo de IA) a cada execução futura,
+   indefinidamente. Corrigido validando o round-trip dos componentes de
+   calendário via `Date.UTC`.
+
+**Outros 2 achados reais encontrados durante os fix rounds da Task 3
+(fallout entre tasks, não bug do plano):** a Task 2 quebrou a
+resolução de DI de um teste unitário existente que monta o serviço
+manualmente (fallout mecânico esperado da mudança de assinatura do
+construtor, corrigido no próprio arquivo); e a nova dependência da
+Task 2 fez um arquivo de teste **irmão**, não tocado por nenhuma task
+desta fase (`pente-fino-run.e2e-spec.ts`), começar a disparar chamadas
+reais e pagas à API MiniMax em toda execução — descoberto pela própria
+regressão do implementador (2/5 timeouts observados), corrigido
+adicionando o mesmo `.overrideProvider` que o teste novo desta fase já
+usava.
+
+**2 achados Menores identificados e conscientemente deixados como
+estão** (julgamento reafirmado de forma independente na revisão final):
+leitura de cache em `buildDocumentRef` sem `ORDER BY`/`LIMIT`
+(corrigido de graça, por proximidade, durante a onda de correção
+final, já que o achado Importante estava no mesmo arquivo) e um
+comentário de dimensionamento de rate limit desatualizado (também
+corrigido na mesma onda). Ficou de fato pendente, sem custo
+justificando correção agora: 2 dos 6 cenários que a spec pede pra
+cobertura e2e só têm teste unitário (`excerto que não bate no texto é
+descartado` e `documento sem texto extraível`) — lógica já bem coberta
+a nível unitário, risco baixo.
+
+**Verificação:** unit `document-checklist` 13/13, `pente-fino` 20/20
+(regressão), `tsc --noEmit` limpo nos dois lados em toda task e no fix
+wave final. E2e novo (`pente-fino-checklist.e2e-spec.ts`) 3/3 depois de
+2 rodadas de correção (extração+warnings seletivos, cache via
+`toHaveBeenCalledTimes(1)`, RLS com asserção real de não-vazamento —
+CREA/nome/título mantidos vivos até o `afterAll` de propósito).
+Verificação manual em produção real depois do redeploy (backend +
+frontend, autorizado pelo fundador): 2 rodadas completas de upload real
+de PGR/PCMSO/LTCAT/LIP e execução do Pente-Fino, incluindo o caminho de
+ausência (LTCAT/LIP apagados de propósito, confirmado sem warning); e a
+verificação decisiva pós-fix de fuso horário descrita acima. Console do
+navegador limpo em todas as rodadas (3 erros de prefetch RSC do Next.js
+observados numa verificação, não relacionados a esta fase, comportamento
+de fallback de navegação, não bloqueantes).
+
+**Fora desta fatia** (§9 da spec, mantido do planejamento original):
+PCMSO/LIP↔insalubridade (precisa extrair valores numéricos de medição e
+comparar com limites da NR-15) e LIP↔LTCAT (comparação de medições
+entre dois laudos) continuam sem escopo definido.
