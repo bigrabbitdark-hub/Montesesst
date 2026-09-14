@@ -3,6 +3,7 @@ import { PoolClient } from 'pg';
 import { DatabaseService, TenantContext } from '../common/database/database.service';
 import { normalizePositionText } from '../common/text/normalize-position-text.util';
 import { PenteFinoExtractorService, ExtractedRow } from './pente-fino-extractor.service';
+import { DocumentChecklistExtractorService } from './document-checklist-extractor.service';
 import { Document } from '../documents/documents.service';
 
 export interface StoredRow {
@@ -26,13 +27,24 @@ export interface PenteFinoDocumentRef {
   title: string;
   // Quando a extração deste documento foi gravada (MAX(created_at) das linhas
   // dele). NULL quando não há linha nenhuma — extração falhou, o documento não
-  // tinha texto aproveitável, ou ela ainda não rodou.
+  // tinha texto aproveitável, ou ela ainda não rodou. Só populado pra
+  // PGR/PCMSO (função/risco/exame) — LTCAT/LIP não têm esse conceito,
+  // ficam sempre null aqui.
   extracted_at: string | null;
+  // Checklist preliminar (Fase 27) — populado pros 4 tipos de documento.
+  elaboration_date: string | null;
+  elaboration_date_source_excerpt: string | null;
+  professional_name: string | null;
+  professional_registro: string | null;
+  professional_papel: string | null;
+  professional_source_excerpt: string | null;
 }
 
 export interface PenteFinoReport {
   pgr_document: PenteFinoDocumentRef | null;
   pcmso_document: PenteFinoDocumentRef | null;
+  ltcat_document: PenteFinoDocumentRef | null;
+  lip_document: PenteFinoDocumentRef | null;
   functions: FunctionReportItem[];
   warnings: string[];
 }
@@ -120,10 +132,22 @@ export function buildFunctionReport(
   });
 }
 
+// Coluna DATE do Postgres chega via node-pg como objeto Date (não
+// string) quando lida do caminho de cache — diferente do caminho de
+// extração nova, onde já é a string 'AAAA-MM-DD' validada por
+// isValidIsoDate antes de persistir. Normaliza os dois casos pro mesmo
+// formato de saída (mesmo padrão de toDateString em dashboard.service.ts).
+function toDateStringOrNull(value: string | Date | null): string | null {
+  if (!value) return null;
+  if (value instanceof Date) return value.toISOString().slice(0, 10);
+  return value;
+}
+
 @Injectable()
 export class PenteFinoComparisonService {
   constructor(
     private readonly extractor: PenteFinoExtractorService,
+    private readonly checklistExtractor: DocumentChecklistExtractorService,
     private readonly db: DatabaseService,
   ) {}
 
@@ -163,22 +187,32 @@ export class PenteFinoComparisonService {
       }
     }
 
-    const { pgr, pcmso, positions } = await this.db.withTenantContext(ctx, (client) =>
+    const { pgr, pcmso, ltcat, lip, positions } = await this.db.withTenantContext(ctx, (client) =>
       this.loadContext(client, tenantId),
     );
 
     const warnings: string[] = [];
     if (!pgr) warnings.push('Nenhum PGR encontrado — cruzamento de risco fica limitado até um PGR ser enviado.');
     if (!pcmso) warnings.push('Nenhum PCMSO encontrado — cruzamento de exame fica limitado até um PCMSO ser enviado.');
+    // LTCAT/LIP não geram warning: ausência é frequentemente legítima
+    // (só empresas com exposição a agentes insalubres/periculosos
+    // precisam desses dois documentos) — decisão da spec §2.
 
     const pgrExtraction = pgr ? await this.ensureExtracted(ctx, pgr, 'risco', positions) : null;
     const pcmsoExtraction = pcmso ? await this.ensureExtracted(ctx, pcmso, 'exame', positions) : null;
 
+    const [pgrRef, pcmsoRef, ltcatRef, lipRef] = await Promise.all([
+      this.buildDocumentRef(ctx, pgr),
+      this.buildDocumentRef(ctx, pcmso),
+      this.buildDocumentRef(ctx, ltcat),
+      this.buildDocumentRef(ctx, lip),
+    ]);
+
     return {
-      pgr_document: pgr ? { id: pgr.id, title: pgr.title, extracted_at: pgrExtraction?.extractedAt ?? null } : null,
-      pcmso_document: pcmso
-        ? { id: pcmso.id, title: pcmso.title, extracted_at: pcmsoExtraction?.extractedAt ?? null }
-        : null,
+      pgr_document: pgrRef ? { ...pgrRef, extracted_at: pgrExtraction?.extractedAt ?? null } : null,
+      pcmso_document: pcmsoRef ? { ...pcmsoRef, extracted_at: pcmsoExtraction?.extractedAt ?? null } : null,
+      ltcat_document: ltcatRef,
+      lip_document: lipRef,
       functions: sortFunctionsByPriority(
         buildFunctionReport(pgrExtraction?.rows ?? [], pcmsoExtraction?.rows ?? [], positions),
       ),
@@ -189,13 +223,27 @@ export class PenteFinoComparisonService {
   private async loadContext(
     client: PoolClient,
     tenantId: string,
-  ): Promise<{ pgr: Document | null; pcmso: Document | null; positions: { id: string; name: string }[] }> {
+  ): Promise<{
+    pgr: Document | null;
+    pcmso: Document | null;
+    ltcat: Document | null;
+    lip: Document | null;
+    positions: { id: string; name: string }[];
+  }> {
     const pgrResult = await client.query<Document>(
       `SELECT * FROM documents WHERE tenant_id = $1 AND category = 'pgr' ORDER BY created_at DESC LIMIT 1`,
       [tenantId],
     );
     const pcmsoResult = await client.query<Document>(
       `SELECT * FROM documents WHERE tenant_id = $1 AND category = 'pcmso' ORDER BY created_at DESC LIMIT 1`,
+      [tenantId],
+    );
+    const ltcatResult = await client.query<Document>(
+      `SELECT * FROM documents WHERE tenant_id = $1 AND category = 'ltcat' ORDER BY created_at DESC LIMIT 1`,
+      [tenantId],
+    );
+    const lipResult = await client.query<Document>(
+      `SELECT * FROM documents WHERE tenant_id = $1 AND category = 'lip' ORDER BY created_at DESC LIMIT 1`,
       [tenantId],
     );
     const positionsResult = await client.query<{ id: string; name: string }>(
@@ -205,6 +253,8 @@ export class PenteFinoComparisonService {
     return {
       pgr: pgrResult.rows[0] ?? null,
       pcmso: pcmsoResult.rows[0] ?? null,
+      ltcat: ltcatResult.rows[0] ?? null,
+      lip: lipResult.rows[0] ?? null,
       positions: positionsResult.rows,
     };
   }
@@ -274,6 +324,72 @@ export class PenteFinoComparisonService {
         source_excerpt: row.sourceExcerpt,
       })),
       extractedAt,
+    };
+  }
+
+  // Checklist preliminar (Fase 27) — roda pros 4 tipos de documento.
+  // Cache-first, mesmo padrão de ensureExtracted: uma linha já
+  // persistida em document_checklist_findings pro mesmo document_id
+  // significa "já rodou" (mesmo que todos os 6 campos estejam null —
+  // diferente de pgr_function_risks/pcmso_function_exams, aqui SEMPRE
+  // há uma linha após a primeira execução bem-sucedida, então não há
+  // a ambiguidade "zero linhas = nunca rodou ou rodou e não achou
+  // nada" que aquelas duas tabelas aceitam).
+  private async buildDocumentRef(
+    ctx: TenantContext,
+    document: Document | null,
+  ): Promise<PenteFinoDocumentRef | null> {
+    if (!document) return null;
+
+    const existing = await this.db.withTenantContext(ctx, (client) =>
+      client.query<{
+        elaboration_date: string | Date | null;
+        elaboration_date_source_excerpt: string | null;
+        professional_name: string | null;
+        professional_registro: string | null;
+        professional_papel: string | null;
+        professional_source_excerpt: string | null;
+      }>(
+        `SELECT elaboration_date, elaboration_date_source_excerpt, professional_name,
+                professional_registro, professional_papel, professional_source_excerpt
+         FROM document_checklist_findings WHERE document_id = $1`,
+        [document.id],
+      ),
+    );
+
+    let checklist: {
+      elaboration_date: string | Date | null;
+      elaboration_date_source_excerpt: string | null;
+      professional_name: string | null;
+      professional_registro: string | null;
+      professional_papel: string | null;
+      professional_source_excerpt: string | null;
+    };
+    if (existing.rows[0]) {
+      checklist = existing.rows[0];
+    } else {
+      const row = await this.checklistExtractor.extractChecklist(document);
+      await this.db.withTenantContext(ctx, (client) => this.checklistExtractor.persist(client, document, row));
+      checklist = {
+        elaboration_date: row.elaborationDate,
+        elaboration_date_source_excerpt: row.elaborationDateSourceExcerpt,
+        professional_name: row.professionalName,
+        professional_registro: row.professionalRegistro,
+        professional_papel: row.professionalPapel,
+        professional_source_excerpt: row.professionalSourceExcerpt,
+      };
+    }
+
+    return {
+      id: document.id,
+      title: document.title,
+      extracted_at: null,
+      elaboration_date: toDateStringOrNull(checklist.elaboration_date),
+      elaboration_date_source_excerpt: checklist.elaboration_date_source_excerpt,
+      professional_name: checklist.professional_name,
+      professional_registro: checklist.professional_registro,
+      professional_papel: checklist.professional_papel,
+      professional_source_excerpt: checklist.professional_source_excerpt,
     };
   }
 }

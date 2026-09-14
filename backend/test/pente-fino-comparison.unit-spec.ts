@@ -8,8 +8,23 @@ import {
 } from '../src/pente-fino/pente-fino-comparison.service';
 import { PenteFinoExtractorService } from '../src/pente-fino/pente-fino-extractor.service';
 import { FUNCTION_EXTRACTION_PROVIDER } from '../src/pente-fino/function-extraction-provider.interface';
+import { DocumentChecklistExtractorService, DocumentChecklistRow } from '../src/pente-fino/document-checklist-extractor.service';
 import { R2Service } from '../src/common/r2/r2.service';
 import { DatabaseService } from '../src/common/database/database.service';
+
+// Fixture do checklist preliminar (Fase 27) — este spec testa
+// ensureExtracted/buildFunctionReport (PGR/PCMSO), não a extração do
+// checklist em si (já coberta pelos 12 testes de
+// document-checklist-extractor.unit-spec.ts), então o serviço entra
+// aqui como fake devolvendo sempre "nada encontrado".
+const EMPTY_CHECKLIST_ROW: DocumentChecklistRow = {
+  elaborationDate: null,
+  elaborationDateSourceExcerpt: null,
+  professionalName: null,
+  professionalRegistro: null,
+  professionalPapel: null,
+  professionalSourceExcerpt: null,
+};
 
 describe('buildFunctionReport', () => {
   const positions = [{ id: 'pos-1', name: 'Soldador' }];
@@ -88,8 +103,11 @@ describe('PenteFinoComparisonService — reaproveitamento de extração já pers
       query: jest.fn(async (sql: string) => {
         if (sql.includes("category = 'pgr'")) return { rows: [pgrDoc] };
         if (sql.includes("category = 'pcmso'")) return { rows: [] };
+        if (sql.includes("category = 'ltcat'")) return { rows: [] };
+        if (sql.includes("category = 'lip'")) return { rows: [] };
         if (sql.includes('FROM positions')) return { rows: options.positions };
         if (sql.includes('FROM pgr_function_risks')) return { rows: options.cachedRows };
+        if (sql.includes('FROM document_checklist_findings')) return { rows: [] };
         throw new Error(`query inesperada no fake: ${sql}`);
       }),
     };
@@ -103,6 +121,13 @@ describe('PenteFinoComparisonService — reaproveitamento de extração já pers
         { provide: DatabaseService, useValue: fakeDb },
         { provide: R2Service, useValue: { getObject: jest.fn() } },
         { provide: FUNCTION_EXTRACTION_PROVIDER, useValue: { extract: jest.fn() } },
+        {
+          provide: DocumentChecklistExtractorService,
+          useValue: {
+            extractChecklist: jest.fn().mockResolvedValue(EMPTY_CHECKLIST_ROW),
+            persist: jest.fn().mockResolvedValue(undefined),
+          },
+        },
       ],
     }).compile();
 
@@ -187,10 +212,18 @@ describe('PenteFinoComparisonService — reaproveitamento de extração já pers
       id: 'doc-pgr',
       title: 'PGR Teste',
       extracted_at: '2026-09-03T08:30:00.000Z',
+      elaboration_date: null,
+      elaboration_date_source_excerpt: null,
+      professional_name: null,
+      professional_registro: null,
+      professional_papel: null,
+      professional_source_excerpt: null,
     });
-    // O fake não devolve PCMSO nenhum — documento ausente continua null
-    // inteiro, não um objeto com extracted_at null.
+    // O fake não devolve PCMSO/LTCAT/LIP nenhum — documento ausente continua
+    // null inteiro, não um objeto com campos null.
     expect(report.pcmso_document).toBeNull();
+    expect(report.ltcat_document).toBeNull();
+    expect(report.lip_document).toBeNull();
   });
 });
 
