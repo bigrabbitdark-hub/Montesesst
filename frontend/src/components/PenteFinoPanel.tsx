@@ -24,12 +24,22 @@ interface FunctionReportItem {
   exams: { description: string; source_excerpt: string }[];
 }
 
+interface LipAgentFinding {
+  agent_name_raw: string;
+  agent_category: string;
+  measured_value_raw: string | null;
+  insalubre: boolean | null;
+  conclusion_excerpt: string | null;
+  exam_status: 'exame_ausente' | 'ok' | 'informativo';
+}
+
 interface PenteFinoReport {
   pgr_document: PenteFinoDocumentRef | null;
   pcmso_document: PenteFinoDocumentRef | null;
   ltcat_document: PenteFinoDocumentRef | null;
   lip_document: PenteFinoDocumentRef | null;
   functions: FunctionReportItem[];
+  lip_agents: LipAgentFinding[];
   warnings: string[];
 }
 
@@ -328,6 +338,35 @@ export function PenteFinoPanel({ tenantId }: { tenantId?: string }) {
               </table>
             )}
           </section>
+
+          {report.lip_agents.length > 0 && (
+            <section className="rounded-lg border border-brand-100 p-6">
+              <h3 className="text-sm font-bold uppercase tracking-wide text-brand-700">Agentes do LIP</h3>
+              <ul className="mt-4 flex flex-col gap-3">
+                {report.lip_agents.map((agent, i) => (
+                  <li key={i} className="rounded-md border border-brand-50 p-3">
+                    <p className="text-sm font-medium text-brand-900">
+                      {agent.agent_name_raw}
+                      {agent.measured_value_raw && ` — ${agent.measured_value_raw}`}
+                    </p>
+                    {agent.conclusion_excerpt ? (
+                      <p className="mt-1 text-xs italic text-brand-700">&quot;{agent.conclusion_excerpt}&quot;</p>
+                    ) : (
+                      <p className="mt-1 text-xs text-slate-500">conclusão de insalubridade não identificada no texto</p>
+                    )}
+                    {agent.exam_status === 'exame_ausente' && (
+                      <p className="mt-2 text-sm font-medium text-red-600">
+                        Insalubridade por ruído sem exame de audiometria registrado no PCMSO
+                      </p>
+                    )}
+                    {agent.exam_status === 'ok' && (
+                      <p className="mt-2 text-sm text-green-700">Exame de audiometria presente no PCMSO</p>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
         </>
       )}
     </div>
