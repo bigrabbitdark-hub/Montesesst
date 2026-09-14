@@ -3687,6 +3687,17 @@ desta fase); contornado na verificação com métodos honestos (técnico
 real sem vínculo pra provar o 403 genuíno; token real da própria
 empresa de teste na rota técnica pra provar a renderização do caminho
 de sucesso, sem forjar a checagem de autorização de backend) — a
+
+> **Atualização de 2026-09-14:** ao investigar essa pendência, a conta
+> já existia (criada em 28/08 fora deste runbook, origem não
+> registrada) — a nota acima já estava desatualizada quando escrita. A
+> senha foi trocada e o nome corrigido com autorização explícita do
+> fundador (`docs/operations/admin-provisioning.md`, seção "Contas
+> existentes"), login e acesso a `GET /tenants` confirmados reais em
+> produção. De quebra, o próprio Passo 1 do runbook (gerar hash bcrypt
+> via container `node:20-alpine`) estava quebrado — segfault por
+> incompatibilidade glibc/musl entre o binding nativo (compilado no
+> host) e o Alpine do container — corrigido rodando direto no host.
 revisão de ambas as tasks avaliou a metodologia como suficiente pra
 provar o comportamento de frontend.
 
