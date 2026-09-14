@@ -42,6 +42,15 @@ describe('POST /pente-fino/run — checklist preliminar (e2e)', () => {
   let token: string;
   let tenantId: string;
   let userId: string;
+  // Populados pelos testes 1 e 2 — só limpos no afterAll (não no fim de
+  // cada `it`) porque o teste de RLS (3º `it`) precisa que o PGR com
+  // "CREA-99999"/"Maria Souza" ainda exista no banco quando ele rodar:
+  // é isso que dá à asserção `not.toContain('CREA')` daquele teste um
+  // vazamento real pra detectar, em vez de passar por não haver dado
+  // nenhum pra vazar. Mesmo padrão de pente-fino-run.e2e-spec.ts.
+  let pgrDocId: string;
+  let ltcatDocId: string;
+  let pcmsoDocId: string;
   const fakeExtractFunction = jest.fn();
   const fakeExtractChecklist = jest.fn();
   const fakeGetObject = jest.fn();
@@ -75,6 +84,9 @@ describe('POST /pente-fino/run — checklist preliminar (e2e)', () => {
   });
 
   afterAll(async () => {
+    await (db as any).client.query('DELETE FROM documents WHERE id = ANY($1)', [
+      [pgrDocId, ltcatDocId, pcmsoDocId],
+    ]);
     await redis.del(RATE_LIMIT_KEY);
     await redis.quit();
     await db.cleanup();
@@ -100,6 +112,11 @@ describe('POST /pente-fino/run — checklist preliminar (e2e)', () => {
        RETURNING id`,
       [tenantId, userId],
     );
+    // Não apagados aqui de propósito — ver comentário na declaração de
+    // pgrDocId/ltcatDocId/pcmsoDocId no topo do describe. Limpeza real
+    // acontece no afterAll.
+    pgrDocId = pgrDoc.rows[0].id;
+    ltcatDocId = ltcatDoc.rows[0].id;
 
     fakeGetObject.mockResolvedValue(
       await buildTestPdf(
@@ -139,8 +156,6 @@ describe('POST /pente-fino/run — checklist preliminar (e2e)', () => {
     expect(res.body.warnings.some((w: string) => w.includes('PCMSO'))).toBe(true);
     expect(res.body.warnings.some((w: string) => w.toUpperCase().includes('LTCAT'))).toBe(false);
     expect(res.body.warnings.some((w: string) => w.toUpperCase().includes('LIP'))).toBe(false);
-
-    await client.query('DELETE FROM documents WHERE id = ANY($1)', [[pgrDoc.rows[0].id, ltcatDoc.rows[0].id]]);
   });
 
   it('reaproveita o cache — segunda chamada não invoca a IA de novo', async () => {
@@ -151,6 +166,9 @@ describe('POST /pente-fino/run — checklist preliminar (e2e)', () => {
        RETURNING id`,
       [tenantId, userId],
     );
+    // Não apagado aqui de propósito — mesmo motivo do PGR/LTCAT acima;
+    // limpeza real acontece no afterAll.
+    pcmsoDocId = pcmsoDoc.rows[0].id;
 
     fakeGetObject.mockResolvedValue(await buildTestPdf('PCMSO sem data nem profissional identificáveis.'));
     fakeExtractFunction.mockResolvedValue([]);
@@ -173,8 +191,6 @@ describe('POST /pente-fino/run — checklist preliminar (e2e)', () => {
     // provider de checklist pro mesmo documento.
     expect(fakeExtractChecklist).toHaveBeenCalledTimes(1);
     expect(second.body.pcmso_document.elaboration_date).toBeNull();
-
-    await client.query('DELETE FROM documents WHERE id = $1', [pcmsoDoc.rows[0].id]);
   });
 
   it('técnico não vinculado recebe 403 sem vazar nenhum dado de checklist da empresa', async () => {
@@ -189,6 +205,15 @@ describe('POST /pente-fino/run — checklist preliminar (e2e)', () => {
       .send({ tenant_id: tenantId });
 
     expect(res.status).toBe(403);
+    // PGR do teste 1 continua no banco (só é apagado no afterAll) —
+    // estas três strings ("CREA-99999", "Maria Souza",
+    // "PGR Checklist Teste") são dado real que vazaria se o mesmo bug
+    // de RLS corrigido como achado Crítico na Fase 25 (TenantContext
+    // montado com o tenant_id ALVO em vez do JWT) fosse reintroduzido.
+    // Sem esse documento ainda existir, esta asserção passaria mesmo
+    // com o bug de volta, por não haver nada pra vazar.
     expect(JSON.stringify(res.body)).not.toContain('CREA');
+    expect(JSON.stringify(res.body)).not.toContain('Maria Souza');
+    expect(JSON.stringify(res.body)).not.toContain('PGR Checklist Teste');
   });
 });
