@@ -28,7 +28,7 @@ export default function TecnicoEmpresaAssistentePage() {
       <p className="mt-2 text-brand-700">Pergunte sobre normas de SST — a resposta sempre vem com a fonte oficial.</p>
       <div className="mt-8">
         <AssistantSummaryPanel tenantId={params.tenantId} />
-        <AssistantChat />
+        <AssistantChat tenantId={params.tenantId} />
       </div>
     </div>
   );

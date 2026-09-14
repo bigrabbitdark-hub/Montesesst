@@ -10,10 +10,17 @@ interface Citation {
   official_url: string;
 }
 
+interface CompanyCitation {
+  document_id: string;
+  title: string;
+  category: string;
+}
+
 interface QueryResult {
   answer: string | null;
   message?: string;
   citations: Citation[];
+  company_citations: CompanyCitation[];
   used_attachment?: boolean;
   attachment_warning?: string;
 }
@@ -25,7 +32,7 @@ function authHeaders() {
 const GENERIC_ERROR_MESSAGE = 'Não foi possível consultar agora. Tente de novo.';
 const MAX_ATTACHMENT_BYTES = 5 * 1024 * 1024;
 
-export function AssistantChat() {
+export function AssistantChat({ tenantId }: { tenantId?: string }) {
   const [question, setQuestion] = useState('');
   const [file, setFile] = useState<File | null>(null);
   const [result, setResult] = useState<QueryResult | null>(null);
@@ -49,6 +56,7 @@ export function AssistantChat() {
         }
         const formData = new FormData();
         formData.append('question', question);
+        if (tenantId) formData.append('tenant_id', tenantId);
         formData.append('file', file);
         res = await fetch('/api/assistant/normative-query', {
           method: 'POST',
@@ -59,7 +67,7 @@ export function AssistantChat() {
         res = await fetch('/api/assistant/normative-query', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', ...authHeaders() },
-          body: JSON.stringify({ question }),
+          body: JSON.stringify(tenantId ? { question, tenant_id: tenantId } : { question }),
         });
       }
       if (res.ok) {
@@ -91,6 +99,14 @@ export function AssistantChat() {
 
   async function openCitation(documentId: string) {
     const res = await fetch(`/api/normative-documents/${documentId}/download`, { headers: authHeaders() });
+    if (res.ok) {
+      const { url } = await res.json();
+      window.open(url, '_blank');
+    }
+  }
+
+  async function openCompanyCitation(documentId: string) {
+    const res = await fetch(`/api/documents/${documentId}/download`, { headers: authHeaders() });
     if (res.ok) {
       const { url } = await res.json();
       window.open(url, '_blank');
@@ -140,6 +156,22 @@ export function AssistantChat() {
                 <button
                   key={c.document_id}
                   onClick={() => openCitation(c.document_id)}
+                  className="text-left text-sm text-brand-500 underline hover:text-brand-700"
+                >
+                  {c.title}
+                </button>
+              ))}
+            </div>
+          )}
+          {result.company_citations.length > 0 && (
+            <div className="mt-4 flex flex-col gap-1">
+              <h4 className="text-xs font-bold uppercase tracking-wide text-brand-700">
+                Documentos da empresa usados nesta resposta
+              </h4>
+              {result.company_citations.map((c) => (
+                <button
+                  key={c.document_id}
+                  onClick={() => openCompanyCitation(c.document_id)}
                   className="text-left text-sm text-brand-500 underline hover:text-brand-700"
                 >
                   {c.title}

@@ -98,7 +98,22 @@ export class NormativeAssistantService {
     question: string,
     user: AuthenticatedUser,
     attachment?: QueryAttachment,
+    tenantId?: string,
   ): Promise<NormativeQueryResult> {
+    // `tenantId` aqui é o ALVO (de qual empresa buscar dado operacional
+    // e documento) — pra empresa é sempre o próprio `user.tenantId`; pra
+    // técnico/parceiro vem do corpo da requisição (opcional: sem ele, a
+    // pergunta continua puramente normativa, igual ao comportamento de
+    // sempre). Checagem de vínculo ANTES de qualquer embedding/chamada de
+    // IA — mesmo padrão do Pente-Fino/dashboard summary — pra não gastar
+    // custo numa pergunta que vai ser rejeitada de qualquer forma.
+    if (tenantId && user.role !== 'empresa') {
+      await this.db.withTenantContext(
+        { userId: user.id, tenantId: user.tenantId ?? undefined, role: user.role },
+        (client) => this.dashboard.assertTenantLinked(client, tenantId),
+      );
+    }
+
     let attachmentInput: AttachmentInput | undefined;
     let attachmentWarning: string | undefined;
 
@@ -170,17 +185,17 @@ export class NormativeAssistantService {
     );
     const relevant = rows.filter((r) => r.similarity >= threshold);
 
-    // Busca operacional só pra empresa, numa transação curta e SEPARADA
-    // — mesma regra de nunca segurar conexão durante chamada de IA (ver
-    // Finding C1a). Roda ANTES de chamar this.answerer.answer(...),
-    // então não estende a janela de conexão aberta durante embedding/chat.
-    // technico/parceiro: operationalItems fica [] sempre, comportamento
-    // idêntico ao da Fase 9.
+    // Busca operacional, numa transação curta e SEPARADA — mesma regra
+    // de nunca segurar conexão durante chamada de IA (ver Finding C1a).
+    // Roda ANTES de chamar this.answerer.answer(...), então não estende
+    // a janela de conexão aberta durante embedding/chat. `tenantId` já
+    // veio validado (vínculo checado acima pra técnico/parceiro; pra
+    // empresa é sempre o próprio tenant) — sem ele, fica vazio (pergunta
+    // puramente normativa).
     let operationalItems: OperationalItem[] = [];
-    if (user.role === 'empresa' && user.tenantId) {
-      const tenantId = user.tenantId;
+    if (tenantId) {
       const summary = await this.db.withTenantContext(
-        { userId: user.id, tenantId, role: user.role },
+        { userId: user.id, tenantId: user.tenantId ?? undefined, role: user.role },
         (client) => this.dashboard.getSummary(client, tenantId),
       );
       // Normaliza o texto antes de entrar no prompt — `titulo` vem de
@@ -218,18 +233,14 @@ export class NormativeAssistantService {
     }
 
     // Busca de trechos de documento da própria empresa (PGR/PCMSO/LTCAT/
-    // LIP, Fase 24), mesma restrição e mesmo motivo do bloco operacional
-    // acima: só empresa tem um tenant_id fixo pra restringir a busca —
-    // técnico/parceiro atendem várias empresas e o endpoint do
-    // Assistente não recebe tenant_id, então não há como saber de qual
-    // empresa buscar (limitação conhecida, gap documentado pra uma fase
-    // futura). Transação curta e separada, mesma regra de nunca segurar
-    // conexão durante chamada de IA (ver Finding C1a acima).
+    // LIP, Fase 24) — mesma condição do bloco operacional acima: roda
+    // sempre que houver um `tenantId` já validado. Transação curta e
+    // separada, mesma regra de nunca segurar conexão durante chamada de
+    // IA (ver Finding C1a acima).
     let companyChunks: RetrievedCompanyChunk[] = [];
-    if (user.role === 'empresa' && user.tenantId) {
-      const tenantId = user.tenantId;
+    if (tenantId) {
       const { rows: companyRows } = await this.db.withTenantContext(
-        { userId: user.id, tenantId, role: user.role },
+        { userId: user.id, tenantId: user.tenantId ?? undefined, role: user.role },
         (client) =>
           client.query<RetrievedCompanyChunk>(
             `SELECT c.id AS chunk_id, c.content, c.document_id, c.category, d.title AS document_title,

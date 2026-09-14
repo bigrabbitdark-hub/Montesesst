@@ -81,10 +81,18 @@ export class NormativeAssistantController {
       }
     }
 
+    const user = req.user;
+    // `dto.tenant_id` é só o ALVO (de qual empresa buscar dado
+    // operacional/documento) — pra empresa é sempre o próprio tenant do
+    // token, nunca o valor do corpo. Mesmo padrão de
+    // pente-fino.controller.ts.
+    const tenantId = user.role === 'tecnico' || user.role === 'parceiro' ? dto.tenant_id : user.tenantId;
+
     return this.assistant.query(
       dto.question,
-      req.user,
+      user,
       file ? { buffer: file.buffer, mimetype: file.mimetype } : undefined,
+      tenantId,
     );
   }
 }
