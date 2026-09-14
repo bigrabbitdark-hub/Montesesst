@@ -7,6 +7,12 @@ interface PenteFinoDocumentRef {
   id: string;
   title: string;
   extracted_at: string | null;
+  elaboration_date: string | null;
+  elaboration_date_source_excerpt: string | null;
+  professional_name: string | null;
+  professional_registro: string | null;
+  professional_papel: string | null;
+  professional_source_excerpt: string | null;
 }
 
 interface FunctionReportItem {
@@ -21,6 +27,8 @@ interface FunctionReportItem {
 interface PenteFinoReport {
   pgr_document: PenteFinoDocumentRef | null;
   pcmso_document: PenteFinoDocumentRef | null;
+  ltcat_document: PenteFinoDocumentRef | null;
+  lip_document: PenteFinoDocumentRef | null;
   functions: FunctionReportItem[];
   warnings: string[];
 }
@@ -47,6 +55,65 @@ function formatExtractedAt(isoDateTime: string): string {
     month: '2-digit',
     year: 'numeric',
   });
+}
+
+// "Há quanto tempo" de forma neutra — nunca julga vencimento/validade
+// legal (decisão da spec §2, achado de brainstorming: NR-01/NR-07 não
+// têm um prazo fixo simples de revalidação pro documento como um todo).
+function formatElapsedTime(isoDate: string): string {
+  const then = new Date(isoDate);
+  const now = new Date();
+  const totalMonths = (now.getFullYear() - then.getFullYear()) * 12 + (now.getMonth() - then.getMonth());
+  // Data no futuro (erro de extração) ou no mesmo mês: não faz sentido
+  // dizer "há X tempo".
+  if (totalMonths <= 0) return 'recentemente';
+  const years = Math.floor(totalMonths / 12);
+  const months = totalMonths % 12;
+  const parts: string[] = [];
+  if (years > 0) parts.push(`${years} ano${years > 1 ? 's' : ''}`);
+  if (months > 0) parts.push(`${months} ${months > 1 ? 'meses' : 'mês'}`);
+  return parts.length > 0 ? `há ${parts.join(' e ')}` : 'há menos de um mês';
+}
+
+const DOCUMENT_LABELS: { key: 'pgr_document' | 'pcmso_document' | 'ltcat_document' | 'lip_document'; label: string }[] = [
+  { key: 'pgr_document', label: 'PGR' },
+  { key: 'pcmso_document', label: 'PCMSO' },
+  { key: 'ltcat_document', label: 'LTCAT' },
+  { key: 'lip_document', label: 'LIP' },
+];
+
+function DocumentCard({ label, doc }: { label: string; doc: PenteFinoDocumentRef | null }) {
+  if (!doc) {
+    return (
+      <p className="mt-1 text-sm text-brand-900">
+        {label}: <span className="text-slate-500">nenhum {label} encontrado</span>
+      </p>
+    );
+  }
+  return (
+    <div className="mt-2 first:mt-0">
+      <p className="text-sm text-brand-900">
+        {label}: {doc.title}
+        {doc.extracted_at && ` (extraído em ${formatExtractedAt(doc.extracted_at)})`}
+      </p>
+      {doc.elaboration_date ? (
+        <p className="text-xs text-brand-700">
+          última atualização: {formatExtractedAt(doc.elaboration_date)} ({formatElapsedTime(doc.elaboration_date)})
+        </p>
+      ) : (
+        <p className="text-xs text-slate-500">data de elaboração não identificada no texto</p>
+      )}
+      {doc.professional_name || doc.professional_registro ? (
+        <p className="text-xs text-brand-700">
+          responsável: {doc.professional_name ?? '(nome não identificado)'}
+          {doc.professional_papel && ` — ${doc.professional_papel}`}
+          {doc.professional_registro && `, registro ${doc.professional_registro}`}
+        </p>
+      ) : (
+        <p className="text-xs text-slate-500">profissional responsável não identificado no texto</p>
+      )}
+    </div>
+  );
 }
 
 export function PenteFinoPanel({ tenantId }: { tenantId?: string }) {
@@ -111,7 +178,8 @@ export function PenteFinoPanel({ tenantId }: { tenantId?: string }) {
         <p className="mt-2 text-sm text-brand-700">
           Compara as funções descritas no PGR com os exames do PCMSO e aponta risco sem exame
           correspondente, exame sem risco que o justifique, e nomes de função sem cargo cadastrado.
-          Pode levar até 2 minutos.
+          Também mostra a data de elaboração e o profissional responsável identificados em PGR,
+          PCMSO, LTCAT e LIP. Pode levar até 2 minutos.
         </p>
         <button
           type="button"
@@ -134,16 +202,9 @@ export function PenteFinoPanel({ tenantId }: { tenantId?: string }) {
         <>
           <section className="rounded-lg border border-brand-100 p-6">
             <h3 className="text-sm font-bold uppercase tracking-wide text-brand-700">Documentos-fonte</h3>
-            <p className="mt-2 text-sm text-brand-900">
-              PGR: {report.pgr_document ? report.pgr_document.title : 'nenhum PGR encontrado'}
-              {report.pgr_document?.extracted_at &&
-                ` (extraído em ${formatExtractedAt(report.pgr_document.extracted_at)})`}
-            </p>
-            <p className="mt-1 text-sm text-brand-900">
-              PCMSO: {report.pcmso_document ? report.pcmso_document.title : 'nenhum PCMSO encontrado'}
-              {report.pcmso_document?.extracted_at &&
-                ` (extraído em ${formatExtractedAt(report.pcmso_document.extracted_at)})`}
-            </p>
+            {DOCUMENT_LABELS.map(({ key, label }) => (
+              <DocumentCard key={key} label={label} doc={report[key]} />
+            ))}
             {report.warnings.length > 0 && (
               <ul className="mt-3 flex flex-col gap-1 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
                 {report.warnings.map((warning, i) => (
