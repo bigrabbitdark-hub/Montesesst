@@ -5,8 +5,26 @@ import PDFDocument from 'pdfkit';
 import Redis from 'ioredis';
 import { AppModule } from '../src/app.module';
 import { FUNCTION_EXTRACTION_PROVIDER } from '../src/pente-fino/function-extraction-provider.interface';
+import { DOCUMENT_CHECKLIST_EXTRACTION_PROVIDER } from '../src/pente-fino/document-checklist-provider.interface';
 import { R2Service } from '../src/common/r2/r2.service';
 import { TestDb } from './db-test-helper';
+
+// Fase 27: PenteFinoComparisonService.run() agora chama
+// DOCUMENT_CHECKLIST_EXTRACTION_PROVIDER (via buildDocumentRef) pra todo
+// documento, PGR/PCMSO incluídos — sem sobrepor este provider aqui, cada
+// chamada deste arquivo disparava uma chamada de rede real ao MiniMax
+// (ligação padrão em pente-fino.module.ts), o que já causou timeout
+// intermitente (>5000ms, o padrão do Jest) quando a suíte e2e inteira de
+// pente-fino roda junto. Nenhuma asserção deste arquivo depende do
+// conteúdo do checklist, só precisa que a chamada não seja real.
+const EMPTY_CHECKLIST = {
+  elaboration_date: '',
+  elaboration_date_excerpt: '',
+  professional_name: '',
+  professional_registro: '',
+  professional_papel: '',
+  professional_excerpt: '',
+};
 
 // Mesmo motivo do RATE_LIMIT_KEY em documents-classify-batch.e2e-spec.ts —
 // /pente-fino/run tem contador próprio por rota (RateLimitGuard), com teto
@@ -53,12 +71,17 @@ describe('POST /pente-fino/run (e2e)', () => {
   let linkedTechnicianId: string;
   let unlinkedTechnicianId: string;
   const fakeExtract = jest.fn();
+  const fakeExtractChecklist = jest.fn();
   const fakeGetObject = jest.fn();
 
   beforeAll(async () => {
+    fakeExtractChecklist.mockResolvedValue(EMPTY_CHECKLIST);
+
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
       .overrideProvider(FUNCTION_EXTRACTION_PROVIDER)
       .useValue({ extract: fakeExtract })
+      .overrideProvider(DOCUMENT_CHECKLIST_EXTRACTION_PROVIDER)
+      .useValue({ extract: fakeExtractChecklist })
       .overrideProvider(R2Service)
       .useValue({ getObject: fakeGetObject })
       .compile();
