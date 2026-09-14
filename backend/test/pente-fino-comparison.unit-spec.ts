@@ -143,6 +143,92 @@ describe('buildLipAgentFindings', () => {
   });
 });
 
+// Cobre o Finding crítico da revisão final da Fase 28: uma linha já
+// persistida em lip_agent_findings ANTES da correção de deriveInsalubre
+// pode ter insalubre gravado errado (ex.: conclusão com quebra de linha
+// entre "não" e "caracteriza" invertia o resultado). ensureLipAgents
+// precisa re-derivar insalubre a partir de conclusion_excerpt na leitura
+// do cache em vez de confiar cegamente no valor gravado — mesmo
+// princípio já aplicado a position_id em ensureExtracted, acima.
+describe('PenteFinoComparisonService — ensureLipAgents re-deriva insalubre do cache', () => {
+  const lipDoc = {
+    id: 'doc-lip',
+    tenant_id: 'tenant-1',
+    title: 'LIP Teste',
+    file_key: 'key-lip',
+    mime_type: 'application/pdf',
+  };
+
+  async function buildServiceWithLipCache(cachedRow: {
+    agent_name_raw: string;
+    agent_category: string;
+    measured_value_raw: string | null;
+    insalubre: boolean | null;
+    conclusion_excerpt: string | null;
+  }): Promise<PenteFinoComparisonService> {
+    const fakeClient = {
+      query: jest.fn(async (sql: string) => {
+        if (sql.includes("category = 'pgr'")) return { rows: [] };
+        if (sql.includes("category = 'pcmso'")) return { rows: [] };
+        if (sql.includes("category = 'ltcat'")) return { rows: [] };
+        if (sql.includes("category = 'lip'")) return { rows: [lipDoc] };
+        if (sql.includes('FROM positions')) return { rows: [] };
+        if (sql.includes('FROM document_checklist_findings')) return { rows: [] };
+        if (sql.includes('FROM lip_agent_findings')) return { rows: [cachedRow] };
+        throw new Error(`query inesperada no fake: ${sql}`);
+      }),
+    };
+    const fakeDb = { withTenantContext: jest.fn((_ctx: unknown, fn: any) => fn(fakeClient)) };
+
+    const moduleRef = await Test.createTestingModule({
+      providers: [
+        PenteFinoComparisonService,
+        PenteFinoExtractorService,
+        { provide: DatabaseService, useValue: fakeDb },
+        { provide: R2Service, useValue: { getObject: jest.fn() } },
+        { provide: FUNCTION_EXTRACTION_PROVIDER, useValue: { extract: jest.fn() } },
+        {
+          provide: DocumentChecklistExtractorService,
+          useValue: {
+            extractChecklist: jest.fn().mockResolvedValue(EMPTY_CHECKLIST_ROW),
+            persist: jest.fn().mockResolvedValue(undefined),
+          },
+        },
+        {
+          provide: LipAgentExtractorService,
+          useValue: {
+            // Se o caminho de cache falhar e cair na extração de verdade, o
+            // teste quebra aqui em vez de passar silenciosamente por outro motivo.
+            extractAgents: jest
+              .fn()
+              .mockRejectedValue(new Error('extractAgents não deveria ser chamado quando já existe cache')),
+            persist: jest.fn().mockResolvedValue(undefined),
+          },
+        },
+      ],
+    }).compile();
+
+    return moduleRef.get(PenteFinoComparisonService);
+  }
+
+  const empresaUser = { id: 'user-1', tenantId: 'tenant-1', role: 'empresa' };
+
+  it('re-deriva insalubre a partir de conclusion_excerpt em vez de confiar no valor gravado no cache', async () => {
+    const service = await buildServiceWithLipCache({
+      agent_name_raw: 'Ruído contínuo',
+      agent_category: 'ruido',
+      measured_value_raw: '92 dB(A)',
+      insalubre: true, // gravado incorretamente antes da correção (bug de quebra de linha)
+      conclusion_excerpt: 'não\ncaracteriza insalubridade',
+    });
+
+    const report = await service.run('tenant-1', empresaUser);
+
+    expect(report.lip_agents).toHaveLength(1);
+    expect(report.lip_agents[0].insalubre).toBe(false);
+  });
+});
+
 // Mesmo padrão de fakes por DI de pente-fino-extractor.unit-spec.ts, só que
 // aqui o PenteFinoExtractorService entra de VERDADE (é a lógica real de
 // matchPosition que está sob teste) e quem é fakeado é o DatabaseService —

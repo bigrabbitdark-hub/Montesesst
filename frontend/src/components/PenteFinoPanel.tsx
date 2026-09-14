@@ -203,7 +203,8 @@ export function PenteFinoPanel({ tenantId }: { tenantId?: string }) {
           Compara as funções descritas no PGR com os exames do PCMSO e aponta risco sem exame
           correspondente, exame sem risco que o justifique, e nomes de função sem cargo cadastrado.
           Também mostra a data de elaboração e o profissional responsável identificados em PGR,
-          PCMSO, LTCAT e LIP. Pode levar até 3 minutos.
+          PCMSO, LTCAT e LIP. Além disso, identifica agentes de risco citados no LIP e aponta quando
+          falta exame de audiometria correspondente no PCMSO. Pode levar até 3 minutos.
         </p>
         <button
           type="button"
@@ -339,7 +340,7 @@ export function PenteFinoPanel({ tenantId }: { tenantId?: string }) {
             )}
           </section>
 
-          {report.lip_agents.length > 0 && (
+          {(report.lip_agents ?? []).length > 0 && (
             <section className="rounded-lg border border-brand-100 p-6">
               <h3 className="text-sm font-bold uppercase tracking-wide text-brand-700">Agentes do LIP</h3>
               <ul className="mt-4 flex flex-col gap-3">
@@ -355,9 +356,15 @@ export function PenteFinoPanel({ tenantId }: { tenantId?: string }) {
                       <p className="mt-1 text-xs text-slate-500">conclusão de insalubridade não identificada no texto</p>
                     )}
                     {agent.exam_status === 'exame_ausente' && (
-                      <p className="mt-2 text-sm font-medium text-red-600">
-                        Insalubridade por ruído sem exame de audiometria registrado no PCMSO
-                      </p>
+                      <>
+                        <p className="mt-2 text-sm font-medium text-red-600">
+                          Não encontramos audiometria entre os exames extraídos do PCMSO
+                        </p>
+                        <p className="mt-1 text-xs text-slate-500">
+                          A checagem usa os exames que o sistema conseguiu vincular a uma função — confira o
+                          documento diretamente se tiver dúvida.
+                        </p>
+                      </>
                     )}
                     {agent.exam_status === 'ok' && (
                       <p className="mt-2 text-sm text-green-700">Exame de audiometria presente no PCMSO</p>

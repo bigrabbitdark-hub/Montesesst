@@ -121,20 +121,20 @@ function normalizeWhitespace(text: string): string {
 }
 
 // Deriva insalubre a partir do TEXTO JÁ CITADO (nunca recalcula NR-15) —
-// procura primeiro o padrão negativo (mais específico) antes do
-// positivo, já que "não caracteriza" também contém a substring
-// "caracteriza". Nenhum dos dois padrões encontrado = ambíguo (null) —
-// mais seguro que assumir um lado.
-function deriveInsalubre(conclusionExcerpt: string): boolean | null {
-  const normalized = conclusionExcerpt.toLowerCase();
-  if (
-    normalized.includes('não caracteriza') ||
-    normalized.includes('nao caracteriza') ||
-    normalized.includes('descaracteriza')
-  ) {
+// normaliza espaços/quebras de linha antes de comparar (o excerto pode
+// vir com quebra de linha do PDF original, ex.: "não\ncaracteriza"),
+// senão um "não caracteriza" quebrado em duas linhas seria lido como
+// "caracteriza" sozinho e inverteria o resultado. Procura o padrão
+// negativo com uma janela curta (até ~15 caracteres entre "não" e
+// "caracteriz") antes do positivo, cobrindo variantes como "não se
+// caracteriza", "não há caracterização de" — nenhum dos dois padrões
+// encontrado = ambíguo (null), mais seguro que assumir um lado.
+export function deriveInsalubre(conclusionExcerpt: string): boolean | null {
+  const normalized = normalizeWhitespace(conclusionExcerpt).toLowerCase();
+  if (/n[ãa]o[a-zà-ú\s]{0,15}caracteriz/.test(normalized) || normalized.includes('descaracteriza')) {
     return false;
   }
-  if (normalized.includes('caracteriza')) {
+  if (normalized.includes('caracteriz')) {
     return true;
   }
   return null;

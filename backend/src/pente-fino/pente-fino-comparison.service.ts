@@ -4,7 +4,7 @@ import { DatabaseService, TenantContext } from '../common/database/database.serv
 import { normalizePositionText } from '../common/text/normalize-position-text.util';
 import { PenteFinoExtractorService, ExtractedRow } from './pente-fino-extractor.service';
 import { DocumentChecklistExtractorService } from './document-checklist-extractor.service';
-import { LipAgentExtractorService, LipAgentRow, AgentCategory } from './lip-agent-extractor.service';
+import { LipAgentExtractorService, LipAgentRow, AgentCategory, deriveInsalubre } from './lip-agent-extractor.service';
 import { Document } from '../documents/documents.service';
 
 export interface StoredRow {
@@ -462,16 +462,23 @@ export class PenteFinoComparisonService {
         conclusion_excerpt: string | null;
       }>(
         `SELECT agent_name_raw, agent_category, measured_value_raw, insalubre, conclusion_excerpt
-         FROM lip_agent_findings WHERE document_id = $1`,
+         FROM lip_agent_findings WHERE document_id = $1
+         ORDER BY created_at, agent_name_raw`,
         [document.id],
       ),
     );
     if (existing.rows.length > 0) {
+      // Re-deriva insalubre a partir de conclusion_excerpt em vez de confiar
+      // no valor gravado — mesmo princípio de position_id em ensureExtracted
+      // acima: um LIP extraído ANTES de uma correção em deriveInsalubre (ex.:
+      // o bug de quebra de linha invertendo "não caracteriza") teria o valor
+      // errado gravado pra sempre até reenvio, se a leitura do cache não
+      // reaplicasse a lógica atual.
       return existing.rows.map((r) => ({
         agentNameRaw: r.agent_name_raw,
         agentCategory: r.agent_category as AgentCategory,
         measuredValueRaw: r.measured_value_raw,
-        insalubre: r.insalubre,
+        insalubre: r.conclusion_excerpt !== null ? deriveInsalubre(r.conclusion_excerpt) : null,
         conclusionExcerpt: r.conclusion_excerpt,
         sourceExcerpt: '', // não usado no relatório, só necessário no formato de LipAgentRow
       }));

@@ -103,6 +103,60 @@ describe('LipAgentExtractorService', () => {
       expect(rows[0].insalubre).toBeNull();
     });
 
+    it('deriva insalubre=false mesmo com quebra de linha entre "não" e "caracteriza" no excerto (comum em texto extraído de PDF real)', async () => {
+      const pdf = await buildTestPdf('Ruído medido em 78 dB(A). Não caracteriza insalubridade.');
+      fakeGetObject.mockResolvedValue(pdf);
+      fakeExtract.mockResolvedValue([
+        {
+          agent_name_raw: 'Ruído',
+          agent_category: 'ruido',
+          measured_value_raw: '78 dB(A)',
+          conclusion_excerpt: 'Não\ncaracteriza insalubridade',
+          source_excerpt: 'Ruído medido em 78 dB(A)',
+        },
+      ]);
+
+      const rows = await service.extractAgents(baseDoc);
+
+      expect(rows[0].insalubre).toBe(false);
+    });
+
+    it('deriva insalubre=false mesmo com espaço duplo entre "não" e "caracteriza" no excerto', async () => {
+      const pdf = await buildTestPdf('Ruído medido em 78 dB(A). Não caracteriza insalubridade.');
+      fakeGetObject.mockResolvedValue(pdf);
+      fakeExtract.mockResolvedValue([
+        {
+          agent_name_raw: 'Ruído',
+          agent_category: 'ruido',
+          measured_value_raw: '78 dB(A)',
+          conclusion_excerpt: 'Não  caracteriza insalubridade',
+          source_excerpt: 'Ruído medido em 78 dB(A)',
+        },
+      ]);
+
+      const rows = await service.extractAgents(baseDoc);
+
+      expect(rows[0].insalubre).toBe(false);
+    });
+
+    it('deriva insalubre=false para a variante "não se caracteriza a insalubridade"', async () => {
+      const pdf = await buildTestPdf('Calor medido. Não se caracteriza a insalubridade.');
+      fakeGetObject.mockResolvedValue(pdf);
+      fakeExtract.mockResolvedValue([
+        {
+          agent_name_raw: 'Calor',
+          agent_category: 'calor',
+          measured_value_raw: '',
+          conclusion_excerpt: 'Não se caracteriza a insalubridade',
+          source_excerpt: 'Calor medido',
+        },
+      ]);
+
+      const rows = await service.extractAgents(baseDoc);
+
+      expect(rows[0].insalubre).toBe(false);
+    });
+
     it('descarta o item inteiro quando source_excerpt não existe de verdade no texto (alucinação)', async () => {
       const pdf = await buildTestPdf('Documento sem menção a ruído.');
       fakeGetObject.mockResolvedValue(pdf);
