@@ -4028,3 +4028,143 @@ de fallback de navegação, não bloqueantes).
 PCMSO/LIP↔insalubridade (precisa extrair valores numéricos de medição e
 comparar com limites da NR-15) e LIP↔LTCAT (comparação de medições
 entre dois laudos) continuam sem escopo definido.
+
+## Fase 28 — Pente-Fino: agentes do LIP × audiometria no PCMSO: status
+
+Próxima fatia do "PCMSO/LIP↔insalubridade" que a Fase 25 já listava como
+pendência (§7). Extrai do LIP a lista de agentes de risco e a conclusão
+de insalubridade que o próprio documento já declara, e cruza só o
+agente `ruido` (com insalubridade caracterizada) contra o PCMSO,
+procurando audiometria — gerando um achado real quando não encontra.
+
+**Achado de pesquisa que reformulou o escopo original, mesma
+disciplina da Fase 27**: a ideia inicial era comparar o valor medido do
+LIP com os limites de tolerância da NR-15. Consultando o texto real
+indexado da norma, ela não é uma tabela simples — são 14+ anexos com
+metodologias incompatíveis entre si (Anexo 1: tabela dB×horas com
+fórmula de dose combinada; Anexo 3: fórmula de IBUTG cruzada com taxa
+metabólica; Anexo 8: fórmula com expoente fracionário; Anexo 11: tabela
+de dezenas de substâncias químicas; Anexo 12: fórmula própria pra
+sílica com regra de periodicidade; Anexo 14: nem é numérico, é lista de
+atividades já insalubres por si só). Reimplementar essa matemática
+seria um projeto grande e arriscado de sair sutilmente errado — a fase
+nunca recalcula a NR-15, só extrai e cita a conclusão que o próprio LIP
+já declara por escrito. Segunda decisão de escopo: só ruído→audiometria
+gera achado (único par citado sem ambiguidade no texto real da NR-07);
+outros agentes (calor, vibração, químico, biológico) aparecem só de
+forma informativa.
+
+Spec em [`docs/specs/fase-28-pente-fino-lip-insalubridade.md`](specs/fase-28-pente-fino-lip-insalubridade.md),
+plano em [`docs/plans/fase-28-pente-fino-lip-insalubridade.md`](plans/fase-28-pente-fino-lip-insalubridade.md).
+Executado via Subagent-Driven Development: 4 tasks + revisão final de
+todo o branch + 1 onda de correção + re-revisão escopada.
+
+**Fechada em 2026-09-14, commits `9212289..ecae39f` direto em `main`**
+(sem worktree, mesmo consentimento e mesmo padrão de toda fase
+anterior):
+
+- Migration `0044_lip_agent_findings.sql` — tabela nova, múltiplas
+  linhas por documento (zero a N agentes, igual em espírito a
+  `pgr_function_risks`/`pcmso_function_exams`, diferente do
+  `document_checklist_findings` de 1-linha-só da Fase 27), RLS idêntica
+  ao padrão de `0042`.
+- Camada de extração isolada (`lip-agent-extraction-shared.ts`/
+  `-provider.interface.ts`/`minimax-lip-agent.service.ts`/
+  `-extractor.service.ts`): extrai nome do agente, categoria canônica
+  (`ruido`/`calor`/`vibracao`/`quimico`/`biologico`/`outro`), valor
+  medido e a conclusão de insalubridade via MiniMax, nunca lança
+  exceção, valida cada excerto citado contra o texto real (mesmo
+  princípio "nunca inventar"). `insalubre` é sempre derivado por
+  palavra-chave a partir do trecho JÁ CITADO, nunca declarado pela IA
+  nem calculado a partir do valor medido.
+- `PenteFinoComparisonService`/`pente-fino.module.ts` — nova função
+  pura `buildLipAgentFindings` (cruzamento por empresa inteira, não por
+  função) e método `ensureLipAgents` (cache-first); `PenteFinoReport`
+  ganha `lip_agents`.
+- `PenteFinoPanel.tsx` — nova seção "Agentes do LIP", com cor de
+  alerta (vermelho/verde) deliberadamente apropriada aqui — diferente
+  da Fase 27 (nunca cor de alerta pra data), este é um achado real e
+  determinístico, não um julgamento nosso de validade legal.
+
+**Bug real encontrado e corrigido durante a Task 2 (ainda na
+implementação, achado pelo próprio implementador)**: a palavra-chave
+`'audiometr'` comparada via `.toLowerCase().includes()` não batia com
+"audiométrico"/"audiométrica" por causa do acento — corrigido
+reaproveitando `normalizePositionText` (utilitário NFD já existente no
+mesmo arquivo).
+
+**Bug Crítico real encontrado na revisão final de branch inteira,
+reproduzido e confirmado antes de corrigir**: `deriveInsalubre` recebia
+o trecho de conclusão bruto (sem normalizar espaços/quebras de linha),
+então uma quebra de linha do PDF entre "não" e "caracteriza" (comum em
+texto extraído de PDF real) invertia o resultado — o card chegava a
+mostrar a conclusão citada dizendo "não caracteriza insalubridade" e,
+ao lado, em vermelho, afirmar insalubridade sem exame. Corrigido
+normalizando internamente + detecção do padrão negativo com janela
+curta (cobre "não se caracteriza" e variantes) + re-derivação do valor
+na leitura do CACHE (mesmo princípio já usado pra `position_id` em
+`ensureExtracted`) — essa última parte corrige automaticamente
+qualquer LIP já extraído antes da correção, sem precisar reprocessar.
+4 testes novos (TDD real: escritos e rodados ANTES da correção,
+confirmando RED, depois GREEN) cobrem quebra de linha, espaço duplo,
+variante lexical, e re-derivação no cache.
+
+**Achado Importante, corrigido na mesma onda**: o texto do alerta
+("...sem exame de audiometria registrado no PCMSO") afirmava mais do
+que o sistema conseguia verificar — reformulado pra "Não encontramos
+audiometria entre os exames extraídos do PCMSO" + uma linha explicando
+a limitação da checagem.
+
+**Limitação de design real, descoberta na verificação manual com IA
+real em produção (não é bug, é consequência de uma decisão já
+aprovada no spec §2, mantida como está — ver "Rulings" abaixo)**: o
+cruzamento reaproveita `pcmso_function_exams` (mesma tabela da extração
+função↔exame da Fase 25), que só é populada quando a IA liga um exame
+a uma função/cargo nomeado no texto do PCMSO. Um PCMSO real que lista
+"audiometria" solta, sem vincular a nenhuma função, produz zero linhas
+nessa tabela — o cruzamento nunca encontra a audiometria, e o achado
+sai sempre "exame ausente" mesmo com o exame genuinamente presente no
+texto. Verificado com upload real e IA real (não hipotético). O texto
+do alerta (corrigido acima) já reduz o risco de o usuário ler isso como
+"não existe exame nenhum" em vez de "não consegui confirmar". Fica
+registrado como candidato a uma fatia futura (segundo caminho de
+detecção de audiometria direto no texto bruto do PCMSO, independente de
+função) — não corrigido agora por ser escopo novo, não um defeito desta
+execução.
+
+**Achado de segurança real, fora do escopo do diff mas descoberto e
+corrigido durante a revisão final**: um core dump de 89MB
+(`backend/core`, untracked) apareceu no diretório do repo durante a
+sessão, contendo a imagem de memória de um processo `node` que recebeu
+uma senha como argumento de linha de comando — apagado imediatamente
+(antes de qualquer `git add`, nunca chegou a ser commitado) e
+`core`/`backend/core` adicionados ao `.gitignore` raiz (commit
+separado, `8b61090`).
+
+**Verificação:** unit 140/140 (18 suítes, incluindo os 4 testes novos
+do fix da revisão final); e2e novo
+(`pente-fino-lip-insalubridade.e2e-spec.ts`) 3/3, e regressão e2e
+completa do módulo pente-fino 21/21 (4 suítes) rodada duas vezes — uma
+vez antes do fix wave (Task 3) e de novo depois (re-revisão final),
+confirmando que a correção do bug Crítico não quebrou nada. `npx tsc
+--noEmit` limpo nos dois lados em toda task e no fix wave. Verificação
+manual em produção real, em duas rodadas: a primeira (implementador da
+Task 4) foi bloqueada pelo classificador de segurança do ambiente ao
+tentar ativar uma conta de teste escrevendo direto no banco de
+produção — bloqueio corretamente sustentado (conta nunca ativada,
+confirmado e limpo pelo controlador), implementador recusou 2
+alternativas inseguras e usou uma verificação mais fraca (interceptação
+de rede via Playwright) como alternativa transparente; a segunda rodada
+(agente dedicado, despachado à parte) completou com uma conta real
+criada pelo fluxo 100% legítimo (cadastro público + confirmação de
+e-mail real via mail.tm, sem nenhum bypass de banco), confirmando com
+IA real em produção o alerta vermelho→verde funcionando e descobrindo
+a limitação de design documentada acima.
+
+**Rulings desta fase** (decisões tomadas sem pausar pra aprovação,
+registradas no ledger da SDD): aceitar a correção do
+`RUIDO_EXAM_KEYWORD`/acentuação como parte válida da Task 2, não
+extensão de escopo; não reabrir a Task 2 por causa da limitação de
+design (fiel ao spec §2 aprovado, correção de verdade é escopo novo);
+bundlar o achado Importante (redação do alerta) e 3 Menores na mesma
+onda de correção do achado Crítico.
