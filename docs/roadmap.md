@@ -3787,3 +3787,55 @@ mandato de comissão da CIPA vencendo (`cipa_committees.data_termino`)
 não entra no resumo, só pendências explícitas da tabela
 `cipa_pendencias`; a ideia de "orquestrador central" roteando entre
 agentes segue sem spec, caso o fundador queira retomá-la depois.
+
+## Fase D (parte 2) — Assistente proativo: status
+
+Continuação natural da parte 1: o Assistente (e o técnico, agora)
+passam a ver pendências e avisos sem precisar perguntar, em vez de só
+responder quando questionados.
+
+**Fechada em 2026-09-14, commit `3fa3524` direto em `main`:**
+
+- `GET /dashboard/summary` passa a aceitar `tecnico`/`parceiro` via
+  `?tenant_id=` — mesmo padrão do Pente-Fino (Fase 25): `tenant_id` só
+  como parâmetro de `WHERE`, contexto de RLS sempre do JWT via
+  `req.withTenantContext`, checagem explícita de vínculo
+  (`DashboardService.assertTenantLinked`, mesma função SQL das
+  policies) devolvendo `403` em vez do "tudo em dia" ambíguo que a RLS
+  sozinha devolveria. Antes, a rota era exclusiva de `empresa`.
+- `AssistantSummaryPanel` (componente novo, sem nenhuma chamada de
+  IA — dado 100% determinístico do dashboard, mesma disciplina de
+  `WeeklyDigestService`) aparece acima do formulário de pergunta em
+  `/empresa/assistente` e na nova
+  `/tecnico/empresas/[tenantId]/assistente`, mostrando as pendências/
+  avisos reais (reaproveitando `atencao` do `getSummary`, que já ganhou
+  CIPA e Pente-Fino na parte 1) ou confirmando "tudo em dia" quando não
+  há nada pendente.
+- `/tecnico/assistente` (nível superior, sem noção de qual empresa)
+  sai de circulação — o técnico não tinha como fazer pergunta
+  específica de uma empresa sem esse contexto, gap já registrado desde
+  a Fase 24. Vira `/tecnico/empresas/[tenantId]/assistente`, mesmo
+  padrão de Documentos/EPIs/Pente-Fino. `TecnicoSidebar` e os 2 links
+  órfãos que apontavam pra rota antiga (`/tecnico/empresas`,
+  `/tecnico/agenda`) foram atualizados/removidos.
+
+**Verificação:** unit 98/98; `dashboard-summary.e2e-spec.ts` 11/11 (4
+casos novos: admin 403 por papel, técnico sem `tenant_id` 400, técnico
+não vinculado 403 sem vazar dado, técnico vinculado 200); regressão
+(dashboard, normative-assistant, rls-isolation, register-technician)
+47/47. `npx tsc --noEmit` limpo nos dois lados. Verificação manual via
+Playwright real contra produção: painel "tudo em dia" na empresa,
+seção "Abrir Assistente" navegando corretamente na página do técnico,
+painel com sucesso para técnico vinculado (vínculo criado e removido
+só para o teste), painel ausente sem quebrar a página para técnico não
+vinculado (403 tratado), rota antiga confirmada 404. Backend e
+frontend redeployados em produção (autorizado pelo fundador). Nenhuma
+migration.
+
+**Fora desta fatia**: a pergunta em linguagem natural do Assistente
+(`POST /assistant/normative-query`) continua sem receber `tenant_id` —
+técnico/parceiro seguem recebendo resposta só normativa, sem itens
+operacionais da empresa, mesmo gap já registrado desde a Fase 24. Esta
+fatia resolveu o painel de resumo (dado estruturado, sem IA); a
+pergunta livre sobre dado operacional da empresa fica pra quando for a
+vez.
