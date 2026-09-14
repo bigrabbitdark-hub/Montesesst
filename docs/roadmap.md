@@ -3839,3 +3839,53 @@ operacionais da empresa, mesmo gap já registrado desde a Fase 24. Esta
 fatia resolveu o painel de resumo (dado estruturado, sem IA); a
 pergunta livre sobre dado operacional da empresa fica pra quando for a
 vez.
+
+## Fase D (parte 3) — Assistente responde sobre a empresa pro técnico: status
+
+Fecha o gap deixado em aberto pela parte 2: a pergunta em linguagem
+natural do Assistente passa a considerar dado operacional e documento
+da própria empresa também pra técnico/parceiro, não só empresa.
+
+**Fechada em 2026-09-14, commit `e78c065` direto em `main`:**
+
+- `POST /assistant/normative-query` ganha `tenant_id` **opcional** no
+  corpo — diferente do Pente-Fino/dashboard (que exigem `tenant_id`
+  pra técnico/parceiro), aqui ele é opcional porque o Assistente
+  continua útil sem empresa nenhuma (pergunta normativa geral). Sem
+  ele, comportamento idêntico a hoje. Com ele: mesmo padrão de
+  segurança já estabelecido — `tenant_id` só como parâmetro de `WHERE`
+  nas duas buscas (itens operacionais do dashboard, trechos de
+  documento da empresa), contexto de RLS sempre do JWT via
+  `withTenantContext`, checagem de vínculo (reaproveitando
+  `DashboardService.assertTenantLinked`, criado na parte 2) **antes**
+  de qualquer chamada de embedding/IA — evita gastar custo numa
+  pergunta que vai ser rejeitada de qualquer forma.
+- Os dois blocos que antes só rodavam com `user.role === 'empresa' &&
+  user.tenantId` agora rodam sempre que há um `tenantId` (já validado)
+  — mesmo código, mesmo Verificador anti-alucinação, sem nenhuma
+  mudança na lógica de citação/verificação.
+- **Bônus, corrigido junto por ter ficado mais urgente**:
+  `AssistantChat.tsx` nunca renderizava `company_citations` (pendência
+  registrada como não-bloqueante desde a Fase 24) — com técnico/parceiro
+  agora também recebendo resposta baseada em documento da empresa, uma
+  resposta sem nenhuma fonte visível na tela deixaria de ser um detalhe
+  e viraria um problema real de transparência. Corrigido: nova seção
+  "Documentos da empresa usados nesta resposta", com download real
+  (`GET /documents/:id/download`, já existente).
+
+**Verificação:** unit 98/98; `normative-assistant-tecnico-tenant.e2e-spec.ts`
+3/3 (técnico vinculado recebe `company_citations`; técnico não
+vinculado 403 sem vazar dado, IA nunca chamada; técnico sem `tenant_id`
+mantém comportamento puramente normativo — regressão); regressão
+(normative-assistant completo, dashboard, pente-fino, rls-isolation,
+documents) 102/102. `npx tsc --noEmit` limpo nos dois lados.
+
+Verificação manual em produção real (IA de verdade, não fake):
+descoberto de passagem que os 2 documentos de teste da Fase 26 nunca
+haviam sido indexados (achado isolado, não sistêmico — um documento
+novo enviado na hora indexou normalmente); com um PGR de teste
+recém-indexado, empresa e técnico vinculado receberam a **mesma
+resposta e a mesma citação** pra a mesma pergunta; técnico sem vínculo
+recebeu 403 real sem vazar nada; clique na citação abriu o download
+real numa aba nova. Backend e frontend redeployados em produção
+(autorizado pelo fundador). Nenhuma migration.
