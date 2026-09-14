@@ -102,6 +102,21 @@ describe('DocumentChecklistExtractorService', () => {
       expect(row.elaborationDate).toBeNull();
     });
 
+    it('descarta a data quando o formato é AAAA-MM-DD sintaticamente válido mas a data de calendário não existe', async () => {
+      const pdf = await buildTestPdf('Documento elaborado em 30 de fevereiro de 2025.');
+      fakeGetObject.mockResolvedValue(pdf);
+      fakeExtract.mockResolvedValue({
+        ...EMPTY_EXTRACTION,
+        elaboration_date: '2025-02-30',
+        elaboration_date_excerpt: 'elaborado em 30 de fevereiro de 2025',
+      });
+
+      const row = await service.extractChecklist(baseDoc);
+
+      expect(row.elaborationDate).toBeNull();
+      expect(row.elaborationDateSourceExcerpt).toBeNull();
+    });
+
     it('descarta o profissional quando o excerto não existe no texto', async () => {
       const pdf = await buildTestPdf('Documento sem identificação de responsável técnico.');
       fakeGetObject.mockResolvedValue(pdf);

@@ -11,9 +11,10 @@ export class PenteFinoController {
 
   @Roles('empresa', 'tecnico', 'parceiro')
   // Teto próprio, bem mais apertado que o limite global de 300/300s: cada
-  // chamada pode disparar até 2 chamadas de LLM (PGR + PCMSO, até 60s cada)
-  // mais os downloads no R2. Mesmo padrão/convenção de env de
-  // POST /documents/classify-batch (Fase 21).
+  // chamada pode disparar até 6 chamadas de LLM (PGR + PCMSO de função/risco/
+  // exame, até 60s cada, mais até 4 do checklist preliminar de PGR/PCMSO/
+  // LTCAT/LIP, Fase 27) mais os downloads no R2. Mesmo padrão/convenção de
+  // env de POST /documents/classify-batch (Fase 21).
   @RateLimit({
     limit: envInt('PENTE_FINO_RUN_RATE_LIMIT_MAX', 5),
     windowSeconds: envInt('PENTE_FINO_RUN_RATE_LIMIT_WINDOW_SECONDS', 3600),

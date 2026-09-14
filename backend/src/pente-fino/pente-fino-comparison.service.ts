@@ -352,7 +352,8 @@ export class PenteFinoComparisonService {
       }>(
         `SELECT elaboration_date, elaboration_date_source_excerpt, professional_name,
                 professional_registro, professional_papel, professional_source_excerpt
-         FROM document_checklist_findings WHERE document_id = $1`,
+         FROM document_checklist_findings WHERE document_id = $1
+         ORDER BY created_at DESC LIMIT 1`,
         [document.id],
       ),
     );

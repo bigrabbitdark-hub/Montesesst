@@ -193,7 +193,7 @@ export function PenteFinoPanel({ tenantId }: { tenantId?: string }) {
           Compara as funções descritas no PGR com os exames do PCMSO e aponta risco sem exame
           correspondente, exame sem risco que o justifique, e nomes de função sem cargo cadastrado.
           Também mostra a data de elaboração e o profissional responsável identificados em PGR,
-          PCMSO, LTCAT e LIP. Pode levar até 2 minutos.
+          PCMSO, LTCAT e LIP. Pode levar até 3 minutos.
         </p>
         <button
           type="button"
