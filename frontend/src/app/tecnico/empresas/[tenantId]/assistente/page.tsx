@@ -1,16 +1,17 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { AssistantChat } from '@/components/AssistantChat';
+import { AssistantSummaryPanel } from '@/components/AssistantSummaryPanel';
 
-export default function TecnicoAssistentePage() {
+export default function TecnicoEmpresaAssistentePage() {
   const router = useRouter();
+  const params = useParams<{ tenantId: string }>();
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    const token = localStorage.getItem('montese_token');
-    if (!token) {
+    if (!localStorage.getItem('montese_token')) {
       router.push('/login');
       return;
     }
@@ -26,6 +27,7 @@ export default function TecnicoAssistentePage() {
       <h1 className="text-2xl font-bold text-brand-900">Assistente Montese SST</h1>
       <p className="mt-2 text-brand-700">Pergunte sobre normas de SST — a resposta sempre vem com a fonte oficial.</p>
       <div className="mt-8">
+        <AssistantSummaryPanel tenantId={params.tenantId} />
         <AssistantChat />
       </div>
     </div>

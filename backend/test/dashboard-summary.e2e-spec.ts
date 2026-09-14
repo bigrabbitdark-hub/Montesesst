@@ -49,7 +49,19 @@ describe('GET /dashboard/summary (e2e)', () => {
     await app.close();
   });
 
-  it('bloqueia tecnico/parceiro/admin com 403 (rota exclusiva de empresa)', async () => {
+  it('bloqueia admin com 403 (papel fora do @Roles da rota)', async () => {
+    const admin = await db.createUserWithRole('admin', 'Admin Dashboard Summary Teste');
+    const loginAdmin = await request(app.getHttpServer())
+      .post('/auth/login')
+      .send({ email: admin.email, password: admin.password });
+
+    const res = await request(app.getHttpServer())
+      .get('/dashboard/summary')
+      .set('Authorization', `Bearer ${loginAdmin.body.access_token}`);
+    expect(res.status).toBe(403);
+  });
+
+  it('bloqueia tecnico sem tenant_id na query com 400', async () => {
     const tecnico = await db.createUserWithRole('tecnico', 'Tecnico Dashboard Summary Teste');
     const loginTecnico = await request(app.getHttpServer())
       .post('/auth/login')
@@ -58,7 +70,46 @@ describe('GET /dashboard/summary (e2e)', () => {
     const res = await request(app.getHttpServer())
       .get('/dashboard/summary')
       .set('Authorization', `Bearer ${loginTecnico.body.access_token}`);
+    expect(res.status).toBe(400);
+  });
+
+  it('bloqueia tecnico NÃO vinculado com 403, mesmo mandando o tenant_id real na query', async () => {
+    const tecnico = await db.createUserWithRole('tecnico', 'Tecnico Nao Vinculado Dashboard Teste');
+    const loginTecnico = await request(app.getHttpServer())
+      .post('/auth/login')
+      .send({ email: tecnico.email, password: tecnico.password });
+
+    const res = await request(app.getHttpServer())
+      .get(`/dashboard/summary?tenant_id=${tenantId}`)
+      .set('Authorization', `Bearer ${loginTecnico.body.access_token}`);
     expect(res.status).toBe(403);
+    // Confere que a resposta não vaza nenhum dado da empresa alvo.
+    expect(JSON.stringify(res.body)).not.toContain('resumo');
+  });
+
+  it('permite tecnico vinculado ver o resumo da empresa dele', async () => {
+    const client = (db as any).client;
+    const tecnicoUser = await db.createUserWithRole('tecnico', 'Tecnico Vinculado Dashboard Teste');
+    const technicianRes = await client.query('INSERT INTO technicians (user_id) VALUES ($1) RETURNING id', [
+      tecnicoUser.userId,
+    ]);
+    await client.query('INSERT INTO tenant_technicians (tenant_id, technician_id) VALUES ($1, $2)', [
+      tenantId,
+      technicianRes.rows[0].id,
+    ]);
+
+    const loginTecnico = await request(app.getHttpServer())
+      .post('/auth/login')
+      .send({ email: tecnicoUser.email, password: tecnicoUser.password });
+
+    const res = await request(app.getHttpServer())
+      .get(`/dashboard/summary?tenant_id=${tenantId}`)
+      .set('Authorization', `Bearer ${loginTecnico.body.access_token}`);
+    expect(res.status).toBe(200);
+    expect(res.body.resumo).toBeDefined();
+
+    await client.query('DELETE FROM tenant_technicians WHERE technician_id = $1', [technicianRes.rows[0].id]);
+    await client.query('DELETE FROM technicians WHERE id = $1', [technicianRes.rows[0].id]);
   });
 
   it('empresa sem nenhuma pendência recebe status ok e listas vazias', async () => {

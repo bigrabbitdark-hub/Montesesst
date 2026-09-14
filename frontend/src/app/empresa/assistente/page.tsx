@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AssistantChat } from '@/components/AssistantChat';
+import { AssistantSummaryPanel } from '@/components/AssistantSummaryPanel';
 
 export default function EmpresaAssistentePage() {
   const router = useRouter();
@@ -26,6 +27,7 @@ export default function EmpresaAssistentePage() {
       <h1 className="text-2xl font-bold text-brand-900">Assistente Montese SST</h1>
       <p className="mt-2 text-brand-700">Pergunte sobre normas de SST — a resposta sempre vem com a fonte oficial.</p>
       <div className="mt-8">
+        <AssistantSummaryPanel />
         <AssistantChat />
       </div>
     </div>

@@ -18,7 +18,6 @@ const GROUPS: NavGroup[] = [
     label: 'Trabalho',
     links: [
       { href: '/tecnico/agenda', label: 'Agenda', emoji: '📅' },
-      { href: '/tecnico/assistente', label: 'Assistente', emoji: '💬' },
       { href: '/tecnico/consulta-ca', label: 'Consulta de CA', emoji: '🔎' },
     ],
   },

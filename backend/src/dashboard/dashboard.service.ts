@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { ForbiddenException, Injectable } from '@nestjs/common';
 import { PoolClient } from 'pg';
 import { DocumentsService } from '../documents/documents.service';
 import { PositionsService } from '../positions/positions.service';
@@ -99,6 +99,22 @@ export class DashboardService {
     private readonly fireBrigadeService: FireBrigadeService,
     private readonly preventionCorrectiveActionsService: PreventionCorrectiveActionsService,
   ) {}
+
+  // A RLS sozinha já devolveria um resumo vazio (status 'ok', zero
+  // pendências) pra um técnico/parceiro não vinculado — esta checagem
+  // existe pra ele receber um 403 explícito em vez de um "tudo em dia"
+  // ambíguo (mesma função SQL das policies, mesmo padrão da Fase 25 em
+  // pente-fino-comparison.service.ts — não o padrão mais antigo de
+  // documents.controller.ts, que deixa passar em silêncio).
+  async assertTenantLinked(client: PoolClient, tenantId: string): Promise<void> {
+    const { rows } = await client.query<{ linked: boolean }>(
+      `SELECT $1::uuid IN (SELECT assigned_tenant_ids_for_current_user()) AS linked`,
+      [tenantId],
+    );
+    if (!rows[0]?.linked) {
+      throw new ForbiddenException('Você não está vinculado a esta empresa');
+    }
+  }
 
   async getSummary(client: PoolClient, tenantId: string): Promise<DashboardSummary> {
     const [

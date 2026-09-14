@@ -54,9 +54,6 @@ export default function TecnicoEmpresasPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-brand-900">Suas empresas</h1>
         <div className="flex gap-4">
-          <Link href="/tecnico/assistente" className="text-sm font-medium text-brand-500 hover:underline">
-            Assistente
-          </Link>
           <Link href="/tecnico/agenda" className="text-sm font-medium text-brand-500 hover:underline">
             Ver agenda completa
           </Link>

@@ -160,9 +160,6 @@ export default function TecnicoAgendaPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-brand-900">Agenda da carteira</h1>
         <div className="flex gap-4">
-          <Link href="/tecnico/assistente" className="text-sm font-medium text-brand-500 hover:underline">
-            Assistente
-          </Link>
           <Link href="/tecnico/empresas" className="text-sm font-medium text-brand-500 hover:underline">
             Ver empresas
           </Link>
