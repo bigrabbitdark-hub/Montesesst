@@ -6,6 +6,7 @@ import Redis from 'ioredis';
 import { AppModule } from '../src/app.module';
 import { FUNCTION_EXTRACTION_PROVIDER } from '../src/pente-fino/function-extraction-provider.interface';
 import { DOCUMENT_CHECKLIST_EXTRACTION_PROVIDER } from '../src/pente-fino/document-checklist-provider.interface';
+import { LIP_AGENT_EXTRACTION_PROVIDER } from '../src/pente-fino/lip-agent-provider.interface';
 import { R2Service } from '../src/common/r2/r2.service';
 import { TestDb } from './db-test-helper';
 
@@ -53,6 +54,7 @@ describe('POST /pente-fino/run — checklist preliminar (e2e)', () => {
   let pcmsoDocId: string;
   const fakeExtractFunction = jest.fn();
   const fakeExtractChecklist = jest.fn();
+  const fakeExtractLipAgents = jest.fn().mockResolvedValue([]);
   const fakeGetObject = jest.fn();
 
   beforeAll(async () => {
@@ -61,6 +63,8 @@ describe('POST /pente-fino/run — checklist preliminar (e2e)', () => {
       .useValue({ extract: fakeExtractFunction })
       .overrideProvider(DOCUMENT_CHECKLIST_EXTRACTION_PROVIDER)
       .useValue({ extract: fakeExtractChecklist })
+      .overrideProvider(LIP_AGENT_EXTRACTION_PROVIDER)
+      .useValue({ extract: fakeExtractLipAgents })
       .overrideProvider(R2Service)
       .useValue({ getObject: fakeGetObject })
       .compile();

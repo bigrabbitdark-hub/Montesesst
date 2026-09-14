@@ -4,6 +4,7 @@ import { DatabaseService, TenantContext } from '../common/database/database.serv
 import { normalizePositionText } from '../common/text/normalize-position-text.util';
 import { PenteFinoExtractorService, ExtractedRow } from './pente-fino-extractor.service';
 import { DocumentChecklistExtractorService } from './document-checklist-extractor.service';
+import { LipAgentExtractorService, LipAgentRow, AgentCategory } from './lip-agent-extractor.service';
 import { Document } from '../documents/documents.service';
 
 export interface StoredRow {
@@ -20,6 +21,50 @@ export interface FunctionReportItem {
   status: 'ok' | 'risco_sem_exame' | 'exame_sem_risco' | 'nome_sem_correspondencia';
   risks: { description: string; source_excerpt: string }[];
   exams: { description: string; source_excerpt: string }[];
+}
+
+const RUIDO_EXAM_KEYWORD = 'audiometr'; // cobre "audiometria", "audiométrico", "audiométrica"
+
+export interface LipAgentFinding {
+  agent_name_raw: string;
+  agent_category: string;
+  measured_value_raw: string | null;
+  insalubre: boolean | null;
+  conclusion_excerpt: string | null;
+  exam_status: 'exame_ausente' | 'ok' | 'informativo';
+}
+
+// Função pura — sem I/O, testável isolada. Cruza só a categoria 'ruido'
+// (spec §2: único par agente→exame citado sem ambiguidade na NR-07
+// real) contra QUALQUER exam_description do PCMSO da empresa
+// (granularidade por empresa inteira, não por função — spec §2).
+//
+// Usa normalizePositionText (já importado acima, mesma função que casa
+// nome de função com cargo cadastrado) em vez de um toLowerCase() puro:
+// "audiométrico"/"audiométrica" têm 'é' acentuado, que não é igual a
+// 'e' só por causa da minúscula — sem remover o acento (NFD), a busca
+// por substring 'audiometr' nunca bateria com a forma acentuada, só com
+// "audiometria" (sem acento na sílaba relevante).
+export function buildLipAgentFindings(
+  lipAgents: { agentNameRaw: string; agentCategory: string; measuredValueRaw: string | null; insalubre: boolean | null; conclusionExcerpt: string | null }[],
+  pcmsoExamDescriptions: string[],
+): LipAgentFinding[] {
+  const hasAudiometria = pcmsoExamDescriptions.some((d) => normalizePositionText(d).includes(RUIDO_EXAM_KEYWORD));
+
+  return lipAgents.map((agent) => {
+    let exam_status: LipAgentFinding['exam_status'] = 'informativo';
+    if (agent.agentCategory === 'ruido' && agent.insalubre === true) {
+      exam_status = hasAudiometria ? 'ok' : 'exame_ausente';
+    }
+    return {
+      agent_name_raw: agent.agentNameRaw,
+      agent_category: agent.agentCategory,
+      measured_value_raw: agent.measuredValueRaw,
+      insalubre: agent.insalubre,
+      conclusion_excerpt: agent.conclusionExcerpt,
+      exam_status,
+    };
+  });
 }
 
 export interface PenteFinoDocumentRef {
@@ -46,6 +91,7 @@ export interface PenteFinoReport {
   ltcat_document: PenteFinoDocumentRef | null;
   lip_document: PenteFinoDocumentRef | null;
   functions: FunctionReportItem[];
+  lip_agents: LipAgentFinding[];
   warnings: string[];
 }
 
@@ -148,6 +194,7 @@ export class PenteFinoComparisonService {
   constructor(
     private readonly extractor: PenteFinoExtractorService,
     private readonly checklistExtractor: DocumentChecklistExtractorService,
+    private readonly lipAgentExtractor: LipAgentExtractorService,
     private readonly db: DatabaseService,
   ) {}
 
@@ -208,6 +255,10 @@ export class PenteFinoComparisonService {
       this.buildDocumentRef(ctx, lip),
     ]);
 
+    const lipAgentRows = await this.ensureLipAgents(ctx, lip);
+    const pcmsoExamDescriptions = pcmsoExtraction?.rows.map((r) => r.description) ?? [];
+    const lipAgentFindings = buildLipAgentFindings(lipAgentRows, pcmsoExamDescriptions);
+
     return {
       pgr_document: pgrRef ? { ...pgrRef, extracted_at: pgrExtraction?.extractedAt ?? null } : null,
       pcmso_document: pcmsoRef ? { ...pcmsoRef, extracted_at: pcmsoExtraction?.extractedAt ?? null } : null,
@@ -216,6 +267,7 @@ export class PenteFinoComparisonService {
       functions: sortFunctionsByPriority(
         buildFunctionReport(pgrExtraction?.rows ?? [], pcmsoExtraction?.rows ?? [], positions),
       ),
+      lip_agents: lipAgentFindings,
       warnings,
     };
   }
@@ -392,6 +444,41 @@ export class PenteFinoComparisonService {
       professional_papel: checklist.professional_papel,
       professional_source_excerpt: checklist.professional_source_excerpt,
     };
+  }
+
+  // Checklist de agentes do LIP (Fase 28). Cache-first, mesmo padrão de
+  // ensureExtracted — zero linhas em lip_agent_findings é ambíguo entre
+  // "nunca rodou" e "rodou e não achou agente nenhum", mesma limitação
+  // aceita em pgr_function_risks/pcmso_function_exams (diferente de
+  // document_checklist_findings, que sempre tem exatamente 1 linha).
+  private async ensureLipAgents(ctx: TenantContext, document: Document | null): Promise<LipAgentRow[]> {
+    if (!document) return [];
+    const existing = await this.db.withTenantContext(ctx, (client) =>
+      client.query<{
+        agent_name_raw: string;
+        agent_category: string;
+        measured_value_raw: string | null;
+        insalubre: boolean | null;
+        conclusion_excerpt: string | null;
+      }>(
+        `SELECT agent_name_raw, agent_category, measured_value_raw, insalubre, conclusion_excerpt
+         FROM lip_agent_findings WHERE document_id = $1`,
+        [document.id],
+      ),
+    );
+    if (existing.rows.length > 0) {
+      return existing.rows.map((r) => ({
+        agentNameRaw: r.agent_name_raw,
+        agentCategory: r.agent_category as AgentCategory,
+        measuredValueRaw: r.measured_value_raw,
+        insalubre: r.insalubre,
+        conclusionExcerpt: r.conclusion_excerpt,
+        sourceExcerpt: '', // não usado no relatório, só necessário no formato de LipAgentRow
+      }));
+    }
+    const rows = await this.lipAgentExtractor.extractAgents(document);
+    await this.db.withTenantContext(ctx, (client) => this.lipAgentExtractor.persist(client, document, rows));
+    return rows;
   }
 }
 

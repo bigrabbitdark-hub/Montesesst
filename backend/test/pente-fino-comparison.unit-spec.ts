@@ -3,12 +3,14 @@ import {
   FunctionReportItem,
   PenteFinoComparisonService,
   buildFunctionReport,
+  buildLipAgentFindings,
   sortFunctionsByPriority,
   StoredRow,
 } from '../src/pente-fino/pente-fino-comparison.service';
 import { PenteFinoExtractorService } from '../src/pente-fino/pente-fino-extractor.service';
 import { FUNCTION_EXTRACTION_PROVIDER } from '../src/pente-fino/function-extraction-provider.interface';
 import { DocumentChecklistExtractorService, DocumentChecklistRow } from '../src/pente-fino/document-checklist-extractor.service';
+import { LipAgentExtractorService } from '../src/pente-fino/lip-agent-extractor.service';
 import { R2Service } from '../src/common/r2/r2.service';
 import { DatabaseService } from '../src/common/database/database.service';
 
@@ -82,6 +84,65 @@ describe('buildFunctionReport', () => {
   });
 });
 
+describe('buildLipAgentFindings', () => {
+  function agent(overrides: Partial<{ agentNameRaw: string; agentCategory: string; measuredValueRaw: string | null; insalubre: boolean | null; conclusionExcerpt: string | null }> = {}) {
+    return {
+      agentNameRaw: 'Ruído contínuo',
+      agentCategory: 'ruido',
+      measuredValueRaw: '92 dB(A)',
+      insalubre: true,
+      conclusionExcerpt: 'caracteriza insalubridade em grau médio',
+      ...overrides,
+    };
+  }
+
+  it('ruido + insalubre=true + PCMSO sem audiometria vira exame_ausente', () => {
+    const findings = buildLipAgentFindings([agent()], ['Hemograma completo', 'ASO periódico']);
+    expect(findings[0].exam_status).toBe('exame_ausente');
+  });
+
+  it('ruido + insalubre=true + PCMSO com audiometria vira ok', () => {
+    const findings = buildLipAgentFindings([agent()], ['Exame audiométrico periódico']);
+    expect(findings[0].exam_status).toBe('ok');
+  });
+
+  it('busca a palavra-chave case-insensitive e como substring (audiometria/audiométrico)', () => {
+    const findings = buildLipAgentFindings([agent()], ['AUDIOMETRIA TONAL']);
+    expect(findings[0].exam_status).toBe('ok');
+  });
+
+  it('ruido + insalubre=false nunca vira exame_ausente', () => {
+    const findings = buildLipAgentFindings([agent({ insalubre: false })], []);
+    expect(findings[0].exam_status).toBe('informativo');
+  });
+
+  it('ruido + insalubre=null (ambíguo) nunca vira exame_ausente', () => {
+    const findings = buildLipAgentFindings([agent({ insalubre: null })], []);
+    expect(findings[0].exam_status).toBe('informativo');
+  });
+
+  it('categoria diferente de ruido é sempre informativo, mesmo com insalubre=true', () => {
+    const findings = buildLipAgentFindings([agent({ agentCategory: 'calor' })], []);
+    expect(findings[0].exam_status).toBe('informativo');
+  });
+
+  it('lista vazia de agentes devolve lista vazia', () => {
+    expect(buildLipAgentFindings([], ['Audiometria'])).toEqual([]);
+  });
+
+  it('preserva os campos de dado sem alteração, só adiciona exam_status', () => {
+    const findings = buildLipAgentFindings([agent({ measuredValueRaw: null, conclusionExcerpt: null, insalubre: null })], []);
+    expect(findings[0]).toEqual({
+      agent_name_raw: 'Ruído contínuo',
+      agent_category: 'ruido',
+      measured_value_raw: null,
+      insalubre: null,
+      conclusion_excerpt: null,
+      exam_status: 'informativo',
+    });
+  });
+});
+
 // Mesmo padrão de fakes por DI de pente-fino-extractor.unit-spec.ts, só que
 // aqui o PenteFinoExtractorService entra de VERDADE (é a lógica real de
 // matchPosition que está sob teste) e quem é fakeado é o DatabaseService —
@@ -108,6 +169,7 @@ describe('PenteFinoComparisonService — reaproveitamento de extração já pers
         if (sql.includes('FROM positions')) return { rows: options.positions };
         if (sql.includes('FROM pgr_function_risks')) return { rows: options.cachedRows };
         if (sql.includes('FROM document_checklist_findings')) return { rows: [] };
+        if (sql.includes('FROM lip_agent_findings')) return { rows: [] };
         throw new Error(`query inesperada no fake: ${sql}`);
       }),
     };
@@ -125,6 +187,13 @@ describe('PenteFinoComparisonService — reaproveitamento de extração já pers
           provide: DocumentChecklistExtractorService,
           useValue: {
             extractChecklist: jest.fn().mockResolvedValue(EMPTY_CHECKLIST_ROW),
+            persist: jest.fn().mockResolvedValue(undefined),
+          },
+        },
+        {
+          provide: LipAgentExtractorService,
+          useValue: {
+            extractAgents: jest.fn().mockResolvedValue([]),
             persist: jest.fn().mockResolvedValue(undefined),
           },
         },
