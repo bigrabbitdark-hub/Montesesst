@@ -57,11 +57,25 @@ function formatExtractedAt(isoDateTime: string): string {
   });
 }
 
+// elaboration_date vem do backend como coluna Postgres DATE pura
+// ("AAAA-MM-DD", sem hora) — diferente de extracted_at, que é um
+// timestamp completo. new Date("AAAA-MM-DD") é interpretado como meia-
+// noite UTC; em qualquer fuso negativo (ex.: America/Sao_Paulo, UTC-3,
+// o fuso de praticamente todo usuário real do Montese SST) isso vira o
+// dia anterior ao converter pro horário local. Anexar "T00:00:00" força
+// a interpretação em horário local, evitando esse deslocamento de 1 dia.
+function formatDateOnly(isoDate: string): string {
+  return new Date(`${isoDate}T00:00:00`).toLocaleDateString('pt-BR');
+}
+
 // "Há quanto tempo" de forma neutra — nunca julga vencimento/validade
 // legal (decisão da spec §2, achado de brainstorming: NR-01/NR-07 não
 // têm um prazo fixo simples de revalidação pro documento como um todo).
 function formatElapsedTime(isoDate: string): string {
-  const then = new Date(isoDate);
+  // Mesmo ajuste de fuso de formatDateOnly: isoDate é uma data pura
+  // ("AAAA-MM-DD"), então precisa do "T00:00:00" pra não perder um dia
+  // em fusos negativos antes de comparar com "now" (horário local).
+  const then = new Date(`${isoDate}T00:00:00`);
   const now = new Date();
   const totalMonths = (now.getFullYear() - then.getFullYear()) * 12 + (now.getMonth() - then.getMonth());
   // Data no futuro (erro de extração) ou no mesmo mês: não faz sentido
@@ -98,7 +112,7 @@ function DocumentCard({ label, doc }: { label: string; doc: PenteFinoDocumentRef
       </p>
       {doc.elaboration_date ? (
         <p className="text-xs text-brand-700">
-          última atualização: {formatExtractedAt(doc.elaboration_date)} ({formatElapsedTime(doc.elaboration_date)})
+          última atualização: {formatDateOnly(doc.elaboration_date)} ({formatElapsedTime(doc.elaboration_date)})
         </p>
       ) : (
         <p className="text-xs text-slate-500">data de elaboração não identificada no texto</p>
