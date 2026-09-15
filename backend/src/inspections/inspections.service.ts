@@ -1,4 +1,4 @@
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PoolClient } from 'pg';
 import { mapPgError } from '../common/pg-error.util';
 import { buildSafeSetClause } from '../common/safe-update.util';
@@ -75,6 +75,8 @@ const ACTION_PLAN_UPDATABLE_FIELDS = ['deadline', 'responsible', 'status'] as co
 
 @Injectable()
 export class InspectionsService {
+  private readonly logger = new Logger(InspectionsService.name);
+
   constructor(private readonly documents: DocumentsService) {}
 
   private async assertCompanyUnitBelongsToTenant(client: PoolClient, companyUnitId: string, tenantId: string): Promise<void> {
@@ -194,7 +196,23 @@ export class InspectionsService {
     );
     const identification = await this.resolveIdentification(client, inspection.tenant_id, inspection.company_unit_id);
 
-    return { ...inspection, ...identification, items: itemsResult.rows, action_plans: actionPlansResult.rows };
+    // started_at/ended_at são coluna TIME — node-pg devolve "HH:MM:SS",
+    // mas o DTO de update só aceita "HH:MM" (@Matches). Sem normalizar
+    // aqui, reabrir a tela de detalhe e reenviar o PATCH sem editar o
+    // campo <input type="time"> (que só entende HH:MM) já vinha
+    // devolvendo 400. Normaliza também a exibição no PDF, que usa
+    // findOne() por baixo (buildInspectionPdf).
+    const startedAt = inspection.started_at ? inspection.started_at.slice(0, 5) : inspection.started_at;
+    const endedAt = inspection.ended_at ? inspection.ended_at.slice(0, 5) : inspection.ended_at;
+
+    return {
+      ...inspection,
+      ...identification,
+      started_at: startedAt,
+      ended_at: endedAt,
+      items: itemsResult.rows,
+      action_plans: actionPlansResult.rows,
+    };
   }
 
   private async assertDraft(client: PoolClient, id: string): Promise<void> {
@@ -285,6 +303,18 @@ export class InspectionsService {
 
     const detail = await this.findOne(client, id);
 
+    // Nunca deixa uma falha na geração/indexação do PDF desfazer a
+    // conclusão da inspeção (spec §6). Só o try/catch NÃO basta: se
+    // `documents.upload` falhar com um erro de SQL de verdade (CHECK
+    // constraint, FK, etc — não só rede/R2), o Postgres aborta a
+    // transação inteira (25P02) e o COMMIT que `withTenantContext` roda
+    // no final vira um ROLLBACK silencioso, desfazendo até o UPDATE de
+    // status e os INSERTs de action_plans já aplicados acima. O SAVEPOINT
+    // isola esse bloco: ROLLBACK TO SAVEPOINT desfaz só o trabalho do PDF
+    // e limpa o estado abortado, deixando a transação externa livre pra
+    // commitar normalmente. Mesmo padrão de
+    // normative-documents.service.ts:replaceChunks.
+    await client.query('SAVEPOINT pdf_indexing');
     try {
       const tenantResult = await client.query<{ name: string }>('SELECT name FROM tenants WHERE id = $1', [
         detail.tenant_id,
@@ -314,9 +344,10 @@ export class InspectionsService {
         uploadedByRole: userRole,
         companyUnitId: detail.company_unit_id ?? undefined,
       });
+      await client.query('RELEASE SAVEPOINT pdf_indexing');
     } catch (err) {
-      // Nunca derruba a conclusão da inspeção por causa do PDF.
-      console.warn(`Falha ao gerar/indexar PDF da inspeção ${id}: ${(err as Error).message}`);
+      this.logger.error(`Falha ao gerar/indexar PDF da inspeção ${id}`, (err as Error).stack);
+      await client.query('ROLLBACK TO SAVEPOINT pdf_indexing');
     }
 
     return detail;

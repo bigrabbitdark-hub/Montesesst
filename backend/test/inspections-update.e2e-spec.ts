@@ -96,6 +96,42 @@ describe('PATCH /inspections/:id e /inspections/:id/items/:itemId (e2e)', () => 
     expect(res.body.technician_signature_at).not.toBeNull();
   });
 
+  it('grava started_at/ended_at e o GET devolve HH:MM (não HH:MM:SS)', async () => {
+    const patchRes = await request(app.getHttpServer())
+      .patch(`/inspections/${inspectionId}`)
+      .set('Authorization', `Bearer ${technicianToken}`)
+      .send({ started_at: '08:00', ended_at: '10:30' });
+    expect(patchRes.status).toBe(200);
+
+    const getRes = await request(app.getHttpServer())
+      .get(`/inspections/${inspectionId}`)
+      .set('Authorization', `Bearer ${technicianToken}`);
+
+    expect(getRes.status).toBe(200);
+    // started_at/ended_at são coluna TIME — node-pg devolve "HH:MM:SS",
+    // mas o DTO de update só aceita "HH:MM" (@Matches). Sem normalizar em
+    // findOne(), reabrir a tela de detalhe e reenviar o PATCH sem tocar
+    // no <input type="time"> (que só entende HH:MM) batia em 400 —
+    // achado 2 da revisão final.
+    expect(getRes.body.started_at).toBe('08:00');
+    expect(getRes.body.ended_at).toBe('10:30');
+  });
+
+  it('esvaziar started_at/ended_at (string vazia) retorna 200 e limpa pra null, não 400', async () => {
+    // Cenário real: campo de horário já preenchido, usuário apaga e tira
+    // o foco (onBlur) — o frontend manda "". @IsOptional() sozinho só
+    // trata undefined/null como "ausente", então "" cairia no @Matches e
+    // voltaria 400, tornando impossível esvaziar o campo — achado 3.
+    const res = await request(app.getHttpServer())
+      .patch(`/inspections/${inspectionId}`)
+      .set('Authorization', `Bearer ${technicianToken}`)
+      .send({ started_at: '', ended_at: '' });
+
+    expect(res.status).toBe(200);
+    expect(res.body.started_at).toBeNull();
+    expect(res.body.ended_at).toBeNull();
+  });
+
   it('atualiza um item de checklist', async () => {
     const res = await request(app.getHttpServer())
       .patch(`/inspections/${inspectionId}/items/${itemId}`)

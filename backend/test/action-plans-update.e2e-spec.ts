@@ -84,6 +84,19 @@ describe('PATCH /action-plans/:id (e2e)', () => {
     expect(res.body.responsible).toBe('João Silva');
   });
 
+  it('esvaziar deadline (string vazia) retorna 200 e limpa pra null, não 400', async () => {
+    // Mesmo cenário do achado 3 em inspections-update.e2e-spec.ts: campo
+    // "Prazo" já preenchido, usuário apaga e tira o foco (onBlur) — o
+    // frontend manda "". @IsISO8601() sozinho rejeitaria com 400.
+    const res = await request(app.getHttpServer())
+      .patch(`/action-plans/${actionPlanId}`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ deadline: '' });
+
+    expect(res.status).toBe(200);
+    expect(res.body.deadline).toBeNull();
+  });
+
   it('atualiza status pra resolvido', async () => {
     const res = await request(app.getHttpServer())
       .patch(`/action-plans/${actionPlanId}`)

@@ -70,6 +70,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   cipa_comunicado: 'Comunicado da CIPA',
   cipa_documento_eleitoral: 'Documento eleitoral da CIPA',
   cipa_anexo: 'Anexo da CIPA',
+  relatorio_visita: 'Relatório de Visita',
 };
 
 // Categorias que o formulário de upload manual (abaixo) oferece —
