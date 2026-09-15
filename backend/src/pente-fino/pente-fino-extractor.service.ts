@@ -1,9 +1,7 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { PoolClient } from 'pg';
 import { R2Service } from '../common/r2/r2.service';
-import { extractPdfTextFull } from '../common/pdf/pdf-text.util';
-import { extractDocxText, DOCX_MIME_TYPE } from '../common/docx/docx-text.util';
-import { extractXlsxRows, XLSX_MIME_TYPE } from '../common/xlsx/xlsx-text.util';
+import { extractFullText } from '../common/documents/extract-full-text.util';
 import { normalizePositionText } from '../common/text/normalize-position-text.util';
 import { FUNCTION_EXTRACTION_PROVIDER, FunctionExtractionProvider } from './function-extraction-provider.interface';
 import { Document } from '../documents/documents.service';
@@ -35,7 +33,7 @@ export class PenteFinoExtractorService {
   ): Promise<ExtractedRow[]> {
     try {
       const buffer = await this.r2.getObject(document.file_key);
-      const fullText = await this.extractFullText(document.mime_type, buffer);
+      const fullText = await extractFullText(document.mime_type, buffer);
       if (!fullText) return [];
 
       const items = await this.extractor.extract(fullText, kind);
@@ -98,16 +96,6 @@ export class PenteFinoExtractorService {
     } catch (err) {
       this.logger.warn(`Falha ao persistir extração do documento ${document.id}: ${(err as Error).message}`);
     }
-  }
-
-  private async extractFullText(mimeType: string, buffer: Buffer): Promise<string | null> {
-    if (mimeType === 'application/pdf') return extractPdfTextFull(buffer);
-    if (mimeType === DOCX_MIME_TYPE) return extractDocxText(buffer);
-    if (mimeType === XLSX_MIME_TYPE) {
-      const rows = await extractXlsxRows(buffer);
-      return rows.length > 0 ? rows.join('\n') : null;
-    }
-    return null;
   }
 
   // Público porque PenteFinoComparisonService precisa re-derivar o

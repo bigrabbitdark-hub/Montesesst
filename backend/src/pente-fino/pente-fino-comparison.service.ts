@@ -1,6 +1,8 @@
 import { ForbiddenException, Injectable } from '@nestjs/common';
 import { PoolClient } from 'pg';
 import { DatabaseService, TenantContext } from '../common/database/database.service';
+import { R2Service } from '../common/r2/r2.service';
+import { extractFullText } from '../common/documents/extract-full-text.util';
 import { normalizePositionText } from '../common/text/normalize-position-text.util';
 import { PenteFinoExtractorService, ExtractedRow } from './pente-fino-extractor.service';
 import { DocumentChecklistExtractorService } from './document-checklist-extractor.service';
@@ -45,11 +47,23 @@ export interface LipAgentFinding {
 // 'e' só por causa da minúscula — sem remover o acento (NFD), a busca
 // por substring 'audiometr' nunca bateria com a forma acentuada, só com
 // "audiometria" (sem acento na sílaba relevante).
+//
+// `hasAudiometriaNoTextoBruto` (opcional, default false) é um segundo
+// sinal, calculado por quem chama (I/O fica fora desta função pura):
+// achado real da Fase 28 em verificação com IA real — a extração
+// função↔exame só grava linha em pcmso_function_exams quando a IA liga
+// o exame a uma função/cargo nomeado no texto; um PCMSO que lista
+// "audiometria" solta, sem função, nunca aparece em
+// pcmsoExamDescriptions. Esse segundo sinal cobre exatamente esse caso,
+// varrendo o texto bruto do documento independente de função.
 export function buildLipAgentFindings(
   lipAgents: { agentNameRaw: string; agentCategory: string; measuredValueRaw: string | null; insalubre: boolean | null; conclusionExcerpt: string | null }[],
   pcmsoExamDescriptions: string[],
+  hasAudiometriaNoTextoBruto = false,
 ): LipAgentFinding[] {
-  const hasAudiometria = pcmsoExamDescriptions.some((d) => normalizePositionText(d).includes(RUIDO_EXAM_KEYWORD));
+  const hasAudiometria =
+    pcmsoExamDescriptions.some((d) => normalizePositionText(d).includes(RUIDO_EXAM_KEYWORD)) ||
+    hasAudiometriaNoTextoBruto;
 
   return lipAgents.map((agent) => {
     let exam_status: LipAgentFinding['exam_status'] = 'informativo';
@@ -196,6 +210,7 @@ export class PenteFinoComparisonService {
     private readonly checklistExtractor: DocumentChecklistExtractorService,
     private readonly lipAgentExtractor: LipAgentExtractorService,
     private readonly db: DatabaseService,
+    private readonly r2: R2Service,
   ) {}
 
   // `tenantId` é o ALVO do cruzamento (qual empresa analisar) e só pode ser
@@ -257,7 +272,24 @@ export class PenteFinoComparisonService {
 
     const lipAgentRows = await this.ensureLipAgents(ctx, lip);
     const pcmsoExamDescriptions = pcmsoExtraction?.rows.map((r) => r.description) ?? [];
-    const lipAgentFindings = buildLipAgentFindings(lipAgentRows, pcmsoExamDescriptions);
+
+    // Segundo sinal de audiometria, direto no texto bruto do PCMSO —
+    // só roda quando pode fazer diferença (há agente ruído+insalubre E o
+    // sinal por função ainda não achou nada), pra não pagar o custo de
+    // baixar/reler o PCMSO em toda execução à toa. Sem cache: diferente
+    // do resto do Pente-Fino, aqui não há chamada de IA nem custo de
+    // API paga a evitar — é só extração de texto local, já limitada
+    // pela mesma taxa de 5/hora que protege a rota inteira.
+    const hasAudiometriaPorFuncao = pcmsoExamDescriptions.some((d) =>
+      normalizePositionText(d).includes(RUIDO_EXAM_KEYWORD),
+    );
+    const precisaChecarTextoBruto =
+      !hasAudiometriaPorFuncao && lipAgentRows.some((a) => a.agentCategory === 'ruido' && a.insalubre === true);
+    const hasAudiometriaNoTextoBruto = precisaChecarTextoBruto
+      ? await this.pcmsoRawTextContainsKeyword(pcmso, RUIDO_EXAM_KEYWORD)
+      : false;
+
+    const lipAgentFindings = buildLipAgentFindings(lipAgentRows, pcmsoExamDescriptions, hasAudiometriaNoTextoBruto);
 
     return {
       pgr_document: pgrRef ? { ...pgrRef, extracted_at: pgrExtraction?.extractedAt ?? null } : null,
@@ -486,6 +518,25 @@ export class PenteFinoComparisonService {
     const rows = await this.lipAgentExtractor.extractAgents(document);
     await this.db.withTenantContext(ctx, (client) => this.lipAgentExtractor.persist(client, document, rows));
     return rows;
+  }
+
+  // Segundo sinal de audiometria (pós-Fase 28): varre o texto bruto do
+  // PCMSO por uma palavra-chave, sem depender da extração função↔exame
+  // (que só grava linha quando a IA liga o exame a uma função nomeada —
+  // achado real descoberto em verificação com IA real em produção).
+  // Nunca lança exceção — mesma disciplina do resto do Pente-Fino: falha
+  // de download/extração vira `false` (mesmo efeito de "não achei"),
+  // nunca derruba o relatório inteiro por causa de um sinal auxiliar.
+  private async pcmsoRawTextContainsKeyword(document: Document | null, keyword: string): Promise<boolean> {
+    if (!document) return false;
+    try {
+      const buffer = await this.r2.getObject(document.file_key);
+      const fullText = await extractFullText(document.mime_type, buffer);
+      if (!fullText) return false;
+      return normalizePositionText(fullText).includes(keyword);
+    } catch {
+      return false;
+    }
   }
 }
 

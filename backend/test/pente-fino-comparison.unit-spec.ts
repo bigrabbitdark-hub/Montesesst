@@ -1,4 +1,5 @@
 import { Test } from '@nestjs/testing';
+import PDFDocument from 'pdfkit';
 import {
   FunctionReportItem,
   PenteFinoComparisonService,
@@ -141,6 +142,26 @@ describe('buildLipAgentFindings', () => {
       exam_status: 'informativo',
     });
   });
+
+  // Terceiro parâmetro (pós-Fase 28): segundo sinal de audiometria, calculado
+  // por quem chama a partir do texto bruto do PCMSO (I/O fica fora desta
+  // função pura) — cobre o caso real de PCMSO que lista audiometria solta,
+  // sem vincular a nenhuma função (pcmsoExamDescriptions fica vazio nesse
+  // caso, já que a extração função↔exame não gera linha nenhuma).
+  it('hasAudiometriaNoTextoBruto=true vira ok mesmo com pcmsoExamDescriptions vazio', () => {
+    const findings = buildLipAgentFindings([agent()], [], true);
+    expect(findings[0].exam_status).toBe('ok');
+  });
+
+  it('hasAudiometriaNoTextoBruto=false (default) preserva o comportamento anterior', () => {
+    const findings = buildLipAgentFindings([agent()], []);
+    expect(findings[0].exam_status).toBe('exame_ausente');
+  });
+
+  it('hasAudiometriaNoTextoBruto=true não afeta categorias diferentes de ruido', () => {
+    const findings = buildLipAgentFindings([agent({ agentCategory: 'calor' })], [], true);
+    expect(findings[0].exam_status).toBe('informativo');
+  });
 });
 
 // Cobre o Finding crítico da revisão final da Fase 28: uma linha já
@@ -226,6 +247,149 @@ describe('PenteFinoComparisonService — ensureLipAgents re-deriva insalubre do 
 
     expect(report.lip_agents).toHaveLength(1);
     expect(report.lip_agents[0].insalubre).toBe(false);
+  });
+});
+
+// Cobre o segundo sinal de audiometria (pós-Fase 28): varredura do texto
+// bruto do PCMSO, independente de função nomeada — achado real descoberto
+// em verificação com IA real em produção (audiometria solta no texto nunca
+// aparecia em pcmso_function_exams). PDF de teste real (pdfkit) porque
+// extractFullText usa parsing real de PDF, não é mockável neste nível sem
+// esconder exatamente o comportamento sob teste.
+describe('PenteFinoComparisonService — segundo sinal de audiometria no texto bruto do PCMSO', () => {
+  const lipDoc = { id: 'doc-lip', tenant_id: 'tenant-1', title: 'LIP Teste', file_key: 'key-lip', mime_type: 'application/pdf' };
+  const pcmsoDoc = { id: 'doc-pcmso', tenant_id: 'tenant-1', title: 'PCMSO Teste', file_key: 'key-pcmso', mime_type: 'application/pdf' };
+  const empresaUser = { id: 'user-1', tenantId: 'tenant-1', role: 'empresa' };
+
+  const ruidoInsalubreRow = {
+    agent_name_raw: 'Ruído contínuo',
+    agent_category: 'ruido',
+    measured_value_raw: '92 dB(A)',
+    insalubre: true,
+    conclusion_excerpt: 'caracteriza insalubridade em grau médio',
+  };
+
+  function buildTestPdf(text: string): Promise<Buffer> {
+    return new Promise((resolve, reject) => {
+      const doc = new PDFDocument();
+      const chunks: Buffer[] = [];
+      doc.on('data', (chunk) => chunks.push(chunk));
+      doc.on('end', () => resolve(Buffer.concat(chunks)));
+      doc.on('error', reject);
+      doc.text(text);
+      doc.end();
+    });
+  }
+
+  async function buildServiceWithPcmso(options: {
+    lipAgentRows: typeof ruidoInsalubreRow[];
+    pcmsoExamDescriptions: string[];
+    fakeGetObject: jest.Mock;
+  }): Promise<PenteFinoComparisonService> {
+    const fakeClient = {
+      query: jest.fn(async (sql: string) => {
+        if (sql.includes("category = 'pgr'")) return { rows: [] };
+        if (sql.includes("category = 'pcmso'")) return { rows: [pcmsoDoc] };
+        if (sql.includes("category = 'ltcat'")) return { rows: [] };
+        if (sql.includes("category = 'lip'")) return { rows: [lipDoc] };
+        if (sql.includes('FROM positions')) return { rows: [] };
+        if (sql.includes('FROM document_checklist_findings')) return { rows: [] };
+        if (sql.includes('FROM lip_agent_findings')) return { rows: options.lipAgentRows };
+        if (sql.includes('FROM pcmso_function_exams'))
+          return { rows: options.pcmsoExamDescriptions.map((d) => ({ position_id: null, function_text_raw: 'X', description: d, source_excerpt: d, created_at: new Date() })) };
+        throw new Error(`query inesperada no fake: ${sql}`);
+      }),
+    };
+    const fakeDb = { withTenantContext: jest.fn((_ctx: unknown, fn: any) => fn(fakeClient)) };
+
+    const moduleRef = await Test.createTestingModule({
+      providers: [
+        PenteFinoComparisonService,
+        PenteFinoExtractorService,
+        { provide: DatabaseService, useValue: fakeDb },
+        { provide: R2Service, useValue: { getObject: options.fakeGetObject } },
+        { provide: FUNCTION_EXTRACTION_PROVIDER, useValue: { extract: jest.fn() } },
+        {
+          provide: DocumentChecklistExtractorService,
+          useValue: { extractChecklist: jest.fn().mockResolvedValue(EMPTY_CHECKLIST_ROW), persist: jest.fn().mockResolvedValue(undefined) },
+        },
+        {
+          provide: LipAgentExtractorService,
+          useValue: {
+            extractAgents: jest.fn().mockRejectedValue(new Error('extractAgents não deveria ser chamado quando já existe cache')),
+            persist: jest.fn().mockResolvedValue(undefined),
+          },
+        },
+      ],
+    }).compile();
+
+    return moduleRef.get(PenteFinoComparisonService);
+  }
+
+  it('acha audiometria no texto bruto quando a extração por função não achou nada', async () => {
+    const fakeGetObject = jest.fn().mockResolvedValue(await buildTestPdf('Exames complementares: audiometria tonal anual.'));
+    const service = await buildServiceWithPcmso({
+      lipAgentRows: [ruidoInsalubreRow],
+      pcmsoExamDescriptions: ['Hemograma completo'], // não menciona audiometria
+      fakeGetObject,
+    });
+
+    const report = await service.run('tenant-1', empresaUser);
+
+    expect(report.lip_agents[0].exam_status).toBe('ok');
+    expect(fakeGetObject).toHaveBeenCalledWith('key-pcmso');
+  });
+
+  it('texto bruto sem audiometria mantém exame_ausente', async () => {
+    const fakeGetObject = jest.fn().mockResolvedValue(await buildTestPdf('Exames complementares: hemograma completo, glicemia de jejum.'));
+    const service = await buildServiceWithPcmso({
+      lipAgentRows: [ruidoInsalubreRow],
+      // Não-vazio de propósito: pcmso_function_exams com pelo menos 1 linha
+      // faz ensureExtracted tomar o caminho de CACHE (não a extração real
+      // de PenteFinoExtractorService, que também chamaria r2.getObject e
+      // confundiria a asserção deste teste com uma chamada não relacionada
+      // ao sinal de texto bruto sob teste aqui).
+      pcmsoExamDescriptions: ['Hemograma completo'],
+      fakeGetObject,
+    });
+
+    const report = await service.run('tenant-1', empresaUser);
+
+    expect(report.lip_agents[0].exam_status).toBe('exame_ausente');
+  });
+
+  it('não baixa o PCMSO de novo quando a extração por função JÁ achou audiometria (evita I/O desnecessário)', async () => {
+    const fakeGetObject = jest.fn().mockRejectedValue(new Error('getObject não deveria ser chamado — sinal por função já bastou'));
+    const service = await buildServiceWithPcmso({
+      lipAgentRows: [ruidoInsalubreRow],
+      pcmsoExamDescriptions: ['Exame audiométrico periódico'],
+      fakeGetObject,
+    });
+
+    const report = await service.run('tenant-1', empresaUser);
+
+    expect(report.lip_agents[0].exam_status).toBe('ok');
+    expect(fakeGetObject).not.toHaveBeenCalled();
+  });
+
+  it('não baixa o PCMSO quando não há nenhum agente ruído+insalubre (nada a confirmar)', async () => {
+    const fakeGetObject = jest.fn().mockRejectedValue(new Error('getObject não deveria ser chamado — nenhum agente relevante'));
+    const service = await buildServiceWithPcmso({
+      // ensureLipAgents re-deriva insalubre a partir de conclusion_excerpt no
+      // caminho de cache (correção do achado Crítico da Fase 28) — pra este
+      // teste dar insalubre=false de verdade, a conclusão citada precisa ser
+      // negativa; só sobrescrever o campo `insalubre` da fixture não bastaria.
+      lipAgentRows: [{ ...ruidoInsalubreRow, insalubre: false, conclusion_excerpt: 'não caracteriza insalubridade' }],
+      // Não-vazio pelo mesmo motivo do teste acima — evita a extração real
+      // via PenteFinoExtractorService confundir a asserção de I/O.
+      pcmsoExamDescriptions: ['Hemograma completo'],
+      fakeGetObject,
+    });
+
+    const report = await service.run('tenant-1', empresaUser);
+
+    expect(report.lip_agents[0].exam_status).toBe('informativo');
+    expect(fakeGetObject).not.toHaveBeenCalled();
   });
 });
 

@@ -361,8 +361,8 @@ export function PenteFinoPanel({ tenantId }: { tenantId?: string }) {
                           Não encontramos audiometria entre os exames extraídos do PCMSO
                         </p>
                         <p className="mt-1 text-xs text-slate-500">
-                          A checagem usa os exames que o sistema conseguiu vincular a uma função — confira o
-                          documento diretamente se tiver dúvida.
+                          A checagem procura a palavra &quot;audiometria&quot; nos exames vinculados a uma função e
+                          no texto do documento — confira o PCMSO diretamente se tiver dúvida.
                         </p>
                       </>
                     )}

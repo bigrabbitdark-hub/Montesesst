@@ -1,9 +1,7 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { PoolClient } from 'pg';
 import { R2Service } from '../common/r2/r2.service';
-import { extractPdfTextFull } from '../common/pdf/pdf-text.util';
-import { extractDocxText, DOCX_MIME_TYPE } from '../common/docx/docx-text.util';
-import { extractXlsxRows, XLSX_MIME_TYPE } from '../common/xlsx/xlsx-text.util';
+import { extractFullText } from '../common/documents/extract-full-text.util';
 import {
   DOCUMENT_CHECKLIST_EXTRACTION_PROVIDER,
   DocumentChecklistExtractionProvider,
@@ -44,7 +42,7 @@ export class DocumentChecklistExtractorService {
   async extractChecklist(document: Document): Promise<DocumentChecklistRow> {
     try {
       const buffer = await this.r2.getObject(document.file_key);
-      const fullText = await this.extractFullText(document.mime_type, buffer);
+      const fullText = await extractFullText(document.mime_type, buffer);
       if (!fullText) return EMPTY_ROW;
 
       const result = await this.extractor.extract(fullText);
@@ -108,15 +106,6 @@ export class DocumentChecklistExtractorService {
     }
   }
 
-  private async extractFullText(mimeType: string, buffer: Buffer): Promise<string | null> {
-    if (mimeType === 'application/pdf') return extractPdfTextFull(buffer);
-    if (mimeType === DOCX_MIME_TYPE) return extractDocxText(buffer);
-    if (mimeType === XLSX_MIME_TYPE) {
-      const rows = await extractXlsxRows(buffer);
-      return rows.length > 0 ? rows.join('\n') : null;
-    }
-    return null;
-  }
 }
 
 function normalizeWhitespace(text: string): string {

@@ -195,6 +195,44 @@ describe('POST /pente-fino/run — agentes do LIP × audiometria (e2e)', () => {
     await client.query('DELETE FROM documents WHERE id = $1', [pcmsoDoc.rows[0].id]);
   });
 
+  it('PCMSO cita audiometria solta no texto, sem vincular a nenhuma função: achado vira ok pelo segundo sinal (texto bruto)', async () => {
+    const client = (db as any).client;
+    const pcmsoDoc = await client.query(
+      `INSERT INTO documents (tenant_id, category, title, file_key, file_name, mime_type, size_bytes, uploaded_by_user_id, uploaded_by_role)
+       VALUES ($1, 'pcmso', 'PCMSO Audiometria Solta Teste', 'fixture/pcmso-audiometria-solta.pdf', 'pcmso.pdf', 'application/pdf', 100, $2, 'empresa')
+       RETURNING id`,
+      [tenantId, userId],
+    );
+
+    fakeGetObject.mockImplementation(async (key: string) => {
+      if (key === 'fixture/pcmso-audiometria-solta.pdf') {
+        return buildTestPdf('Exames complementares previstos: audiometria, conforme necessidade clínica.');
+      }
+      throw new Error(`fixture inesperada: ${key}`);
+    });
+    // Sem vínculo a função nenhuma — a extração função↔exame não acha
+    // nada, então pcmso_function_exams fica vazia pra este documento. Se
+    // o segundo sinal (texto bruto) não existisse, o achado ficaria
+    // "exame_ausente" mesmo com "audiometria" genuinamente presente.
+    fakeExtractFunction.mockResolvedValue([]);
+    fakeExtractLipAgents.mockClear();
+
+    const res = await request(app.getHttpServer())
+      .post('/pente-fino/run')
+      .set('Authorization', `Bearer ${token}`)
+      .send({});
+
+    expect(res.status).toBe(201);
+    // LIP já está em cache (persistido no primeiro teste) — não precisa
+    // extrair de novo.
+    expect(fakeExtractLipAgents).not.toHaveBeenCalled();
+    expect(res.body.lip_agents).toEqual([
+      expect.objectContaining({ agent_name_raw: 'Ruído contínuo', exam_status: 'ok' }),
+    ]);
+
+    await client.query('DELETE FROM documents WHERE id = $1', [pcmsoDoc.rows[0].id]);
+  });
+
   it('técnico não vinculado recebe 403 sem vazar nenhum dado de agente do LIP da empresa', async () => {
     const tecnico = await db.createUserWithRole('tecnico', 'Tecnico Nao Vinculado LIP Insalubridade Teste');
     const loginTecnico = await request(app.getHttpServer())
