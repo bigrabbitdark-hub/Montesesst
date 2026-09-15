@@ -4275,3 +4275,128 @@ sem erro.
 Com esta fatia, todo o escopo do Pente-Fino identificado desde a Fase
 25 (§7 "Fora de escopo") está implementado. Não há próxima fatia
 conhecida deste motor sem uma nova decisão do fundador.
+
+## Relatório de Visita Técnica — filial/horário, PDF automático e indexação: status
+
+O fundador colou o modelo completo de "Relatório de Visita Técnica"
+(Segurança do Trabalho) já usado como origem do módulo Inspeções desde
+a Fase 5/6 (`docs/reference/modelos-relatorios-sst.md`) e pediu dois
+sub-projetos independentes na mesma mensagem: (1) preencher esse
+relatório numa visita, salvar na pasta do cliente e gerar PDF; (2)
+agendamento de reunião/visita via Google Calendar/Meet no menu lateral.
+Explorando o código antes de perguntar qualquer coisa, ficou claro que
+(1) é quase idêntico ao módulo Inspeções já existente — não um projeto
+do zero, mas uma extensão com 3 lacunas reais (CNPJ/endereço/horário
+faltando, prazo/responsável de ação corretiva sem endpoint próprio,
+exportação em PDF nunca implementada). Classificado como Architectural
+(spec → plano → Subagent-Driven Development). O sub-projeto (2) foi
+deliberadamente decomposto pra fora e fica pendente de uma nova decisão
+do fundador — ver "Fora de escopo" no fim desta seção.
+
+**Fechada em 2026-09-15, commits `9a812b0`, `3660b91`, `95576c2`,
+`658c07b`, `b5d5b75`, `0669125` em `main`** (spec em
+`docs/specs/relatorio-visita-tecnica-pdf.md`, plano em
+`docs/plans/relatorio-visita-tecnica-pdf.md`):
+
+- Migration `0045`: `inspections` ganha `company_unit_id` (nullable no
+  schema, obrigatório no DTO de criação — mesmo padrão do checklist de
+  prevenção), `started_at`/`ended_at` (`TIME`, sempre digitados pelo
+  técnico, nunca automáticos).
+- `resolveIdentification` (novo método privado, compartilhado entre
+  `create()` e `findOne()`): resolve CNPJ do tenant e endereço
+  formatado da filial sob demanda — `GET /inspections/:id` passa a
+  devolver os dois campos.
+- `PATCH /action-plans/:id` (DTO + rota nova): expõe `deadline`/
+  `responsible`/`status`, reaproveitando `buildSafeSetClause`. Editável
+  **mesmo com a inspeção já concluída** — decisão deliberada da spec,
+  `updateActionPlan` nunca passa por `assertDraft`, diferente do resto
+  do formulário.
+- `inspection-pdf.util.ts` (novo, mesmo padrão de `pdfkit` já usado no
+  PDF da ata de CIPA): PDF gerado automaticamente dentro de
+  `conclude()` — nunca um botão separado — e indexado como `Document`
+  real (categoria `relatorio_visita`) via `DocumentsService.upload`,
+  igual a qualquer outro documento da empresa.
+- Frontend: seletor de filial + horários na criação da inspeção
+  (reaproveitando `units`/`loadUnits` já construídos na tela de técnico
+  do checklist de prevenção), seção "Identificação" com CNPJ/endereço
+  na tela de detalhe, Prazo/Responsável sempre editáveis na seção
+  "Planos de ação gerados".
+
+**Achados reais durante a execução (SDD), além do que o plano já previa
+— todos encontrados rodando testes de verdade, nunca por inspeção
+estática sozinha**:
+
+1. A Task 1 já injetava `DocumentsService` no construtor de
+   `InspectionsService` (preparação pra Task 3), mas `InspectionsModule`
+   não importava `DocumentsModule` — quebrava o boot do Nest em 5 dos 6
+   arquivos e2e de Inspeções. Corrigido na própria Task 1.
+2. `documents.category` tem um CHECK constraint real no Postgres além
+   do array `ALLOWED_CATEGORIES` em TypeScript — sem a migration `0046`
+   (mesmo padrão da `0032`), o upload do PDF falhava silenciosamente.
+3. Armadilha de serialização de coluna `DATE`/`TIME` (a mesma classe de
+   bug já vista em fases anteriores) apareceu em **dois lugares**: no
+   corpo do PDF e, separadamente, no título do `Document` gerado — os
+   dois precisaram de `toDateString`.
+4. Tornar `company_unit_id` obrigatório quebrou 7 arquivos e2e
+   pré-existentes no total (5 mapeados desde o plano, 1 achado pela
+   própria Task 3, 1 achado pela revisão independente da Task 3) — todos
+   corrigidos com o mesmo padrão mecânico.
+5. **Achado mais sério, pego pela revisão final de branch inteira**:
+   `conclude()` rodava a geração/upload do PDF na mesma transação do
+   resto do método sem isolamento real — um erro de SQL de verdade
+   dentro do upload abortava a transação inteira, e o `try/catch`
+   sozinho não impedia que o `COMMIT` final virasse um `ROLLBACK`
+   silencioso (a API respondia 201 "concluída" mas o banco revertia pra
+   "rascunho", sem `action_plans`). Corrigido com o padrão de
+   `SAVEPOINT`/`ROLLBACK TO SAVEPOINT` já estabelecido em
+   `normative-documents.service.ts` — provado com TDD real (revertido,
+   confirmado RED, restaurado, confirmado GREEN).
+6. A mesma revisão final também achou: `started_at`/`ended_at` voltando
+   do Postgres como `HH:MM:SS` (quebrava o `PATCH` que só aceita
+   `HH:MM`) e `@IsOptional()` não tratando string vazia (esvaziar um
+   campo de horário ou prazo já preenchido dava 400 em vez de limpar) —
+   ambos corrigidos num único fix round, com re-revisão escopada
+   confirmando as 4 correções sem introduzir problema novo.
+
+**Verificação:** regressão completa do backend (`inspections`,
+`action-plans`, `documents`, `inspection-pdf`, `ai-copilot`) — 22+
+suítes, 89+ testes, sempre verde a cada rodada de fix. `npx tsc
+--noEmit` limpo em backend e frontend, `next build` limpo (53/53
+páginas). Verificação manual real em produção via Playwright (Node 18 +
+Chromium real, login via formulário real, fixture isolado criado e
+depois removido por completo): criação de inspeção com filial e
+horário, CNPJ/endereço corretos na Identificação, horário em `HH:MM`
+sem segundos (confirma a correção #6 em produção), marcação de item
+como não conforme, conclusão, Prazo/Responsável editados e persistindo
+após reload mesmo com a inspeção já concluída, campo "Responsável pela
+empresa" da Identificação corretamente travado nesse mesmo momento
+(contraste correto), documento "Relatório de Visita" aparecendo nos
+Documentos da empresa, zero erros de console. PDF real baixado
+diretamente do R2 de produção e teve o texto extraído — conteúdo
+correto, incluindo o horário no formato certo dentro do próprio PDF.
+
+**Fora de escopo, registrado para decisão futura do fundador:**
+
+- **Agendamento via Google Calendar/Google Meet** (sub-projeto 2 da
+  mensagem original) — nenhum trabalho de brainstorming ou spec
+  começou. Nota importante pra quando isso for retomado: `/tecnico/agenda`
+  já existe hoje, mas é um painel de prazos de conformidade, não uma
+  agenda de compromissos — não confundir os dois ao desenhar a feature.
+- O PDF do relatório de visita **não entra na busca do Assistente
+  (RAG)** — a spec original (§1.3/§2) assumia que entraria, citando
+  `cipa_ata` como precedente, mas `cipa_ata` também nunca foi indexado.
+  Vira follow-up de produto (3 mudanças: categoria no indexer, CHECK da
+  migration `0040`, chamar o indexer a partir de `conclude()`), não uma
+  regressão desta fase.
+- `PATCH /action-plans/:id` aceita o papel `empresa` (decisão
+  deliberada da spec), mas a tela da empresa ainda não tem UI pra
+  editar prazo/responsável — permissão sem caminho de uso ainda.
+- Cobertura de teste um pouco abaixo do listado na spec §7 (falta um
+  teste explícito de "criar sem `company_unit_id` → 400" — já garantido
+  estruturalmente por `@IsUUID()` — e testes de RLS dedicados pro novo
+  `PATCH` e pro `Document` gerado). Dívida técnica registrada, não
+  bloqueante.
+- **Alerta não relacionado a este plano**: `backend/db/migrations/
+  0009_update_plan_prices.sql` está sem commit desde antes desta sessão
+  — um deploy limpo a partir do git nunca aplicaria essa migration. Vale
+  revisar antes do próximo deploy geral do projeto.
