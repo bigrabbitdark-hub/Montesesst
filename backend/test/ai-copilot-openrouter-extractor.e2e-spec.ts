@@ -22,6 +22,7 @@ describe('OpenRouterExtractorService (e2e via DI)', () => {
   let tenantId: string;
   let technicianId: string;
   let technicianToken: string;
+  let companyUnitId: string;
   let inspectionId: string;
 
   beforeAll(async () => {
@@ -35,6 +36,17 @@ describe('OpenRouterExtractorService (e2e via DI)', () => {
 
     const tenant = await db.createTenantWithUser('Empresa OpenRouter Extractor Teste');
     tenantId = tenant.tenantId;
+
+    // Fallout do plano "Relatório de Visita Técnica" (Task 1: company_unit_id
+    // passou a ser obrigatório em POST /inspections) — este arquivo pré-existente
+    // escapou do mapeamento original de 5 arquivos e do 6º achado pela Task 3;
+    // achado por revisão independente da Task 3, mesmo padrão exato dos outros 6.
+    const unitResult = await (db as any).client.query(
+      `INSERT INTO company_units (tenant_id, name, address_street, address_city, address_state, address_zip)
+       VALUES ($1, 'Matriz Teste', 'Rua Teste', 'Cidade Teste', 'SP', '01000000') RETURNING id`,
+      [tenantId],
+    );
+    companyUnitId = unitResult.rows[0].id;
 
     const tech = await db.createUserWithRole('tecnico', 'Tecnico OpenRouter Extractor Teste');
     const techResult = await (db as any).client.query(
@@ -55,7 +67,7 @@ describe('OpenRouterExtractorService (e2e via DI)', () => {
     const createRes = await request(app.getHttpServer())
       .post('/inspections')
       .set('Authorization', `Bearer ${technicianToken}`)
-      .send({ tenant_id: tenantId, visited_at: '2026-08-28' });
+      .send({ tenant_id: tenantId, visited_at: '2026-08-28', company_unit_id: companyUnitId });
     inspectionId = createRes.body.id;
   });
 
