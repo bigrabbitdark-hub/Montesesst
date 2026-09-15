@@ -8,6 +8,7 @@ describe('POST/GET /inspections — criação, semeadura de itens, listagem (e2e
   let app: INestApplication;
   let db: TestDb;
   let tenantId: string;
+  let companyUnitId: string;
   let technicianId: string;
   let technicianToken: string;
   let empresaToken: string;
@@ -23,6 +24,13 @@ describe('POST/GET /inspections — criação, semeadura de itens, listagem (e2e
     await db.connect();
     const tenant = await db.createTenantWithUser('Empresa Inspection Create Teste');
     tenantId = tenant.tenantId;
+
+    const unitResult = await (db as any).client.query(
+      `INSERT INTO company_units (tenant_id, name, address_street, address_city, address_state, address_zip)
+       VALUES ($1, 'Matriz Teste', 'Rua Teste', 'Cidade Teste', 'SP', '01000000') RETURNING id`,
+      [tenantId],
+    );
+    companyUnitId = unitResult.rows[0].id;
 
     const tech = await db.createUserWithRole('tecnico', 'Tecnico Inspection Create Teste');
     const techResult = await (db as any).client.query(
@@ -64,7 +72,7 @@ describe('POST/GET /inspections — criação, semeadura de itens, listagem (e2e
     const res = await request(app.getHttpServer())
       .post('/inspections')
       .set('Authorization', `Bearer ${technicianToken}`)
-      .send({ tenant_id: tenantId, visited_at: '2026-08-25' });
+      .send({ tenant_id: tenantId, visited_at: '2026-08-25', company_unit_id: companyUnitId });
 
     expect(res.status).toBe(201);
     expect(res.body.status).toBe('rascunho');
@@ -78,7 +86,7 @@ describe('POST/GET /inspections — criação, semeadura de itens, listagem (e2e
     const res = await request(app.getHttpServer())
       .post('/inspections')
       .set('Authorization', `Bearer ${empresaToken}`)
-      .send({ tenant_id: tenantId, visited_at: '2026-08-25' });
+      .send({ tenant_id: tenantId, visited_at: '2026-08-25', company_unit_id: companyUnitId });
 
     expect(res.status).toBe(403);
   });
@@ -107,12 +115,22 @@ describe('POST/GET /inspections — criação, semeadura de itens, listagem (e2e
     expect(res.status).toBe(400);
   });
 
-  it('técnico tentando criar em tenant ao qual não está vinculado recebe 403, não 500 (RLS mapeada)', async () => {
+  it('técnico tentando criar em tenant ao qual não está vinculado recebe 404, não 500 (assertCompanyUnitBelongsToTenant, não RLS)', async () => {
+    // Divergência da Task 1 (filial e horário da visita): antes desta
+    // task, esse 403 vinha do INSERT em inspections violando a policy de
+    // RLS (mapeado por mapPgError, código 42501). Agora
+    // assertCompanyUnitBelongsToTenant roda ANTES do INSERT — companyUnitId
+    // pertence ao tenant ao qual o técnico ESTÁ vinculado (tenantId), não
+    // a unlinkedTenantId, então a query `WHERE id = $1 AND tenant_id = $2`
+    // não bate mesmo sem entrar em RLS, e o service lança NotFoundException
+    // antes de a inspeção chegar perto do INSERT protegido por RLS. Ainda
+    // não é 500 (o que este teste sempre existiu pra garantir), só mudou
+    // de qual camada bloqueia primeiro.
     const res = await request(app.getHttpServer())
       .post('/inspections')
       .set('Authorization', `Bearer ${technicianToken}`)
-      .send({ tenant_id: unlinkedTenantId, visited_at: '2026-08-25' });
+      .send({ tenant_id: unlinkedTenantId, visited_at: '2026-08-25', company_unit_id: companyUnitId });
 
-    expect(res.status).toBe(403);
+    expect(res.status).toBe(404);
   });
 });

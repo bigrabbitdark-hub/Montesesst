@@ -34,7 +34,7 @@ export class InspectionsController {
   @Post()
   create(@Body() dto: CreateInspectionDto, @Req() req: any) {
     return req.withTenantContext((client: any) =>
-      this.inspections.create(client, dto.tenant_id, req.user.id, dto.visited_at),
+      this.inspections.create(client, dto.tenant_id, req.user.id, dto.visited_at, dto.company_unit_id, dto.started_at, dto.ended_at),
     );
   }
 
@@ -86,6 +86,8 @@ export class InspectionsController {
   @Roles('tecnico', 'parceiro')
   @Post(':id/concluir')
   conclude(@Param('id') id: string, @Req() req: any) {
-    return req.withTenantContext((client: any) => this.inspections.conclude(client, id));
+    return req.withTenantContext((client: any) =>
+      this.inspections.conclude(client, id, req.user.id, req.user.role),
+    );
   }
 }

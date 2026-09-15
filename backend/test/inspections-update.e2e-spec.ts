@@ -8,6 +8,7 @@ describe('PATCH /inspections/:id e /inspections/:id/items/:itemId (e2e)', () => 
   let app: INestApplication;
   let db: TestDb;
   let tenantId: string;
+  let companyUnitId: string;
   let technicianId: string;
   let technicianToken: string;
   let empresaToken: string;
@@ -23,6 +24,13 @@ describe('PATCH /inspections/:id e /inspections/:id/items/:itemId (e2e)', () => 
     await db.connect();
     const tenant = await db.createTenantWithUser('Empresa Inspection Update Teste');
     tenantId = tenant.tenantId;
+
+    const unitResult = await (db as any).client.query(
+      `INSERT INTO company_units (tenant_id, name, address_street, address_city, address_state, address_zip)
+       VALUES ($1, 'Matriz Teste', 'Rua Teste', 'Cidade Teste', 'SP', '01000000') RETURNING id`,
+      [tenantId],
+    );
+    companyUnitId = unitResult.rows[0].id;
 
     const tech = await db.createUserWithRole('tecnico', 'Tecnico Inspection Update Teste');
     const techResult = await (db as any).client.query(
@@ -48,7 +56,7 @@ describe('PATCH /inspections/:id e /inspections/:id/items/:itemId (e2e)', () => 
     const createRes = await request(app.getHttpServer())
       .post('/inspections')
       .set('Authorization', `Bearer ${technicianToken}`)
-      .send({ tenant_id: tenantId, visited_at: '2026-08-25' });
+      .send({ tenant_id: tenantId, visited_at: '2026-08-25', company_unit_id: companyUnitId });
     inspectionId = createRes.body.id;
     itemId = createRes.body.items[0].id;
   });

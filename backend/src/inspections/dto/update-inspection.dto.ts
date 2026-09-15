@@ -1,4 +1,4 @@
-import { IsInt, IsOptional, IsString, MaxLength, Min } from 'class-validator';
+import { IsInt, IsOptional, IsString, MaxLength, Matches, Min } from 'class-validator';
 
 export class UpdateInspectionDto {
   @IsOptional()
@@ -33,4 +33,12 @@ export class UpdateInspectionDto {
   @IsString()
   @MaxLength(200)
   company_signature_name?: string;
+
+  @IsOptional()
+  @Matches(/^\d{2}:\d{2}$/, { message: 'started_at deve estar no formato HH:MM' })
+  started_at?: string;
+
+  @IsOptional()
+  @Matches(/^\d{2}:\d{2}$/, { message: 'ended_at deve estar no formato HH:MM' })
+  ended_at?: string;
 }

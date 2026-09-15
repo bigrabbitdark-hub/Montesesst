@@ -8,6 +8,7 @@ describe('POST /inspections/:id/concluir (e2e)', () => {
   let app: INestApplication;
   let db: TestDb;
   let tenantId: string;
+  let companyUnitId: string;
   let technicianId: string;
   let technicianToken: string;
   let empresaToken: string;
@@ -21,6 +22,13 @@ describe('POST /inspections/:id/concluir (e2e)', () => {
     await db.connect();
     const tenant = await db.createTenantWithUser('Empresa Inspection Concluir Teste');
     tenantId = tenant.tenantId;
+
+    const unitResult = await (db as any).client.query(
+      `INSERT INTO company_units (tenant_id, name, address_street, address_city, address_state, address_zip)
+       VALUES ($1, 'Matriz Teste', 'Rua Teste', 'Cidade Teste', 'SP', '01000000') RETURNING id`,
+      [tenantId],
+    );
+    companyUnitId = unitResult.rows[0].id;
 
     const tech = await db.createUserWithRole('tecnico', 'Tecnico Inspection Concluir Teste');
     const techResult = await (db as any).client.query(
@@ -57,7 +65,7 @@ describe('POST /inspections/:id/concluir (e2e)', () => {
     const createRes = await request(app.getHttpServer())
       .post('/inspections')
       .set('Authorization', `Bearer ${technicianToken}`)
-      .send({ tenant_id: tenantId, visited_at: '2026-08-25' });
+      .send({ tenant_id: tenantId, visited_at: '2026-08-25', company_unit_id: companyUnitId });
     const inspectionId = createRes.body.id;
 
     const res = await request(app.getHttpServer())
@@ -71,7 +79,7 @@ describe('POST /inspections/:id/concluir (e2e)', () => {
     const createRes = await request(app.getHttpServer())
       .post('/inspections')
       .set('Authorization', `Bearer ${technicianToken}`)
-      .send({ tenant_id: tenantId, visited_at: '2026-08-25' });
+      .send({ tenant_id: tenantId, visited_at: '2026-08-25', company_unit_id: companyUnitId });
     const inspectionId = createRes.body.id;
     const items = createRes.body.items;
 
@@ -105,7 +113,7 @@ describe('POST /inspections/:id/concluir (e2e)', () => {
     const createRes = await request(app.getHttpServer())
       .post('/inspections')
       .set('Authorization', `Bearer ${technicianToken}`)
-      .send({ tenant_id: tenantId, visited_at: '2026-08-25' });
+      .send({ tenant_id: tenantId, visited_at: '2026-08-25', company_unit_id: companyUnitId });
     const inspectionId = createRes.body.id;
 
     const concludeRes = await request(app.getHttpServer())
@@ -120,7 +128,7 @@ describe('POST /inspections/:id/concluir (e2e)', () => {
     const createRes = await request(app.getHttpServer())
       .post('/inspections')
       .set('Authorization', `Bearer ${technicianToken}`)
-      .send({ tenant_id: tenantId, visited_at: '2026-08-25' });
+      .send({ tenant_id: tenantId, visited_at: '2026-08-25', company_unit_id: companyUnitId });
     const inspectionId = createRes.body.id;
 
     await request(app.getHttpServer())
@@ -138,7 +146,7 @@ describe('POST /inspections/:id/concluir (e2e)', () => {
     const createRes = await request(app.getHttpServer())
       .post('/inspections')
       .set('Authorization', `Bearer ${technicianToken}`)
-      .send({ tenant_id: tenantId, visited_at: '2026-08-25' });
+      .send({ tenant_id: tenantId, visited_at: '2026-08-25', company_unit_id: companyUnitId });
     const inspectionId = createRes.body.id;
     const items = createRes.body.items;
 

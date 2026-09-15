@@ -8,6 +8,7 @@ describe('inspections/action-plans reconhecem o papel parceiro (e2e)', () => {
   let app: INestApplication;
   let db: TestDb;
   let tenantId: string;
+  let companyUnitId: string;
   let partnerId: string;
   let partnerToken: string;
   let inspectionId: string | undefined;
@@ -21,6 +22,14 @@ describe('inspections/action-plans reconhecem o papel parceiro (e2e)', () => {
     await db.connect();
     const tenant = await db.createTenantWithUser('Empresa Inspection Partner Teste');
     tenantId = tenant.tenantId;
+
+    const unitResult = await (db as any).client.query(
+      `INSERT INTO company_units (tenant_id, name, address_street, address_city, address_state, address_zip)
+       VALUES ($1, 'Matriz Teste', 'Rua Teste', 'Cidade Teste', 'SP', '01000000') RETURNING id`,
+      [tenantId],
+    );
+    companyUnitId = unitResult.rows[0].id;
+
     const partner = await db.createUserWithRole('parceiro', 'Parceiro Inspection Teste');
 
     const partnerResult = await (db as any).client.query(
@@ -54,7 +63,7 @@ describe('inspections/action-plans reconhecem o papel parceiro (e2e)', () => {
     const createRes = await request(app.getHttpServer())
       .post('/inspections')
       .set('Authorization', `Bearer ${partnerToken}`)
-      .send({ tenant_id: tenantId, visited_at: '2026-08-25' });
+      .send({ tenant_id: tenantId, visited_at: '2026-08-25', company_unit_id: companyUnitId });
     expect(createRes.status).toBe(201);
     inspectionId = createRes.body.id;
     const itemId = createRes.body.items[0].id;
