@@ -5,6 +5,7 @@ import {
   PenteFinoComparisonService,
   buildFunctionReport,
   buildLipAgentFindings,
+  buildAgentCoverageFindings,
   sortFunctionsByPriority,
   StoredRow,
 } from '../src/pente-fino/pente-fino-comparison.service';
@@ -161,6 +162,61 @@ describe('buildLipAgentFindings', () => {
   it('hasAudiometriaNoTextoBruto=true não afeta categorias diferentes de ruido', () => {
     const findings = buildLipAgentFindings([agent({ agentCategory: 'calor' })], [], true);
     expect(findings[0].exam_status).toBe('informativo');
+  });
+});
+
+describe('buildAgentCoverageFindings', () => {
+  function a(name: string, category: string) {
+    return { agentNameRaw: name, agentCategory: category };
+  }
+
+  it('categoria presente nos dois documentos vira "ambos"', () => {
+    const findings = buildAgentCoverageFindings([a('Ruído contínuo', 'ruido')], [a('Ruído de impacto', 'ruido')]);
+    expect(findings).toEqual([
+      { agent_category: 'ruido', presence: 'ambos', agent_names_lip: ['Ruído contínuo'], agent_names_ltcat: ['Ruído de impacto'] },
+    ]);
+  });
+
+  it('categoria só no LIP vira "so_lip"', () => {
+    const findings = buildAgentCoverageFindings([a('Benzeno', 'quimico')], []);
+    expect(findings).toEqual([
+      { agent_category: 'quimico', presence: 'so_lip', agent_names_lip: ['Benzeno'], agent_names_ltcat: [] },
+    ]);
+  });
+
+  it('categoria só no LTCAT vira "so_ltcat"', () => {
+    const findings = buildAgentCoverageFindings([], [a('Calor', 'calor')]);
+    expect(findings).toEqual([
+      { agent_category: 'calor', presence: 'so_ltcat', agent_names_lip: [], agent_names_ltcat: ['Calor'] },
+    ]);
+  });
+
+  it('várias categorias são classificadas independentemente', () => {
+    const findings = buildAgentCoverageFindings(
+      [a('Ruído contínuo', 'ruido'), a('Benzeno', 'quimico')],
+      [a('Ruído de impacto', 'ruido'), a('Vibração', 'vibracao')],
+    );
+    const byCategory = Object.fromEntries(findings.map((f) => [f.agent_category, f.presence]));
+    expect(byCategory).toEqual({ ruido: 'ambos', quimico: 'so_lip', vibracao: 'so_ltcat' });
+  });
+
+  it('nunca compara valor medido — só presença por categoria', () => {
+    // Mesma categoria, nomes/valores completamente diferentes — ainda
+    // assim "ambos", porque a comparação é só de cobertura por
+    // categoria, nunca de valor numérico (decisão de escopo desta
+    // fatia, mesmo espírito de nunca recalcular a NR-15).
+    const findings = buildAgentCoverageFindings([a('Ruído — 120 dB(A)', 'ruido')], [a('Ruído — 40 dB(A)', 'ruido')]);
+    expect(findings[0].presence).toBe('ambos');
+  });
+
+  it('sem agentes nos dois lados devolve lista vazia', () => {
+    expect(buildAgentCoverageFindings([], [])).toEqual([]);
+  });
+
+  it('duas ocorrências da mesma categoria no mesmo documento aparecem juntas, sem duplicar a categoria', () => {
+    const findings = buildAgentCoverageFindings([a('Ruído contínuo', 'ruido'), a('Ruído de impacto', 'ruido')], []);
+    expect(findings).toHaveLength(1);
+    expect(findings[0].agent_names_lip).toEqual(['Ruído contínuo', 'Ruído de impacto']);
   });
 });
 
@@ -390,6 +446,127 @@ describe('PenteFinoComparisonService — segundo sinal de audiometria no texto b
 
     expect(report.lip_agents[0].exam_status).toBe('informativo');
     expect(fakeGetObject).not.toHaveBeenCalled();
+  });
+});
+
+// Cobre a extensão da cobertura LIP×LTCAT: ensureAgentFindings roda pros
+// dois documentos (mesma tabela lip_agent_findings, distinguida por
+// document_id), e buildAgentCoverageFindings só é chamada quando os dois
+// existem.
+describe('PenteFinoComparisonService — cobertura de agentes LIP×LTCAT', () => {
+  const lipDoc = { id: 'doc-lip', tenant_id: 'tenant-1', title: 'LIP Teste', file_key: 'key-lip', mime_type: 'application/pdf' };
+  const ltcatDoc = { id: 'doc-ltcat', tenant_id: 'tenant-1', title: 'LTCAT Teste', file_key: 'key-ltcat', mime_type: 'application/pdf' };
+  const empresaUser = { id: 'user-1', tenantId: 'tenant-1', role: 'empresa' };
+
+  type CachedAgentRow = {
+    agent_name_raw: string;
+    agent_category: string;
+    measured_value_raw: string | null;
+    insalubre: boolean | null;
+    conclusion_excerpt: string | null;
+  };
+
+  async function buildServiceWithCoverage(options: {
+    hasLtcat: boolean;
+    lipRows: CachedAgentRow[];
+    ltcatRows: CachedAgentRow[];
+    // 0 linhas em lip_agent_findings é ambíguo entre "nunca rodou" e
+    // "rodou e não achou nada" (limitação aceita, Fase 28) — quando um
+    // teste passa arrays vazios de propósito pra simular esse segundo
+    // caso, precisa de um extractAgents que resolve (não rejeita) pra
+    // não confundir com o caminho de cache real testado nos outros.
+    allowFreshExtraction?: boolean;
+  }): Promise<PenteFinoComparisonService> {
+    const fakeClient = {
+      query: jest.fn(async (sql: string, params: unknown[] = []) => {
+        if (sql.includes("category = 'pgr'")) return { rows: [] };
+        if (sql.includes("category = 'pcmso'")) return { rows: [] };
+        if (sql.includes("category = 'ltcat'")) return { rows: options.hasLtcat ? [ltcatDoc] : [] };
+        if (sql.includes("category = 'lip'")) return { rows: [lipDoc] };
+        if (sql.includes('FROM positions')) return { rows: [] };
+        if (sql.includes('FROM document_checklist_findings')) return { rows: [] };
+        if (sql.includes('FROM lip_agent_findings')) {
+          if (params[0] === 'doc-lip') return { rows: options.lipRows };
+          if (params[0] === 'doc-ltcat') return { rows: options.ltcatRows };
+          throw new Error(`document_id inesperado no fake: ${params[0]}`);
+        }
+        throw new Error(`query inesperada no fake: ${sql}`);
+      }),
+    };
+    const fakeDb = { withTenantContext: jest.fn((_ctx: unknown, fn: any) => fn(fakeClient)) };
+
+    const moduleRef = await Test.createTestingModule({
+      providers: [
+        PenteFinoComparisonService,
+        PenteFinoExtractorService,
+        { provide: DatabaseService, useValue: fakeDb },
+        { provide: R2Service, useValue: { getObject: jest.fn() } },
+        { provide: FUNCTION_EXTRACTION_PROVIDER, useValue: { extract: jest.fn() } },
+        {
+          provide: DocumentChecklistExtractorService,
+          useValue: { extractChecklist: jest.fn().mockResolvedValue(EMPTY_CHECKLIST_ROW), persist: jest.fn().mockResolvedValue(undefined) },
+        },
+        {
+          provide: LipAgentExtractorService,
+          useValue: {
+            extractAgents: options.allowFreshExtraction
+              ? jest.fn().mockResolvedValue([])
+              : jest.fn().mockRejectedValue(new Error('extractAgents não deveria ser chamado quando já existe cache')),
+            persist: jest.fn().mockResolvedValue(undefined),
+          },
+        },
+      ],
+    }).compile();
+
+    return moduleRef.get(PenteFinoComparisonService);
+  }
+
+  const ruidoLip: CachedAgentRow = {
+    agent_name_raw: 'Ruído contínuo',
+    agent_category: 'ruido',
+    measured_value_raw: '92 dB(A)',
+    insalubre: true,
+    conclusion_excerpt: 'caracteriza insalubridade em grau médio',
+  };
+  const ruidoLtcat: CachedAgentRow = {
+    agent_name_raw: 'Ruído de impacto',
+    agent_category: 'ruido',
+    measured_value_raw: '128 dB',
+    insalubre: null,
+    conclusion_excerpt: null,
+  };
+  const beneznoLip: CachedAgentRow = {
+    agent_name_raw: 'Benzeno',
+    agent_category: 'quimico',
+    measured_value_raw: null,
+    insalubre: null,
+    conclusion_excerpt: null,
+  };
+
+  it('LIP e LTCAT existem: agent_coverage reflete a categoria presente nos dois e a que só está no LIP', async () => {
+    const service = await buildServiceWithCoverage({ hasLtcat: true, lipRows: [ruidoLip, beneznoLip], ltcatRows: [ruidoLtcat] });
+
+    const report = await service.run('tenant-1', empresaUser);
+
+    const byCategory = Object.fromEntries(report.agent_coverage.map((f) => [f.agent_category, f.presence]));
+    expect(byCategory).toEqual({ ruido: 'ambos', quimico: 'so_lip' });
+  });
+
+  it('só LIP existe (sem LTCAT): agent_coverage fica vazio, sem tentar comparar com nada', async () => {
+    const service = await buildServiceWithCoverage({ hasLtcat: false, lipRows: [ruidoLip], ltcatRows: [] });
+
+    const report = await service.run('tenant-1', empresaUser);
+
+    expect(report.agent_coverage).toEqual([]);
+    expect(report.ltcat_document).toBeNull();
+  });
+
+  it('LIP e LTCAT existem mas nenhum agente foi extraído em nenhum dos dois: agent_coverage fica vazio', async () => {
+    const service = await buildServiceWithCoverage({ hasLtcat: true, lipRows: [], ltcatRows: [], allowFreshExtraction: true });
+
+    const report = await service.run('tenant-1', empresaUser);
+
+    expect(report.agent_coverage).toEqual([]);
   });
 });
 

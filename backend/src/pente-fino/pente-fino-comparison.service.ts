@@ -81,6 +81,37 @@ export function buildLipAgentFindings(
   });
 }
 
+export interface AgentCoverageFinding {
+  agent_category: string;
+  presence: 'ambos' | 'so_lip' | 'so_ltcat';
+  agent_names_lip: string[];
+  agent_names_ltcat: string[];
+}
+
+// Função pura — sem I/O. Cruza LIP e LTCAT só por COBERTURA (a categoria
+// do agente aparece em qual dos dois documentos), nunca por valor
+// medido: comparar número entre dois laudos exigiria parsear unidade
+// livre por agente (dB(A), °C IBUTG, ppm, mg/m³...) e definir
+// tolerância de "quando duas medições batem" — mesma classe de risco já
+// evitada ao não recalcular a NR-15 (Fase 28). Só roda quando os dois
+// documentos existem (chamador decide isso); ausência de um já é
+// coberta pelos cards de documento existentes, sem duplicar aviso aqui.
+export function buildAgentCoverageFindings(
+  lipAgents: { agentNameRaw: string; agentCategory: string }[],
+  ltcatAgents: { agentNameRaw: string; agentCategory: string }[],
+): AgentCoverageFinding[] {
+  const categories = Array.from(new Set([...lipAgents, ...ltcatAgents].map((a) => a.agentCategory)));
+  return categories.map((category) => {
+    const namesLip = lipAgents.filter((a) => a.agentCategory === category).map((a) => a.agentNameRaw);
+    const namesLtcat = ltcatAgents.filter((a) => a.agentCategory === category).map((a) => a.agentNameRaw);
+    let presence: AgentCoverageFinding['presence'];
+    if (namesLip.length > 0 && namesLtcat.length > 0) presence = 'ambos';
+    else if (namesLip.length > 0) presence = 'so_lip';
+    else presence = 'so_ltcat';
+    return { agent_category: category, presence, agent_names_lip: namesLip, agent_names_ltcat: namesLtcat };
+  });
+}
+
 export interface PenteFinoDocumentRef {
   id: string;
   title: string;
@@ -106,6 +137,7 @@ export interface PenteFinoReport {
   lip_document: PenteFinoDocumentRef | null;
   functions: FunctionReportItem[];
   lip_agents: LipAgentFinding[];
+  agent_coverage: AgentCoverageFinding[];
   warnings: string[];
 }
 
@@ -270,7 +302,8 @@ export class PenteFinoComparisonService {
       this.buildDocumentRef(ctx, lip),
     ]);
 
-    const lipAgentRows = await this.ensureLipAgents(ctx, lip);
+    const lipAgentRows = await this.ensureAgentFindings(ctx, lip);
+    const ltcatAgentRows = await this.ensureAgentFindings(ctx, ltcat);
     const pcmsoExamDescriptions = pcmsoExtraction?.rows.map((r) => r.description) ?? [];
 
     // Segundo sinal de audiometria, direto no texto bruto do PCMSO —
@@ -291,6 +324,13 @@ export class PenteFinoComparisonService {
 
     const lipAgentFindings = buildLipAgentFindings(lipAgentRows, pcmsoExamDescriptions, hasAudiometriaNoTextoBruto);
 
+    // Cobertura LIP×LTCAT só faz sentido quando os dois documentos
+    // existem — ausência de um já é sinalizada pelos cards de documento,
+    // sem duplicar aviso aqui (mesma decisão de LTCAT/LIP nunca gerarem
+    // warning geral, spec da Fase 27 §2).
+    const agentCoverageFindings =
+      lip && ltcat ? buildAgentCoverageFindings(lipAgentRows, ltcatAgentRows) : [];
+
     return {
       pgr_document: pgrRef ? { ...pgrRef, extracted_at: pgrExtraction?.extractedAt ?? null } : null,
       pcmso_document: pcmsoRef ? { ...pcmsoRef, extracted_at: pcmsoExtraction?.extractedAt ?? null } : null,
@@ -300,6 +340,7 @@ export class PenteFinoComparisonService {
         buildFunctionReport(pgrExtraction?.rows ?? [], pcmsoExtraction?.rows ?? [], positions),
       ),
       lip_agents: lipAgentFindings,
+      agent_coverage: agentCoverageFindings,
       warnings,
     };
   }
@@ -478,12 +519,14 @@ export class PenteFinoComparisonService {
     };
   }
 
-  // Checklist de agentes do LIP (Fase 28). Cache-first, mesmo padrão de
-  // ensureExtracted — zero linhas em lip_agent_findings é ambíguo entre
-  // "nunca rodou" e "rodou e não achou agente nenhum", mesma limitação
-  // aceita em pgr_function_risks/pcmso_function_exams (diferente de
-  // document_checklist_findings, que sempre tem exatamente 1 linha).
-  private async ensureLipAgents(ctx: TenantContext, document: Document | null): Promise<LipAgentRow[]> {
+  // Checklist de agentes (Fase 28, generalizado pra LTCAT também — a
+  // extração/tabela nunca foram específicas de LIP, só o nome do método
+  // ficou). Cache-first, mesmo padrão de ensureExtracted — zero linhas em
+  // lip_agent_findings é ambíguo entre "nunca rodou" e "rodou e não
+  // achou agente nenhum", mesma limitação aceita em pgr_function_risks/
+  // pcmso_function_exams (diferente de document_checklist_findings, que
+  // sempre tem exatamente 1 linha).
+  private async ensureAgentFindings(ctx: TenantContext, document: Document | null): Promise<LipAgentRow[]> {
     if (!document) return [];
     const existing = await this.db.withTenantContext(ctx, (client) =>
       client.query<{

@@ -33,6 +33,13 @@ interface LipAgentFinding {
   exam_status: 'exame_ausente' | 'ok' | 'informativo';
 }
 
+interface AgentCoverageFinding {
+  agent_category: string;
+  presence: 'ambos' | 'so_lip' | 'so_ltcat';
+  agent_names_lip: string[];
+  agent_names_ltcat: string[];
+}
+
 interface PenteFinoReport {
   pgr_document: PenteFinoDocumentRef | null;
   pcmso_document: PenteFinoDocumentRef | null;
@@ -40,6 +47,7 @@ interface PenteFinoReport {
   lip_document: PenteFinoDocumentRef | null;
   functions: FunctionReportItem[];
   lip_agents: LipAgentFinding[];
+  agent_coverage: AgentCoverageFinding[];
   warnings: string[];
 }
 
@@ -204,7 +212,8 @@ export function PenteFinoPanel({ tenantId }: { tenantId?: string }) {
           correspondente, exame sem risco que o justifique, e nomes de função sem cargo cadastrado.
           Também mostra a data de elaboração e o profissional responsável identificados em PGR,
           PCMSO, LTCAT e LIP. Além disso, identifica agentes de risco citados no LIP e aponta quando
-          falta exame de audiometria correspondente no PCMSO. Pode levar até 3 minutos.
+          falta exame de audiometria correspondente no PCMSO, e compara a cobertura de agentes entre
+          LIP e LTCAT. Pode levar até 3 minutos.
         </p>
         <button
           type="button"
@@ -371,6 +380,35 @@ export function PenteFinoPanel({ tenantId }: { tenantId?: string }) {
                     )}
                   </li>
                 ))}
+              </ul>
+            </section>
+          )}
+
+          {report.agent_coverage.filter((f) => f.presence !== 'ambos').length > 0 && (
+            <section className="rounded-lg border border-brand-100 p-6">
+              <h3 className="text-sm font-bold uppercase tracking-wide text-brand-700">Cobertura LIP × LTCAT</h3>
+              <p className="mt-2 text-sm text-brand-700">
+                Categorias de agente citadas em um dos dois laudos mas não no outro — não compara os valores
+                medidos, só aponta a diferença de cobertura pra você conferir.
+              </p>
+              <ul className="mt-3 flex flex-col gap-2 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+                {report.agent_coverage
+                  .filter((f) => f.presence !== 'ambos')
+                  .map((finding, i) => (
+                    <li key={i}>
+                      {finding.presence === 'so_lip' ? (
+                        <>
+                          Presente só no LIP: {finding.agent_names_lip.join(', ')} — nada de {finding.agent_category}{' '}
+                          citado no LTCAT.
+                        </>
+                      ) : (
+                        <>
+                          Presente só no LTCAT: {finding.agent_names_ltcat.join(', ')} — nada de{' '}
+                          {finding.agent_category} citado no LIP.
+                        </>
+                      )}
+                    </li>
+                  ))}
               </ul>
             </section>
           )}
