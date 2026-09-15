@@ -4188,3 +4188,49 @@ extensão de escopo; não reabrir a Task 2 por causa da limitação de
 design (fiel ao spec §2 aprovado, correção de verdade é escopo novo);
 bundlar o achado Importante (redação do alerta) e 3 Menores na mesma
 onda de correção do achado Crítico.
+
+## Fase 29 — Pente-Fino: cobertura de agentes entre LIP e LTCAT: status
+
+Última fatia do Pente-Fino sem escopo definido desde a Fase 25 (§7):
+LIP↔LTCAT, comparação de agentes/medições entre os dois laudos.
+
+Classificado como Bounded em brainstorming (extensão de um fluxo já
+existente, sem subsistema novo) — implementado direto pelo controlador
+nesta mesma sessão, sem spec/plano formais.
+
+**Decisão de escopo, mesma disciplina da Fase 28**: só cobertura
+(categoria de agente presente num documento mas ausente no outro),
+nunca comparação de valor medido. Comparar número entre dois laudos
+exigiria parsear unidade livre por agente (dB(A), °C IBUTG, ppm,
+mg/m³...) e definir tolerância de "quando duas medições batem" — mesma
+classe de risco já evitada ao não recalcular a NR-15.
+
+**Fechada em 2026-09-15, commit `f1b3e15` direto em `main`**:
+
+- A extração de agentes da Fase 28 (`LipAgentExtractorService`/
+  `lip_agent_findings`) nunca foi específica de LIP — reaproveitada tal
+  qual pro LTCAT, sem nenhuma mudança na extração em si. Método privado
+  `ensureLipAgents` renomeado pra `ensureAgentFindings` (só o nome
+  ficou datado, já servia genericamente qualquer documento).
+- Nova função pura `buildAgentCoverageFindings`: pra cada categoria
+  presente em qualquer um dos dois documentos, classifica `'ambos'` /
+  `'so_lip'` / `'so_ltcat'`. Só roda quando os dois documentos existem —
+  ausência de um já é sinalizada pelos cards de documento existentes.
+- `PenteFinoReport` ganha `agent_coverage`; frontend ganha seção
+  "Cobertura LIP × LTCAT" (fundo âmbar, mesmo tom dos avisos gerais —
+  atenção, não uma afirmação de erro).
+
+**Verificação:** 10 testes unit novos + 3 e2e dedicados (cobertura com
+categorias sem sobreposição, LTCAT reenviado citando a mesma categoria
+do LIP saindo da cobertura, RLS com dado sensível vivo até o `afterAll`
+mesmo padrão da Fase 28), regressão completa do módulo pente-fino
+25/25 (5 suítes). `npx tsc --noEmit` limpo nos dois lados. Verificação
+manual em produção real com IA real: LIP citando ruído + LTCAT citando
+calor (sem sobreposição de propósito) — seção nova exibiu exatamente
+"Presente só no LIP: Ruido continuo — nada de ruido citado no LTCAT." e
+"Presente só no LTCAT: Calor — nada de calor citado no LIP.", console
+sem erro.
+
+Com esta fatia, todo o escopo do Pente-Fino identificado desde a Fase
+25 (§7 "Fora de escopo") está implementado. Não há próxima fatia
+conhecida deste motor sem uma nova decisão do fundador.
