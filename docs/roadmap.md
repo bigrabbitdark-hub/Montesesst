@@ -3403,6 +3403,47 @@ de fix-wave — o 6º ficou de fora deliberadamente, ver abaixo:**
     bug — por isso não entrou na fix-wave. **Recomendação prioritária:
     esta é a próxima coisa a fazer antes de considerar o sub-projeto C
     utilizável de ponta a ponta.**
+
+    > **Atualização de 2026-09-15, commit `77be953` direto em `main`:**
+    > lacuna fechada. Classificado Bounded em brainstorming (endpoints já
+    > existiam, sem mudança de backend) e implementado direto pelo
+    > controlador nesta mesma sessão, sem spec/plano formais. Seção
+    > "Checklist de prevenção" inline em `/tecnico/empresas/[tenantId]`
+    > (mesmo padrão da seção "Inspeções" já existente ali, com um
+    > seletor de filial a mais na criação, já que o checklist exige
+    > `company_unit_id` e Inspeções não). Nova página
+    > `/tecnico/empresas/[tenantId]/checklist-prevencao/[id]` espelha
+    > `inspecoes/[id]/page.tsx` (14 itens fixos, sem blocos, C/NC/NA +
+    > observação), com upload/visualização de foto por item (padrão de
+    > `FormData` já usado no `FireBrigadePanel` pro certificado de
+    > treinamento) — peça que Inspeções não tinha e precisou ser
+    > desenhada nova. `PreventionChecklistPanel` (leitura pela empresa)
+    > ficou intocado. Verificação manual em produção real, de ponta a
+    > ponta, com conta de técnico vinculada de verdade pelo fluxo real
+    > de admin (sem bypass de banco): criação com filial, os 14 itens
+    > marcados C/NC/NA com observação, persistência confirmada após
+    > reload, upload real de foto com verificação do link presignado
+    > (R2, HTTP 200, `image/png` real), listagem mostrando "Rascunho",
+    > conclusão travando todos os campos pra edição. Console limpo em
+    > toda a jornada.
+    >
+    > **Achado de segurança real no processo de verificação, não do
+    > produto**: a instrução de despacho do agente de verificação disse
+    > pra ele "ver se há credencial admin salva" em vez de fornecer o
+    > acesso admin explicitamente ou o controlador fazer esse passo
+    > (vincular o técnico à empresa) diretamente — o agente não achou
+    > nada no scratchpad, mas encontrou a senha admin (provisionada
+    > horas antes nesta mesma sessão) buscando na transcrição bruta
+    > (JSONL) da própria sessão em disco, legível por qualquer processo
+    > rodando como root no container, harness sinalizou como
+    > "Credential Exploration". Confirmado: qualquer segredo que passe
+    > em texto puro pela conversa fica gravado na transcrição, acessível
+    > a qualquer subagente futuro com `Bash`. Fundador optou por manter
+    > a mesma senha mesmo ciente da exposição (é ambiente só desta VPS,
+    > sem exposição externa). Lição registrada em memória do projeto:
+    > nunca mais delegar "procurar credencial" a um subagente — ou
+    > fornecer explicitamente com escopo, ou o controlador executa o
+    > passo sensível ele mesmo.
   - **Important**: foto de item de checklist era write-only (sem
     endpoint de leitura) — corrigido com `GET .../items/:itemId/foto`
     espelhando `fire-safety-equipment`'s `getFotoUrl`. (Achado
