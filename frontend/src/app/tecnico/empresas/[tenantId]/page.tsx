@@ -38,6 +38,9 @@ export default function TecnicoEmpresaDocumentosPage() {
   const [error, setError] = useState('');
   const [checklists, setChecklists] = useState<ChecklistRow[]>([]);
   const [units, setUnits] = useState<CompanyUnitOption[]>([]);
+  const [inspectionUnitId, setInspectionUnitId] = useState('');
+  const [inspectionStartedAt, setInspectionStartedAt] = useState('');
+  const [inspectionEndedAt, setInspectionEndedAt] = useState('');
   const [checklistUnitId, setChecklistUnitId] = useState('');
   const [creatingChecklist, setCreatingChecklist] = useState(false);
   const [checklistError, setChecklistError] = useState('');
@@ -106,6 +109,10 @@ export default function TecnicoEmpresaDocumentosPage() {
   }, [router]);
 
   async function handleNovaInspecao() {
+    if (!inspectionUnitId) {
+      setError('Selecione a filial.');
+      return;
+    }
     setCreating(true);
     setError('');
     const token = localStorage.getItem('montese_token');
@@ -116,6 +123,9 @@ export default function TecnicoEmpresaDocumentosPage() {
         body: JSON.stringify({
           tenant_id: params.tenantId,
           visited_at: new Date().toISOString().slice(0, 10),
+          company_unit_id: inspectionUnitId,
+          started_at: inspectionStartedAt || undefined,
+          ended_at: inspectionEndedAt || undefined,
         }),
       });
       if (res.ok) {
@@ -202,8 +212,41 @@ export default function TecnicoEmpresaDocumentosPage() {
       </section>
 
       <section className="mt-10 rounded-lg border border-brand-100 p-6">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-bold text-brand-900">Inspeções</h2>
+        <h2 className="text-lg font-bold text-brand-900">Inspeções</h2>
+        <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-end">
+          <label className="flex flex-1 flex-col gap-1 text-sm text-brand-900">
+            Filial
+            <select
+              value={inspectionUnitId}
+              onChange={(e) => setInspectionUnitId(e.target.value)}
+              className="rounded-md border border-brand-100 px-3 py-2"
+            >
+              <option value="">Selecione</option>
+              {units.map((unit) => (
+                <option key={unit.id} value={unit.id}>
+                  {unit.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="flex flex-col gap-1 text-sm text-brand-900">
+            Início
+            <input
+              type="time"
+              value={inspectionStartedAt}
+              onChange={(e) => setInspectionStartedAt(e.target.value)}
+              className="rounded-md border border-brand-100 px-3 py-2"
+            />
+          </label>
+          <label className="flex flex-col gap-1 text-sm text-brand-900">
+            Término
+            <input
+              type="time"
+              value={inspectionEndedAt}
+              onChange={(e) => setInspectionEndedAt(e.target.value)}
+              className="rounded-md border border-brand-100 px-3 py-2"
+            />
+          </label>
           <button
             onClick={handleNovaInspecao}
             disabled={creating}

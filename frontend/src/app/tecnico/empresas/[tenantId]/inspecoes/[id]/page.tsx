@@ -20,6 +20,8 @@ interface AiSuggestion {
 interface ActionPlan {
   id: string;
   description: string;
+  deadline: string | null;
+  responsible: string | null;
   status: 'pendente' | 'resolvido';
 }
 
@@ -27,6 +29,10 @@ interface InspectionDetail {
   id: string;
   status: 'rascunho' | 'concluida';
   visited_at: string;
+  started_at: string | null;
+  ended_at: string | null;
+  tenant_cnpj: string;
+  company_unit_address: string | null;
   company_contact: string | null;
   dds_topic: string | null;
   dds_participants_count: number | null;
@@ -135,6 +141,29 @@ export default function InspecaoPage() {
     } catch {
       setError('Não foi possível conectar ao servidor.');
       return false;
+    }
+  }
+
+  async function saveActionPlan(planId: string, patch: { deadline?: string; responsible?: string }) {
+    const token = localStorage.getItem('montese_token');
+    try {
+      const res = await fetch(`/api/action-plans/${planId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify(patch),
+      });
+      if (res.ok) {
+        const updatedPlan = await res.json();
+        setInspection((prev) =>
+          prev
+            ? { ...prev, action_plans: prev.action_plans.map((p) => (p.id === planId ? updatedPlan : p)) }
+            : prev,
+        );
+      } else {
+        setError('Não foi possível salvar a ação corretiva.');
+      }
+    } catch {
+      setError('Não foi possível conectar ao servidor.');
     }
   }
 
@@ -261,6 +290,32 @@ export default function InspecaoPage() {
 
       <section className="mt-6 rounded-lg border border-brand-100 p-6">
         <h2 className="text-lg font-bold text-brand-900">Identificação</h2>
+        <p className="mt-2 text-sm text-brand-700">CNPJ: {inspection.tenant_cnpj}</p>
+        <p className="mt-1 text-sm text-brand-700">
+          Endereço: {inspection.company_unit_address ?? 'não informado'}
+        </p>
+        <div className="mt-3 flex gap-3">
+          <label className="flex flex-col gap-1 text-sm text-brand-900">
+            Início
+            <input
+              type="time"
+              defaultValue={inspection.started_at ?? ''}
+              disabled={!isDraft}
+              onBlur={(e) => saveHeaderField('started_at', e.target.value)}
+              className="rounded-md border border-brand-100 px-3 py-2 disabled:bg-brand-50"
+            />
+          </label>
+          <label className="flex flex-col gap-1 text-sm text-brand-900">
+            Término
+            <input
+              type="time"
+              defaultValue={inspection.ended_at ?? ''}
+              disabled={!isDraft}
+              onBlur={(e) => saveHeaderField('ended_at', e.target.value)}
+              className="rounded-md border border-brand-100 px-3 py-2 disabled:bg-brand-50"
+            />
+          </label>
+        </div>
         <label className="mt-3 flex flex-col gap-1 text-sm text-brand-900">
           Responsável pela empresa
           <input
@@ -404,9 +459,33 @@ export default function InspecaoPage() {
       {inspection.action_plans.length > 0 && (
         <section className="mt-6 rounded-lg border border-brand-100 p-6">
           <h2 className="text-lg font-bold text-brand-900">Planos de ação gerados</h2>
-          <ul className="mt-3 flex flex-col gap-1 text-sm text-red-600">
+          <ul className="mt-3 flex flex-col gap-3">
             {inspection.action_plans.map((plan) => (
-              <li key={plan.id}>{plan.description}</li>
+              <li key={plan.id} className="rounded-md border border-red-100 p-3">
+                <p className="text-sm font-medium text-red-600">{plan.description}</p>
+                <div className="mt-2 flex flex-col gap-2 sm:flex-row">
+                  <label className="flex flex-1 flex-col gap-1 text-xs text-brand-900">
+                    Prazo
+                    <input
+                      type="date"
+                      defaultValue={plan.deadline ? plan.deadline.slice(0, 10) : ''}
+                      onBlur={(e) => saveActionPlan(plan.id, { deadline: e.target.value })}
+                      className="rounded-md border border-brand-100 px-3 py-2"
+                    />
+                  </label>
+                  <label className="flex flex-1 flex-col gap-1 text-xs text-brand-900">
+                    Responsável
+                    <input
+                      defaultValue={plan.responsible ?? ''}
+                      onBlur={(e) => saveActionPlan(plan.id, { responsible: e.target.value })}
+                      className="rounded-md border border-brand-100 px-3 py-2"
+                    />
+                  </label>
+                </div>
+                <p className="mt-2 text-xs text-brand-700">
+                  Status: {plan.status === 'resolvido' ? 'Resolvido' : 'Pendente'}
+                </p>
+              </li>
             ))}
           </ul>
         </section>
