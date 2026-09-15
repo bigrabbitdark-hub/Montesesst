@@ -63,7 +63,12 @@ describe('POST /visits, GET /visits, PATCH /visits/:id/confirmar (e2e)', () => {
     const res = await request(app.getHttpServer())
       .post('/visits')
       .set('Authorization', `Bearer ${empresaToken}`)
-      .send({ technician_user_id: technicianUserId, preferred_date: '2026-09-10', motivo: 'Revisão de PGR' });
+      .send({
+        technician_user_id: technicianUserId,
+        type: 'reuniao',
+        preferred_date: '2026-09-10',
+        motivo: 'Revisão de PGR',
+      });
 
     expect(res.status).toBe(201);
     expect(res.body.status).toBe('solicitado');
@@ -77,7 +82,7 @@ describe('POST /visits, GET /visits, PATCH /visits/:id/confirmar (e2e)', () => {
     const res = await request(app.getHttpServer())
       .post('/visits')
       .set('Authorization', `Bearer ${empresaToken}`)
-      .send({ technician_user_id: otherTech.userId, preferred_date: '2026-09-10' });
+      .send({ technician_user_id: otherTech.userId, type: 'reuniao', preferred_date: '2026-09-10' });
 
     expect(res.status).toBe(403);
   });

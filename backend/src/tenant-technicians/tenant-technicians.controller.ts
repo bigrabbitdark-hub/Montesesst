@@ -13,4 +13,12 @@ export class TenantTechniciansController {
       this.tenantTechnicians.findMyTenants(client, req.user.id, req.user.role),
     );
   }
+
+  @Roles('empresa')
+  @Get('minha-empresa')
+  findMyTechnicians(@Req() req: any) {
+    return req.withTenantContext((client: any) =>
+      this.tenantTechnicians.findMyTechnicians(client, req.user.tenantId),
+    );
+  }
 }

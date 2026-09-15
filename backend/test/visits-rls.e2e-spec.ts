@@ -92,13 +92,13 @@ describe('visit_requests — isolamento RLS entre tenants (e2e)', () => {
     const visit = await request(app.getHttpServer())
       .post('/visits')
       .set('Authorization', `Bearer ${empresaAToken}`)
-      .send({ technician_user_id: technicianUserAId });
+      .send({ technician_user_id: technicianUserAId, type: 'reuniao' });
     visitInTenantAId = visit.body.id;
 
     const visitB = await request(app.getHttpServer())
       .post('/visits')
       .set('Authorization', `Bearer ${empresaBToken}`)
-      .send({ technician_user_id: techB.userId });
+      .send({ technician_user_id: techB.userId, type: 'reuniao' });
     visitInTenantBId = visitB.body.id;
   });
 

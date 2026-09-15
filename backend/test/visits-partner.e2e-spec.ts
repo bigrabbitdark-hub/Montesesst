@@ -70,7 +70,7 @@ describe('VisitsModule — papel parceiro (e2e)', () => {
     const res = await request(app.getHttpServer())
       .post('/visits')
       .set('Authorization', `Bearer ${empresaToken}`)
-      .send({ technician_user_id: unlinkedPartner.userId, preferred_date: '2026-09-10' });
+      .send({ technician_user_id: unlinkedPartner.userId, type: 'reuniao', preferred_date: '2026-09-10' });
 
     expect(res.status).toBe(403);
   });
@@ -79,7 +79,12 @@ describe('VisitsModule — papel parceiro (e2e)', () => {
     const res = await request(app.getHttpServer())
       .post('/visits')
       .set('Authorization', `Bearer ${empresaToken}`)
-      .send({ technician_user_id: partnerUserId, preferred_date: '2026-09-10', motivo: 'Revisão de PGR' });
+      .send({
+        technician_user_id: partnerUserId,
+        type: 'reuniao',
+        preferred_date: '2026-09-10',
+        motivo: 'Revisão de PGR',
+      });
 
     expect(res.status).toBe(201);
     expect(res.body.status).toBe('solicitado');
@@ -114,7 +119,7 @@ describe('VisitsModule — papel parceiro (e2e)', () => {
     const created = await request(app.getHttpServer())
       .post('/visits')
       .set('Authorization', `Bearer ${empresaToken}`)
-      .send({ technician_user_id: partnerUserId });
+      .send({ technician_user_id: partnerUserId, type: 'reuniao' });
     await request(app.getHttpServer())
       .patch(`/visits/${created.body.id}/confirmar`)
       .set('Authorization', `Bearer ${partnerToken}`)
@@ -132,7 +137,7 @@ describe('VisitsModule — papel parceiro (e2e)', () => {
     const created = await request(app.getHttpServer())
       .post('/visits')
       .set('Authorization', `Bearer ${empresaToken}`)
-      .send({ technician_user_id: partnerUserId });
+      .send({ technician_user_id: partnerUserId, type: 'reuniao' });
     await request(app.getHttpServer())
       .patch(`/visits/${created.body.id}/confirmar`)
       .set('Authorization', `Bearer ${partnerToken}`)

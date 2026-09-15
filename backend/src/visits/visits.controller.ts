@@ -18,7 +18,17 @@ export class VisitsController {
   @Post()
   create(@Body() dto: CreateVisitDto, @Req() req: any) {
     return req.withTenantContext((client: any) =>
-      this.visits.create(client, req.user.tenantId, req.user.id, dto.technician_user_id, dto.preferred_date, dto.motivo),
+      this.visits.create(
+        client,
+        req.user.tenantId,
+        req.user.id,
+        dto.technician_user_id,
+        dto.type,
+        dto.preferred_date,
+        dto.preferred_time,
+        dto.company_unit_id,
+        dto.motivo,
+      ),
     );
   }
 
@@ -38,7 +48,7 @@ export class VisitsController {
   @Patch(':id/confirmar')
   confirmar(@Param('id') id: string, @Body() dto: ConfirmVisitDto, @Req() req: any) {
     return req.withTenantContext((client: any) =>
-      this.visits.confirm(client, id, req.user.id, dto.confirmed_date),
+      this.visits.confirm(client, id, req.user.id, dto.confirmed_date, dto.confirmed_time),
     );
   }
 

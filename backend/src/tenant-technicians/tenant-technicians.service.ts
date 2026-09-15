@@ -7,6 +7,12 @@ export interface LinkedTenant {
   tenant_cnpj: string;
 }
 
+export interface LinkedTechnician {
+  user_id: string;
+  full_name: string;
+  role: 'tecnico' | 'parceiro';
+}
+
 @Injectable()
 export class TenantTechniciansService {
   async findMyTenants(
@@ -26,6 +32,27 @@ export class TenantTechniciansService {
        WHERE p.user_id = $1
        ORDER BY t.name`,
       [userId],
+    );
+    return result.rows;
+  }
+
+  // DIVERGÊNCIA do brief da Task 1: um JOIN direto em `users` aqui (como o
+  // brief descrevia) roda sob `users_isolation`, que só libera uma linha de
+  // `users` pra um caller 'empresa' quando `tenant_id` da própria linha bate
+  // com o tenant do caller — e a linha de `users` de um técnico/parceiro tem
+  // `tenant_id` NULL (entidade global). Resultado real, confirmado rodando o
+  // teste e2e desta task: 200 com array vazio, não erro. Mesma armadilha já
+  // documentada em technicians.service.ts (findAll/findOne), cujo remédio —
+  // LEFT JOIN — só evita a linha sumir, mas não repõe full_name (continua
+  // NULL). Usa `linked_technicians_for_tenant`, função SECURITY DEFINER
+  // adicionada em 0047_visit_scheduling_fields.sql com a mesma técnica já
+  // usada em 0001_init.sql (technician_ids_for_tenant, current_technician_id
+  // etc.) pra quebrar RLS cruzada entre tabelas de forma controlada — o
+  // único parâmetro é o tenantId do próprio caller autenticado.
+  async findMyTechnicians(client: PoolClient, tenantId: string): Promise<LinkedTechnician[]> {
+    const result = await client.query<LinkedTechnician>(
+      `SELECT * FROM linked_technicians_for_tenant($1)`,
+      [tenantId],
     );
     return result.rows;
   }

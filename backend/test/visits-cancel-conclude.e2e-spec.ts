@@ -73,13 +73,13 @@ describe('PATCH /visits/:id/cancelar, /concluir (e2e)', () => {
     const visit1 = await request(app.getHttpServer())
       .post('/visits')
       .set('Authorization', `Bearer ${empresaToken}`)
-      .send({ technician_user_id: technicianUserId });
+      .send({ technician_user_id: technicianUserId, type: 'reuniao' });
     visitToCancelId = visit1.body.id;
 
     const visit2 = await request(app.getHttpServer())
       .post('/visits')
       .set('Authorization', `Bearer ${empresaToken}`)
-      .send({ technician_user_id: technicianUserId });
+      .send({ technician_user_id: technicianUserId, type: 'reuniao' });
     visitToConcludeId = visit2.body.id;
     await request(app.getHttpServer())
       .patch(`/visits/${visitToConcludeId}/confirmar`)
@@ -151,7 +151,7 @@ describe('PATCH /visits/:id/cancelar, /concluir (e2e)', () => {
     const visit = await request(app.getHttpServer())
       .post('/visits')
       .set('Authorization', `Bearer ${empresaToken}`)
-      .send({ technician_user_id: technicianUserId });
+      .send({ technician_user_id: technicianUserId, type: 'reuniao' });
     await request(app.getHttpServer())
       .patch(`/visits/${visit.body.id}/confirmar`)
       .set('Authorization', `Bearer ${technicianToken}`)
@@ -169,7 +169,7 @@ describe('PATCH /visits/:id/cancelar, /concluir (e2e)', () => {
     const visit = await request(app.getHttpServer())
       .post('/visits')
       .set('Authorization', `Bearer ${empresaToken}`)
-      .send({ technician_user_id: technicianUserId });
+      .send({ technician_user_id: technicianUserId, type: 'reuniao' });
     await request(app.getHttpServer())
       .patch(`/visits/${visit.body.id}/confirmar`)
       .set('Authorization', `Bearer ${technicianToken}`)
@@ -187,7 +187,7 @@ describe('PATCH /visits/:id/cancelar, /concluir (e2e)', () => {
     const visit = await request(app.getHttpServer())
       .post('/visits')
       .set('Authorization', `Bearer ${empresaToken}`)
-      .send({ technician_user_id: technicianUserId });
+      .send({ technician_user_id: technicianUserId, type: 'reuniao' });
     const confirmRes = await request(app.getHttpServer())
       .patch(`/visits/${visit.body.id}/confirmar`)
       .set('Authorization', `Bearer ${technicianToken}`)
@@ -210,7 +210,7 @@ describe('PATCH /visits/:id/cancelar, /concluir (e2e)', () => {
     const visit = await request(app.getHttpServer())
       .post('/visits')
       .set('Authorization', `Bearer ${empresaToken}`)
-      .send({ technician_user_id: technicianUserId });
+      .send({ technician_user_id: technicianUserId, type: 'reuniao' });
 
     const res = await request(app.getHttpServer())
       .patch(`/visits/${visit.body.id}/concluir`)
@@ -224,7 +224,7 @@ describe('PATCH /visits/:id/cancelar, /concluir (e2e)', () => {
     const visit = await request(app.getHttpServer())
       .post('/visits')
       .set('Authorization', `Bearer ${empresaToken}`)
-      .send({ technician_user_id: technicianUserId });
+      .send({ technician_user_id: technicianUserId, type: 'reuniao' });
 
     const res = await request(app.getHttpServer())
       .patch(`/visits/${visit.body.id}/confirmar`)
@@ -238,7 +238,7 @@ describe('PATCH /visits/:id/cancelar, /concluir (e2e)', () => {
     const visit = await request(app.getHttpServer())
       .post('/visits')
       .set('Authorization', `Bearer ${empresaToken}`)
-      .send({ technician_user_id: technicianUserId });
+      .send({ technician_user_id: technicianUserId, type: 'reuniao' });
 
     const res = await request(app.getHttpServer())
       .patch(`/visits/${visit.body.id}/cancelar`)
