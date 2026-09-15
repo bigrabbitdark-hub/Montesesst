@@ -11,6 +11,7 @@ const ALLOWED_CATEGORIES = [
   'pgr', 'pcmso', 'laudo', 'ficha_epi', 'treinamento',
   'cipa_ata', 'cipa_comunicado', 'cipa_documento_eleitoral', 'cipa_anexo',
   'ltcat', 'lip',
+  'relatorio_visita',
 ];
 
 function sanitizeFileName(name: string): string {

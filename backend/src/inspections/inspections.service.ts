@@ -4,11 +4,7 @@ import { mapPgError } from '../common/pg-error.util';
 import { buildSafeSetClause } from '../common/safe-update.util';
 import { CHECKLIST_ITEMS, ChecklistBlock } from './checklist-items.const';
 import { DocumentsService } from '../documents/documents.service';
-// Task 1 (esta task): `buildInspectionPdf` só é criado na Task 3 deste
-// plano (docs/plans/relatorio-visita-tecnica-pdf.md). Import e uso ficam
-// comentados aqui de propósito — descomentados na Task 3, junto com o
-// resto do pipeline de PDF em `conclude()` abaixo.
-// import { buildInspectionPdf } from './inspection-pdf.util';
+import { buildInspectionPdf, toDateString } from './inspection-pdf.util';
 
 export interface Inspection {
   id: string;
@@ -289,36 +285,39 @@ export class InspectionsService {
 
     const detail = await this.findOne(client, id);
 
-    // Task 1 (esta task): pipeline de geração/indexação do PDF só entra
-    // na Task 3, junto com `inspection-pdf.util.ts` (buildInspectionPdf).
-    // Comentado por enquanto — descomentar na Task 3.
-    // try {
-    //   const tenantResult = await client.query<{ name: string }>('SELECT name FROM tenants WHERE id = $1', [
-    //     detail.tenant_id,
-    //   ]);
-    //   const pdfBuffer = await buildInspectionPdf(detail, {
-    //     tenantName: tenantResult.rows[0].name,
-    //     tenantCnpj: detail.tenant_cnpj,
-    //     companyUnitAddress: detail.company_unit_address,
-    //   });
-    //   await this.documents.upload(client, {
-    //     tenantId: detail.tenant_id,
-    //     category: 'relatorio_visita',
-    //     title: `Relatório de Visita — ${detail.visited_at}`,
-    //     file: {
-    //       buffer: pdfBuffer,
-    //       mimetype: 'application/pdf',
-    //       originalname: `relatorio-visita-${detail.id.slice(0, 8)}.pdf`,
-    //       size: pdfBuffer.length,
-    //     },
-    //     uploadedByUserId: userId,
-    //     uploadedByRole: userRole,
-    //     companyUnitId: detail.company_unit_id ?? undefined,
-    //   });
-    // } catch (err) {
-    //   // Nunca derruba a conclusão da inspeção por causa do PDF.
-    //   console.warn(`Falha ao gerar/indexar PDF da inspeção ${id}: ${(err as Error).message}`);
-    // }
+    try {
+      const tenantResult = await client.query<{ name: string }>('SELECT name FROM tenants WHERE id = $1', [
+        detail.tenant_id,
+      ]);
+      const pdfBuffer = await buildInspectionPdf(detail, {
+        tenantName: tenantResult.rows[0].name,
+        tenantCnpj: detail.tenant_cnpj,
+        companyUnitAddress: detail.company_unit_address,
+      });
+      await this.documents.upload(client, {
+        tenantId: detail.tenant_id,
+        category: 'relatorio_visita',
+        // detail.visited_at é coluna DATE — mesma armadilha de serialização
+        // documentada em inspection-pdf.util.ts (e em várias fases
+        // anteriores deste projeto); sem normalizar aqui o título vinha como
+        // "Relatório de Visita — Tue Sep 15 2026 00:00:00 GMT..." em vez de
+        // "Relatório de Visita — 2026-09-15" (achado real rodando o teste
+        // e2e desta task, não estava no bloco original comentado da Task 1).
+        title: `Relatório de Visita — ${toDateString(detail.visited_at)}`,
+        file: {
+          buffer: pdfBuffer,
+          mimetype: 'application/pdf',
+          originalname: `relatorio-visita-${detail.id.slice(0, 8)}.pdf`,
+          size: pdfBuffer.length,
+        },
+        uploadedByUserId: userId,
+        uploadedByRole: userRole,
+        companyUnitId: detail.company_unit_id ?? undefined,
+      });
+    } catch (err) {
+      // Nunca derruba a conclusão da inspeção por causa do PDF.
+      console.warn(`Falha ao gerar/indexar PDF da inspeção ${id}: ${(err as Error).message}`);
+    }
 
     return detail;
   }
