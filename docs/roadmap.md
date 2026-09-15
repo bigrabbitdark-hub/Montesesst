@@ -4132,6 +4132,26 @@ detecção de audiometria direto no texto bruto do PCMSO, independente de
 função) — não corrigido agora por ser escopo novo, não um defeito desta
 execução.
 
+> **Atualização de 2026-09-15:** a fatia futura foi implementada,
+> commit `e894c29` direto em `main`. `buildLipAgentFindings` ganhou um
+> segundo sinal: quando a extração função↔exame não encontra
+> audiometria, o sistema varre o texto bruto do PCMSO por
+> "audiometr" (mesmo tratamento de acento) antes de concluir "exame
+> ausente" — sem chamada de IA nova, sem cache novo (extração de texto
+> local, já limitada pela taxa de 5/hora da rota; só roda quando pode
+> fazer diferença: há agente ruído+insalubre E o sinal por função ainda
+> não achou nada). `extractFullText` — antes triplicado de forma
+> idêntica em `PenteFinoExtractorService`/`DocumentChecklistExtractorService`/
+> `LipAgentExtractorService` — foi extraído pra um utilitário
+> compartilhado (`backend/src/common/documents/extract-full-text.util.ts`),
+> reusado pelo novo caminho. Texto do alerta ajustado de novo pra
+> refletir os dois sinais. 7 testes unit novos + 1 e2e dedicado
+> (regressão completa do módulo pente-fino 22/22). Verificado com IA
+> real em produção: PCMSO citando "audiometria tonal" solta, sem
+> nenhuma função vinculada e sem PGR nenhum enviado (prova mais forte
+> que o pedido — o achado positivo só podia ter vindo do segundo
+> sinal), resultou no achado verde correto.
+
 **Achado de segurança real, fora do escopo do diff mas descoberto e
 corrigido durante a revisão final**: um core dump de 89MB
 (`backend/core`, untracked) apareceu no diretório do repo durante a
