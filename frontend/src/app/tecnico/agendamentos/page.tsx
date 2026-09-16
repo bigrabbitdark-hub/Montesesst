@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 
 interface VisitRequest {
   id: string;
@@ -25,6 +26,7 @@ interface MyDayResult {
 const TYPE_LABELS: Record<string, string> = { reuniao: 'Reunião', visita: 'Visita' };
 
 export default function TecnicoAgendamentosPage() {
+  const router = useRouter();
   const [data, setData] = useState<MyDayResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -46,7 +48,13 @@ export default function TecnicoAgendamentosPage() {
   }
 
   useEffect(() => {
+    const token = localStorage.getItem('montese_token');
+    if (!token) {
+      router.push('/login');
+      return;
+    }
     load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function handleConfirmar(visitId: string) {

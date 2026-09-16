@@ -1,7 +1,7 @@
 'use client';
 
 import { Suspense, useEffect, useState } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 
 interface GoogleStatus {
   connected: boolean;
@@ -19,6 +19,7 @@ export default function TecnicoConfiguracoesPage() {
 }
 
 function TecnicoConfiguracoesContent() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const [status, setStatus] = useState<GoogleStatus | null>(null);
   const [loading, setLoading] = useState(true);
@@ -40,6 +41,11 @@ function TecnicoConfiguracoesContent() {
   }
 
   useEffect(() => {
+    const token = localStorage.getItem('montese_token');
+    if (!token) {
+      router.push('/login');
+      return;
+    }
     loadStatus();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
