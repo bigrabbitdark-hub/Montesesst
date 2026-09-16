@@ -53,8 +53,18 @@ export class GoogleOAuthCalendarClientService implements GoogleCalendarClient {
   }
 
   async refreshAccessToken(refreshToken: string): Promise<{ accessToken: string; expiresAt: Date }> {
-    this.client.setCredentials({ refresh_token: refreshToken });
-    const { credentials } = await this.client.refreshAccessToken();
+    // OAuth2Client novo por chamada — nunca reutiliza/muta this.client, que é
+    // uma instância única compartilhada entre chamadas concorrentes de
+    // técnicos diferentes (setCredentials nele seria uma race condition real:
+    // técnico A pode renovar o token de refresh do técnico B se as chamadas
+    // se intercalarem).
+    const client = new OAuth2Client(
+      process.env.GOOGLE_CLIENT_ID || 'missing-google-client-id',
+      process.env.GOOGLE_CLIENT_SECRET || 'missing-google-client-secret',
+      REDIRECT_URI,
+    );
+    client.setCredentials({ refresh_token: refreshToken });
+    const { credentials } = await client.refreshAccessToken();
     if (!credentials.access_token || !credentials.expiry_date) {
       throw new Error('Google não devolveu access_token/expiry_date ao renovar');
     }
@@ -65,8 +75,8 @@ export class GoogleOAuthCalendarClientService implements GoogleCalendarClient {
     const body: Record<string, unknown> = {
       summary: event.summary,
       description: event.description,
-      start: { dateTime: event.startDateTimeIso },
-      end: { dateTime: event.endDateTimeIso },
+      start: { dateTime: event.startDateTimeIso, timeZone: event.timeZone },
+      end: { dateTime: event.endDateTimeIso, timeZone: event.timeZone },
     };
     if (event.location) body.location = event.location;
     if (event.createMeetLink) {

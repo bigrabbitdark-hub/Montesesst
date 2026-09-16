@@ -20,6 +20,7 @@ export interface CreateEventParams {
   description: string;
   startDateTimeIso: string;
   endDateTimeIso: string;
+  timeZone: string;
   location: string | null;
 }
 
@@ -118,6 +119,7 @@ export class GoogleCalendarService {
       description: params.description,
       startDateTimeIso: params.startDateTimeIso,
       endDateTimeIso: params.endDateTimeIso,
+      timeZone: params.timeZone,
       location: params.location,
       createMeetLink: params.type === 'reuniao',
     };

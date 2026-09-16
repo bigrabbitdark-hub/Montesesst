@@ -9,6 +9,7 @@ export interface CreateGoogleEventInput {
   description: string;
   startDateTimeIso: string;
   endDateTimeIso: string;
+  timeZone: string;
   location: string | null;
   createMeetLink: boolean;
 }

@@ -153,10 +153,16 @@ export class VisitsService {
     try {
       const startTime = confirmedTime || '09:00';
       const startDateTimeIso = `${confirmedDate}T${startTime}:00`;
+      // Aritmética de string pura, sem passar por Date/toISOString — evita a
+      // assimetria de fuso que existia antes (start literal vs. end sempre em
+      // UTC via Date do processo Node). Simplificação deliberada: a duração
+      // do evento (~1h) sempre fica dentro do mesmo dia calendário informado,
+      // então uma confirmação às 23:30 termina às 00:30 do MESMO dia, não do
+      // dia seguinte — aceitável para reuniões/visitas curtas, e o fuso real
+      // vai no campo timeZone abaixo, não em aritmética de Date.
       const [hours, minutes] = startTime.split(':').map(Number);
-      const endDate = new Date(`${confirmedDate}T${startTime}:00`);
-      endDate.setHours(hours + 1, minutes);
-      const endDateTimeIso = endDate.toISOString().slice(0, 19);
+      const endHours = (hours + 1) % 24;
+      const endDateTimeIso = `${confirmedDate}T${String(endHours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00`;
 
       let location: string | null = null;
       if (confirmed.type === 'visita' && confirmed.company_unit_id) {
@@ -181,6 +187,7 @@ export class VisitsService {
         description: confirmed.motivo || 'Agendado via Montese SST',
         startDateTimeIso,
         endDateTimeIso,
+        timeZone: 'America/Sao_Paulo',
         location,
       });
 

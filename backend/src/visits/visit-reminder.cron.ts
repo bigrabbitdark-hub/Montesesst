@@ -11,6 +11,7 @@ interface ReminderRow {
   technician_email: string;
   technician_name: string;
   requested_by_email: string;
+  type: 'reuniao' | 'visita';
   // Coluna `date` do Postgres — node-pg devolve um objeto Date, não string
   // (mesma armadilha já documentada em visits.service.ts). Normalizado via
   // toDateString antes de entrar no e-mail, senão vira
@@ -18,6 +19,8 @@ interface ReminderRow {
   confirmed_date: string | Date;
   google_meet_link: string | null;
 }
+
+const TYPE_LABELS: Record<'reuniao' | 'visita', string> = { reuniao: 'Reunião', visita: 'Visita técnica' };
 
 @Injectable()
 export class VisitReminderCronService {
@@ -50,7 +53,7 @@ export class VisitReminderCronService {
         `SELECT vr.id, t.name AS tenant_name,
                 tech_user.email AS technician_email, tech_user.full_name AS technician_name,
                 req_user.email AS requested_by_email,
-                vr.confirmed_date, vr.google_meet_link
+                vr.type, vr.confirmed_date, vr.google_meet_link
          FROM visit_requests vr
          JOIN tenants t ON t.id = vr.tenant_id
          JOIN users tech_user ON tech_user.id = vr.technician_user_id
@@ -68,25 +71,31 @@ export class VisitReminderCronService {
       // mesma razão: nunca interpolar texto de usuário em HTML sem escapar.
       const technicianName = escapeHtml(row.technician_name);
       const tenantName = escapeHtml(row.tenant_name);
+      const typeLabel = TYPE_LABELS[row.type];
+      const typeLabelLower = typeLabel.toLowerCase();
+      // google_meet_link nunca é digitado por usuário (vem da resposta da API
+      // do Google), mas escapamos mesmo assim como defesa em profundidade —
+      // mesmo raciocínio já aplicado acima a tenant_name/technician_name.
+      const escapedMeetLink = row.google_meet_link ? escapeHtml(row.google_meet_link) : null;
+      const meetLine = escapedMeetLink
+        ? `<p>Link da reunião: <a href="${escapedMeetLink}">${escapedMeetLink}</a></p>`
+        : '';
 
       try {
         await this.email.send({
           to: row.requested_by_email,
-          subject: 'Visita técnica confirmada amanhã',
-          html: `<p>Sua visita técnica com ${technicianName} está confirmada para amanhã (${confirmedDate}).</p>`,
+          subject: `${typeLabel} confirmada amanhã`,
+          html: `<p>Sua ${typeLabelLower} com ${technicianName} está confirmada para amanhã (${confirmedDate}).</p>${meetLine}`,
         });
       } catch (err) {
         this.logger.error(`Falha ao enviar lembrete (empresa) pra visita ${row.id}`, (err as Error).stack);
       }
 
       try {
-        const meetLine = row.google_meet_link
-          ? `<p>Link da reunião: <a href="${row.google_meet_link}">${row.google_meet_link}</a></p>`
-          : '';
         await this.email.send({
           to: row.technician_email,
-          subject: 'Você tem visita confirmada amanhã',
-          html: `<p>Você tem uma visita confirmada amanhã (${confirmedDate}) na empresa ${tenantName}.</p>${meetLine}`,
+          subject: `Você tem ${typeLabelLower} confirmada amanhã`,
+          html: `<p>Você tem uma ${typeLabelLower} confirmada amanhã (${confirmedDate}) na empresa ${tenantName}.</p>${meetLine}`,
         });
       } catch (err) {
         this.logger.error(`Falha ao enviar lembrete (técnico) pra visita ${row.id}`, (err as Error).stack);
