@@ -62,7 +62,7 @@ describe('GET /visits/me/day (e2e)', () => {
     const visit1 = await request(app.getHttpServer())
       .post('/visits')
       .set('Authorization', `Bearer ${empresaAToken}`)
-      .send({ technician_user_id: technicianUserId, preferred_date: '2026-09-05' });
+      .send({ technician_user_id: technicianUserId, type: 'reuniao', preferred_date: '2026-09-05' });
     confirmedVisitId = visit1.body.id;
     await request(app.getHttpServer())
       .patch(`/visits/${confirmedVisitId}/confirmar`)
@@ -72,7 +72,7 @@ describe('GET /visits/me/day (e2e)', () => {
     const visit2 = await request(app.getHttpServer())
       .post('/visits')
       .set('Authorization', `Bearer ${empresaAToken}`)
-      .send({ technician_user_id: technicianUserId });
+      .send({ technician_user_id: technicianUserId, type: 'reuniao' });
     pendingVisitId = visit2.body.id;
   });
 
