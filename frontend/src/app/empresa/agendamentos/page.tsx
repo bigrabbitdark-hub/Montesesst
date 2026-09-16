@@ -64,6 +64,9 @@ export default function EmpresaAgendamentosPage() {
         if (techRes.ok) setTechnicians(await techRes.json());
         if (unitsRes.ok) setUnits(await unitsRes.json());
         if (visitsRes.ok) setVisits(await visitsRes.json());
+        if (!techRes.ok || !unitsRes.ok || !visitsRes.ok) {
+          setError('Não foi possível carregar todos os dados da página.');
+        }
         setLoading(false);
       })
       .catch(() => {
@@ -146,7 +149,9 @@ export default function EmpresaAgendamentosPage() {
               onChange={(e) => setType(e.target.value as 'reuniao' | 'visita')}
               className="rounded-md border border-brand-100 px-3 py-2"
             >
-              <option value="reuniao">Reunião (virtual, com Google Meet)</option>
+              <option value="reuniao">
+                Reunião (virtual — gera link do Google Meet se o técnico tiver conectado a conta)
+              </option>
               <option value="visita">Visita (presencial)</option>
             </select>
           </label>

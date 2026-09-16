@@ -29,9 +29,16 @@ function TecnicoConfiguracoesContent() {
   function loadStatus() {
     const token = localStorage.getItem('montese_token');
     fetch('/api/google-calendar/status', { headers: { Authorization: `Bearer ${token}` } })
-      .then((res) => (res.ok ? res.json() : null))
+      .then((res) => {
+        if (!res.ok) {
+          setError('Não foi possível carregar o status da conexão com o Google.');
+          setLoading(false);
+          return null;
+        }
+        return res.json();
+      })
       .then((data) => {
-        setStatus(data);
+        if (data) setStatus(data);
         setLoading(false);
       })
       .catch(() => {

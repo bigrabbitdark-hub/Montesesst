@@ -36,9 +36,16 @@ export default function TecnicoAgendamentosPage() {
   function load() {
     const token = localStorage.getItem('montese_token');
     fetch('/api/visits/me/day', { headers: { Authorization: `Bearer ${token}` } })
-      .then((res) => (res.ok ? res.json() : null))
+      .then((res) => {
+        if (!res.ok) {
+          setError('Não foi possível carregar a agenda.');
+          setLoading(false);
+          return null;
+        }
+        return res.json();
+      })
       .then((result) => {
-        setData(result);
+        if (result) setData(result);
         setLoading(false);
       })
       .catch(() => {
@@ -57,14 +64,19 @@ export default function TecnicoAgendamentosPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  async function handleConfirmar(visitId: string) {
+  async function handleConfirmar(visit: VisitRequest) {
+    const finalDate = confirmDates[visit.id] ?? visit.preferred_date;
+    if (!finalDate) {
+      setError('Selecione uma data pra confirmar.');
+      return;
+    }
     const token = localStorage.getItem('montese_token');
-    const res = await fetch(`/api/visits/${visitId}/confirmar`, {
+    const res = await fetch(`/api/visits/${visit.id}/confirmar`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body: JSON.stringify({
-        confirmed_date: confirmDates[visitId],
-        confirmed_time: confirmTimes[visitId] || undefined,
+        confirmed_date: finalDate,
+        confirmed_time: confirmTimes[visit.id] ?? visit.preferred_time ?? undefined,
       }),
     });
     if (res.ok) {
@@ -124,7 +136,7 @@ export default function TecnicoAgendamentosPage() {
                     />
                   </label>
                   <button
-                    onClick={() => handleConfirmar(visit.id)}
+                    onClick={() => handleConfirmar(visit)}
                     className="rounded-md bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700"
                   >
                     Confirmar
