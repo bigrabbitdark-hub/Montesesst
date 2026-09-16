@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 
 interface Technician {
   user_id: string;
@@ -33,6 +34,7 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 export default function EmpresaAgendamentosPage() {
+  const router = useRouter();
   const [technicians, setTechnicians] = useState<Technician[]>([]);
   const [units, setUnits] = useState<CompanyUnit[]>([]);
   const [visits, setVisits] = useState<VisitRequest[]>([]);
@@ -49,6 +51,10 @@ export default function EmpresaAgendamentosPage() {
 
   function loadAll() {
     const token = localStorage.getItem('montese_token');
+    if (!token) {
+      router.push('/login');
+      return;
+    }
     Promise.all([
       fetch('/api/tenant-technicians/minha-empresa', { headers: { Authorization: `Bearer ${token}` } }),
       fetch('/api/company-units', { headers: { Authorization: `Bearer ${token}` } }),
@@ -68,7 +74,8 @@ export default function EmpresaAgendamentosPage() {
 
   useEffect(() => {
     loadAll();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [router]);
 
   async function handleSolicitar() {
     if (!technicianUserId) {
