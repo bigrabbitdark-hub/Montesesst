@@ -31,6 +31,7 @@ import { FireBrigadeModule } from './fire-brigade/fire-brigade.module';
 import { PreventionCorrectiveActionsModule } from './prevention-corrective-actions/prevention-corrective-actions.module';
 import { PreventionChecklistModule } from './prevention-checklist/prevention-checklist.module';
 import { EmergencyDrillModule } from './emergency-drill/emergency-drill.module';
+import { GoogleCalendarModule } from './google-calendar/google-calendar.module';
 import { JwtAuthGuard } from './auth/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 import { TenantContextInterceptor } from './common/interceptors/tenant-context.interceptor';
@@ -83,6 +84,7 @@ import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
     PreventionCorrectiveActionsModule,
     PreventionChecklistModule,
     EmergencyDrillModule,
+    GoogleCalendarModule,
   ],
   providers: [
     // Ordem importa: RateLimitGuard barra abuso antes de qualquer auth;
