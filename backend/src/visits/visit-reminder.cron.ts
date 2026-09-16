@@ -16,6 +16,7 @@ interface ReminderRow {
   // toDateString antes de entrar no e-mail, senão vira
   // "Fri Sep 12 2026 00:00:00 GMT+0000 (Coordinated Universal Time)".
   confirmed_date: string | Date;
+  google_meet_link: string | null;
 }
 
 @Injectable()
@@ -49,7 +50,7 @@ export class VisitReminderCronService {
         `SELECT vr.id, t.name AS tenant_name,
                 tech_user.email AS technician_email, tech_user.full_name AS technician_name,
                 req_user.email AS requested_by_email,
-                vr.confirmed_date
+                vr.confirmed_date, vr.google_meet_link
          FROM visit_requests vr
          JOIN tenants t ON t.id = vr.tenant_id
          JOIN users tech_user ON tech_user.id = vr.technician_user_id
@@ -79,10 +80,13 @@ export class VisitReminderCronService {
       }
 
       try {
+        const meetLine = row.google_meet_link
+          ? `<p>Link da reunião: <a href="${row.google_meet_link}">${row.google_meet_link}</a></p>`
+          : '';
         await this.email.send({
           to: row.technician_email,
           subject: 'Você tem visita confirmada amanhã',
-          html: `<p>Você tem uma visita confirmada amanhã (${confirmedDate}) na empresa ${tenantName}.</p>`,
+          html: `<p>Você tem uma visita confirmada amanhã (${confirmedDate}) na empresa ${tenantName}.</p>${meetLine}`,
         });
       } catch (err) {
         this.logger.error(`Falha ao enviar lembrete (técnico) pra visita ${row.id}`, (err as Error).stack);

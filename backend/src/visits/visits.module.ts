@@ -5,9 +5,10 @@ import { TechnicianAgendaService } from './technician-agenda.service';
 import { VisitReminderCronService } from './visit-reminder.cron';
 import { DashboardModule } from '../dashboard/dashboard.module';
 import { TenantTechniciansModule } from '../tenant-technicians/tenant-technicians.module';
+import { GoogleCalendarModule } from '../google-calendar/google-calendar.module';
 
 @Module({
-  imports: [DashboardModule, TenantTechniciansModule],
+  imports: [DashboardModule, TenantTechniciansModule, GoogleCalendarModule],
   controllers: [VisitsController],
   providers: [VisitsService, TechnicianAgendaService, VisitReminderCronService],
 })

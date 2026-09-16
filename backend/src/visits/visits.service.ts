@@ -1,6 +1,7 @@
-import { ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, ForbiddenException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PoolClient } from 'pg';
 import { AuthenticatedUser } from '../common/types';
+import { GoogleCalendarService } from '../google-calendar/google-calendar.service';
 
 export interface VisitRequest {
   id: string;
@@ -50,6 +51,10 @@ export function normalizeVisit(row: VisitRequest): VisitRequest {
 
 @Injectable()
 export class VisitsService {
+  private readonly logger = new Logger(VisitsService.name);
+
+  constructor(private readonly googleCalendar: GoogleCalendarService) {}
+
   private async assertCompanyUnitBelongsToTenant(
     client: PoolClient,
     companyUnitId: string,
@@ -143,7 +148,53 @@ export class VisitsService {
        WHERE id = $1 RETURNING *`,
       [id, confirmedDate, confirmedTime ?? null],
     );
-    return normalizeVisit(result.rows[0]);
+    let confirmed = normalizeVisit(result.rows[0]);
+
+    try {
+      const startTime = confirmedTime || '09:00';
+      const startDateTimeIso = `${confirmedDate}T${startTime}:00`;
+      const [hours, minutes] = startTime.split(':').map(Number);
+      const endDate = new Date(`${confirmedDate}T${startTime}:00`);
+      endDate.setHours(hours + 1, minutes);
+      const endDateTimeIso = endDate.toISOString().slice(0, 19);
+
+      let location: string | null = null;
+      if (confirmed.type === 'visita' && confirmed.company_unit_id) {
+        const unitResult = await client.query<{
+          address_street: string;
+          address_number: string | null;
+          address_city: string;
+          address_state: string;
+        }>(
+          'SELECT address_street, address_number, address_city, address_state FROM company_units WHERE id = $1',
+          [confirmed.company_unit_id],
+        );
+        const unit = unitResult.rows[0];
+        if (unit) {
+          location = `${unit.address_street}${unit.address_number ? `, ${unit.address_number}` : ''} — ${unit.address_city}/${unit.address_state}`;
+        }
+      }
+
+      const event = await this.googleCalendar.createEvent(client, technicianUserId, {
+        type: confirmed.type,
+        summary: confirmed.type === 'reuniao' ? 'Reunião — Montese SST' : 'Visita técnica — Montese SST',
+        description: confirmed.motivo || 'Agendado via Montese SST',
+        startDateTimeIso,
+        endDateTimeIso,
+        location,
+      });
+
+      if (event) {
+        await this.setGoogleEvent(client, id, event.eventId, event.meetLink);
+        confirmed = { ...confirmed, google_event_id: event.eventId, google_meet_link: event.meetLink };
+      }
+    } catch (err) {
+      // Nunca derruba a confirmação por causa do Google — mesmo padrão
+      // de resiliência já usado na geração do PDF de visita técnica.
+      this.logger.warn(`Falha ao criar evento no Google Calendar pra visita ${id}: ${(err as Error).message}`);
+    }
+
+    return confirmed;
   }
 
   async cancel(client: PoolClient, id: string, user: AuthenticatedUser): Promise<VisitRequest> {
