@@ -9,6 +9,7 @@
     "db:migrate": "tsx db/migrate.ts",
     "db:seed": "tsx db/seed.ts",
     "caepi:sync": "tsx db/caepi-sync.ts",
+    "db:embed-sst-checklist": "tsx db/embed-sst-checklist.ts",
     "test:e2e": "jest --config ./test/jest-e2e.json --runInBand",
     "test:unit": "jest --config ./test/jest-unit.json"
   },
