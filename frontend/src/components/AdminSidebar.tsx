@@ -25,6 +25,7 @@ const GROUPS: NavGroup[] = [
   {
     label: 'Sistema',
     links: [
+      { href: '/admin/checklist-sst', label: 'Checklist SST', emoji: '✅' },
       { href: '/admin/normativa', label: 'Base normativa', emoji: '📚' },
       { href: '/admin/auditoria', label: 'Auditoria', emoji: '🔍' },
       { href: '/admin/financeiro', label: 'Financeiro', emoji: '💳' },
