@@ -4559,3 +4559,134 @@ console.
   resolução de endereço).
 - Datas exibidas em ISO cru nas 2 telas novas, inconsistente com o
   `formatDate` pt-BR já usado em outras ~18 páginas do app.
+
+## Checklist SST — 4ª fonte de conhecimento do Assistente: status
+
+O fundador colou uma base de conhecimento completa ("Checklist de
+Documentação SST", NR-01 a NR-38, derivada da planilha interna "Super
+Checklist Documentação SST — 26/05/2026") pedindo pra "acrescentar no
+conhecimento do assistente". O documento original foi preservado
+verbatim em `docs/reference/checklist-documentacao-sst.md`.
+
+**Achado central do brainstorming**: o Assistente já tinha um pipeline
+de RAG normativo completo (Fase 9), mas ele foi desenhado para **textos
+oficiais** baixados do governo, com aprovação humana e monitoramento. O
+checklist colado é **curadoria interna da Montese** (interpretação,
+valores de multa não validados) — misturá-lo faria o Assistente citar
+uma interpretação interna com o mesmo peso de uma norma do gov.br. Por
+isso virou uma **4ª fonte separada e sempre rotulada**, ao lado das 3
+que já existiam (normas oficiais, documentos da própria empresa, itens
+operacionais do painel).
+
+Classificado como Architectural. Spec em
+`docs/specs/checklist-sst-conhecimento-assistente.md`, plano em
+`docs/superpowers/plans/2026-09-17-checklist-sst-conhecimento-assistente.md`.
+
+**Implementada e verificada em 2026-09-20 — deploy de produção
+PENDENTE de autorização do fundador.** Execução via Subagent-Driven
+Development (5 tasks + 1 onda final de correção), commits `24055dc`,
+`88cfbc3`, `134be07`, `f9513e0`, `f10e545`, `a6dc490`, `024be78`,
+`c27263f`, `c27bafd` na branch `feat/assistente-confiabilidade-etapa-1`
+(compartilhada com a Etapa 1 da Confiabilidade do Assistente; `main` só
+avança por fast-forward decidido pelo fundador — ver "Coordenação de
+merge" abaixo):
+
+- Migration `0049`: tabela `sst_checklist_items` (301 itens, 38 NRs,
+  sem `tenant_id`/RLS — mesmo modelo de `epi_catalog_items`), carga
+  inicial por INSERT direto (gerada por parser do documento de
+  referência e validada contra o Postgres real antes de entrar no
+  plano). Script standalone `db/embed-sst-checklist.ts` calculou os 301
+  embeddings uma vez (a migration e os embeddings **já estão no banco de
+  produção**).
+- CRUD de admin `backend/src/sst-checklist/` (`@Roles('admin')` nas 5
+  rotas; recálculo de embedding só quando `nr_code`/`document_name`/
+  `description`/`legal_requirement` mudam; `embedding` nunca sai em JSON)
+  e tela `/admin/checklist-sst` (lista filtrável por NR, criar/editar/
+  excluir, item novo no menu lateral).
+- Integração no Assistente: `answer()` ganhou o 5º parâmetro
+  `checklistItems`; `NormativeClaim.checklist_ref_ids`;
+  `checklist_citations` na resposta; busca por similaridade sempre
+  executada; claim que cita id de checklist fora da lista buscada é
+  descartada (mesma defesa das outras 3 fontes); o texto do item entra
+  nas evidências do Verificador v2 da Etapa 1. Prompt dos dois
+  provedores deixa explícito que o checklist **não é o texto oficial**.
+- Frontend do chat: bloco âmbar "Checklist interno Montese — não é o
+  texto oficial da norma"; copy do rodapé e dos subtítulos corrigida
+  para não afirmar que toda resposta vem de fonte oficial.
+- **Fórmula do texto embedado** (4 campos, U+2014):
+  `${nr_code} — ${document_name}: ${description} — ${legal_requirement}`
+  — idêntica no script, no serviço de CRUD e no SQL de busca, com teste
+  que trava a string do SQL. A spec dizia 3 campos e, ao mesmo tempo,
+  que editar `legal_requirement` recalcula o embedding — contradição
+  resolvida incluindo o 4º campo.
+
+**Achados reais do processo de revisão** (por que vale ler os testes):
+
+- O plano assumia que os specs existentes não dependiam da posição dos
+  argumentos de `answer()`; falso — 6 chamadas diretas, ~25 fixtures de
+  claim e 4 índices `lastCall[4]` foram atualizados.
+- `POST /assistant/normative-query` é `@Roles('empresa','tecnico',
+  'parceiro')` — o e2e do plano usava token de admin e receberia 403.
+- O `checkClaimSupport` da Etapa 1 é **fail-open** com lista de
+  evidências vazia (a justificativa original do plano estava invertida):
+  sem somar o texto do checklist às evidências, uma claim só-de-checklist
+  passaria sem verificação alguma.
+- Testes rodam contra o mesmo Postgres de produção: fixtures
+  (`NR-97/98/99`, `NR-ASSISTENTE-TESTE`) são apagadas por `nr_code` de
+  forma incondicional no início e no fim de cada spec.
+- Se o modelo omitir `checklist_ref_ids` (campo novo), os provedores
+  normalizam para `[]` em vez de descartar todas as claims — sem isso,
+  qualquer pergunta puramente normativa cairia no fallback em silêncio.
+
+**Verificação:** suíte e2e completa no commit final — 118 suítes, só as
+2 falhas que já existiam e não têm relação com esta fase (`normative-
+openrouter-answer`: 1 teste com regex `/DADO,/` contra o texto
+"DADOS,"; `cipa-ata-ai`: 429 da janela de 24h da rota ata-audio);
+tsc backend/frontend limpo; unit 23 suítes/203 testes. **Smoke com
+embeddings reais**: perguntas SST reais recuperam as NRs certas
+(caldeiras → NR-13 0,55–0,64; PGR/PCMSO → NR-07/NR-01; altura → NR-35;
+CIPA → NR-05) e pergunta fora de tópico fica em ≤ 0,14, então o limiar
+0,4 já serve de porteiro. Lição operacional: a suíte completa (~118
+suítes num worker único) bate no heap padrão do Node — rodar em 2
+lotes (foi como fechou esta fase) ou aumentar o heap.
+
+**Coordenação de merge e deploy (leia antes de publicar):**
+
+- `main` está em `7cd5f13` (Etapa 1 + o commit **original** da tela de
+  admin, sem o `f10e545`). O fast-forward tem que ir até o topo da
+  branch — **nunca deployar `main` num ponto intermediário**.
+- Backend e frontend vão **juntos**: backend novo sem frontend novo
+  mostra citação de checklist sem o box "não é o texto oficial".
+- `frontend/Dockerfile` faz `COPY . .` e não há `.dockerignore`: o build
+  empacota toda a árvore de trabalho, inclusive o redesign do site ainda
+  não commitado. `frontend/src/app/admin/layout.tsx` importa
+  `WhatsAppButton`, que nunca foi commitado (quebra checkout limpo/CI —
+  dívida anterior a esta fase).
+
+**Fora de escopo / dívida registrada:**
+
+- Determinar automaticamente quais NRs valem para uma empresa por CNAE;
+  validar valores de multa (`is_fine_validated` fica `false`); gerar
+  pendências a partir do checklist; importar CSV em lote.
+- `embed()` roda dentro de `withTenantContext` nas rotas de criar/editar
+  (segura uma conexão do pool durante chamada HTTP de até 30s — contraria
+  a convenção "Finding C1b" da Fase 9). Baixo risco (rota admin-only) e a
+  correção certa exige o split prepare/embed/finalize com reconferência
+  otimista nos dois caminhos.
+- Itens do checklist citam outra NR dentro do texto (17 de 301) e isso
+  "destrava" NRs alheias no Verificador v2; sem correção mínima correta —
+  insumo para o dataset golden da Etapa 2/3 da Confiabilidade.
+- Com anexo, o limite de trechos agora vale também para o checklist
+  (3 + 3 + 3 blocos em vez de 6): medir custo/latência no deploy; provável
+  `CHECKLIST_LIMIT` próprio.
+- Resposta sustentada só por itens operacionais do painel continua sem
+  indicador de fonte na UI (pré-existente).
+- `:id` não-UUID nas rotas do CRUD devolve 500 (igual a 83 dos 84
+  handlers do projeto; correção transversal com `ParseUUIDPipe`).
+- Tela de admin: sem `try/catch` nos handlers, falha do GET
+  indistinguível de catálogo vazio, sem `trim()`, sem paginação nos 301
+  itens.
+- **Curadoria do fundador pela própria tela de admin**: typo "funão" no
+  item "Ordens de serviço" da NR-01, aspas abertas em itens da NR-03, e o
+  item "A NR-02 foi revogada" (NR-02 e NR-27 são as duas NRs revogadas do
+  documento original).
