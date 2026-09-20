@@ -16,6 +16,12 @@ interface CompanyCitation {
   category: string;
 }
 
+interface ChecklistCitation {
+  item_id: string;
+  nr_code: string;
+  document_name: string;
+}
+
 interface Notice {
   tipo: 'jurisdicao' | 'profissional_habilitado' | 'contexto';
   texto: string;
@@ -26,6 +32,7 @@ interface QueryResult {
   message?: string;
   citations: Citation[];
   company_citations: CompanyCitation[];
+  checklist_citations?: ChecklistCitation[];
   notices?: Notice[];
   used_attachment?: boolean;
   attachment_warning?: string;
@@ -190,6 +197,18 @@ export function AssistantChat({ tenantId }: { tenantId?: string }) {
                 >
                   {c.title}
                 </button>
+              ))}
+            </div>
+          )}
+          {(result.checklist_citations ?? []).length > 0 && (
+            <div className="mt-4 flex flex-col gap-1 rounded-md border border-amber-300 bg-amber-50 p-3">
+              <h4 className="text-xs font-bold uppercase tracking-wide text-amber-800">
+                Checklist interno Montese — não é o texto oficial da norma
+              </h4>
+              {(result.checklist_citations ?? []).map((c) => (
+                <p key={c.item_id} className="text-sm text-amber-900">
+                  {c.nr_code} — {c.document_name}
+                </p>
               ))}
             </div>
           )}
