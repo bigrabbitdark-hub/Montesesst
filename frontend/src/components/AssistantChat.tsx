@@ -16,11 +16,17 @@ interface CompanyCitation {
   category: string;
 }
 
+interface Notice {
+  tipo: 'jurisdicao' | 'profissional_habilitado' | 'contexto';
+  texto: string;
+}
+
 interface QueryResult {
   answer: string | null;
   message?: string;
   citations: Citation[];
   company_citations: CompanyCitation[];
+  notices?: Notice[];
   used_attachment?: boolean;
   attachment_warning?: string;
 }
@@ -140,6 +146,14 @@ export function AssistantChat({ tenantId }: { tenantId?: string }) {
 
       {result && (
         <div className="mt-6 rounded-lg border border-brand-100 p-6">
+          {(result.notices ?? []).map((notice) => (
+            <p
+              key={notice.tipo}
+              className="mb-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800"
+            >
+              {notice.texto}
+            </p>
+          ))}
           <p className="whitespace-pre-wrap text-sm text-brand-900">{result.answer ?? result.message}</p>
           {result.attachment_warning && (
             <p className="mt-2 text-sm text-amber-700">{result.attachment_warning}</p>
