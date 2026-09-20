@@ -66,6 +66,7 @@ describe('POST /assistant/normative-query — anexo de documento/imagem (e2e)', 
         chunk_ids: [],
         operational_ref_ids: [],
         company_chunk_ids: [],
+        checklist_ref_ids: [],
         uses_attachment: true,
       },
     ]);
@@ -81,7 +82,7 @@ describe('POST /assistant/normative-query — anexo de documento/imagem (e2e)', 
     expect(res.body.used_attachment).toBe(true);
 
     const lastCall = fakeAnswer.mock.calls[fakeAnswer.mock.calls.length - 1];
-    const attachmentArg = lastCall[4];
+    const attachmentArg = lastCall[5];
     expect(attachmentArg.kind).toBe('pdf_text');
     expect(attachmentArg.content).toContain('Conteúdo real de teste no PDF anexado.');
   });
@@ -109,6 +110,7 @@ describe('POST /assistant/normative-query — anexo de documento/imagem (e2e)', 
         chunk_ids: [],
         operational_ref_ids: [],
         company_chunk_ids: [],
+        checklist_ref_ids: [],
         uses_attachment: true,
       },
     ]);
@@ -123,7 +125,7 @@ describe('POST /assistant/normative-query — anexo de documento/imagem (e2e)', 
     expect(res.body.used_attachment).toBe(true);
 
     const lastCall = fakeAnswer.mock.calls[fakeAnswer.mock.calls.length - 1];
-    const attachmentArg = lastCall[4];
+    const attachmentArg = lastCall[5];
     expect(attachmentArg.kind).toBe('image');
     expect(attachmentArg.mimeType).toBe('image/png');
     expect(attachmentArg.content).toBe(fakeImage.toString('base64'));
@@ -162,6 +164,7 @@ describe('POST /assistant/normative-query — anexo de documento/imagem (e2e)', 
         chunk_ids: [],
         operational_ref_ids: [],
         company_chunk_ids: [],
+        checklist_ref_ids: [],
         uses_attachment: true,
       },
     ]);
@@ -218,6 +221,7 @@ describe('POST /assistant/normative-query — anexo de documento/imagem (e2e)', 
         chunk_ids: [],
         operational_ref_ids: [],
         company_chunk_ids: [],
+        checklist_ref_ids: [],
         uses_attachment: true,
       },
     ]);
@@ -235,7 +239,7 @@ describe('POST /assistant/normative-query — anexo de documento/imagem (e2e)', 
     expect(res.body.used_attachment).toBe(true);
 
     const lastCall = fakeAnswer.mock.calls[fakeAnswer.mock.calls.length - 1];
-    const attachmentArg = lastCall[4];
+    const attachmentArg = lastCall[5];
     expect(attachmentArg.kind).toBe('docx_text');
     expect(attachmentArg.content).toContain('Conteúdo real de teste no DOCX anexado.');
   });
@@ -253,6 +257,7 @@ describe('POST /assistant/normative-query — anexo de documento/imagem (e2e)', 
         chunk_ids: [],
         operational_ref_ids: [],
         company_chunk_ids: [],
+        checklist_ref_ids: [],
         uses_attachment: true,
       },
     ]);
@@ -270,7 +275,7 @@ describe('POST /assistant/normative-query — anexo de documento/imagem (e2e)', 
     expect(res.body.used_attachment).toBe(true);
 
     const lastCall = fakeAnswer.mock.calls[fakeAnswer.mock.calls.length - 1];
-    const attachmentArg = lastCall[4];
+    const attachmentArg = lastCall[5];
     expect(attachmentArg.kind).toBe('xlsx_text');
     expect(attachmentArg.content).toContain('Soldador');
   });

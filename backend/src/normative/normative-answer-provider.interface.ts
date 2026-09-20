@@ -8,6 +8,15 @@ export interface CompanyChunk {
   content: string;
 }
 
+// Item do catálogo de referência sst_checklist_items (checklist interno
+// de documentação SST da Montese) relevante pra esta pergunta — NUNCA o
+// texto oficial da norma. `content` já vem pronto pro prompt, no formato
+// "NR-13 — Prontuário de caldeira: <descrição> — <requisito legal>".
+export interface ChecklistItem {
+  id: string;
+  content: string;
+}
+
 // Anexo de uma pergunta específica do Assistente (Fase 20) — nunca
 // persistido, existe só durante o processamento desta chamada.
 export interface AttachmentInput {
@@ -23,6 +32,10 @@ export interface NormativeClaim {
   // ids dos trechos de documento da própria empresa (PGR/PCMSO/LTCAT/LIP,
   // Fase 24) que sustentam esta afirmação.
   company_chunk_ids: string[];
+  // ids de itens do checklist interno de documentação SST (Montese) que
+  // sustentam esta afirmação — NUNCA usado como se fosse o texto oficial
+  // da norma (ver ChecklistItem acima).
+  checklist_ref_ids: string[];
   // true se esta afirmação usa o documento/imagem anexado nesta
   // pergunta como evidência — obrigatório no schema (o modelo sempre
   // preenche), não opcional, pra o Verificador poder confiar no valor
@@ -36,6 +49,7 @@ export interface NormativeAnswerProvider {
     chunks: { id: string; content: string }[],
     operationalItems: OperationalItem[],
     companyChunks: CompanyChunk[],
+    checklistItems: ChecklistItem[],
     attachment?: AttachmentInput,
   ): Promise<NormativeClaim[]>;
 }

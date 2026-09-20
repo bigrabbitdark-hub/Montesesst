@@ -82,6 +82,7 @@ describe('POST /assistant/normative-query — trechos de documento da empresa (e
         chunk_ids: [],
         operational_ref_ids: [],
         company_chunk_ids: [chunkId],
+        checklist_ref_ids: [],
         uses_attachment: false,
       },
     ]);
@@ -109,6 +110,7 @@ describe('POST /assistant/normative-query — trechos de documento da empresa (e
         chunk_ids: [],
         operational_ref_ids: [],
         company_chunk_ids: ['id-que-nao-existe'],
+        checklist_ref_ids: [],
         uses_attachment: false,
       },
     ]);

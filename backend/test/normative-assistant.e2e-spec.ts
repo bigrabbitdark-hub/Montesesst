@@ -150,7 +150,7 @@ describe('POST /assistant/normative-query (e2e)', () => {
 
   it('responde com citação quando o Verificador confirma o chunk_id', async () => {
     fakeAnswer.mockResolvedValue([
-      { claim: 'É obrigatório o uso de capacete.', chunk_ids: [chunkId], operational_ref_ids: [], company_chunk_ids: [] },
+      { claim: 'É obrigatório o uso de capacete.', chunk_ids: [chunkId], operational_ref_ids: [], company_chunk_ids: [], checklist_ref_ids: [] },
     ]);
 
     const res = await request(app.getHttpServer())
@@ -172,6 +172,7 @@ describe('POST /assistant/normative-query (e2e)', () => {
         chunk_ids: ['00000000-0000-0000-0000-000000000000'],
         operational_ref_ids: [],
         company_chunk_ids: [],
+        checklist_ref_ids: [],
       },
     ]);
 
@@ -188,7 +189,7 @@ describe('POST /assistant/normative-query (e2e)', () => {
 
   it('claim com chunk_ids vazio é descartada', async () => {
     fakeAnswer.mockResolvedValue([
-      { claim: 'Afirmação sem citação nenhuma.', chunk_ids: [], operational_ref_ids: [], company_chunk_ids: [] },
+      { claim: 'Afirmação sem citação nenhuma.', chunk_ids: [], operational_ref_ids: [], company_chunk_ids: [], checklist_ref_ids: [] },
     ]);
 
     const res = await request(app.getHttpServer())
@@ -242,7 +243,7 @@ describe('POST /assistant/normative-query (e2e)', () => {
     try {
       fakeAnswer.mockImplementationOnce(async () => {
         order.push('answer-called');
-        return [{ claim: 'Resposta de teste.', chunk_ids: [chunkId], operational_ref_ids: [], company_chunk_ids: [] }];
+        return [{ claim: 'Resposta de teste.', chunk_ids: [chunkId], operational_ref_ids: [], company_chunk_ids: [], checklist_ref_ids: [] }];
       });
 
       const res = await request(app.getHttpServer())
@@ -364,7 +365,7 @@ describe('POST /assistant/normative-query (e2e)', () => {
 
   it('claim que cita só operational_ref_ids (sem chunk_ids) sobrevive ao Verificador', async () => {
     fakeAnswer.mockResolvedValue([
-      { claim: 'Você tem um documento vencido.', chunk_ids: [], operational_ref_ids: ['op-0'], company_chunk_ids: [] },
+      { claim: 'Você tem um documento vencido.', chunk_ids: [], operational_ref_ids: ['op-0'], company_chunk_ids: [], checklist_ref_ids: [] },
     ]);
 
     const res = await request(app.getHttpServer())
@@ -384,6 +385,7 @@ describe('POST /assistant/normative-query (e2e)', () => {
         chunk_ids: [chunkId],
         operational_ref_ids: ['op-0'],
         company_chunk_ids: [],
+        checklist_ref_ids: [],
       },
     ]);
 
@@ -406,6 +408,7 @@ describe('POST /assistant/normative-query (e2e)', () => {
         chunk_ids: [chunkId],
         operational_ref_ids: ['op-999-nao-existe'],
         company_chunk_ids: [],
+        checklist_ref_ids: [],
       },
     ]);
 
@@ -421,7 +424,7 @@ describe('POST /assistant/normative-query (e2e)', () => {
 
   it('técnico nunca recebe busca operacional — operationalItems sempre vazio', async () => {
     fakeAnswer.mockResolvedValue([
-      { claim: 'Resposta normativa.', chunk_ids: [chunkId], operational_ref_ids: [], company_chunk_ids: [] },
+      { claim: 'Resposta normativa.', chunk_ids: [chunkId], operational_ref_ids: [], company_chunk_ids: [], checklist_ref_ids: [] },
     ]);
 
     const res = await request(app.getHttpServer())
@@ -571,6 +574,7 @@ describe('POST /assistant/normative-query (e2e)', () => {
         chunk_ids: [chunkId],
         operational_ref_ids: [],
         company_chunk_ids: [],
+        checklist_ref_ids: [],
         uses_attachment: false,
       },
     ]);
@@ -594,6 +598,7 @@ describe('POST /assistant/normative-query (e2e)', () => {
         chunk_ids: [chunkId],
         operational_ref_ids: [],
         company_chunk_ids: [],
+        checklist_ref_ids: [],
         uses_attachment: false,
       },
     ]);
@@ -633,6 +638,7 @@ describe('POST /assistant/normative-query (e2e)', () => {
           chunk_ids: [chunk.rows[0].id],
           operational_ref_ids: [],
           company_chunk_ids: [],
+          checklist_ref_ids: [],
           uses_attachment: false,
         },
       ]);
@@ -658,6 +664,7 @@ describe('POST /assistant/normative-query (e2e)', () => {
         chunk_ids: [chunkId],
         operational_ref_ids: [],
         company_chunk_ids: [],
+        checklist_ref_ids: [],
         uses_attachment: false,
       },
     ]);
@@ -679,6 +686,7 @@ describe('POST /assistant/normative-query (e2e)', () => {
         chunk_ids: [chunkId],
         operational_ref_ids: [],
         company_chunk_ids: [],
+        checklist_ref_ids: [],
         uses_attachment: false,
       },
     ]);

@@ -46,7 +46,7 @@ describe('OpenRouterNormativeAnswerService', () => {
     delete process.env.OPENROUTER_API_KEY;
     fetchSpy = jest.spyOn(global, 'fetch');
 
-    await expect(service.answer('pergunta', [], [], [])).rejects.toThrow(
+    await expect(service.answer('pergunta', [], [], [], [])).rejects.toThrow(
       'Assistente ainda não está disponível',
     );
     expect(fetchSpy).not.toHaveBeenCalled();
@@ -61,6 +61,7 @@ describe('OpenRouterNormativeAnswerService', () => {
       [{ id: 'chunk-1', content: 'Trecho normativo.' }],
       [{ id: 'op-0', titulo: 'Documento vencido: PGR' }],
       [],
+      [],
     );
 
     const [, requestInit] = fetchSpy.mock.calls[0];
@@ -74,6 +75,7 @@ describe('OpenRouterNormativeAnswerService', () => {
       'chunk_ids',
       'operational_ref_ids',
       'company_chunk_ids',
+      'checklist_ref_ids',
       'uses_attachment',
     ]);
   });
@@ -86,6 +88,7 @@ describe('OpenRouterNormativeAnswerService', () => {
       'estou em conformidade?',
       [{ id: 'chunk-1', content: 'Trecho normativo.' }],
       [{ id: 'op-0', titulo: 'Documento vencido: PGR' }],
+      [],
       [],
     );
 
@@ -105,7 +108,7 @@ describe('OpenRouterNormativeAnswerService', () => {
     process.env.OPENROUTER_API_KEY = 'chave-de-teste-fake';
     fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValue(fakeToolCallResponse([]));
 
-    await service.answer('pergunta normativa', [{ id: 'chunk-1', content: 'Trecho.' }], [], []);
+    await service.answer('pergunta normativa', [{ id: 'chunk-1', content: 'Trecho.' }], [], [], []);
 
     const [, requestInit] = fetchSpy.mock.calls[0];
     const sentBody = JSON.parse((requestInit as RequestInit).body as string);
@@ -123,6 +126,7 @@ describe('OpenRouterNormativeAnswerService', () => {
           chunk_ids: ['c1'],
           operational_ref_ids: ['op-0'],
           company_chunk_ids: [],
+          checklist_ref_ids: [],
           uses_attachment: false,
         },
         { claim: 'Sem operational_ref_ids — deve ser descartada.', chunk_ids: ['c1'] },
@@ -134,6 +138,7 @@ describe('OpenRouterNormativeAnswerService', () => {
       [{ id: 'c1', content: 'trecho' }],
       [{ id: 'op-0', titulo: 'item' }],
       [],
+      [],
     );
 
     expect(result).toEqual([
@@ -142,15 +147,54 @@ describe('OpenRouterNormativeAnswerService', () => {
         chunk_ids: ['c1'],
         operational_ref_ids: ['op-0'],
         company_chunk_ids: [],
+        checklist_ref_ids: [],
         uses_attachment: false,
       },
     ]);
+  });
+
+  it('inclui a seção do checklist interno no corpo da requisição quando o 5º argumento traz itens, e a omite quando vazio', async () => {
+    process.env.OPENROUTER_API_KEY = 'chave-de-teste-fake';
+    // Uma Response nova por chamada — o corpo de uma Response só pode ser
+    // lido uma vez, e este teste chama answer() duas vezes.
+    fetchSpy = jest.spyOn(global, 'fetch').mockImplementation(async () => fakeToolCallResponse([]));
+
+    await service.answer('quais documentos a NR-13 exige?', [], [], [], [
+      { id: 'ck-0', content: 'NR-13 — Prontuário de caldeira: registro — item 13.5.1' },
+    ]);
+    await service.answer('quais documentos a NR-13 exige?', [], [], [], []);
+
+    const comItens = JSON.parse((fetchSpy.mock.calls[0][1] as RequestInit).body as string).messages[1].content as string;
+    const semItens = JSON.parse((fetchSpy.mock.calls[1][1] as RequestInit).body as string).messages[1].content as string;
+
+    expect(comItens).toContain('Itens do checklist interno de documentação SST da Montese');
+    expect(comItens).toContain('[ck-0] NR-13 — Prontuário de caldeira');
+    expect(semItens).not.toContain('Itens do checklist interno');
+  });
+
+  it('descarta item do provedor sem checklist_ref_ids (o filtro passou a exigir o campo)', async () => {
+    process.env.OPENROUTER_API_KEY = 'chave-de-teste-fake';
+    fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValue(
+      fakeToolCallResponse([
+        {
+          claim: 'Sem checklist_ref_ids — deve ser descartada.',
+          chunk_ids: ['c1'],
+          operational_ref_ids: [],
+          company_chunk_ids: [],
+          uses_attachment: false,
+        },
+      ]),
+    );
+
+    const result = await service.answer('pergunta', [{ id: 'c1', content: 'trecho' }], [], [], []);
+
+    expect(result).toEqual([]);
   });
 
   it('propaga erro HTTP do OpenRouter como 502', async () => {
     process.env.OPENROUTER_API_KEY = 'chave-de-teste-fake';
     fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValue(new Response('erro', { status: 500 }));
 
-    await expect(service.answer('pergunta', [], [], [])).rejects.toThrow('Não foi possível responder agora');
+    await expect(service.answer('pergunta', [], [], [], [])).rejects.toThrow('Não foi possível responder agora');
   });
 });

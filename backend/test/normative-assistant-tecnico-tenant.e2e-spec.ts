@@ -104,6 +104,7 @@ describe('POST /assistant/normative-query — tenant_id de técnico/parceiro (e2
         chunk_ids: [],
         operational_ref_ids: [],
         company_chunk_ids: [chunkId],
+        checklist_ref_ids: [],
         uses_attachment: false,
       },
     ]);

@@ -2,6 +2,7 @@ import { Inject, Injectable, Logger } from '@nestjs/common';
 import { EMBEDDING_PROVIDER, EmbeddingProvider } from '../common/embedding/embedding-provider.interface';
 import {
   AttachmentInput,
+  ChecklistItem,
   CompanyChunk,
   NORMATIVE_ANSWER_PROVIDER,
   NormativeAnswerProvider,
@@ -46,11 +47,22 @@ export interface CompanyDocumentCitation {
   category: string;
 }
 
+export interface ChecklistItemCitation {
+  item_id: string;
+  nr_code: string;
+  document_name: string;
+}
+
 export interface NormativeQueryResult {
   answer: string | null;
   message?: string;
   citations: NormativeQueryCitation[];
   company_citations: CompanyDocumentCitation[];
+  // Itens do checklist interno de documentação SST (curadoria da
+  // Montese, nunca texto oficial da norma) usados nesta resposta —
+  // sempre presente (array, nunca omitido), mesmo padrão de `citations`/
+  // `company_citations`.
+  checklist_citations: ChecklistItemCitation[];
   // Avisos determinísticos por pergunta (question-notices.ts) — sempre
   // presente, possivelmente vazio; nunca bloqueia a resposta.
   notices: NormativeNotice[];
@@ -89,6 +101,14 @@ interface RetrievedCompanyChunk {
   document_id: string;
   category: string;
   document_title: string;
+  similarity: number;
+}
+
+interface RetrievedChecklistItem {
+  item_id: string;
+  nr_code: string;
+  document_name: string;
+  content: string;
   similarity: number;
 }
 
@@ -198,6 +218,30 @@ export class NormativeAssistantService {
     );
     const relevant = rows.filter((r) => r.similarity >= threshold);
 
+    // Busca no checklist interno de documentação SST (Montese) — mesmo
+    // padrão da busca em normative_document_chunks acima: sempre
+    // executada (não depende de tenantId, é conhecimento geral, não
+    // específico de uma empresa), mesma transação curta e separada
+    // (withoutTenantContext), mesmo threshold/limit. `content` usa a
+    // MESMA fórmula de 4 campos do texto embedado (ver Global
+    // Constraints) — assim o texto que o modelo lê no prompt é
+    // exatamente o texto que foi usado pra calcular a similaridade que
+    // trouxe esse item pra cá, incluindo o requisito legal literal
+    // (útil quando a pergunta cita um número de item de norma).
+    const { rows: checklistRows } = await this.db.withoutTenantContext((client) =>
+      client.query<RetrievedChecklistItem>(
+        `SELECT id AS item_id, nr_code, document_name,
+                nr_code || ' — ' || document_name || ': ' || description || ' — ' || legal_requirement AS content,
+                1 - (embedding <=> $1::vector) AS similarity
+         FROM sst_checklist_items
+         WHERE embedding IS NOT NULL
+         ORDER BY embedding <=> $1::vector
+         LIMIT $2`,
+        [toVectorLiteral(questionEmbedding), chunkLimit],
+      ),
+    );
+    const relevantChecklist = checklistRows.filter((r) => r.similarity >= threshold);
+
     // Busca operacional, numa transação curta e SEPARADA — mesma regra
     // de nunca segurar conexão durante chamada de IA (ver Finding C1a).
     // Roda ANTES de chamar this.answerer.answer(...), então não estende
@@ -269,12 +313,19 @@ export class NormativeAssistantService {
       companyChunks = companyRows.filter((r) => r.similarity >= threshold);
     }
 
-    if (relevant.length === 0 && operationalItems.length === 0 && companyChunks.length === 0 && !attachmentInput) {
+    if (
+      relevant.length === 0 &&
+      operationalItems.length === 0 &&
+      companyChunks.length === 0 &&
+      relevantChecklist.length === 0 &&
+      !attachmentInput
+    ) {
       return {
         answer: null,
         message: FALLBACK_MESSAGE,
         citations: [],
         company_citations: [],
+        checklist_citations: [],
         notices,
         attachment_warning: attachmentWarning,
       };
@@ -285,12 +336,14 @@ export class NormativeAssistantService {
       relevant.map((r) => ({ id: r.chunk_id, content: r.content })),
       operationalItems,
       companyChunks.map((c): CompanyChunk => ({ id: c.chunk_id, content: c.content })),
+      relevantChecklist.map((c): ChecklistItem => ({ id: c.item_id, content: c.content })),
       attachmentInput,
     );
 
     const validChunkIds = new Set(relevant.map((r) => r.chunk_id));
     const validOperationalIds = new Set(operationalItems.map((o) => o.id));
     const validCompanyChunkIds = new Set(companyChunks.map((c) => c.chunk_id));
+    const validChecklistIds = new Set(relevantChecklist.map((c) => c.item_id));
     // `attachmentInput` (calculado no topo deste método) é a única fonte
     // de verdade sobre se um anexo de verdade foi processado com sucesso
     // nesta chamada — undefined tanto quando não veio nenhum arquivo
@@ -323,6 +376,16 @@ export class NormativeAssistantService {
     const companyEvidence = new Map<string, string>(
       companyChunks.map((c): [string, string] => [c.chunk_id, `${c.document_title}\n${c.content}`]),
     );
+    // O checklist entra como evidência do Verificador v2 pelo mesmo
+    // `content` que o modelo leu no prompt (NR + documento + descrição +
+    // requisito legal). Sem isso o Verificador não checaria as NRs/itens
+    // citados contra o texto do checklist: numa claim só de checklist a
+    // lista de evidências ficaria vazia e checkClaimSupport não bloquearia
+    // nada (NR inventada passaria); numa claim mista, uma NR/item que só o
+    // checklist contém seria bloqueado como "sem base nas fontes citadas".
+    const checklistEvidence = new Map<string, string>(
+      relevantChecklist.map((c): [string, string] => [c.item_id, c.content]),
+    );
     const attachmentText =
       attachmentInput && attachmentInput.kind !== 'image' ? attachmentInput.content : undefined;
 
@@ -331,18 +394,21 @@ export class NormativeAssistantService {
         claim.chunk_ids.length > 0 ||
         claim.operational_ref_ids.length > 0 ||
         claim.company_chunk_ids.length > 0 ||
+        claim.checklist_ref_ids.length > 0 ||
         (attachmentIsReal && claim.uses_attachment === true);
       const idsAreValid =
         hasSource &&
         claim.chunk_ids.every((id) => validChunkIds.has(id)) &&
         claim.operational_ref_ids.every((id) => validOperationalIds.has(id)) &&
-        claim.company_chunk_ids.every((id) => validCompanyChunkIds.has(id));
+        claim.company_chunk_ids.every((id) => validCompanyChunkIds.has(id)) &&
+        claim.checklist_ref_ids.every((id) => validChecklistIds.has(id));
       if (!idsAreValid) return false;
 
       const evidenceTexts = [
         ...claim.chunk_ids.map((id) => chunkEvidence.get(id) as string),
         ...claim.operational_ref_ids.map((id) => operationalEvidence.get(id) as string),
         ...claim.company_chunk_ids.map((id) => companyEvidence.get(id) as string),
+        ...claim.checklist_ref_ids.map((id) => checklistEvidence.get(id) as string),
       ];
       if (attachmentText && attachmentIsReal && claim.uses_attachment === true) {
         evidenceTexts.push(attachmentText);
@@ -351,7 +417,12 @@ export class NormativeAssistantService {
       const support = checkClaimSupport(claim.claim, evidenceTexts);
       // Registro sem o texto da pergunta nem da claim (dados de empresa,
       // LGPD): só ids das fontes citadas e os tokens sinalizados.
-      const citedIds = [...claim.chunk_ids, ...claim.operational_ref_ids, ...claim.company_chunk_ids];
+      const citedIds = [
+        ...claim.chunk_ids,
+        ...claim.operational_ref_ids,
+        ...claim.company_chunk_ids,
+        ...claim.checklist_ref_ids,
+      ];
       if (support.logged.length > 0) {
         this.logger.warn(
           `Número com unidade sem base nas fontes citadas (só registrado): ${support.logged.join('; ')} — fontes: ${citedIds.join(', ')}`,
@@ -372,6 +443,7 @@ export class NormativeAssistantService {
         message: FALLBACK_MESSAGE,
         citations: [],
         company_citations: [],
+        checklist_citations: [],
         notices,
         attachment_warning: attachmentWarning,
       };
@@ -401,12 +473,27 @@ export class NormativeAssistantService {
       }
     }
 
+    // Agrupado por item_id — cada item do checklist JÁ é a unidade de
+    // citação (ao contrário dos chunks, que agrupam por document_id).
+    const usedChecklistIds = new Set(survivingClaims.flatMap((c) => c.checklist_ref_ids));
+    const checklistCitationsById = new Map<string, ChecklistItemCitation>();
+    for (const item of relevantChecklist) {
+      if (usedChecklistIds.has(item.item_id)) {
+        checklistCitationsById.set(item.item_id, {
+          item_id: item.item_id,
+          nr_code: item.nr_code,
+          document_name: item.document_name,
+        });
+      }
+    }
+
     const usedAttachment = attachmentIsReal && survivingClaims.some((c) => c.uses_attachment);
 
     return {
       answer: survivingClaims.map((c) => c.claim).join('\n\n'),
       citations: Array.from(citationsByDocument.values()),
       company_citations: Array.from(companyCitationsByDocument.values()),
+      checklist_citations: Array.from(checklistCitationsById.values()),
       notices,
       used_attachment: usedAttachment ? true : undefined,
       attachment_warning: attachmentWarning,
