@@ -216,7 +216,8 @@ export function AssistantChat({ tenantId }: { tenantId?: string }) {
       )}
 
       <p className="mt-6 text-xs text-brand-700">
-        O Assistente organiza informação de fontes oficiais — ele não substitui a avaliação de um
+        O Assistente organiza informação de fontes oficiais e, quando indicado, de materiais de
+        referência da Montese e de documentos da sua empresa — ele não substitui a avaliação de um
         profissional de Segurança e Saúde do Trabalho legalmente habilitado.
       </p>
     </div>
