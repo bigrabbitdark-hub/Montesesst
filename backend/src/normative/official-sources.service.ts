@@ -9,6 +9,11 @@ export interface OfficialSource {
   official_url: string;
   active: boolean;
   created_at: string;
+  // Estado da última verificação do monitor (migration 0050).
+  last_checked_at: string | null;
+  last_check_status: 'ok' | 'erro' | null;
+  last_error: string | null;
+  consecutive_failures: number;
 }
 
 interface CreateOfficialSourceData {

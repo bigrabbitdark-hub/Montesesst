@@ -10,6 +10,10 @@ interface OfficialSource {
   title: string;
   official_url: string;
   active: boolean;
+  last_checked_at: string | null;
+  last_check_status: 'ok' | 'erro' | null;
+  last_error: string | null;
+  consecutive_failures: number;
 }
 
 interface NormativeDocument {
@@ -30,6 +34,14 @@ interface DocumentDetail {
 function authHeaders() {
   const token = localStorage.getItem('montese_token');
   return { Authorization: `Bearer ${token}` };
+}
+
+function formatChecked(iso: string | null): string {
+  if (!iso) return 'nunca verificada';
+  const hours = Math.floor((Date.now() - new Date(iso).getTime()) / 3_600_000);
+  if (hours < 1) return 'verificada há menos de 1 h';
+  if (hours < 48) return `verificada há ${hours} h`;
+  return `verificada há ${Math.floor(hours / 24)} dias`;
 }
 
 export default function AdminNormativaPage() {
@@ -160,6 +172,12 @@ export default function AdminNormativaPage() {
           {sources.map((s) => (
             <li key={s.id}>
               {s.entity} {s.code ? `— ${s.code}` : ''} — {s.title}
+              <span className="ml-2 text-xs text-brand-500">{formatChecked(s.last_checked_at)}</span>
+              {s.consecutive_failures > 0 && (
+                <span className="ml-2 rounded bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">
+                  Falhando ({s.consecutive_failures}){s.last_error ? ` — ${s.last_error}` : ''}
+                </span>
+              )}
             </li>
           ))}
         </ul>
