@@ -24,6 +24,11 @@ describe('CRUD /sst-checklist (e2e)', () => {
     db = new TestDb();
     await db.connect();
 
+    // Limpa lixo de uma execução anterior que morreu antes do afterAll. Este
+    // spec escreve na tabela REAL de referência (que a busca por similaridade
+    // consulta): nr_code 'NR-99' nunca é dado real (o catálogo é NR-01..NR-38).
+    await (db as any).client.query("DELETE FROM sst_checklist_items WHERE nr_code = 'NR-99'");
+
     const admin = await db.createUserWithRole('admin', 'Admin Checklist SST Teste');
     const loginAdmin = await request(app.getHttpServer())
       .post('/auth/login')
@@ -42,9 +47,10 @@ describe('CRUD /sst-checklist (e2e)', () => {
   });
 
   afterAll(async () => {
-    if (createdId) {
-      await (db as any).client.query('DELETE FROM sst_checklist_items WHERE id = $1', [createdId]);
-    }
+    // Incondicional (por nr_code, não por createdId): createdId só é atribuído
+    // depois de várias asserções; se uma falhar antes, a linha NR-99 (vetor
+    // fake constante) ficaria na tabela real de referência.
+    await (db as any).client.query("DELETE FROM sst_checklist_items WHERE nr_code = 'NR-99'");
     await db.cleanup();
     await db.disconnect();
     await app.close();
@@ -53,6 +59,47 @@ describe('CRUD /sst-checklist (e2e)', () => {
   it('bloqueia empresa com 403', async () => {
     const res = await request(app.getHttpServer())
       .get('/sst-checklist')
+      .set('Authorization', `Bearer ${tokenEmpresa}`);
+    expect(res.status).toBe(403);
+  });
+
+  // O RolesGuard libera por padrão quando falta @Roles — um decorator
+  // esquecido numa rota seria escalada de privilégio silenciosa. Por isso
+  // cada uma das 5 rotas tem seu próprio teste de 403 pra empresa (o guard
+  // responde antes de qualquer acesso ao banco, então o UUID zerado basta).
+  it('bloqueia empresa com 403 em POST /sst-checklist', async () => {
+    const res = await request(app.getHttpServer())
+      .post('/sst-checklist')
+      .set('Authorization', `Bearer ${tokenEmpresa}`)
+      .send({
+        nr_code: 'NR-99',
+        nr_title: 'Norma de teste e2e',
+        nr_category: 'geral',
+        document_name: 'Documento de teste e2e',
+        description: 'Descrição de teste e2e',
+        legal_requirement: 'Item 9.9.9 de teste',
+      });
+    expect(res.status).toBe(403);
+  });
+
+  it('bloqueia empresa com 403 em GET /sst-checklist/:id', async () => {
+    const res = await request(app.getHttpServer())
+      .get('/sst-checklist/00000000-0000-0000-0000-000000000000')
+      .set('Authorization', `Bearer ${tokenEmpresa}`);
+    expect(res.status).toBe(403);
+  });
+
+  it('bloqueia empresa com 403 em PATCH /sst-checklist/:id', async () => {
+    const res = await request(app.getHttpServer())
+      .patch('/sst-checklist/00000000-0000-0000-0000-000000000000')
+      .set('Authorization', `Bearer ${tokenEmpresa}`)
+      .send({ description: 'Tentativa de empresa' });
+    expect(res.status).toBe(403);
+  });
+
+  it('bloqueia empresa com 403 em DELETE /sst-checklist/:id', async () => {
+    const res = await request(app.getHttpServer())
+      .delete('/sst-checklist/00000000-0000-0000-0000-000000000000')
       .set('Authorization', `Bearer ${tokenEmpresa}`);
     expect(res.status).toBe(403);
   });
