@@ -84,6 +84,19 @@ export class MiniMaxNormativeAnswerService implements NormativeAnswerProvider {
     const parsed = parseRagToolCall(body);
     if (!parsed || !Array.isArray(parsed.items)) return [];
 
+    // checklist_ref_ids é um campo novo num fluxo já em produção, e alguns LLMs
+    // omitem arrays vazios (mais provável em pergunta normativa pura, onde
+    // nenhum item de checklist entra no prompt). Uma claim sem o campo não pode
+    // gerar citação falsa, mas descartá-la mataria a resposta inteira (fallback
+    // pra qualquer pergunta, em silêncio) — então normalizamos SÓ esse campo
+    // para []; os demais seguem estritos.
+    for (const item of parsed.items) {
+      if (typeof item === 'object' && item !== null) {
+        const candidate = item as Record<string, unknown>;
+        if (!Array.isArray(candidate.checklist_ref_ids)) candidate.checklist_ref_ids = [];
+      }
+    }
+
     return parsed.items.filter((item): item is NormativeClaim => {
       if (typeof item !== 'object' || item === null) return false;
       const candidate = item as Record<string, unknown>;
@@ -92,7 +105,6 @@ export class MiniMaxNormativeAnswerService implements NormativeAnswerProvider {
         Array.isArray(candidate.chunk_ids) &&
         Array.isArray(candidate.operational_ref_ids) &&
         Array.isArray(candidate.company_chunk_ids) &&
-        Array.isArray(candidate.checklist_ref_ids) &&
         typeof candidate.uses_attachment === 'boolean'
       );
     });

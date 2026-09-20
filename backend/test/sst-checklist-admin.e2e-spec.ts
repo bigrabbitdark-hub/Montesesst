@@ -158,6 +158,33 @@ describe('CRUD /sst-checklist (e2e)', () => {
     expect(fakeEmbed).not.toHaveBeenCalled();
   });
 
+  // O frontend manda null ao limpar o campo do índice de infração: o contrato
+  // é "limpa o índice" (200 + null) e não gasta chamada de embedding.
+  it('PATCH com infraction_index null limpa o índice e NÃO recalcula o embedding', async () => {
+    fakeEmbed.mockClear();
+    const res = await request(app.getHttpServer())
+      .patch(`/sst-checklist/${createdId}`)
+      .set('Authorization', `Bearer ${tokenAdmin}`)
+      .send({ infraction_index: null });
+
+    expect(res.status).toBe(200);
+    expect(res.body.infraction_index).toBeNull();
+    expect(fakeEmbed).not.toHaveBeenCalled();
+  });
+
+  // Coluna NOT NULL: string vazia gravaria vazio e dispararia um re-embedding
+  // degradado. @IsOptional() segue primeiro, então null/ausente continuam no-op.
+  it('PATCH com description vazia é rejeitado com 400 e não recalcula o embedding', async () => {
+    fakeEmbed.mockClear();
+    const res = await request(app.getHttpServer())
+      .patch(`/sst-checklist/${createdId}`)
+      .set('Authorization', `Bearer ${tokenAdmin}`)
+      .send({ description: '' });
+
+    expect(res.status).toBe(400);
+    expect(fakeEmbed).not.toHaveBeenCalled();
+  });
+
   it('remove o item', async () => {
     const res = await request(app.getHttpServer())
       .delete(`/sst-checklist/${createdId}`)

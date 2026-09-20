@@ -118,6 +118,14 @@ describe('POST /assistant/normative-query — checklist interno (e2e)', () => {
     const answerArgs = fakeAnswer.mock.calls[0];
     const checklistItemsArg = answerArgs[4];
     expect(checklistItemsArg.some((c: any) => c.id === checklistItemId)).toBe(true);
+
+    // Trava a string exata do SQL de retrieval (normative-assistant.service.ts):
+    // o texto que o modelo lê tem que ser o mesmo que gerou o vetor do item
+    // (`${nr_code} — ${document_name}: ${description} — ${legal_requirement}`).
+    const retrieved = checklistItemsArg.find((c: any) => c.id === checklistItemId);
+    expect(retrieved.content).toBe(
+      'NR-ASSISTENTE-TESTE — Documento teste checklist: Descrição teste checklist — Item 9.9.9 de teste',
+    );
   });
 
   it('descarta o claim quando checklist_ref_ids aponta pra um id que não veio na busca', async () => {
@@ -138,6 +146,29 @@ describe('POST /assistant/normative-query — checklist interno (e2e)', () => {
       .send({ question: 'Quais documentos preciso ter?' });
 
     expect(res.status).toBe(201);
+    expect(res.body.answer).toBeNull();
+    expect(res.body.checklist_citations).toEqual([]);
+  });
+
+  it('descarta a claim INTEIRA quando checklist_ref_ids mistura um id válido com um id inexistente', async () => {
+    fakeAnswer.mockResolvedValueOnce([
+      {
+        claim: 'Você precisa manter o Documento teste checklist.',
+        chunk_ids: [],
+        operational_ref_ids: [],
+        company_chunk_ids: [],
+        checklist_ref_ids: [checklistItemId, '00000000-0000-0000-0000-000000000000'],
+        uses_attachment: false,
+      },
+    ]);
+
+    const res = await request(app.getHttpServer())
+      .post('/assistant/normative-query')
+      .set('Authorization', `Bearer ${tokenEmpresa}`)
+      .send({ question: 'Quais documentos preciso ter?' });
+
+    expect(res.status).toBe(201);
+    // Um id inválido invalida a claim inteira — a citação válida também cai.
     expect(res.body.answer).toBeNull();
     expect(res.body.checklist_citations).toEqual([]);
   });

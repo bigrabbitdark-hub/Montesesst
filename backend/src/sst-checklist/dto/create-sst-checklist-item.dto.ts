@@ -30,5 +30,5 @@ export class CreateSstChecklistItemDto {
   @IsInt()
   @Min(0)
   @Max(4)
-  infraction_index?: number;
+  infraction_index?: number | null;
 }

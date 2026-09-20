@@ -172,12 +172,12 @@ describe('OpenRouterNormativeAnswerService', () => {
     expect(semItens).not.toContain('Itens do checklist interno');
   });
 
-  it('descarta item do provedor sem checklist_ref_ids (o filtro passou a exigir o campo)', async () => {
+  it('mantém a claim do provedor sem checklist_ref_ids, normalizando o campo ausente para []', async () => {
     process.env.OPENROUTER_API_KEY = 'chave-de-teste-fake';
     fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValue(
       fakeToolCallResponse([
         {
-          claim: 'Sem checklist_ref_ids — deve ser descartada.',
+          claim: 'Sem checklist_ref_ids — deve sobreviver com [].',
           chunk_ids: ['c1'],
           operational_ref_ids: [],
           company_chunk_ids: [],
@@ -188,7 +188,16 @@ describe('OpenRouterNormativeAnswerService', () => {
 
     const result = await service.answer('pergunta', [{ id: 'c1', content: 'trecho' }], [], [], []);
 
-    expect(result).toEqual([]);
+    expect(result).toEqual([
+      {
+        claim: 'Sem checklist_ref_ids — deve sobreviver com [].',
+        chunk_ids: ['c1'],
+        operational_ref_ids: [],
+        company_chunk_ids: [],
+        checklist_ref_ids: [],
+        uses_attachment: false,
+      },
+    ]);
   });
 
   it('propaga erro HTTP do OpenRouter como 502', async () => {
