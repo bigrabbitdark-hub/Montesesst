@@ -21,6 +21,7 @@ import { OverviewModule } from './overview/overview.module';
 import { SystemStatusModule } from './system-status/system-status.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { NormativeModule } from './normative/normative.module';
+import { SstChecklistModule } from './sst-checklist/sst-checklist.module';
 import { VisitsModule } from './visits/visits.module';
 import { CipaModule } from './cipa/cipa.module';
 import { CaepiModule } from './caepi/caepi.module';
@@ -74,6 +75,7 @@ import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
     SystemStatusModule,
     DashboardModule,
     NormativeModule,
+    SstChecklistModule,
     VisitsModule,
     CipaModule,
     CaepiModule,
