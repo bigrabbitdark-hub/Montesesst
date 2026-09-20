@@ -19,6 +19,9 @@ import { DatabaseService } from '../src/common/database/database.service';
 // status esperado, mascarando qualquer regressão real.
 const ASSISTANT_RATE_LIMIT_KEY = 'ratelimit:NormativeAssistantController.query:::ffff:127.0.0.1';
 
+const FALLBACK_MESSAGE =
+  'Não encontrei fundamento suficiente nas fontes consultadas para afirmar isso. Isso não significa que a exigência não exista, só que não a localizei.';
+
 describe('POST /assistant/normative-query (e2e)', () => {
   let app: INestApplication;
   let db: TestDb;
@@ -179,7 +182,7 @@ describe('POST /assistant/normative-query (e2e)', () => {
 
     expect(res.status).toBe(201);
     expect(res.body.answer).toBeNull();
-    expect(res.body.message).toBe('Não encontrei nada relevante pra essa pergunta.');
+    expect(res.body.message).toBe(FALLBACK_MESSAGE);
     expect(res.body.citations).toEqual([]);
   });
 
@@ -217,7 +220,7 @@ describe('POST /assistant/normative-query (e2e)', () => {
 
     expect(res.status).toBe(201);
     expect(res.body.answer).toBeNull();
-    expect(res.body.message).toBe('Não encontrei nada relevante pra essa pergunta.');
+    expect(res.body.message).toBe(FALLBACK_MESSAGE);
     expect(res.body.citations).toEqual([]);
     expect(fakeAnswer).not.toHaveBeenCalled();
   });
@@ -330,7 +333,7 @@ describe('POST /assistant/normative-query (e2e)', () => {
 
     expect(res.status).toBe(201);
     expect(res.body.answer).toBeNull();
-    expect(res.body.message).toBe('Não encontrei nada relevante pra essa pergunta.');
+    expect(res.body.message).toBe(FALLBACK_MESSAGE);
     expect(res.body.citations).toEqual([]);
     expect(fakeAnswer).not.toHaveBeenCalled();
 
@@ -413,7 +416,7 @@ describe('POST /assistant/normative-query (e2e)', () => {
 
     expect(res.status).toBe(201);
     expect(res.body.answer).toBeNull();
-    expect(res.body.message).toBe('Não encontrei nada relevante pra essa pergunta.');
+    expect(res.body.message).toBe(FALLBACK_MESSAGE);
   });
 
   it('técnico nunca recebe busca operacional — operationalItems sempre vazio', async () => {
@@ -559,5 +562,163 @@ describe('POST /assistant/normative-query (e2e)', () => {
     await client.query('DELETE FROM company_units WHERE tenant_id = $1', [brigadaTenant.tenantId]);
     await client.query('DELETE FROM users WHERE tenant_id = $1', [brigadaTenant.tenantId]);
     await client.query('DELETE FROM tenants WHERE id = $1', [brigadaTenant.tenantId]);
+  });
+
+  it('Verificador v2: claim que cita um item inexistente nas fontes citadas é descartada mesmo com chunk_id válido', async () => {
+    fakeAnswer.mockResolvedValue([
+      {
+        claim: 'Conforme o item 99.9.9, o capacete é obrigatório.',
+        chunk_ids: [chunkId],
+        operational_ref_ids: [],
+        company_chunk_ids: [],
+        uses_attachment: false,
+      },
+    ]);
+
+    const res = await request(app.getHttpServer())
+      .post('/assistant/normative-query')
+      .set('Authorization', `Bearer ${tokenEmpresa}`)
+      .send({ question: 'preciso usar capacete?' });
+
+    expect(res.status).toBe(201);
+    expect(res.body.answer).toBeNull();
+    expect(res.body.message).toBe(FALLBACK_MESSAGE);
+  });
+
+  it('Verificador v2: claim que cita uma NR ausente das fontes citadas é descartada', async () => {
+    // A fonte de fixture tem código "NR-ASSISTENTE" (sem número) e o trecho
+    // não menciona NR-35 — a NR citada pela claim não tem base nenhuma.
+    fakeAnswer.mockResolvedValue([
+      {
+        claim: 'Conforme a NR-35, o capacete é obrigatório.',
+        chunk_ids: [chunkId],
+        operational_ref_ids: [],
+        company_chunk_ids: [],
+        uses_attachment: false,
+      },
+    ]);
+
+    const res = await request(app.getHttpServer())
+      .post('/assistant/normative-query')
+      .set('Authorization', `Bearer ${tokenEmpresa}`)
+      .send({ question: 'preciso usar capacete?' });
+
+    expect(res.status).toBe(201);
+    expect(res.body.answer).toBeNull();
+  });
+
+  it('Verificador v2: o código da fonte (source_code) conta como evidência da NR citada pela claim', async () => {
+    const client = (db as any).client;
+    const src = await client.query(
+      `INSERT INTO official_sources (entity, code, title, official_url)
+       VALUES ('MTE', 'NR-97', 'Norma de teste sem numero no titulo', 'https://exemplo.gov.br/nr97.html') RETURNING id`,
+    );
+    const doc = await client.query(
+      `INSERT INTO normative_documents (source_id, status, content_hash, file_key, file_name, mime_type, raw_text, indexed_at)
+       VALUES ($1, 'vigente', 'hash-nr97', 'normative/nr97.html', 'nr97.html', 'text/html', 'Texto vigente NR97 de teste', now())
+       RETURNING id`,
+      [src.rows[0].id],
+    );
+    const exactVector = toVectorLiteral(new Array(1536).fill(0).map((_, i) => (i === 0 ? 1 : 0)));
+    const chunk = await client.query(
+      `INSERT INTO normative_document_chunks (document_id, chunk_index, content, embedding)
+       VALUES ($1, 0, 'Trecho que não repete o número da norma.', $2::vector) RETURNING id`,
+      [doc.rows[0].id, exactVector],
+    );
+
+    try {
+      fakeAnswer.mockResolvedValue([
+        {
+          claim: 'Segundo a NR-97, a regra vale.',
+          chunk_ids: [chunk.rows[0].id],
+          operational_ref_ids: [],
+          company_chunk_ids: [],
+          uses_attachment: false,
+        },
+      ]);
+
+      const res = await request(app.getHttpServer())
+        .post('/assistant/normative-query')
+        .set('Authorization', `Bearer ${tokenEmpresa}`)
+        .send({ question: 'o que diz a norma de teste?' });
+
+      expect(res.status).toBe(201);
+      expect(res.body.answer).toBe('Segundo a NR-97, a regra vale.');
+    } finally {
+      await client.query('DELETE FROM normative_document_chunks WHERE document_id = $1', [doc.rows[0].id]);
+      await client.query('DELETE FROM normative_documents WHERE id = $1', [doc.rows[0].id]);
+      await client.query('DELETE FROM official_sources WHERE id = $1', [src.rows[0].id]);
+    }
+  });
+
+  it('notices é sempre devolvido: lista vazia quando a pergunta não tem gatilho', async () => {
+    fakeAnswer.mockResolvedValue([
+      {
+        claim: 'É obrigatório o uso de capacete.',
+        chunk_ids: [chunkId],
+        operational_ref_ids: [],
+        company_chunk_ids: [],
+        uses_attachment: false,
+      },
+    ]);
+
+    const res = await request(app.getHttpServer())
+      .post('/assistant/normative-query')
+      .set('Authorization', `Bearer ${tokenEmpresa}`)
+      .send({ question: 'preciso usar capacete?' });
+
+    expect(res.status).toBe(201);
+    expect(res.body.answer).toBe('É obrigatório o uso de capacete.');
+    expect(res.body.notices).toEqual([]);
+  });
+
+  it('o aviso de jurisdição acompanha uma resposta federal válida', async () => {
+    fakeAnswer.mockResolvedValue([
+      {
+        claim: 'É obrigatório o uso de capacete.',
+        chunk_ids: [chunkId],
+        operational_ref_ids: [],
+        company_chunk_ids: [],
+        uses_attachment: false,
+      },
+    ]);
+
+    const res = await request(app.getHttpServer())
+      .post('/assistant/normative-query')
+      .set('Authorization', `Bearer ${tokenEmpresa}`)
+      .send({ question: 'o corpo de bombeiros exige capacete?' });
+
+    expect(res.status).toBe(201);
+    expect(res.body.answer).toBe('É obrigatório o uso de capacete.');
+    expect(res.body.notices.map((n: any) => n.tipo)).toEqual(['jurisdicao']);
+  });
+
+  it('o aviso também sai no fallback de busca vazia (provedor de resposta não é chamado)', async () => {
+    fakeEmbed.mockResolvedValueOnce(new Array(1536).fill(0).map((_, i) => (i === 1 ? 1 : 0)));
+
+    const res = await request(app.getHttpServer())
+      .post('/assistant/normative-query')
+      .set('Authorization', `Bearer ${tokenTecnico}`)
+      .send({ question: 'quem pode assinar o PGR?' });
+
+    expect(res.status).toBe(201);
+    expect(res.body.answer).toBeNull();
+    expect(res.body.message).toBe(FALLBACK_MESSAGE);
+    expect(res.body.notices.map((n: any) => n.tipo)).toEqual(['profissional_habilitado']);
+    expect(fakeAnswer).not.toHaveBeenCalled();
+  });
+
+  it('o aviso também sai no fallback depois que o Verificador descarta tudo', async () => {
+    fakeAnswer.mockResolvedValue([]);
+
+    const res = await request(app.getHttpServer())
+      .post('/assistant/normative-query')
+      .set('Authorization', `Bearer ${tokenEmpresa}`)
+      .send({ question: 'sou obrigado a ter CIPA?' });
+
+    expect(res.status).toBe(201);
+    expect(res.body.answer).toBeNull();
+    expect(res.body.message).toBe(FALLBACK_MESSAGE);
+    expect(res.body.notices.map((n: any) => n.tipo)).toEqual(['contexto']);
   });
 });

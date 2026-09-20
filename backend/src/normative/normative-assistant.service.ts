@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { EMBEDDING_PROVIDER, EmbeddingProvider } from '../common/embedding/embedding-provider.interface';
 import {
   AttachmentInput,
@@ -15,8 +15,11 @@ import { AuthenticatedUser } from '../common/types';
 import { extractPdfText } from '../common/pdf/pdf-text.util';
 import { extractDocxText, DOCX_MIME_TYPE } from '../common/docx/docx-text.util';
 import { extractXlsxRows, XLSX_MIME_TYPE } from '../common/xlsx/xlsx-text.util';
+import { detectNotices, NormativeNotice } from './question-notices';
+import { checkClaimSupport } from './claim-support';
 
-const FALLBACK_MESSAGE = 'Não encontrei nada relevante pra essa pergunta.';
+const FALLBACK_MESSAGE =
+  'Não encontrei fundamento suficiente nas fontes consultadas para afirmar isso. Isso não significa que a exigência não exista, só que não a localizei.';
 const PDF_UNREADABLE_WARNING =
   'Não consegui ler texto deste PDF (pode ser um documento escaneado sem texto real) — a resposta abaixo não considera o conteúdo do anexo.';
 const DOCX_UNREADABLE_WARNING =
@@ -48,6 +51,9 @@ export interface NormativeQueryResult {
   message?: string;
   citations: NormativeQueryCitation[];
   company_citations: CompanyDocumentCitation[];
+  // Avisos determinísticos por pergunta (question-notices.ts) — sempre
+  // presente, possivelmente vazio; nunca bloqueia a resposta.
+  notices: NormativeNotice[];
   // true quando alguma afirmação sobrevivente usou o anexo desta
   // pergunta como evidência (Fase 20) — omitido (undefined) quando não
   // há anexo ou nenhuma afirmação o usou.
@@ -72,6 +78,7 @@ interface RetrievedChunk {
   content: string;
   document_id: string;
   source_title: string;
+  source_code: string | null;
   official_url: string;
   similarity: number;
 }
@@ -87,6 +94,8 @@ interface RetrievedCompanyChunk {
 
 @Injectable()
 export class NormativeAssistantService {
+  private readonly logger = new Logger(NormativeAssistantService.name);
+
   constructor(
     @Inject(EMBEDDING_PROVIDER) private readonly embeddings: EmbeddingProvider,
     @Inject(NORMATIVE_ANSWER_PROVIDER) private readonly answerer: NormativeAnswerProvider,
@@ -100,6 +109,10 @@ export class NormativeAssistantService {
     attachment?: QueryAttachment,
     tenantId?: string,
   ): Promise<NormativeQueryResult> {
+    // Avisos determinísticos (sem I/O, sem custo) — calculados antes de
+    // qualquer embedding/busca e devolvidos em todos os caminhos de retorno.
+    const notices = detectNotices(question);
+
     // `tenantId` aqui é o ALVO (de qual empresa buscar dado operacional
     // e documento) — pra empresa é sempre o próprio `user.tenantId`; pra
     // técnico/parceiro vem do corpo da requisição (opcional: sem ele, a
@@ -172,7 +185,7 @@ export class NormativeAssistantService {
     // Finding C1a da revisão final da Fase 9.
     const { rows } = await this.db.withoutTenantContext((client) =>
       client.query<RetrievedChunk>(
-        `SELECT c.id AS chunk_id, c.content, d.id AS document_id, s.title AS source_title, s.official_url,
+        `SELECT c.id AS chunk_id, c.content, d.id AS document_id, s.title AS source_title, s.code AS source_code, s.official_url,
                 1 - (c.embedding <=> $1::vector) AS similarity
          FROM normative_document_chunks c
          JOIN normative_documents d ON d.id = c.document_id
@@ -262,6 +275,7 @@ export class NormativeAssistantService {
         message: FALLBACK_MESSAGE,
         citations: [],
         company_citations: [],
+        notices,
         attachment_warning: attachmentWarning,
       };
     }
@@ -295,18 +309,61 @@ export class NormativeAssistantService {
     // mesmo que nenhuma das duas contenha um id inválido — every() sobre
     // array vazio dá true em JS, então "tem pelo menos uma fonte" é
     // checado à parte, nunca inferido só das duas every().
+    // Evidência textual de cada fonte que uma claim pode citar, para o
+    // Verificador v2 (claim-support.ts). O chunk normativo entra precedido do
+    // código e do título da fonte ("NR-35 …"): o texto de um chunk nem
+    // sempre repete o nome da norma, e sem isso "conforme a NR-35" seria
+    // bloqueado indevidamente. Anexo de imagem não tem texto verificável.
+    const chunkEvidence = new Map<string, string>(
+      relevant.map((r): [string, string] => [r.chunk_id, `${r.source_code ?? ''} ${r.source_title}\n${r.content}`]),
+    );
+    const operationalEvidence = new Map<string, string>(
+      operationalItems.map((o): [string, string] => [o.id, o.titulo]),
+    );
+    const companyEvidence = new Map<string, string>(
+      companyChunks.map((c): [string, string] => [c.chunk_id, `${c.document_title}\n${c.content}`]),
+    );
+    const attachmentText =
+      attachmentInput && attachmentInput.kind !== 'image' ? attachmentInput.content : undefined;
+
     const survivingClaims = claims.filter((claim) => {
       const hasSource =
         claim.chunk_ids.length > 0 ||
         claim.operational_ref_ids.length > 0 ||
         claim.company_chunk_ids.length > 0 ||
         (attachmentIsReal && claim.uses_attachment === true);
-      return (
+      const idsAreValid =
         hasSource &&
         claim.chunk_ids.every((id) => validChunkIds.has(id)) &&
         claim.operational_ref_ids.every((id) => validOperationalIds.has(id)) &&
-        claim.company_chunk_ids.every((id) => validCompanyChunkIds.has(id))
-      );
+        claim.company_chunk_ids.every((id) => validCompanyChunkIds.has(id));
+      if (!idsAreValid) return false;
+
+      const evidenceTexts = [
+        ...claim.chunk_ids.map((id) => chunkEvidence.get(id) as string),
+        ...claim.operational_ref_ids.map((id) => operationalEvidence.get(id) as string),
+        ...claim.company_chunk_ids.map((id) => companyEvidence.get(id) as string),
+      ];
+      if (attachmentText && attachmentIsReal && claim.uses_attachment === true) {
+        evidenceTexts.push(attachmentText);
+      }
+
+      const support = checkClaimSupport(claim.claim, evidenceTexts);
+      // Registro sem o texto da pergunta nem da claim (dados de empresa,
+      // LGPD): só ids das fontes citadas e os tokens sinalizados.
+      const citedIds = [...claim.chunk_ids, ...claim.operational_ref_ids, ...claim.company_chunk_ids];
+      if (support.logged.length > 0) {
+        this.logger.warn(
+          `Número com unidade sem base nas fontes citadas (só registrado): ${support.logged.join('; ')} — fontes: ${citedIds.join(', ')}`,
+        );
+      }
+      if (support.blocking.length > 0) {
+        this.logger.warn(
+          `Claim descartada — item/NR sem base nas fontes citadas: ${support.blocking.join('; ')} — fontes: ${citedIds.join(', ')}`,
+        );
+        return false;
+      }
+      return true;
     });
 
     if (survivingClaims.length === 0) {
@@ -315,6 +372,7 @@ export class NormativeAssistantService {
         message: FALLBACK_MESSAGE,
         citations: [],
         company_citations: [],
+        notices,
         attachment_warning: attachmentWarning,
       };
     }
@@ -349,6 +407,7 @@ export class NormativeAssistantService {
       answer: survivingClaims.map((c) => c.claim).join('\n\n'),
       citations: Array.from(citationsByDocument.values()),
       company_citations: Array.from(companyCitationsByDocument.values()),
+      notices,
       used_attachment: usedAttachment ? true : undefined,
       attachment_warning: attachmentWarning,
     };

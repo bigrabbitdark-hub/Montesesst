@@ -1,4 +1,4 @@
-import { buildRagChatCompletionBody, TOOL_SCHEMA } from '../src/normative/normative-answer-shared';
+import { buildRagChatCompletionBody, SYSTEM_PROMPT, TOOL_SCHEMA } from '../src/normative/normative-answer-shared';
 
 describe('buildRagChatCompletionBody — suporte a anexo (unit)', () => {
   it('sem anexo, o content da mensagem do usuário continua sendo uma string simples', () => {
@@ -47,5 +47,13 @@ describe('buildRagChatCompletionBody — suporte a anexo (unit)', () => {
     expect(typeof body.messages[1].content).toBe('string');
     expect(body.messages[1].content).toContain('Trecho do PGR da empresa sobre ruído');
     expect(body.messages[1].content).toContain('documentos da própria empresa');
+  });
+});
+
+describe('SYSTEM_PROMPT — regra de jurisdição e habilitação profissional (unit)', () => {
+  it('manda não responder como se a regra federal fosse universal quando depender de lei estadual/municipal ou de habilitação', () => {
+    expect(SYSTEM_PROMPT).toContain('legislação estadual ou municipal');
+    expect(SYSTEM_PROMPT).toContain('habilitação legal');
+    expect(SYSTEM_PROMPT).toContain('declare explicitamente o que eles não cobrem');
   });
 });
