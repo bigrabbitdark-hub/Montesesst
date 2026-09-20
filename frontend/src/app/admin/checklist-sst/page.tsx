@@ -1,6 +1,6 @@
 'use client';
 
-import { FormEvent, useEffect, useState } from 'react';
+import { FormEvent, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 interface SstChecklistItem {
@@ -34,6 +34,8 @@ function authHeaders() {
 
 export default function AdminChecklistSstPage() {
   const router = useRouter();
+  const formSectionRef = useRef<HTMLElement>(null);
+  const firstFieldRef = useRef<HTMLInputElement>(null);
   const [ready, setReady] = useState(false);
   const [items, setItems] = useState<SstChecklistItem[]>([]);
   const [filterNrCode, setFilterNrCode] = useState('');
@@ -70,6 +72,8 @@ export default function AdminChecklistSstPage() {
       legal_requirement: item.legal_requirement,
       infraction_index: item.infraction_index === null ? '' : String(item.infraction_index),
     });
+    formSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    firstFieldRef.current?.focus({ preventScroll: true });
   }
 
   function resetForm() {
@@ -89,7 +93,7 @@ export default function AdminChecklistSstPage() {
       document_name: form.document_name,
       description: form.description,
       legal_requirement: form.legal_requirement,
-      infraction_index: form.infraction_index === '' ? undefined : Number(form.infraction_index),
+      infraction_index: form.infraction_index === '' ? null : Number(form.infraction_index),
     };
 
     const res = await fetch(editingId ? `/api/sst-checklist/${editingId}` : '/api/sst-checklist', {
@@ -137,66 +141,88 @@ export default function AdminChecklistSstPage() {
       </p>
       {actionError && <p className="mt-2 text-sm text-red-600">{actionError}</p>}
 
-      <section className="mt-8 rounded-lg border border-brand-100 p-6">
+      <section ref={formSectionRef} className="mt-8 rounded-lg border border-brand-100 p-6">
         <h3 className="text-lg font-bold text-brand-900">{editingId ? 'Editar item' : 'Novo item'}</h3>
         <form onSubmit={handleSubmit} className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <input
-            placeholder="Código da NR (ex: NR-13)"
-            value={form.nr_code}
-            onChange={(e) => setForm({ ...form, nr_code: e.target.value })}
-            required
-            className="rounded-md border border-brand-100 px-3 py-2"
-          />
-          <input
-            placeholder="Título da NR"
-            value={form.nr_title}
-            onChange={(e) => setForm({ ...form, nr_title: e.target.value })}
-            required
-            className="rounded-md border border-brand-100 px-3 py-2"
-          />
-          <select
-            value={form.nr_category}
-            onChange={(e) => setForm({ ...form, nr_category: e.target.value })}
-            className="rounded-md border border-brand-100 px-3 py-2"
-          >
-            {CATEGORIES.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </select>
-          <input
-            placeholder="Índice de infração (0-4, opcional)"
-            type="number"
-            min={0}
-            max={4}
-            value={form.infraction_index}
-            onChange={(e) => setForm({ ...form, infraction_index: e.target.value })}
-            className="rounded-md border border-brand-100 px-3 py-2"
-          />
-          <input
-            placeholder="Nome do documento (ex: Prontuário de caldeira)"
-            value={form.document_name}
-            onChange={(e) => setForm({ ...form, document_name: e.target.value })}
-            required
-            className="rounded-md border border-brand-100 px-3 py-2 sm:col-span-2"
-          />
-          <textarea
-            placeholder="Descrição"
-            value={form.description}
-            onChange={(e) => setForm({ ...form, description: e.target.value })}
-            required
-            rows={3}
-            className="rounded-md border border-brand-100 px-3 py-2 sm:col-span-2"
-          />
-          <textarea
-            placeholder="Requisito legal"
-            value={form.legal_requirement}
-            onChange={(e) => setForm({ ...form, legal_requirement: e.target.value })}
-            required
-            rows={3}
-            className="rounded-md border border-brand-100 px-3 py-2 sm:col-span-2"
-          />
+          <label className="flex flex-col gap-1 text-sm text-brand-700">
+            <span>Código da NR</span>
+            <input
+              placeholder="ex: NR-13"
+              ref={firstFieldRef}
+              value={form.nr_code}
+              onChange={(e) => setForm({ ...form, nr_code: e.target.value })}
+              required
+              className="rounded-md border border-brand-100 px-3 py-2"
+            />
+          </label>
+          <label className="flex flex-col gap-1 text-sm text-brand-700">
+            <span>Título da NR</span>
+            <input
+              placeholder="ex: Segurança em Caldeiras"
+              value={form.nr_title}
+              onChange={(e) => setForm({ ...form, nr_title: e.target.value })}
+              required
+              className="rounded-md border border-brand-100 px-3 py-2"
+            />
+          </label>
+          <label className="flex flex-col gap-1 text-sm text-brand-700">
+            <span>Categoria</span>
+            <select
+              value={form.nr_category}
+              onChange={(e) => setForm({ ...form, nr_category: e.target.value })}
+              className="rounded-md border border-brand-100 px-3 py-2"
+            >
+              {CATEGORIES.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="flex flex-col gap-1 text-sm text-brand-700">
+            <span>Índice de infração (0 a 4, opcional)</span>
+            <input
+              placeholder="ex: 2"
+              type="number"
+              min={0}
+              max={4}
+              value={form.infraction_index}
+              onChange={(e) => setForm({ ...form, infraction_index: e.target.value })}
+              className="rounded-md border border-brand-100 px-3 py-2"
+            />
+          </label>
+          <label className="flex flex-col gap-1 text-sm text-brand-700 sm:col-span-2">
+            <span>Nome do documento</span>
+            <input
+              placeholder="ex: Prontuário de caldeira"
+              value={form.document_name}
+              onChange={(e) => setForm({ ...form, document_name: e.target.value })}
+              required
+              className="rounded-md border border-brand-100 px-3 py-2"
+            />
+          </label>
+          <label className="flex flex-col gap-1 text-sm text-brand-700 sm:col-span-2">
+            <span>Descrição</span>
+            <textarea
+              placeholder="Descreva o documento e sua importância"
+              value={form.description}
+              onChange={(e) => setForm({ ...form, description: e.target.value })}
+              required
+              rows={3}
+              className="rounded-md border border-brand-100 px-3 py-2"
+            />
+          </label>
+          <label className="flex flex-col gap-1 text-sm text-brand-700 sm:col-span-2">
+            <span>Requisito legal</span>
+            <textarea
+              placeholder="Qual é o requisito legal associado"
+              value={form.legal_requirement}
+              onChange={(e) => setForm({ ...form, legal_requirement: e.target.value })}
+              required
+              rows={3}
+              className="rounded-md border border-brand-100 px-3 py-2"
+            />
+          </label>
           {saveStatus === 'erro' && (
             <p className="text-sm text-red-600 sm:col-span-2">Não foi possível salvar. Confira os campos.</p>
           )}
@@ -225,6 +251,7 @@ export default function AdminChecklistSstPage() {
         <form onSubmit={handleFilter} className="flex gap-3">
           <input
             placeholder="Filtrar por NR (ex: NR-13)"
+            aria-label="Filtrar por NR"
             value={filterNrCode}
             onChange={(e) => setFilterNrCode(e.target.value)}
             className="flex-1 rounded-md border border-brand-100 px-3 py-2 text-sm"
