@@ -1240,7 +1240,7 @@ novo de `@MaxLength`). Nenhuma mudança de frontend nesta rodada.
    assinatura recorrente. Em brainstorming em 2026-08-18, spec da primeira
    ainda não escrita.
 
-## Fase 9 — RAG Normativo: spec escrita
+## Fase 9 — RAG Normativo: status
 
 Depois da Fase 8 (Copiloto de relato) ir ao ar, o fundador trouxe uma
 visão ampla de agentes de IA (orquestrador, agente operacional, RAG
@@ -1270,8 +1270,16 @@ Orquestrador com roteamento real) ficam como sub-projetos futuros,
 cada um com sua própria spec quando chegar a vez — não fazem parte do
 escopo da Fase 9.
 
-Ainda não implementada — próximo passo é escrever o plano de
-implementação (`writing-plans`) a partir desta spec.
+**Status atualizado em 2026-09-20 (auditoria dos agentes): implementada e
+em produção.** 36 NRs vigentes do MTE (NR-02 e NR-27 estão revogadas e
+ficam de fora) foram cadastradas e indexadas em 2026-08-31 — 1.622
+pedaços vigentes com `pgvector`, busca por similaridade de cosseno. O
+monitor roda todo dia às 03:00 e nenhuma versão nova entra na base sem
+aprovação humana. O Assistente recebeu depois as Fases 10 (itens
+operacionais), 20 (anexos) e 24 (documentos da empresa) — ver as seções
+dessas fases. A evolução de confiabilidade do Assistente (avisos de
+jurisdição, verificador de item/NR, monitor observável) está em
+[`docs/specs/assistente-confiabilidade-etapa-1.md`](specs/assistente-confiabilidade-etapa-1.md).
 
 ## Fase 11 — Agenda de Visitas + "Meu Dia" do técnico: status
 

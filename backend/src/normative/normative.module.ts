@@ -18,15 +18,14 @@ import { DashboardModule } from '../dashboard/dashboard.module';
 // Provedor ativo hoje: MiniMax (decisão do fundador em 2026-09-05, no
 // lugar do OpenRouter). MiniMaxNormativeAnswerService tem o mesmo formato
 // OpenAI-compatible já testado (build limpo, suíte e2e mockada sem
-// regressão) — mas a chamada real de validação (tool_choice forçado +
-// image_url em data: URI contra a API de verdade) NUNCA foi possível de
-// rodar nesta sessão: o classificador de segurança do ambiente bloqueou
-// toda tentativa de chamar a API paga da MiniMax, mesmo por caminhos
-// diferentes (script isolado, teste jest dedicado). Ativado mesmo assim
-// por decisão explícita do fundador — a validação real fica pendente pra
-// quando ele mesmo rodar ou destravar a permissão. OpenRouterNormativeAnswerService
-// continua registrado, pronto pra reverter (mudar só a linha `useClass`
-// abaixo), mesmo padrão do AiCopilotModule (Fase 8).
+// regressão). Em 2026-09-20, `minimax_usage_log` tinha 27 chamadas reais
+// de `assistant_normative_query` registradas — o caminho de texto (com
+// tool_choice forçado, formato fixo de buildRagChatCompletionBody) já
+// rodou contra a API de verdade. O caminho com imagem (image_url em data:
+// URI) tem validação NÃO CONFIRMADA: só o fundador pode afirmar o
+// contrário. OpenRouterNormativeAnswerService continua registrado, pronto
+// pra reverter (mudar só a linha `useClass` abaixo), mesmo padrão do
+// AiCopilotModule (Fase 8).
 //
 // EmbeddingProvider/OpenRouterEmbeddingService não são mais registrados
 // aqui — extraídos pra common/embedding (Fase 24) e disponíveis

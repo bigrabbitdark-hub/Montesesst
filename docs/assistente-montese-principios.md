@@ -72,6 +72,15 @@ afirmação sem uma fonte citada de verdade (`normative-assistant.service.ts:116
 Qualquer agente novo precisa da mesma garantia — não é obrigatório reusar o
 mesmo mecanismo, mas o resultado (nunca afirmar sem fonte real) é inegociável.
 
+Desde 2026-09-20 a garantia tem duas camadas: o verificador de ids acima e o
+Verificador v2 (`backend/src/normative/claim-support.ts`), que descarta uma
+afirmação cujo item (`35.4.4`) ou NR citados não aparecem no texto das
+fontes que ela própria cita — números com unidade só são registrados, ainda
+não bloqueiam. Perguntas que dependem de legislação estadual/municipal, de
+habilitação profissional ou de contexto não informado recebem um aviso fixo
+e determinístico (`backend/src/normative/question-notices.ts`), sem LLM.
+Spec: `docs/specs/assistente-confiabilidade-etapa-1.md`.
+
 ## 4. Hierarquia de fontes
 
 Quando uma resposta depende de mais de uma fonte, a ordem de confiança é:
