@@ -67,7 +67,15 @@ export class OpenRouterNormativeAnswerService implements NormativeAnswerProvider
     }
 
     const parsed = parseRagToolCall(body);
-    if (!parsed || !Array.isArray(parsed.items)) return [];
+    if (!parsed) {
+      // Tool call ausente ou inválido/truncado — só metadados no log (nunca a
+      // pergunta nem parte da resposta do modelo: dado de empresa/LGPD).
+      this.logger.warn(
+        `Assistente: resposta do provedor sem tool call parseável (finish_reason=${body?.choices?.[0]?.finish_reason}, completion_tokens=${body?.usage?.completion_tokens}) — a pergunta cai no fallback`,
+      );
+      return [];
+    }
+    if (!Array.isArray(parsed.items)) return [];
 
     // checklist_ref_ids é um campo novo num fluxo já em produção, e alguns LLMs
     // omitem arrays vazios (mais provável em pergunta normativa pura, onde

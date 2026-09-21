@@ -64,6 +64,17 @@ describe('buildRagChatCompletionBody — suporte a anexo (unit)', () => {
   });
 });
 
+describe('buildRagChatCompletionBody — orçamento de tokens (unit)', () => {
+  it('max_tokens é 4096: o provedor ativo (MiniMax-M3) é modelo de raciocínio e o <think> consome o mesmo orçamento', () => {
+    // Não baixe este valor sem entender: com 1024 o modelo gastava ~600-900
+    // tokens raciocinando, batia no limite e o tool call vinha cortado em
+    // '{"items": ' — o JSON.parse falhava e a pergunta caía no fallback em
+    // silêncio. Medido: com 4096 a mesma pergunta completa (~2275 tokens).
+    const body = buildRagChatCompletionBody('modelo-teste', 'pergunta', [], [], []);
+    expect(body.max_tokens).toBe(4096);
+  });
+});
+
 describe('SYSTEM_PROMPT — regra de jurisdição e habilitação profissional (unit)', () => {
   it('manda não responder como se a regra federal fosse universal quando depender de lei estadual/municipal ou de habilitação', () => {
     expect(SYSTEM_PROMPT).toContain('legislação estadual ou municipal');
