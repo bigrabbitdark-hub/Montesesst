@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import Image from 'next/image';
+import { company } from '@/lib/company';
 
 export function SiteFooter() {
   return (
@@ -72,7 +73,7 @@ export function SiteFooter() {
             <Image src="/brand/logo-icon.jpg" alt="" width={22} height={22} className="rounded-[5px]" />
             <p className="text-xs text-brand-100">&copy; {new Date().getFullYear()} Montese SST. Todos os direitos reservados.</p>
           </div>
-          <p className="text-xs text-brand-100">montesesst.com.br</p>
+          <p className="text-xs text-brand-100">{`CNPJ ${company.cnpj} · montesesst.com.br`}</p>
         </div>
       </div>
     </footer>
