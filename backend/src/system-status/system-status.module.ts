@@ -5,5 +5,6 @@ import { SystemStatusService } from './system-status.service';
 @Module({
   controllers: [SystemStatusController],
   providers: [SystemStatusService],
+  exports: [SystemStatusService],
 })
 export class SystemStatusModule {}

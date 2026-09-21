@@ -19,6 +19,7 @@ import { EpiModule } from './epi/epi.module';
 import { AuditLogModule } from './audit-log/audit-log.module';
 import { OverviewModule } from './overview/overview.module';
 import { SystemStatusModule } from './system-status/system-status.module';
+import { AdminDashboardModule } from './admin-dashboard/admin-dashboard.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { NormativeModule } from './normative/normative.module';
 import { SstChecklistModule } from './sst-checklist/sst-checklist.module';
@@ -73,6 +74,7 @@ import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
     AuditLogModule,
     OverviewModule,
     SystemStatusModule,
+    AdminDashboardModule,
     DashboardModule,
     NormativeModule,
     SstChecklistModule,

@@ -5,5 +5,6 @@ import { OverviewService } from './overview.service';
 @Module({
   controllers: [OverviewController],
   providers: [OverviewService],
+  exports: [OverviewService],
 })
 export class OverviewModule {}
