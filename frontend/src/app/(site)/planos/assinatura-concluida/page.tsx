@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { PaymentIssuerNote } from '@/components/PaymentIssuerNote';
 
 export default function AssinaturaConcluidaPage() {
   return (
@@ -14,6 +15,7 @@ export default function AssinaturaConcluidaPage() {
       >
         Entrar
       </Link>
+      <PaymentIssuerNote className="mt-8" />
     </div>
   );
 }
