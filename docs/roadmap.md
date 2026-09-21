@@ -4665,6 +4665,10 @@ nunca `docker image prune`): backend `8b02af22…` (pré-deploy) e
   trabalho) e `frontend/src/app/admin/layout.tsx` importa `WhatsAppButton`,
   que nunca foi commitado (quebra checkout limpo/CI).
 
+**Monitor da Etapa 1 — 1º cron (2026-09-21 03:00 UTC):** verificou as 36
+fontes (todas `ok`, 0 falhas), não criou nenhuma versão em
+`aguardando_validacao` e nenhum e-mail saiu (o aviso só dispara em anomalia).
+
 **Verificação em produção e o achado do MiniMax-M3 (2026-09-21):**
 
 - Playwright na tela de admin: 15/15 checks (lista de 301 itens, filtro,
@@ -4688,18 +4692,31 @@ nunca `docker image prune`): backend `8b02af22…` (pré-deploy) e
   `completion_tokens`, nunca texto de pergunta/claim) e 3 grupos de testes.
   Depois dele as 6 perguntas do smoke responderam (antes, 3 delas caíam no
   fallback: item 1.4.1, caldeiras e PPCI).
-- **Cauda residual (decisão do fundador):** medi 6 execuções da pergunta
-  mais pesada ("quais documentos preciso ter para caldeiras?", 6 trechos + 6
-  itens): 1.941 a 7.484 tokens de completion (mediana ~2.900), 17 a 58 s. Com
-  4096, ~5 de 6 completam; o restante ainda cai no fallback, agora com o warn
-  `completion_tokens=4096` no log. Atenção: o MiniMax reporta
-  `finish_reason=tool_calls` mesmo quando trunca — o sinal confiável é
-  `completion_tokens == max_tokens`. Opções, todas mexem em qualidade/custo e
-  devem ser medidas com o dataset golden da Etapa 2/3: limite de afirmações
-  no prompt (≤ 5 curtas), retry único com orçamento maior, subir
-  `max_tokens` junto com o `AbortSignal.timeout(45_000)` do provedor (uma
-  execução de 7.484 tokens levou 58 s), ou trocar o provedor ativo (o
-  OpenRouter/Claude não gasta orçamento em raciocínio).
+- **Cauda residual — tratada em 2026-09-21** (commit `c72c6bc`, no ar): medi
+  ~180 chamadas reais do provedor. A pergunta mais pesada ("documentos para
+  caldeiras", 6 trechos + 6 itens) gasta de 1.941 a 7.484 tokens (mediana
+  ~2.900) e de 17 a 58 s. O MiniMax reporta `finish_reason=tool_calls` mesmo
+  quando trunca — o sinal confiável é `completion_tokens == max_tokens`. As
+  três opções estudadas (prompt que agrupa em ≤ 5 afirmações, `max_tokens`
+  8192, trocar para o Claude) empataram dentro do ruído em confiabilidade
+  (86–90%); o que os dados sustentaram foi tolerância a falha: `max_tokens`
+  6144, timeout do MiniMax de 45 → 75 s (8% das execuções passavam de 45 s e
+  falhariam) e UMA repetição quando o tool call vem inválido e a 1ª tentativa
+  levou < 45 s. Resultado medido depois do deploy: ~90% de respostas
+  utilizáveis em perguntas respondíveis (~81% com a configuração anterior).
+  O que sobra (~10%) é comportamento do modelo, não parâmetro: ~4% devolve
+  `items: []` numa pergunta respondível, ~4% foge do formato depois de ~70 s
+  de raciocínio, ~4% cita ids inexistentes (o guarda descarta de propósito).
+  Melhorar isso é trabalho de prompt/modelo e pede o dataset golden da
+  Etapa 2/3 (n = 24–48 não compara prompts com poder estatístico). O prompt
+  "agrupado" reduziu 25% dos tokens e 40% do texto com a mesma cobertura de
+  fontes — decisão de produto (respostas mais curtas) que ficou pendente.
+- **Conta do OpenRouter sem crédito** (achado da medição): é free tier com
+  `total_credits: 0`; só cabem ~660 tokens de saída no Claude (HTTP 402). O
+  provedor alternativo não funciona sem recarga e, mais importante, os
+  **embeddings** (toda pergunta ao Assistente e todo cadastro/edição do
+  catálogo) rodam nessa mesma conta — se o saldo mínimo acabar, o Assistente
+  inteiro para. Trocar de provedor exige recarga e decisão do fundador.
 
 **Fora de escopo / dívida registrada:**
 
@@ -4730,7 +4747,10 @@ nunca `docker image prune`): backend `8b02af22…` (pré-deploy) e
 - Tela de admin: sem `try/catch` nos handlers, falha do GET
   indistinguível de catálogo vazio, sem `trim()`, sem paginação nos 301
   itens.
-- **Curadoria do fundador pela própria tela de admin**: typo "funão" no
-  item "Ordens de serviço" da NR-01, aspas abertas em itens da NR-03, e o
-  item "A NR-02 foi revogada" (NR-02 e NR-27 são as duas NRs revogadas do
+- **Curadoria do catálogo — concluída em 2026-09-21** (9 correções pelo
+  painel de admin, embeddings recalculados, conferido no banco): "funão" →
+  "função" (NR-01), "respetiva" → "respectiva" (NR-16) e aspas de fechamento
+  em 7 citações (NR-03 ×2, NR-13, NR-15, NR-17, NR-31 com marcador `[...]`
+  por a lista estar cortada, NR-33). Nenhum texto legal foi alterado. Segue
+  o item "A NR-02 foi revogada" (NR-02 e NR-27 são as duas NRs revogadas do
   documento original).
