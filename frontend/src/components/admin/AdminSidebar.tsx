@@ -76,7 +76,7 @@ export function AdminSidebar({ open, onClose }: { open: boolean; onClose: () => 
           </button>
         </div>
 
-        <nav aria-label="Seções do painel" className="mt-7 flex flex-1 flex-col gap-5 overflow-y-auto">
+        <nav aria-label="Seções do painel" className="-mx-2 mt-7 flex flex-1 flex-col gap-5 overflow-y-auto px-2 py-1">
           {ADMIN_NAV.map((group, index) => (
             <div key={group.label ?? `grupo-${index}`}>
               {group.label && (
