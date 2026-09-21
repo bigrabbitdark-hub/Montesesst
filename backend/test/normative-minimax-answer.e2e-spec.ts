@@ -9,6 +9,7 @@ describe('MiniMaxNormativeAnswerService', () => {
   let warnSpy: jest.SpyInstance | undefined;
   let errorSpy: jest.SpyInstance | undefined;
   let nowSpy: jest.SpyInstance | undefined;
+  let timeoutSpy: jest.SpyInstance | undefined;
   const originalApiKey = process.env.MINIMAX_API_KEY;
   const usageLogStub = { log: jest.fn() } as any;
 
@@ -28,6 +29,8 @@ describe('MiniMaxNormativeAnswerService', () => {
     errorSpy = undefined;
     nowSpy?.mockRestore();
     nowSpy = undefined;
+    timeoutSpy?.mockRestore();
+    timeoutSpy = undefined;
     usageLogStub.log.mockClear();
     if (originalApiKey === undefined) delete process.env.MINIMAX_API_KEY;
     else process.env.MINIMAX_API_KEY = originalApiKey;
@@ -295,21 +298,73 @@ describe('MiniMaxNormativeAnswerService', () => {
       expect(warnSpy).not.toHaveBeenCalled();
     });
 
-    it('(e) 1ª tentativa inválida que levou 45 s ou mais NÃO repete: fetch 1x, [] e só o aviso final', async () => {
+    // Relógio simulado que o PRÓPRIO fetch mockado avança: a 1ª tentativa "demora" o
+    // quanto a fábrica somar. Assim o teste só passa se `started` for lido ANTES da
+    // 1ª requisição — se fosse lido depois, o tempo decorrido viraria 0, a guarda de
+    // 45 s ficaria morta (sempre repetiria) e estes casos falhariam.
+    function useSimulatedClock(): { advance: (ms: number) => void } {
+      let clock = 0;
+      nowSpy = jest.spyOn(service as any, 'now').mockImplementation(() => clock);
+      return { advance: (ms: number) => (clock += ms) };
+    }
+
+    it.each([46_000, 45_000])(
+      '(e) 1ª tentativa inválida que levou %i ms (>= 45 s) NÃO repete: fetch 1x, [] e só o aviso final',
+      async (elapsedMs) => {
+        process.env.MINIMAX_API_KEY = 'chave-de-teste-fake';
+        warnSpy = jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+        const relogio = useSimulatedClock();
+        fetchSpy = mockFetchSequence(() => {
+          relogio.advance(elapsedMs);
+          return fakeInvalidToolCallResponse(4096);
+        });
+
+        const result = await service.answer('pergunta', [{ id: 'c1', content: 'trecho' }], [], [], []);
+
+        expect(result).toEqual([]);
+        expect(fetchSpy).toHaveBeenCalledTimes(1);
+        expect(warnSpy).toHaveBeenCalledTimes(1);
+        const message = String(warnSpy.mock.calls[0][0]);
+        expect(message).toContain('resposta do provedor sem tool call parseável');
+        expect(message).not.toContain('repetindo uma vez');
+      },
+    );
+
+    it('(e2) 1ª tentativa inválida que levou 44_999 ms (logo abaixo do limite) repete: fetch 2x e devolve a claim da 2ª', async () => {
       process.env.MINIMAX_API_KEY = 'chave-de-teste-fake';
       warnSpy = jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
-      // Relógio simulado: início em 0 e fim da 1ª tentativa em 45 s exatos.
-      nowSpy = jest.spyOn(service as any, 'now').mockReturnValueOnce(0).mockReturnValueOnce(45_000);
-      fetchSpy = mockFetchSequence(() => fakeInvalidToolCallResponse(4096));
+      const relogio = useSimulatedClock();
+      fetchSpy = mockFetchSequence(
+        () => {
+          relogio.advance(44_999);
+          return fakeInvalidToolCallResponse(4096);
+        },
+        () => fakeToolCallResponse([validClaim]),
+      );
 
       const result = await service.answer('pergunta', [{ id: 'c1', content: 'trecho' }], [], [], []);
 
-      expect(result).toEqual([]);
-      expect(fetchSpy).toHaveBeenCalledTimes(1);
+      expect(result).toEqual([validClaim]);
+      expect(fetchSpy).toHaveBeenCalledTimes(2);
       expect(warnSpy).toHaveBeenCalledTimes(1);
-      const message = String(warnSpy.mock.calls[0][0]);
-      expect(message).toContain('resposta do provedor sem tool call parseável');
-      expect(message).not.toContain('repetindo uma vez');
+      expect(String(warnSpy.mock.calls[0][0])).toContain('repetindo uma vez');
+    });
+
+    it('(g) o timeout é POR TENTATIVA: no cenário da repetição, AbortSignal.timeout é chamado 2x, ambas com 75_000 ms', async () => {
+      process.env.MINIMAX_API_KEY = 'chave-de-teste-fake';
+      warnSpy = jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+      // Sinal que nunca aborta e não agenda timer real (o fetch está mockado).
+      timeoutSpy = jest.spyOn(AbortSignal, 'timeout').mockImplementation(() => new AbortController().signal);
+      fetchSpy = mockFetchSequence(
+        () => fakeInvalidToolCallResponse(4096),
+        () => fakeToolCallResponse([validClaim]),
+      );
+
+      const result = await service.answer('pergunta', [{ id: 'c1', content: 'trecho' }], [], [], []);
+
+      expect(result).toEqual([validClaim]);
+      expect(fetchSpy).toHaveBeenCalledTimes(2);
+      expect(timeoutSpy.mock.calls).toEqual([[75_000], [75_000]]);
     });
 
     it('(f) falha de rede: lança BadGatewayException e fetch 1x (sem repetição)', async () => {
