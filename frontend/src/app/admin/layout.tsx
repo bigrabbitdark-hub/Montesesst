@@ -1,16 +1,15 @@
-import { AdminSidebar } from '@/components/AdminSidebar';
-import { DashboardFooter } from '@/components/DashboardFooter';
+import type { ReactNode } from 'react';
+import './admin-theme.css';
+import { AdminShell } from '@/components/admin/AdminShell';
 import { WhatsAppButton } from '@/components/WhatsAppButton';
 
-export default function AdminLayout({ children }: { children: React.ReactNode }) {
+export const metadata = { title: 'Montese Control — Admin' };
+
+export default function AdminLayout({ children }: { children: ReactNode }) {
   return (
-    <div className="flex min-h-screen flex-col">
-      <div className="mx-auto flex w-full max-w-6xl flex-1">
-        <AdminSidebar />
-        <main className="flex-1 px-8 py-10">{children}</main>
-      </div>
-      <DashboardFooter />
+    <>
+      <AdminShell>{children}</AdminShell>
       <WhatsAppButton />
-    </div>
+    </>
   );
 }

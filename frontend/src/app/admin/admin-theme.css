@@ -1,0 +1,89 @@
+/*
+ * Tema escuro do painel /admin (Montese Control). Escopado ao wrapper
+ * `.admin-theme` (AdminShell) — não altera globals.css nem as outras áreas.
+ *
+ * 1) Inverte a escala --color-brand-*: as telas antigas do admin (que usam
+ *    text-brand-900, border-brand-100, bg-brand-50…) ficam legíveis sem
+ *    reescrita. Dentro do admin: brand-900 = texto principal, brand-700 =
+ *    texto secundário, brand-100 = borda, brand-50 = superfície elevada.
+ * 2) Tokens --admin-* e classes .adm-* dos componentes novos.
+ *
+ * ATENÇÃO: este CSS não está em @layer, então vence qualquer utilitário do
+ * Tailwind na MESMA propriedade. Não combine .adm-card com as utilitárias
+ * rounded, bg ou border, nem .adm-text-faint com text-<cor>, no mesmo elemento.
+ */
+.admin-theme {
+  color-scheme: dark;
+
+  --admin-bg: #0a1220;
+  --admin-sidebar: #08101d;
+  --admin-surface: #0f1a2e;
+  --admin-surface-2: #14233b;
+  --admin-border: #1e2f4a;
+  --admin-text: #e6ecf7;
+  --admin-muted: #9db0cc;
+  --admin-faint: #7b8fb0;
+  --admin-accent: #2f9e5c;
+  --admin-accent-hover: #3bb56c;
+
+  --color-brand-50: #14233b;
+  --color-brand-100: #1e2f4a;
+  --color-brand-300: #7fcf9d;
+  --color-brand-500: #2f9e5c;
+  --color-brand-700: #9db0cc;
+  --color-brand-900: #e6ecf7;
+
+  /* textos de erro/aviso das telas antigas, com contraste sobre fundo escuro */
+  --color-red-600: #f87171;
+  --color-red-700: #fca5a5;
+  --color-green-700: #34d399;
+  --color-yellow-800: #fcd34d;
+
+  background: var(--admin-bg);
+  color: var(--admin-text);
+}
+
+/* evita a faixa branca no overscroll quando o admin está aberto */
+html:has(.admin-theme) {
+  background: #0a1220;
+}
+
+.admin-theme .adm-sidebar {
+  background: var(--admin-sidebar);
+}
+
+.admin-theme .adm-topbar {
+  background: color-mix(in srgb, var(--admin-bg) 88%, transparent);
+  backdrop-filter: blur(8px);
+}
+
+.admin-theme .adm-card {
+  background: var(--admin-surface);
+  border: 1px solid var(--admin-border);
+  border-radius: 0.875rem;
+}
+
+.admin-theme .adm-card-2 {
+  background: var(--admin-surface-2);
+  border-radius: 0.625rem;
+}
+
+.admin-theme .adm-text-faint {
+  color: var(--admin-faint);
+}
+
+.admin-theme :focus-visible {
+  outline: 2px solid #34d399;
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .admin-theme *,
+  .admin-theme *::before,
+  .admin-theme *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
