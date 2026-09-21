@@ -4582,14 +4582,13 @@ Classificado como Architectural. Spec em
 `docs/specs/checklist-sst-conhecimento-assistente.md`, plano em
 `docs/superpowers/plans/2026-09-17-checklist-sst-conhecimento-assistente.md`.
 
-**Implementada e verificada em 2026-09-20 — deploy de produção
-PENDENTE de autorização do fundador.** Execução via Subagent-Driven
-Development (5 tasks + 1 onda final de correção), commits `24055dc`,
-`88cfbc3`, `134be07`, `f9513e0`, `f10e545`, `a6dc490`, `024be78`,
-`c27263f`, `c27bafd` na branch `feat/assistente-confiabilidade-etapa-1`
-(compartilhada com a Etapa 1 da Confiabilidade do Assistente; `main` só
-avança por fast-forward decidido pelo fundador — ver "Coordenação de
-merge" abaixo):
+**Implementada em 2026-09-20 e NO AR em produção desde 2026-09-21.**
+Execução via Subagent-Driven Development (5 tasks + 1 onda final de
+correção + 1 hotfix pós-deploy), commits `24055dc`, `88cfbc3`,
+`134be07`, `f9513e0`, `f10e545`, `a6dc490`, `024be78`, `c27263f`,
+`c27bafd`, `1a8b68e` (roadmap) e o hotfix `b378c67`, todos em `main`
+(a branch compartilhada com a Etapa 1 da Confiabilidade foi mesclada por
+fast-forward, por decisão do fundador, antes do deploy):
 
 - Migration `0049`: tabela `sst_checklist_items` (301 itens, 38 NRs,
   sem `tenant_id`/RLS — mesmo modelo de `epi_catalog_items`), carga
@@ -4650,21 +4649,66 @@ CIPA → NR-05) e pergunta fora de tópico fica em ≤ 0,14, então o limiar
 suítes num worker único) bate no heap padrão do Node — rodar em 2
 lotes (foi como fechou esta fase) ou aumentar o heap.
 
-**Coordenação de merge e deploy (leia antes de publicar):**
+**Deploy (2026-09-21):** backend e frontend reconstruídos e reiniciados
+juntos (Postgres/Redis/nginx não foram tocados; nenhuma migration nova —
+`0049` e a `0050` da Etapa 1 já estavam aplicadas). Como os containers
+eram de 16/09, o mesmo deploy colocou no ar também a **Etapa 1 da
+Confiabilidade** (avisos, Verificador v2, monitor). Só 6 arquivos do
+frontend tinham mudado desde o último build, então o redesign do site não
+commitado não foi novidade. O backend foi reconstruído uma 2ª vez no mesmo
+dia com o hotfix `b378c67` (abaixo). Imagens anteriores (rollback, por ID;
+nunca `docker image prune`): backend `8b02af22…` (pré-deploy) e
+`b32fcaa0…` (1º deploy), frontend `7ba0bf24…`.
 
-- `main` está em `7cd5f13` (Etapa 1 + o commit **original** da tela de
-  admin, sem o `f10e545`). O fast-forward tem que ir até o topo da
-  branch — **nunca deployar `main` num ponto intermediário**.
-- Backend e frontend vão **juntos**: backend novo sem frontend novo
-  mostra citação de checklist sem o box "não é o texto oficial".
-- `frontend/Dockerfile` faz `COPY . .` e não há `.dockerignore`: o build
-  empacota toda a árvore de trabalho, inclusive o redesign do site ainda
-  não commitado. `frontend/src/app/admin/layout.tsx` importa
-  `WhatsAppButton`, que nunca foi commitado (quebra checkout limpo/CI —
-  dívida anterior a esta fase).
+- Pendência de repositório, anterior a esta fase: `frontend/Dockerfile`
+  faz `COPY . .` sem `.dockerignore` (o build empacota toda a árvore de
+  trabalho) e `frontend/src/app/admin/layout.tsx` importa `WhatsAppButton`,
+  que nunca foi commitado (quebra checkout limpo/CI).
+
+**Verificação em produção e o achado do MiniMax-M3 (2026-09-21):**
+
+- Playwright na tela de admin: 15/15 checks (lista de 301 itens, filtro,
+  criar/editar/limpar índice/excluir com embedding real, foco e scroll ao
+  editar, `confirm()` nativo) e zero erros de console; no chat da empresa,
+  box âmbar "Checklist interno Montese — não é o texto oficial da norma"
+  depois do bloco "Fontes", rodapé e subtítulo novos.
+- Perguntas reais ao Assistente (provedor ativo): o checklist é citado e a
+  própria resposta se declara "curadoria interna da Montese, não o texto
+  oficial"; o Verificador v2 descartou de fato uma claim sobre o item 1.4.1
+  que o trecho citado não sustentava; o aviso de jurisdição da Etapa 1
+  apareceu em "PPCI".
+- **Defeito latente achado no smoke (pré-existente, agravado pelo checklist):**
+  o MiniMax-M3 é modelo de **raciocínio** e os tokens de `<think>` contam
+  dentro do `max_tokens`. Com o `1024` fixo o tool call vinha cortado em
+  `{"items": ` → JSON inválido → `[]` → o usuário via "Não encontrei
+  fundamento suficiente" **sem nenhum log** (reproduzido com chamadas reais
+  dentro do container, inclusive sem itens de checklist no prompt). Hotfix
+  `b378c67`: `max_tokens` 4096 só no Assistente, `logger.warn` nos 2
+  provedores quando o tool call vem ausente/inválido (só `finish_reason` e
+  `completion_tokens`, nunca texto de pergunta/claim) e 3 grupos de testes.
+  Depois dele as 6 perguntas do smoke responderam (antes, 3 delas caíam no
+  fallback: item 1.4.1, caldeiras e PPCI).
+- **Cauda residual (decisão do fundador):** medi 6 execuções da pergunta
+  mais pesada ("quais documentos preciso ter para caldeiras?", 6 trechos + 6
+  itens): 1.941 a 7.484 tokens de completion (mediana ~2.900), 17 a 58 s. Com
+  4096, ~5 de 6 completam; o restante ainda cai no fallback, agora com o warn
+  `completion_tokens=4096` no log. Atenção: o MiniMax reporta
+  `finish_reason=tool_calls` mesmo quando trunca — o sinal confiável é
+  `completion_tokens == max_tokens`. Opções, todas mexem em qualidade/custo e
+  devem ser medidas com o dataset golden da Etapa 2/3: limite de afirmações
+  no prompt (≤ 5 curtas), retry único com orçamento maior, subir
+  `max_tokens` junto com o `AbortSignal.timeout(45_000)` do provedor (uma
+  execução de 7.484 tokens levou 58 s), ou trocar o provedor ativo (o
+  OpenRouter/Claude não gasta orçamento em raciocínio).
 
 **Fora de escopo / dívida registrada:**
 
+- Outros módulos de IA que rodam no MiniMax com `max_tokens` 1024
+  (ai-copilot `checklist-extraction-shared.ts`, pente-fino
+  `document-checklist-shared.ts`) podem ter o mesmo corte silencioso; não
+  foram tocados nem medidos.
+- Caminhos que ainda devolvem `[]` sem log: `parsed` sem `items` array e o
+  filtro de claims descartando todas por formato.
 - Determinar automaticamente quais NRs valem para uma empresa por CNAE;
   validar valores de multa (`is_fine_validated` fica `false`); gerar
   pendências a partir do checklist; importar CSV em lote.
