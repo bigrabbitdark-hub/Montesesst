@@ -167,8 +167,10 @@ export function buildRagChatCompletionBody(
   return {
     model,
     // Modelo de raciocínio (MiniMax-M3): o <think> consome o mesmo orçamento; com
-    // 1024 o tool call era cortado e a resposta caía no fallback em silêncio.
-    max_tokens: 4096,
+    // 1024 o tool call era cortado e a resposta caía no fallback em silêncio. 4096
+    // ainda estourava em ~2% das chamadas; ~100 tokens/s → 6144 tokens ≈ 60 s,
+    // dentro do timeout do provedor (75 s).
+    max_tokens: 6144,
     messages: [
       { role: 'system', content: SYSTEM_PROMPT },
       { role: 'user', content: userContent },
