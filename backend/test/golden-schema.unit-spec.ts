@@ -124,6 +124,48 @@ describe('validateGoldenQuestion (unit)', () => {
     expect(validateGoldenQuestion(valid({ proibido_regex: ['(nao fecha'] }))).toContain('proibido_regex: "(nao fecha" não compila');
   });
 
+  it('proibido_regex rejeita entrada que não é texto, texto vazio e padrão que casa a string vazia', () => {
+    // Um padrão vazio ou que casa "" casaria com QUALQUER resposta e reprovaria a pergunta sempre.
+    expect(validateGoldenQuestion(valid({ proibido_regex: [''] })).length).toBeGreaterThan(0);
+    expect(validateGoldenQuestion(valid({ proibido_regex: ['   '] })).length).toBeGreaterThan(0);
+    expect(validateGoldenQuestion(valid({ proibido_regex: ['.*'] }))).toContain(
+      'proibido_regex: ".*" casa a string vazia (casaria com qualquer resposta)',
+    );
+    expect(validateGoldenQuestion(valid({ proibido_regex: [5] }))).toContain('proibido_regex[0]: deve ser texto');
+    expect(validateGoldenQuestion(valid({ proibido_regex: ['sim,? todo', null] }))).toContain('proibido_regex[1]: deve ser texto');
+    // Um padrão válido junto de outro válido continua passando.
+    expect(validateGoldenQuestion(valid({ proibido_regex: ['sim,? todo', '\\bnão precisa\\b'] }))).toEqual([]);
+  });
+
+  it('campo desconhecido no registro é rejeitado (um typo em proibido_regex desligaria a guarda em silêncio)', () => {
+    expect(validateGoldenQuestion(valid({ proibido_regx: ['sim'] }))).toEqual(['campo desconhecido: proibido_regx']);
+    expect(validateGoldenQuestion(valid({ extra: 1, outro: 2 }))).toEqual([
+      'campo desconhecido: extra',
+      'campo desconhecido: outro',
+    ]);
+  });
+
+  it('chave herdada de Object (toString) também conta como campo desconhecido', () => {
+    expect(validateGoldenQuestion(valid({ toString: 'x' }))).toContain('campo desconhecido: toString');
+  });
+
+  it('campo desconhecido dentro de uma fonte esperada é rejeitado', () => {
+    const errors = validateGoldenQuestion(
+      valid({
+        fontes_esperadas: [
+          {
+            fonte: 'norma',
+            source_code: 'NR-35',
+            item: '35.4.1',
+            evidencia: '35.4.1 Todo trabalho em altura deve ser realizado por trabalhador formalmente autorizado pela organização.',
+            eviddencia: 'typo',
+          },
+        ],
+      }),
+    );
+    expect(errors).toEqual(['fontes_esperadas[0]: campo desconhecido: eviddencia']);
+  });
+
   it('status validado exige validado_por e validado_em; rascunho exige ambos nulos', () => {
     expect(validateGoldenQuestion(valid({ status: 'validado' }))).toContain('status validado exige validado_por e validado_em');
     expect(
@@ -132,6 +174,15 @@ describe('validateGoldenQuestion (unit)', () => {
     expect(validateGoldenQuestion(valid({ validado_por: 'Alguém' }))).toContain(
       'status rascunho exige validado_por e validado_em nulos',
     );
+  });
+
+  it('validado exige os DOIS campos (só um deles não basta) e rascunho rejeita qualquer um dos dois', () => {
+    const erroValidado = 'status validado exige validado_por e validado_em';
+    const erroRascunho = 'status rascunho exige validado_por e validado_em nulos';
+    expect(validateGoldenQuestion(valid({ status: 'validado', validado_por: 'Fulana, CREA 123' }))).toContain(erroValidado);
+    expect(validateGoldenQuestion(valid({ status: 'validado', validado_em: '2026-09-25' }))).toContain(erroValidado);
+    expect(validateGoldenQuestion(valid({ status: 'rascunho', validado_por: 'Fulana, CREA 123' }))).toContain(erroRascunho);
+    expect(validateGoldenQuestion(valid({ status: 'rascunho', validado_em: '2026-09-25' }))).toContain(erroRascunho);
   });
 
   it('data_verificacao precisa estar em YYYY-MM-DD ou ser null', () => {

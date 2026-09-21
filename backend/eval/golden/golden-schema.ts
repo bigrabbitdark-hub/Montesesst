@@ -72,6 +72,44 @@ export interface GoldenQuestion {
   validado_em: string | null;
 }
 
+// Chaves conhecidas, tipadas com Record<keyof …, true>: acrescentar um campo à
+// interface sem listá-lo aqui (ou o contrário) é erro de compilação. Serve para
+// rejeitar campo desconhecido: um typo como `proibido_regx` desligaria em
+// silêncio a guarda das pegadinhas (`proibido_regex` é o único campo opcional).
+const GOLDEN_QUESTION_KEYS: Record<keyof GoldenQuestion, true> = {
+  id: true,
+  tipo: true,
+  categoria: true,
+  subcategoria: true,
+  pergunta: true,
+  resposta_esperada: true,
+  comportamento_esperado: true,
+  fontes_esperadas: true,
+  avisos_esperados: true,
+  proibido_regex: true,
+  jurisdicao: true,
+  risco_resposta: true,
+  versao_fonte: true,
+  data_verificacao: true,
+  status: true,
+  gerado_por: true,
+  validado_por: true,
+  validado_em: true,
+};
+
+const FONTE_ESPERADA_KEYS: Record<keyof FonteEsperada, true> = {
+  fonte: true,
+  source_code: true,
+  item: true,
+  evidencia: true,
+};
+
+// hasOwnProperty (e não `in`): chaves herdadas de Object, como `toString`,
+// não podem passar por campo conhecido.
+function isKnownKey(known: Record<string, true>, key: string): boolean {
+  return Object.prototype.hasOwnProperty.call(known, key);
+}
+
 function isNonEmptyString(value: unknown): value is string {
   return typeof value === 'string' && value.trim() !== '';
 }
@@ -87,6 +125,10 @@ export function validateGoldenQuestion(raw: unknown): string[] {
   }
   const q = raw as Record<string, unknown>;
   const errors: string[] = [];
+
+  for (const key of Object.keys(q)) {
+    if (!isKnownKey(GOLDEN_QUESTION_KEYS, key)) errors.push(`campo desconhecido: ${key}`);
+  }
 
   for (const field of ['id', 'categoria', 'subcategoria', 'pergunta', 'resposta_esperada', 'gerado_por']) {
     if (!isNonEmptyString(q[field])) errors.push(`${field}: texto obrigatório`);
@@ -115,6 +157,9 @@ export function validateGoldenQuestion(raw: unknown): string[] {
         return;
       }
       const f = fonte as Record<string, unknown>;
+      for (const key of Object.keys(f)) {
+        if (!isKnownKey(FONTE_ESPERADA_KEYS, key)) errors.push(`${where}: campo desconhecido: ${key}`);
+      }
       if (f.fonte !== 'norma') {
         errors.push(`${where}.fonte: só 'norma' é suportada (checklist fica para a segunda leva)`);
       }
@@ -162,13 +207,25 @@ export function validateGoldenQuestion(raw: unknown): string[] {
     if (!Array.isArray(q.proibido_regex)) {
       errors.push('proibido_regex: deve ser uma lista');
     } else {
-      for (const pattern of q.proibido_regex) {
-        try {
-          new RegExp(String(pattern), 'i');
-        } catch {
-          errors.push(`proibido_regex: "${String(pattern)}" não compila`);
+      q.proibido_regex.forEach((pattern: unknown, index: number) => {
+        if (!isNonEmptyString(pattern)) {
+          // Cobre entrada que não é texto (5, null…) e texto vazio ou só espaços.
+          errors.push(`proibido_regex[${index}]: deve ser texto`);
+          return;
         }
-      }
+        let compiled: RegExp;
+        try {
+          compiled = new RegExp(pattern, 'i');
+        } catch {
+          errors.push(`proibido_regex: "${pattern}" não compila`);
+          return;
+        }
+        // Padrão que casa a string vazia casaria com TODA resposta e reprovaria
+        // a pergunta sempre (ex.: ".*").
+        if (compiled.test('')) {
+          errors.push(`proibido_regex: "${pattern}" casa a string vazia (casaria com qualquer resposta)`);
+        }
+      });
     }
   }
 
