@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { company } from '@/lib/company';
 
 interface Plan {
   id: string;
@@ -172,6 +173,7 @@ export default function AdminFinanceiroPage() {
   return (
     <div>
       <h2 className="text-xl font-bold text-brand-900">Financeiro</h2>
+      <p className="mt-1 text-sm text-brand-700">{`Recebedor: ${company.nomeFantasia} · CNPJ ${company.cnpj}`}</p>
 
       <section className="mt-6 rounded-lg border border-brand-100 p-6">
         <h3 className="text-lg font-bold text-brand-900">Planos</h3>

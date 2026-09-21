@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { MountainDivider } from '@/components/MountainDivider';
+import { PaymentIssuerNote } from '@/components/PaymentIssuerNote';
 import { ASSISTANT_STEPS, ASSISTANT_TECHNICIAN_STEP, COMPARISON_TABLE, PLAN_CONTENT } from './plan-content';
 
 interface Plan {
@@ -238,6 +239,8 @@ export default function PlanosPage() {
             );
           })}
         </div>
+
+        <PaymentIssuerNote className="mx-auto max-w-4xl px-4 pb-10" />
 
         <div className="mx-auto max-w-4xl px-4 pb-12">
           <h2 className="text-center text-[24px] font-extrabold text-brand-900">

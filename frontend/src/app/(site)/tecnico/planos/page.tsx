@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { PaymentIssuerNote } from '@/components/PaymentIssuerNote';
 import { useEffect, useState } from 'react';
 
 interface Plan {
@@ -85,6 +86,7 @@ export default function PlanosTecnicoPage() {
                 Entrar para assinar
               </Link>
             )}
+            <PaymentIssuerNote className="mt-4" />
           </div>
         ))}
       </div>
