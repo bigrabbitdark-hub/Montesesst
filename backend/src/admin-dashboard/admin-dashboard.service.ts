@@ -3,10 +3,44 @@ import { PoolClient } from 'pg';
 import { OverviewService } from '../overview/overview.service';
 import { SystemStatusService } from '../system-status/system-status.service';
 import { AlertResult, computeAlerts, PENDING_STALE_DAYS, REJECTED_WINDOW_DAYS } from './alert-rules';
-import { PENDING_STATUSES, REJECTED_STATUSES } from './payment-status';
+import { APPROVED_STATUSES, PENDING_STATUSES, REJECTED_STATUSES } from './payment-status';
 
 export interface AlertasResponse extends AlertResult {
   gerado_em: string;
+}
+
+export interface FinanceiroPeriodo {
+  cobrado_cents: number;
+  aprovado_cents: number;
+  pendente_cents: number;
+}
+
+export interface PagamentoRecente {
+  id: string;
+  mercadopago_payment_id: string;
+  amount_cents: number;
+  status: string;
+  occurred_at: string;
+  cliente: string | null;
+  plano: string | null;
+}
+
+export interface FinanceiroResponse {
+  periodo_dias: number;
+  serie: { data: string; cobrado_cents: number; aprovado_cents: number }[];
+  hoje: FinanceiroPeriodo;
+  mes: FinanceiroPeriodo & { recusado_cents: number };
+  recentes: PagamentoRecente[];
+}
+
+interface ResumoRow {
+  hoje_cobrado_cents: number;
+  hoje_aprovado_cents: number;
+  hoje_pendente_cents: number;
+  mes_cobrado_cents: number;
+  mes_aprovado_cents: number;
+  mes_pendente_cents: number;
+  mes_recusado_cents: number;
 }
 
 // Só leitura. Chamado apenas por rotas @Roles('admin'); o `client` vem de
@@ -42,6 +76,88 @@ export class AdminDashboardService {
     });
 
     return { gerado_em: new Date().toISOString(), ...result };
+  }
+
+  // "Cobrado" = soma de todos os eventos do período; "aprovado" = status
+  // approved; "pendente"/"recusado" seguem os grupos de payment-status.ts.
+  // Dia, hoje e mês em America/Sao_Paulo — um evento às 23:59 de Brasília é
+  // do dia de Brasília, mesmo que em UTC já seja o dia seguinte.
+  async getFinanceiro(client: PoolClient, dias: number): Promise<FinanceiroResponse> {
+    const approved = [...APPROVED_STATUSES];
+    const pending = [...PENDING_STATUSES];
+    const rejected = [...REJECTED_STATUSES];
+
+    // Sequencial de propósito: o pg deprecou consultas simultâneas no mesmo
+    // PoolClient (fila implícita), e o `client` aqui é um só.
+    const serie = await client.query<{ data: string; cobrado_cents: number; aprovado_cents: number }>(
+      `WITH dias AS (
+         SELECT generate_series(
+           ((now() AT TIME ZONE 'America/Sao_Paulo')::date - ($1::int - 1))::timestamp,
+           (now() AT TIME ZONE 'America/Sao_Paulo')::date::timestamp,
+           interval '1 day'
+         )::date AS dia
+       )
+       SELECT to_char(d.dia, 'YYYY-MM-DD') AS data,
+              COALESCE(sum(e.amount_cents), 0)::int AS cobrado_cents,
+              COALESCE(sum(e.amount_cents) FILTER (WHERE e.status = ANY($2::text[])), 0)::int AS aprovado_cents
+       FROM dias d
+       LEFT JOIN payment_events e
+         ON (e.occurred_at AT TIME ZONE 'America/Sao_Paulo')::date = d.dia
+       GROUP BY d.dia
+       ORDER BY d.dia`,
+      [dias, approved],
+    );
+    const resumo = await client.query<ResumoRow>(
+      `WITH hoje AS (SELECT (now() AT TIME ZONE 'America/Sao_Paulo')::date AS d),
+            e AS (
+              SELECT amount_cents, status,
+                     (occurred_at AT TIME ZONE 'America/Sao_Paulo')::date AS dia
+              FROM payment_events
+              WHERE occurred_at >= date_trunc('month', now() AT TIME ZONE 'America/Sao_Paulo')
+                                     AT TIME ZONE 'America/Sao_Paulo'
+            )
+       SELECT
+         COALESCE(sum(e.amount_cents) FILTER (WHERE e.dia = hoje.d), 0)::int AS hoje_cobrado_cents,
+         COALESCE(sum(e.amount_cents) FILTER (WHERE e.dia = hoje.d AND e.status = ANY($1::text[])), 0)::int AS hoje_aprovado_cents,
+         COALESCE(sum(e.amount_cents) FILTER (WHERE e.dia = hoje.d AND e.status = ANY($2::text[])), 0)::int AS hoje_pendente_cents,
+         COALESCE(sum(e.amount_cents), 0)::int AS mes_cobrado_cents,
+         COALESCE(sum(e.amount_cents) FILTER (WHERE e.status = ANY($1::text[])), 0)::int AS mes_aprovado_cents,
+         COALESCE(sum(e.amount_cents) FILTER (WHERE e.status = ANY($2::text[])), 0)::int AS mes_pendente_cents,
+         COALESCE(sum(e.amount_cents) FILTER (WHERE e.status = ANY($3::text[])), 0)::int AS mes_recusado_cents
+       FROM e CROSS JOIN hoje`,
+      [approved, pending, rejected],
+    );
+    // Mesmo join de SubscriptionsService.findAllForAdmin; LEFT JOIN porque
+    // evento gravado sem vínculo de assinatura é legítimo (webhook órfão).
+    const recentes = await client.query<PagamentoRecente>(
+      `SELECT e.id, e.mercadopago_payment_id, e.amount_cents, e.status, e.occurred_at,
+              COALESCE(t.name, u.full_name) AS cliente, p.name AS plano
+       FROM payment_events e
+       LEFT JOIN subscriptions s ON s.id = e.subscription_id
+       LEFT JOIN plans p ON p.id = s.plan_id
+       LEFT JOIN tenants t ON t.id = s.tenant_id
+       LEFT JOIN users u ON u.id = s.technician_user_id
+       ORDER BY e.occurred_at DESC
+       LIMIT 5`,
+    );
+
+    const r = resumo.rows[0];
+    return {
+      periodo_dias: dias,
+      serie: serie.rows,
+      hoje: {
+        cobrado_cents: r.hoje_cobrado_cents,
+        aprovado_cents: r.hoje_aprovado_cents,
+        pendente_cents: r.hoje_pendente_cents,
+      },
+      mes: {
+        cobrado_cents: r.mes_cobrado_cents,
+        aprovado_cents: r.mes_aprovado_cents,
+        pendente_cents: r.mes_pendente_cents,
+        recusado_cents: r.mes_recusado_cents,
+      },
+      recentes: recentes.rows,
+    };
   }
 
   private async countPaymentAlerts(
