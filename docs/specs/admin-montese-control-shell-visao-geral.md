@@ -40,7 +40,7 @@ de tema claro/escuro.
 
 ## 3. Correções desde o brainstorming
 
-Ao verificar o código para escrever esta spec, seis pontos apresentados
+Ao verificar o código para escrever esta spec, sete pontos apresentados
 antes mudaram. Registrados aqui para não haver divergência com o que foi
 aprovado:
 
@@ -61,6 +61,10 @@ aprovado:
    grava**, então seria sempre vazia.
 6. **KPIs sem sparkline**, exceto o de IA (tokens dos últimos 7 dias).
    Não há histórico de MRR nem de clientes para desenhar tendência.
+7. **"Hoje" do card de IA não é o último item de `last_7_days`.** O
+   endpoint agrupa por dia no fuso da sessão do Postgres (UTC) e **não
+   devolve dias sem uso**; o último item pode ser de ontem. O cliente
+   preenche os 7 dias com 0 e "Hoje" é o item com a data UTC de hoje.
 
 ## 4. Shell
 
@@ -165,13 +169,13 @@ botão **Atualizar** (recarrega todos os cards).
 |---|---|---|
 | **MRR** | `GET /api/overview` → `receita_mensal_cents` | Valor em R$, rotulado "MRR" (soma dos planos com assinatura autorizada). Sem % de variação. |
 | **Clientes ativos** | `overview` → `empresas_ativas` | Número + "N técnicos · N parceiros vinculados". |
-| **Uso de IA** | `GET /api/admin/ai-usage` + `GET /api/ai-copilot/usage` | Principal: tokens dos últimos 7 dias (MiniMax) + sparkline dos 7 dias. Secundário: "OpenRouter: US$ X este mês" ou "OpenRouter não configurado". USD, sem conversão. Aviso de saldo baixo mantido. |
+| **Uso de IA** | `GET /api/admin/ai-usage` + `GET /api/ai-copilot/usage` | Principal: tokens dos últimos 7 dias (MiniMax) + sparkline dos 7 dias (dias sem uso preenchidos com 0 no cliente). Secundário: "OpenRouter: US$ X este mês" ou "OpenRouter não configurado". USD, sem conversão. Aviso de saldo baixo mantido. |
 | **Saúde do sistema** | `system-status` | Lista real de Postgres, Redis, Site com ícone+texto. Linha "Score geral — em construção". |
 | **Precisa da sua atenção** | `GET /api/admin/dashboard/alertas` | Lista por severidade com link para a tela relevante; estado vazio "Nenhum alerta — tudo certo". Ver seção 7. |
 | **Faturamento e recebimentos** | `GET /api/admin/dashboard/financeiro?dias=` | Gráfico de área "Cobrado" × "Aprovado" com abas 7/30/90 dias; painéis Hoje / Mês / Pendente. |
 | **Status dos serviços** | `system-status` | Postgres (com conexões ativas), Redis, Site. Linha de texto: "Qdrant, Docker, worker, WhatsApp e Mercado Pago: monitoramento em construção" — sem bolinha verde para o que não é medido. |
 | **VPS** | `system-status` | Gauges: RAM e disco (`used_percent`), CPU como carga (`load_avg_1m / cores`, rotulado "Carga"). Rede e gráfico de 24 h: "Em construção". |
-| **IA & tokens** | `admin/ai-usage` | Hoje (último item de `last_7_days`), 7 dias (soma), total acumulado; "Por capacidade" com barras (o que existe no lugar de "Por agente"). |
+| **IA & tokens** | `admin/ai-usage` | Hoje (item de `last_7_days` com a data UTC de hoje, 0 se ausente), 7 dias (soma), total acumulado; "Por capacidade" com barras (o que existe no lugar de "Por agente"). |
 | **Clientes recentes** | `GET /api/admin/dashboard/clientes-recentes` | Empresa, plano, status, MRR, último acesso. |
 | **Pagamentos — Mercado Pago** | `financeiro` → `recentes` | Cliente, valor, status, data; resumo Hoje/Pendente/Mês. |
 | **Logs recentes** | `GET /api/audit-log?limit=8` | Hora, recurso, ação, IP; nível derivado do `status_code` (≥ 500 ERRO, ≥ 400 AVISO, demais INFO), filtro por chip no cliente. **Não exibe `detail`** (contém e-mail em falhas de login). "Ver todos" → `/admin/auditoria`. Rotulado "Auditoria". |
