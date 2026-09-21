@@ -10,6 +10,12 @@ function parseDias(value: string | undefined): number {
   return DIAS_PERMITIDOS.includes(parsed) ? parsed : 30;
 }
 
+function parseLimit(value: string | undefined): number {
+  const parsed = Number.parseInt(value ?? '', 10);
+  if (!Number.isFinite(parsed) || parsed <= 0) return 5;
+  return Math.min(parsed, 20);
+}
+
 @Controller('admin/dashboard')
 export class AdminDashboardController {
   constructor(private readonly dashboard: AdminDashboardService) {}
@@ -25,6 +31,14 @@ export class AdminDashboardController {
   getFinanceiro(@Query('dias') dias: string | undefined, @Req() req: any) {
     return req.withTenantContext((client: PoolClient) =>
       this.dashboard.getFinanceiro(client, parseDias(dias)),
+    );
+  }
+
+  @Roles('admin')
+  @Get('clientes-recentes')
+  getClientesRecentes(@Query('limit') limit: string | undefined, @Req() req: any) {
+    return req.withTenantContext((client: PoolClient) =>
+      this.dashboard.getClientesRecentes(client, parseLimit(limit)),
     );
   }
 }

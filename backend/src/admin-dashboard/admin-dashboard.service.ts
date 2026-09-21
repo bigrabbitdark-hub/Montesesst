@@ -33,6 +33,16 @@ export interface FinanceiroResponse {
   recentes: PagamentoRecente[];
 }
 
+export interface ClienteRecente {
+  id: string;
+  nome: string;
+  plano: string;
+  status: string;
+  mrr_cents: number | null;
+  ultimo_acesso: string | null;
+  created_at: string;
+}
+
 interface ResumoRow {
   hoje_cobrado_cents: number;
   hoje_aprovado_cents: number;
@@ -158,6 +168,36 @@ export class AdminDashboardService {
       },
       recentes: recentes.rows,
     };
+  }
+
+  // "Último acesso" vem de audit_log (login_success), não de
+  // users.last_login_at — essa coluna existe no schema mas nenhum código a
+  // grava. LATERAL + LIMIT: o custo cresce com `limit`, não com a base.
+  async getClientesRecentes(client: PoolClient, limit: number): Promise<ClienteRecente[]> {
+    const result = await client.query<ClienteRecente>(
+      `SELECT t.id, t.name AS nome, t.status::text AS status, t.created_at,
+              COALESCE(sub.plan_name, t.plan) AS plano,
+              sub.price_cents AS mrr_cents,
+              acesso.ultimo_acesso
+       FROM tenants t
+       LEFT JOIN LATERAL (
+         SELECT p.name AS plan_name, p.price_cents
+         FROM subscriptions s
+         JOIN plans p ON p.id = s.plan_id
+         WHERE s.tenant_id = t.id AND s.status = 'authorized'
+         ORDER BY s.created_at DESC
+         LIMIT 1
+       ) sub ON true
+       LEFT JOIN LATERAL (
+         SELECT max(al.occurred_at) AS ultimo_acesso
+         FROM audit_log al
+         WHERE al.actor_tenant_id = t.id AND al.action = 'login_success'
+       ) acesso ON true
+       ORDER BY t.created_at DESC
+       LIMIT $1`,
+      [limit],
+    );
+    return result.rows;
   }
 
   private async countPaymentAlerts(
