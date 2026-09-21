@@ -1,11 +1,13 @@
-import { GoldenQuestion } from '../eval/golden/golden-schema';
+import { AvisoTipo, GoldenQuestion } from '../eval/golden/golden-schema';
 import {
   aggregateAnswer,
+  aggregateNotices,
   aggregateRetrieval,
   evaluateAnswer,
   evaluateRetrieval,
   findRegressions,
   groupBy,
+  RetrievalResult,
   RetrievedChunkObs,
 } from '../eval/metrics';
 
@@ -284,5 +286,213 @@ describe('findRegressions / groupBy (unit)', () => {
 
   it('groupBy agrupa por chave', () => {
     expect(groupBy([1, 2, 3, 4], (n) => (n % 2 === 0 ? 'par' : 'impar'))).toEqual({ par: [2, 4], impar: [1, 3] });
+  });
+});
+
+// Lacunas de cobertura apontadas pela revisão (mutações que sobreviviam à
+// primeira versão do spec): limiar, máximo, regras por comportamento, gate.
+describe('bordas e regras do gate (unit)', () => {
+  const semFonte = { fontes_esperadas: [] as GoldenQuestion['fontes_esperadas'] };
+  const baseB = {
+    notices: [] as AvisoTipo[],
+    retrieved: [] as RetrievedChunkObs[],
+    kept_claims_chunk_ids: [] as string[][],
+    claims_dropped_support: 0,
+    flagged_numbers: [] as string[],
+  };
+
+  it('similaridade exatamente no limiar conta (>=, igual à produção)', () => {
+    expect(evaluateRetrieval(question(), { chunks: [chunk({ similarity: THRESHOLD })], threshold: THRESHOLD, notices: [] }).acerto_item).toBe(true);
+    const recusa = question({ ...semFonte, comportamento_esperado: 'recusar_sem_evidencia', tipo: 'sem_evidencia' });
+    expect(evaluateRetrieval(recusa, { chunks: [chunk({ similarity: THRESHOLD })], threshold: THRESHOLD, notices: [] }).falso_relevante).toBe(true);
+  });
+
+  it('melhor similaridade é o máximo entre vários trechos', () => {
+    const result = evaluateRetrieval(question(), {
+      chunks: [chunk({ chunk_id: 'a', similarity: 0.3 }), chunk({ chunk_id: 'b', similarity: 0.7 }), chunk({ chunk_id: 'c', similarity: 0.5 })],
+      threshold: THRESHOLD,
+      notices: [],
+    });
+    expect(result.melhor_similaridade).toBe(0.7);
+    const recusa = question({ ...semFonte, comportamento_esperado: 'recusar_sem_evidencia', tipo: 'sem_evidencia' });
+    expect(
+      evaluateRetrieval(recusa, { chunks: [chunk({ similarity: 0.1 }), chunk({ similarity: 0.9 })], threshold: THRESHOLD, notices: [] }).falso_relevante,
+    ).toBe(true);
+  });
+
+  it('aviso divergente reprova o passou da Camada A mesmo com o item certo', () => {
+    const result = evaluateRetrieval(question({ avisos_esperados: ['contexto'] }), { chunks: [chunk()], threshold: THRESHOLD, notices: [] });
+    expect(result.acerto_item).toBe(true);
+    expect(result.avisos_ok).toBe(false);
+    expect(result.passou).toBe(false);
+  });
+
+  it('acerto de NR também respeita o limiar', () => {
+    const result = evaluateRetrieval(question(), { chunks: [chunk({ similarity: 0.2 })], threshold: THRESHOLD, notices: [] });
+    expect(result.acerto_nr).toBe(false);
+  });
+
+  it('menção ao item ("conforme o item 35.4.1") não conta como título', () => {
+    const mencao = chunk({ content: 'texto conforme o item 35.4.1 desta norma' });
+    const result = evaluateRetrieval(question(), { chunks: [mencao], threshold: THRESHOLD, notices: [] });
+    expect(result.acerto_nr).toBe(true);
+    expect(result.acerto_item).toBe(false);
+  });
+
+  it('proibido_regex reprova também em pedir_contexto e alertar_*', () => {
+    const q = question({
+      ...semFonte,
+      comportamento_esperado: 'alertar_jurisdicao',
+      avisos_esperados: ['jurisdicao'],
+      tipo: 'jurisdicional',
+      proibido_regex: ['não precisa'],
+    });
+    const result = evaluateAnswer(q, { ...baseB, notices: ['jurisdicao'], answer: 'Não precisa de nada.' });
+    expect(result.avisos_ok).toBe(true);
+    expect(result.proibido_ok).toBe(false);
+    expect(result.passou).toBe(false);
+  });
+
+  it('na Camada B, aviso a mais não reprova (contém, não igualdade)', () => {
+    const q = question({ ...semFonte, comportamento_esperado: 'pedir_contexto', avisos_esperados: ['contexto'], tipo: 'contexto_incompleto' });
+    expect(evaluateAnswer(q, { ...baseB, notices: ['contexto', 'jurisdicao'], answer: 'x' }).passou).toBe(true);
+  });
+
+  it('responder com resposta nula reprova mesmo que uma claim cite o item', () => {
+    const result = evaluateAnswer(question(), { ...baseB, retrieved: [chunk()], kept_claims_chunk_ids: [['c1']], answer: null });
+    expect(result.citou_item).toBe(true);
+    expect(result.passou).toBe(false);
+  });
+
+  it('resposta só com espaços conta como recusa', () => {
+    expect(evaluateAnswer(question(), { ...baseB, answer: '   ' }).respondeu).toBe(false);
+  });
+
+  it('basta UMA claim citar o item; ids de outras claims não atrapalham', () => {
+    const retrieved = [chunk({ chunk_id: 'c-item' }), chunk({ chunk_id: 'c-outro', content: 'nada' })];
+    expect(evaluateAnswer(question(), { ...baseB, retrieved, answer: 'x', kept_claims_chunk_ids: [['c-outro'], ['c-item']] }).citou_item).toBe(true);
+    expect(evaluateAnswer(question(), { ...baseB, retrieved, answer: 'x', kept_claims_chunk_ids: [['c-outro', 'c-item']] }).citou_item).toBe(true);
+  });
+
+  it('nao_pergunta_de_volta só vale em pedir_contexto', () => {
+    expect(evaluateAnswer(question(), { ...baseB, answer: 'x' }).nao_pergunta_de_volta).toBe(false);
+  });
+
+  it('o gate lê o status ATUAL (baseline gerado com tudo rascunho)', () => {
+    expect(findRegressions([{ id: 'A', status: 'rascunho', passou: true }], [{ id: 'A', status: 'validado', passou: false }])).toEqual([
+      { id: 'A', motivo: 'passava no baseline e deixou de passar' },
+    ]);
+    expect(findRegressions([{ id: 'A', status: 'validado', passou: true }], [{ id: 'A', status: 'rascunho', passou: false }])).toEqual([]);
+  });
+
+  it('várias regressões saem na ordem de `current`', () => {
+    const baseline = ['Z', 'A', 'M'].map((id) => ({ id, status: 'validado' as const, passou: true }));
+    const current = ['Z', 'A', 'M'].map((id) => ({ id, status: 'validado' as const, passou: false }));
+    expect(findRegressions(baseline, current).map((r) => r.id)).toEqual(['Z', 'A', 'M']);
+  });
+});
+
+describe('avisos comparados como conjunto (unit)', () => {
+  it('Camada A: esperado com aviso repetido não casa com detectados distintos', () => {
+    const q = question({ fontes_esperadas: [], comportamento_esperado: 'alertar_jurisdicao', avisos_esperados: ['jurisdicao', 'jurisdicao'] });
+    const result = evaluateRetrieval(q, { chunks: [], threshold: THRESHOLD, notices: ['jurisdicao', 'contexto'] });
+    expect(result.avisos_ok).toBe(false);
+  });
+
+  it('Camada A: aviso detectado em duplicidade não derruba o acerto', () => {
+    const q = question({ fontes_esperadas: [], comportamento_esperado: 'alertar_jurisdicao', avisos_esperados: ['jurisdicao'] });
+    expect(evaluateRetrieval(q, { chunks: [], threshold: THRESHOLD, notices: ['jurisdicao', 'jurisdicao'] }).avisos_ok).toBe(true);
+  });
+
+  it('Camada A: esperado repetido casa com o mesmo aviso detectado uma vez', () => {
+    const q = question({ fontes_esperadas: [], comportamento_esperado: 'alertar_jurisdicao', avisos_esperados: ['jurisdicao', 'jurisdicao'] });
+    expect(evaluateRetrieval(q, { chunks: [], threshold: THRESHOLD, notices: ['jurisdicao'] }).avisos_ok).toBe(true);
+  });
+
+  it('Camada B: repetição nos avisos não muda o resultado', () => {
+    const q = question({ fontes_esperadas: [], comportamento_esperado: 'alertar_jurisdicao', avisos_esperados: ['jurisdicao', 'jurisdicao'] });
+    const base = { answer: null, retrieved: [], kept_claims_chunk_ids: [], claims_dropped_support: 0, flagged_numbers: [] };
+    expect(evaluateAnswer(q, { ...base, notices: ['jurisdicao'] }).avisos_ok).toBe(true);
+    expect(evaluateAnswer(q, { ...base, notices: ['contexto'] }).avisos_ok).toBe(false);
+  });
+});
+
+describe('aggregateNotices — precisão e recall por tipo de aviso (unit)', () => {
+  // Resultado da Camada A só com o que importa aqui: os avisos esperados e os
+  // detectados (o restante é neutro).
+  function resultado(id: string, esperados: AvisoTipo[], detectados: AvisoTipo[]): RetrievalResult {
+    return {
+      id,
+      tipo: 'conceitual',
+      status: 'rascunho',
+      acerto_nr: null,
+      acerto_item: null,
+      acerto_item_topk: null,
+      melhor_similaridade: null,
+      falso_relevante: null,
+      avisos_esperados: esperados,
+      avisos_detectados: detectados,
+      avisos_ok: false,
+      passou: false,
+    };
+  }
+
+  it('caso misto com os 3 tipos: tp, fp, fn, precisão e recall conferidos à mão', () => {
+    const casos: Array<[AvisoTipo[], AvisoTipo[]]> = [
+      // jurisdicao: 3 acertos e 1 falso positivo
+      [['jurisdicao'], ['jurisdicao']],
+      [['jurisdicao'], ['jurisdicao']],
+      [['jurisdicao'], ['jurisdicao']],
+      [[], ['jurisdicao']],
+      // contexto: 1 acerto e 1 falso negativo
+      [['contexto'], ['contexto']],
+      [['contexto'], []],
+      // profissional_habilitado: 1 acerto, 3 falsos positivos e 1 falso negativo
+      [['profissional_habilitado'], ['profissional_habilitado']],
+      [['profissional_habilitado'], []],
+      [[], ['profissional_habilitado']],
+      [[], ['profissional_habilitado']],
+      [[], ['profissional_habilitado']],
+      // pergunta sem nenhum aviso, esperado ou detectado: não entra em conta nenhuma
+      [[], []],
+    ];
+    const stats = aggregateNotices(casos.map(([esperados, detectados], index) => resultado(`Q-${index}`, esperados, detectados)));
+    expect(stats).toEqual({
+      jurisdicao: { tp: 3, fp: 1, fn: 0, precisao: 0.75, recall: 1 },
+      contexto: { tp: 1, fp: 0, fn: 1, precisao: 1, recall: 0.5 },
+      profissional_habilitado: { tp: 1, fp: 3, fn: 1, precisao: 0.25, recall: 0.5 },
+    });
+  });
+
+  it('lista vazia: tudo zerado e precisão/recall null (nunca NaN)', () => {
+    const zerado = { tp: 0, fp: 0, fn: 0, precisao: null, recall: null };
+    expect(aggregateNotices([])).toEqual({ jurisdicao: zerado, contexto: zerado, profissional_habilitado: zerado });
+  });
+
+  it('tipo que nunca foi detectado nem esperado fica null/null, sem atrapalhar os demais', () => {
+    const stats = aggregateNotices([resultado('Q-1', ['jurisdicao'], ['jurisdicao'])]);
+    expect(stats.jurisdicao).toEqual({ tp: 1, fp: 0, fn: 0, precisao: 1, recall: 1 });
+    expect(stats.contexto).toEqual({ tp: 0, fp: 0, fn: 0, precisao: null, recall: null });
+    expect(stats.profissional_habilitado).toEqual({ tp: 0, fp: 0, fn: 0, precisao: null, recall: null });
+  });
+
+  it('esperado e nunca detectado: precisão null e recall 0; detectado e nunca esperado: precisão 0 e recall null', () => {
+    const stats = aggregateNotices([resultado('Q-1', ['contexto'], []), resultado('Q-2', [], ['profissional_habilitado'])]);
+    expect(stats.contexto).toEqual({ tp: 0, fp: 0, fn: 1, precisao: null, recall: 0 });
+    expect(stats.profissional_habilitado).toEqual({ tp: 0, fp: 1, fn: 0, precisao: 0, recall: null });
+  });
+
+  it('avisos repetidos na mesma pergunta contam uma vez só', () => {
+    const stats = aggregateNotices([resultado('Q-1', ['jurisdicao', 'jurisdicao'], ['jurisdicao', 'jurisdicao'])]);
+    expect(stats.jurisdicao).toEqual({ tp: 1, fp: 0, fn: 0, precisao: 1, recall: 1 });
+    const soDetectado = aggregateNotices([resultado('Q-2', [], ['contexto', 'contexto'])]);
+    expect(soDetectado.contexto).toEqual({ tp: 0, fp: 1, fn: 0, precisao: 0, recall: null });
+  });
+
+  it('uma pergunta com vários avisos conta cada tipo separadamente', () => {
+    const stats = aggregateNotices([resultado('Q-1', ['jurisdicao', 'contexto'], ['contexto', 'profissional_habilitado'])]);
+    expect(stats.jurisdicao).toEqual({ tp: 0, fp: 0, fn: 1, precisao: null, recall: 0 });
+    expect(stats.contexto).toEqual({ tp: 1, fp: 0, fn: 0, precisao: 1, recall: 1 });
+    expect(stats.profissional_habilitado).toEqual({ tp: 0, fp: 1, fn: 0, precisao: 0, recall: null });
   });
 });

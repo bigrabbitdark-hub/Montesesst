@@ -2,7 +2,7 @@
 // Assistente, spec docs/specs/assistente-confiabilidade-etapa-2-3.md §5).
 // Módulo puro: recebe observações já coletadas do pipeline e devolve
 // resultados — sem I/O, sem NestJS, sem LLM.
-import { AvisoTipo, Comportamento, FonteEsperada, GoldenQuestion, Status, Tipo } from './golden/golden-schema';
+import { AVISOS, AvisoTipo, Comportamento, FonteEsperada, GoldenQuestion, Status, Tipo } from './golden/golden-schema';
 import { chunkContainsItemHeading } from './golden/quote';
 
 export interface RetrievedChunkObs {
@@ -12,12 +12,17 @@ export interface RetrievedChunkObs {
   similarity: number;
 }
 
+// Os avisos são comparados como CONJUNTO (sem ordem e sem repetição): um aviso
+// repetido — no dataset ou no detector — não pode derrubar nem forjar o acerto.
 function sameSet(a: readonly string[], b: readonly string[]): boolean {
-  return a.length === b.length && a.every((value) => b.includes(value));
+  const setA = new Set(a);
+  const setB = new Set(b);
+  return setA.size === setB.size && [...setA].every((value) => setB.has(value));
 }
 
 function isSubset(expected: readonly string[], detected: readonly string[]): boolean {
-  return expected.every((value) => detected.includes(value));
+  const detectedSet = new Set(detected);
+  return [...new Set(expected)].every((value) => detectedSet.has(value));
 }
 
 function chunkMatchesFonte(chunk: RetrievedChunkObs, fonte: FonteEsperada): boolean {
@@ -118,6 +123,45 @@ export function aggregateRetrieval(results: RetrievalResult[]): RetrievalAggrega
     falso_relevante: recusas.filter((r) => r.falso_relevante === true).length,
     avisos_ok: results.filter((r) => r.avisos_ok).length,
   };
+}
+
+// Precisão e recall do detector de avisos (detectNotices) por TIPO de aviso
+// (spec §5.2). Por pergunta, cada tipo entra no máximo uma vez (Set), então
+// aviso repetido não conta em dobro.
+//  - tp: o tipo era esperado E foi detectado;
+//  - fp: foi detectado mas não era esperado;
+//  - fn: era esperado mas não foi detectado.
+// precisao = tp/(tp+fp) e recall = tp/(tp+fn); null quando o denominador é 0
+// (o tipo não apareceu nem esperado nem detectado, ou só de um dos lados) —
+// nunca NaN.
+export interface NoticeTypeStats {
+  tp: number;
+  fp: number;
+  fn: number;
+  precisao: number | null;
+  recall: number | null;
+}
+
+function ratio(numerator: number, denominator: number): number | null {
+  return denominator === 0 ? null : numerator / denominator;
+}
+
+export function aggregateNotices(results: RetrievalResult[]): Record<AvisoTipo, NoticeTypeStats> {
+  const stats = {} as Record<AvisoTipo, NoticeTypeStats>;
+  for (const tipo of AVISOS) {
+    let tp = 0;
+    let fp = 0;
+    let fn = 0;
+    for (const result of results) {
+      const esperado = new Set(result.avisos_esperados).has(tipo);
+      const detectado = new Set(result.avisos_detectados).has(tipo);
+      if (esperado && detectado) tp += 1;
+      else if (detectado) fp += 1;
+      else if (esperado) fn += 1;
+    }
+    stats[tipo] = { tp, fp, fn, precisao: ratio(tp, tp + fp), recall: ratio(tp, tp + fn) };
+  }
+  return stats;
 }
 
 // ---------------------------------------------------------------------
