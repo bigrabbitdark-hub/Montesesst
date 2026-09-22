@@ -14,6 +14,21 @@ describe('hashQuestion (unit)', () => {
     expect(a).not.toBe(hashQuestion('pergunta dois'));
     expect(a).not.toContain('pergunta');
   });
+
+  // Minor #2 da revisão da Task 6: a mesma pergunta pode chegar com acento
+  // pré-composto (1 code point, ex.: macOS/iOS às vezes manda decomposto) ou
+  // com base + acento combinante separado (2 code points) — visualmente
+  // idênticas, mas sem normalize('NFC') davam hashes diferentes e subcontavam
+  // perguntas repetidas no relatório de uso.
+  it('normaliza Unicode: acento pré-composto e acento decomposto dão o mesmo hash', () => {
+    const precomposta = 'Altura é obrigatório?';
+    const decomposta = `Altura ${String.fromCharCode(0x65, 0x0301)} obrigat${String.fromCharCode(0x6f, 0x0301)}rio?`;
+
+    // Garante que o teste está mesmo comparando duas strings diferentes
+    // byte a byte (senão a asserção de hash seria trivial).
+    expect(precomposta).not.toBe(decomposta);
+    expect(hashQuestion(precomposta)).toBe(hashQuestion(decomposta));
+  });
 });
 
 describe('tokensAllowedForClaim (unit)', () => {

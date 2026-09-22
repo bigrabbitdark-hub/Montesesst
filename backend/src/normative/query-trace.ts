@@ -55,11 +55,18 @@ export interface QueryTrace {
   retrieval_ms: number;
 }
 
-// SHA-256 da pergunta normalizada (minúsculas, espaços colapsados). Serve
-// para contar perguntas repetidas; NÃO é anonimização forte (uma pergunta
-// comum é adivinhável por dicionário).
+// SHA-256 da pergunta normalizada (Unicode NFC, minúsculas, espaços
+// colapsados). Serve para contar perguntas repetidas; NÃO é anonimização
+// forte (uma pergunta comum é adivinhável por dicionário).
+//
+// normalize('NFC') roda ANTES de tudo: sem isso, a mesma pergunta digitada
+// com acento pré-composto ('é', 1 code point) e com acento decomposto ('e'
+// + acento combinante, 2 code points — forma comum em texto vindo de iOS/
+// macOS) são visualmente idênticas mas geram hashes DIFERENTES, subcontando
+// perguntas repetidas no relatório de uso (ver claim-support.ts:19, que já
+// normaliza Unicode no módulo, ali com NFD pra também ignorar acento).
 export function hashQuestion(question: string): string {
-  const normalized = question.trim().toLowerCase().replace(/\s+/g, ' ');
+  const normalized = question.normalize('NFC').trim().toLowerCase().replace(/\s+/g, ' ');
   return createHash('sha256').update(normalized).digest('hex');
 }
 
