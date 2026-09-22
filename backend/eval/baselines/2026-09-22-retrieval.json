@@ -1,0 +1,1077 @@
+{
+  "meta": {
+    "layer": "retrieval",
+    "gerado_em": "2026-09-22T17:14:36.276Z",
+    "commit": "408e06a",
+    "dataset_sha256": "1a6757fec44cad69465a19b66b85f3cfe44ce9c0f741573a7eecc1f63380822c",
+    "questions": 60,
+    "llm_calls": null,
+    "llm_tokens_delta": null,
+    "threshold": 0.4,
+    "chunk_limit": 6,
+    "model": null
+  },
+  "resultados": [
+    {
+      "id": "NR35-001",
+      "tipo": "conceitual",
+      "status": "rascunho",
+      "acerto_nr": true,
+      "acerto_item": true,
+      "acerto_item_topk": true,
+      "melhor_similaridade": 0.7041140028359371,
+      "falso_relevante": null,
+      "avisos_esperados": [],
+      "avisos_detectados": [],
+      "avisos_ok": true,
+      "passou": true
+    },
+    {
+      "id": "NR07-001",
+      "tipo": "aplicacao",
+      "status": "rascunho",
+      "acerto_nr": true,
+      "acerto_item": false,
+      "acerto_item_topk": false,
+      "melhor_similaridade": 0.5340020179783406,
+      "falso_relevante": null,
+      "avisos_esperados": [],
+      "avisos_detectados": [],
+      "avisos_ok": true,
+      "passou": false
+    },
+    {
+      "id": "NR06-001",
+      "tipo": "pegadinha",
+      "status": "rascunho",
+      "acerto_nr": true,
+      "acerto_item": true,
+      "acerto_item_topk": true,
+      "melhor_similaridade": 0.6093342705534802,
+      "falso_relevante": null,
+      "avisos_esperados": [],
+      "avisos_detectados": [],
+      "avisos_ok": true,
+      "passou": true
+    },
+    {
+      "id": "NR01-001",
+      "tipo": "contexto_incompleto",
+      "status": "rascunho",
+      "acerto_nr": true,
+      "acerto_item": false,
+      "acerto_item_topk": false,
+      "melhor_similaridade": 0.5957962146532335,
+      "falso_relevante": null,
+      "avisos_esperados": [
+        "contexto"
+      ],
+      "avisos_detectados": [
+        "contexto"
+      ],
+      "avisos_ok": true,
+      "passou": false
+    },
+    {
+      "id": "GERAL-001",
+      "tipo": "jurisdicional",
+      "status": "rascunho",
+      "acerto_nr": null,
+      "acerto_item": null,
+      "acerto_item_topk": null,
+      "melhor_similaridade": 0.47369751442095076,
+      "falso_relevante": null,
+      "avisos_esperados": [
+        "jurisdicao",
+        "contexto"
+      ],
+      "avisos_detectados": [
+        "jurisdicao",
+        "contexto"
+      ],
+      "avisos_ok": true,
+      "passou": true
+    },
+    {
+      "id": "GERAL-002",
+      "tipo": "atribuicao_profissional",
+      "status": "rascunho",
+      "acerto_nr": null,
+      "acerto_item": null,
+      "acerto_item_topk": null,
+      "melhor_similaridade": 0.4448291693172195,
+      "falso_relevante": null,
+      "avisos_esperados": [
+        "profissional_habilitado"
+      ],
+      "avisos_detectados": [
+        "profissional_habilitado"
+      ],
+      "avisos_ok": true,
+      "passou": true
+    },
+    {
+      "id": "GERAL-003",
+      "tipo": "sem_evidencia",
+      "status": "rascunho",
+      "acerto_nr": null,
+      "acerto_item": null,
+      "acerto_item_topk": null,
+      "melhor_similaridade": 0.4888480410725051,
+      "falso_relevante": true,
+      "avisos_esperados": [],
+      "avisos_detectados": [],
+      "avisos_ok": true,
+      "passou": false
+    },
+    {
+      "id": "NR05-001",
+      "tipo": "conceitual",
+      "status": "rascunho",
+      "acerto_nr": true,
+      "acerto_item": true,
+      "acerto_item_topk": true,
+      "melhor_similaridade": 0.6610195577493919,
+      "falso_relevante": null,
+      "avisos_esperados": [],
+      "avisos_detectados": [],
+      "avisos_ok": true,
+      "passou": true
+    },
+    {
+      "id": "NR06-002",
+      "tipo": "conceitual",
+      "status": "rascunho",
+      "acerto_nr": true,
+      "acerto_item": false,
+      "acerto_item_topk": false,
+      "melhor_similaridade": 0.5936786887267242,
+      "falso_relevante": null,
+      "avisos_esperados": [],
+      "avisos_detectados": [],
+      "avisos_ok": true,
+      "passou": false
+    },
+    {
+      "id": "NR07-002",
+      "tipo": "conceitual",
+      "status": "rascunho",
+      "acerto_nr": true,
+      "acerto_item": true,
+      "acerto_item_topk": true,
+      "melhor_similaridade": 0.6373698457942721,
+      "falso_relevante": null,
+      "avisos_esperados": [],
+      "avisos_detectados": [],
+      "avisos_ok": true,
+      "passou": true
+    },
+    {
+      "id": "NR01-002",
+      "tipo": "conceitual",
+      "status": "rascunho",
+      "acerto_nr": true,
+      "acerto_item": false,
+      "acerto_item_topk": false,
+      "melhor_similaridade": 0.6831053281511267,
+      "falso_relevante": null,
+      "avisos_esperados": [],
+      "avisos_detectados": [],
+      "avisos_ok": true,
+      "passou": false
+    },
+    {
+      "id": "NR33-001",
+      "tipo": "conceitual",
+      "status": "rascunho",
+      "acerto_nr": true,
+      "acerto_item": true,
+      "acerto_item_topk": true,
+      "melhor_similaridade": 0.5546207763095256,
+      "falso_relevante": null,
+      "avisos_esperados": [],
+      "avisos_detectados": [],
+      "avisos_ok": true,
+      "passou": true
+    },
+    {
+      "id": "NR10-001",
+      "tipo": "conceitual",
+      "status": "rascunho",
+      "acerto_nr": true,
+      "acerto_item": true,
+      "acerto_item_topk": true,
+      "melhor_similaridade": 0.6915725494139103,
+      "falso_relevante": null,
+      "avisos_esperados": [],
+      "avisos_detectados": [],
+      "avisos_ok": true,
+      "passou": true
+    },
+    {
+      "id": "NR17-001",
+      "tipo": "conceitual",
+      "status": "rascunho",
+      "acerto_nr": true,
+      "acerto_item": true,
+      "acerto_item_topk": true,
+      "melhor_similaridade": 0.6075941803821371,
+      "falso_relevante": null,
+      "avisos_esperados": [],
+      "avisos_detectados": [],
+      "avisos_ok": true,
+      "passou": true
+    },
+    {
+      "id": "NR06-003",
+      "tipo": "aplicacao",
+      "status": "rascunho",
+      "acerto_nr": true,
+      "acerto_item": true,
+      "acerto_item_topk": true,
+      "melhor_similaridade": 0.6970433216459533,
+      "falso_relevante": null,
+      "avisos_esperados": [],
+      "avisos_detectados": [],
+      "avisos_ok": true,
+      "passou": true
+    },
+    {
+      "id": "NR07-003",
+      "tipo": "aplicacao",
+      "status": "rascunho",
+      "acerto_nr": true,
+      "acerto_item": true,
+      "acerto_item_topk": true,
+      "melhor_similaridade": 0.6705763771889133,
+      "falso_relevante": null,
+      "avisos_esperados": [],
+      "avisos_detectados": [],
+      "avisos_ok": true,
+      "passou": true
+    },
+    {
+      "id": "NR35-002",
+      "tipo": "aplicacao",
+      "status": "rascunho",
+      "acerto_nr": true,
+      "acerto_item": true,
+      "acerto_item_topk": true,
+      "melhor_similaridade": 0.682842577131764,
+      "falso_relevante": null,
+      "avisos_esperados": [],
+      "avisos_detectados": [],
+      "avisos_ok": true,
+      "passou": true
+    },
+    {
+      "id": "NR12-001",
+      "tipo": "aplicacao",
+      "status": "rascunho",
+      "acerto_nr": true,
+      "acerto_item": true,
+      "acerto_item_topk": true,
+      "melhor_similaridade": 0.6847607049930318,
+      "falso_relevante": null,
+      "avisos_esperados": [],
+      "avisos_detectados": [],
+      "avisos_ok": true,
+      "passou": true
+    },
+    {
+      "id": "NR18-001",
+      "tipo": "aplicacao",
+      "status": "rascunho",
+      "acerto_nr": true,
+      "acerto_item": false,
+      "acerto_item_topk": false,
+      "melhor_similaridade": 0.6152462030163516,
+      "falso_relevante": null,
+      "avisos_esperados": [],
+      "avisos_detectados": [],
+      "avisos_ok": true,
+      "passou": false
+    },
+    {
+      "id": "NR23-001",
+      "tipo": "aplicacao",
+      "status": "rascunho",
+      "acerto_nr": true,
+      "acerto_item": true,
+      "acerto_item_topk": true,
+      "melhor_similaridade": 0.7538674909031601,
+      "falso_relevante": null,
+      "avisos_esperados": [],
+      "avisos_detectados": [],
+      "avisos_ok": true,
+      "passou": true
+    },
+    {
+      "id": "NR26-001",
+      "tipo": "aplicacao",
+      "status": "rascunho",
+      "acerto_nr": true,
+      "acerto_item": true,
+      "acerto_item_topk": true,
+      "melhor_similaridade": 0.706143632427682,
+      "falso_relevante": null,
+      "avisos_esperados": [],
+      "avisos_detectados": [],
+      "avisos_ok": true,
+      "passou": true
+    },
+    {
+      "id": "NR35-003",
+      "tipo": "caso_real",
+      "status": "rascunho",
+      "acerto_nr": true,
+      "acerto_item": true,
+      "acerto_item_topk": true,
+      "melhor_similaridade": 0.6084866703882277,
+      "falso_relevante": null,
+      "avisos_esperados": [],
+      "avisos_detectados": [],
+      "avisos_ok": true,
+      "passou": true
+    },
+    {
+      "id": "NR33-002",
+      "tipo": "caso_real",
+      "status": "rascunho",
+      "acerto_nr": true,
+      "acerto_item": true,
+      "acerto_item_topk": true,
+      "melhor_similaridade": 0.7340046975754687,
+      "falso_relevante": null,
+      "avisos_esperados": [],
+      "avisos_detectados": [],
+      "avisos_ok": true,
+      "passou": true
+    },
+    {
+      "id": "NR10-002",
+      "tipo": "caso_real",
+      "status": "rascunho",
+      "acerto_nr": true,
+      "acerto_item": true,
+      "acerto_item_topk": true,
+      "melhor_similaridade": 0.6802775923954768,
+      "falso_relevante": null,
+      "avisos_esperados": [],
+      "avisos_detectados": [],
+      "avisos_ok": true,
+      "passou": true
+    },
+    {
+      "id": "NR12-002",
+      "tipo": "caso_real",
+      "status": "rascunho",
+      "acerto_nr": true,
+      "acerto_item": true,
+      "acerto_item_topk": true,
+      "melhor_similaridade": 0.7078083416081833,
+      "falso_relevante": null,
+      "avisos_esperados": [],
+      "avisos_detectados": [],
+      "avisos_ok": true,
+      "passou": true
+    },
+    {
+      "id": "NR06-004",
+      "tipo": "caso_real",
+      "status": "rascunho",
+      "acerto_nr": true,
+      "acerto_item": true,
+      "acerto_item_topk": true,
+      "melhor_similaridade": 0.6198031487942403,
+      "falso_relevante": null,
+      "avisos_esperados": [],
+      "avisos_detectados": [],
+      "avisos_ok": true,
+      "passou": true
+    },
+    {
+      "id": "NR07-004",
+      "tipo": "caso_real",
+      "status": "rascunho",
+      "acerto_nr": true,
+      "acerto_item": true,
+      "acerto_item_topk": true,
+      "melhor_similaridade": 0.597718875045585,
+      "falso_relevante": null,
+      "avisos_esperados": [],
+      "avisos_detectados": [],
+      "avisos_ok": true,
+      "passou": true
+    },
+    {
+      "id": "NR18-002",
+      "tipo": "caso_real",
+      "status": "rascunho",
+      "acerto_nr": true,
+      "acerto_item": true,
+      "acerto_item_topk": true,
+      "melhor_similaridade": 0.657563552465163,
+      "falso_relevante": null,
+      "avisos_esperados": [],
+      "avisos_detectados": [],
+      "avisos_ok": true,
+      "passou": true
+    },
+    {
+      "id": "NR20-001",
+      "tipo": "caso_real",
+      "status": "rascunho",
+      "acerto_nr": true,
+      "acerto_item": false,
+      "acerto_item_topk": false,
+      "melhor_similaridade": 0.7172529108841352,
+      "falso_relevante": null,
+      "avisos_esperados": [],
+      "avisos_detectados": [],
+      "avisos_ok": true,
+      "passou": false
+    },
+    {
+      "id": "NR05-002",
+      "tipo": "contexto_incompleto",
+      "status": "rascunho",
+      "acerto_nr": true,
+      "acerto_item": false,
+      "acerto_item_topk": false,
+      "melhor_similaridade": 0.6259204757980222,
+      "falso_relevante": null,
+      "avisos_esperados": [
+        "contexto"
+      ],
+      "avisos_detectados": [
+        "contexto"
+      ],
+      "avisos_ok": true,
+      "passou": false
+    },
+    {
+      "id": "NR04-001",
+      "tipo": "contexto_incompleto",
+      "status": "rascunho",
+      "acerto_nr": true,
+      "acerto_item": false,
+      "acerto_item_topk": false,
+      "melhor_similaridade": 0.5804158956017096,
+      "falso_relevante": null,
+      "avisos_esperados": [
+        "contexto"
+      ],
+      "avisos_detectados": [
+        "contexto"
+      ],
+      "avisos_ok": true,
+      "passou": false
+    },
+    {
+      "id": "NR07-005",
+      "tipo": "contexto_incompleto",
+      "status": "rascunho",
+      "acerto_nr": true,
+      "acerto_item": true,
+      "acerto_item_topk": true,
+      "melhor_similaridade": 0.5909798446687035,
+      "falso_relevante": null,
+      "avisos_esperados": [
+        "contexto"
+      ],
+      "avisos_detectados": [
+        "contexto"
+      ],
+      "avisos_ok": true,
+      "passou": true
+    },
+    {
+      "id": "NR23-002",
+      "tipo": "contexto_incompleto",
+      "status": "rascunho",
+      "acerto_nr": false,
+      "acerto_item": false,
+      "acerto_item_topk": false,
+      "melhor_similaridade": 0.5556617763112012,
+      "falso_relevante": null,
+      "avisos_esperados": [
+        "contexto"
+      ],
+      "avisos_detectados": [
+        "contexto"
+      ],
+      "avisos_ok": true,
+      "passou": false
+    },
+    {
+      "id": "NR06-005",
+      "tipo": "contexto_incompleto",
+      "status": "rascunho",
+      "acerto_nr": true,
+      "acerto_item": true,
+      "acerto_item_topk": true,
+      "melhor_similaridade": 0.609968648592484,
+      "falso_relevante": null,
+      "avisos_esperados": [
+        "contexto"
+      ],
+      "avisos_detectados": [],
+      "avisos_ok": false,
+      "passou": false
+    },
+    {
+      "id": "NR35-004",
+      "tipo": "contexto_incompleto",
+      "status": "rascunho",
+      "acerto_nr": true,
+      "acerto_item": true,
+      "acerto_item_topk": true,
+      "melhor_similaridade": 0.6919862722869498,
+      "falso_relevante": null,
+      "avisos_esperados": [
+        "contexto"
+      ],
+      "avisos_detectados": [],
+      "avisos_ok": false,
+      "passou": false
+    },
+    {
+      "id": "GERAL-004",
+      "tipo": "contexto_incompleto",
+      "status": "rascunho",
+      "acerto_nr": null,
+      "acerto_item": null,
+      "acerto_item_topk": null,
+      "melhor_similaridade": 0.5949364895076785,
+      "falso_relevante": null,
+      "avisos_esperados": [
+        "contexto"
+      ],
+      "avisos_detectados": [],
+      "avisos_ok": false,
+      "passou": false
+    },
+    {
+      "id": "NR35-005",
+      "tipo": "pegadinha",
+      "status": "rascunho",
+      "acerto_nr": true,
+      "acerto_item": true,
+      "acerto_item_topk": true,
+      "melhor_similaridade": 0.7026087417437905,
+      "falso_relevante": null,
+      "avisos_esperados": [],
+      "avisos_detectados": [],
+      "avisos_ok": true,
+      "passou": true
+    },
+    {
+      "id": "NR07-006",
+      "tipo": "pegadinha",
+      "status": "rascunho",
+      "acerto_nr": true,
+      "acerto_item": false,
+      "acerto_item_topk": false,
+      "melhor_similaridade": 0.4521810190921598,
+      "falso_relevante": null,
+      "avisos_esperados": [],
+      "avisos_detectados": [],
+      "avisos_ok": true,
+      "passou": false
+    },
+    {
+      "id": "NR05-003",
+      "tipo": "pegadinha",
+      "status": "rascunho",
+      "acerto_nr": true,
+      "acerto_item": false,
+      "acerto_item_topk": false,
+      "melhor_similaridade": 0.6123938209864224,
+      "falso_relevante": null,
+      "avisos_esperados": [],
+      "avisos_detectados": [],
+      "avisos_ok": true,
+      "passou": false
+    },
+    {
+      "id": "NR35-006",
+      "tipo": "pegadinha",
+      "status": "rascunho",
+      "acerto_nr": true,
+      "acerto_item": true,
+      "acerto_item_topk": true,
+      "melhor_similaridade": 0.609765114554711,
+      "falso_relevante": null,
+      "avisos_esperados": [],
+      "avisos_detectados": [],
+      "avisos_ok": true,
+      "passou": true
+    },
+    {
+      "id": "NR12-003",
+      "tipo": "pegadinha",
+      "status": "rascunho",
+      "acerto_nr": true,
+      "acerto_item": true,
+      "acerto_item_topk": true,
+      "melhor_similaridade": 0.5975743514529409,
+      "falso_relevante": null,
+      "avisos_esperados": [],
+      "avisos_detectados": [],
+      "avisos_ok": true,
+      "passou": true
+    },
+    {
+      "id": "NR33-003",
+      "tipo": "pegadinha",
+      "status": "rascunho",
+      "acerto_nr": true,
+      "acerto_item": true,
+      "acerto_item_topk": true,
+      "melhor_similaridade": 0.552323690663905,
+      "falso_relevante": null,
+      "avisos_esperados": [],
+      "avisos_detectados": [],
+      "avisos_ok": true,
+      "passou": true
+    },
+    {
+      "id": "NR01-003",
+      "tipo": "pegadinha",
+      "status": "rascunho",
+      "acerto_nr": true,
+      "acerto_item": true,
+      "acerto_item_topk": true,
+      "melhor_similaridade": 0.5325810330641574,
+      "falso_relevante": null,
+      "avisos_esperados": [],
+      "avisos_detectados": [],
+      "avisos_ok": true,
+      "passou": true
+    },
+    {
+      "id": "GERAL-005",
+      "tipo": "jurisdicional",
+      "status": "rascunho",
+      "acerto_nr": null,
+      "acerto_item": null,
+      "acerto_item_topk": null,
+      "melhor_similaridade": 0.38414790085761874,
+      "falso_relevante": null,
+      "avisos_esperados": [
+        "jurisdicao",
+        "contexto"
+      ],
+      "avisos_detectados": [
+        "jurisdicao",
+        "contexto"
+      ],
+      "avisos_ok": true,
+      "passou": true
+    },
+    {
+      "id": "GERAL-006",
+      "tipo": "jurisdicional",
+      "status": "rascunho",
+      "acerto_nr": null,
+      "acerto_item": null,
+      "acerto_item_topk": null,
+      "melhor_similaridade": 0.43989601587758564,
+      "falso_relevante": null,
+      "avisos_esperados": [
+        "jurisdicao",
+        "contexto"
+      ],
+      "avisos_detectados": [
+        "jurisdicao",
+        "contexto"
+      ],
+      "avisos_ok": true,
+      "passou": true
+    },
+    {
+      "id": "GERAL-007",
+      "tipo": "jurisdicional",
+      "status": "rascunho",
+      "acerto_nr": null,
+      "acerto_item": null,
+      "acerto_item_topk": null,
+      "melhor_similaridade": 0.44563558242935686,
+      "falso_relevante": null,
+      "avisos_esperados": [
+        "jurisdicao",
+        "contexto"
+      ],
+      "avisos_detectados": [
+        "jurisdicao",
+        "contexto"
+      ],
+      "avisos_ok": true,
+      "passou": true
+    },
+    {
+      "id": "GERAL-008",
+      "tipo": "jurisdicional",
+      "status": "rascunho",
+      "acerto_nr": null,
+      "acerto_item": null,
+      "acerto_item_topk": null,
+      "melhor_similaridade": 0.6074658010712115,
+      "falso_relevante": null,
+      "avisos_esperados": [
+        "jurisdicao",
+        "contexto"
+      ],
+      "avisos_detectados": [
+        "jurisdicao",
+        "contexto"
+      ],
+      "avisos_ok": true,
+      "passou": true
+    },
+    {
+      "id": "GERAL-009",
+      "tipo": "jurisdicional",
+      "status": "rascunho",
+      "acerto_nr": null,
+      "acerto_item": null,
+      "acerto_item_topk": null,
+      "melhor_similaridade": 0.561561366829827,
+      "falso_relevante": null,
+      "avisos_esperados": [
+        "jurisdicao",
+        "contexto"
+      ],
+      "avisos_detectados": [
+        "jurisdicao",
+        "contexto"
+      ],
+      "avisos_ok": true,
+      "passou": true
+    },
+    {
+      "id": "GERAL-010",
+      "tipo": "jurisdicional",
+      "status": "rascunho",
+      "acerto_nr": null,
+      "acerto_item": null,
+      "acerto_item_topk": null,
+      "melhor_similaridade": 0.46754561867513744,
+      "falso_relevante": null,
+      "avisos_esperados": [
+        "jurisdicao",
+        "contexto"
+      ],
+      "avisos_detectados": [
+        "jurisdicao",
+        "contexto"
+      ],
+      "avisos_ok": true,
+      "passou": true
+    },
+    {
+      "id": "GERAL-011",
+      "tipo": "jurisdicional",
+      "status": "rascunho",
+      "acerto_nr": null,
+      "acerto_item": null,
+      "acerto_item_topk": null,
+      "melhor_similaridade": 0.6363531077965853,
+      "falso_relevante": null,
+      "avisos_esperados": [
+        "jurisdicao",
+        "contexto"
+      ],
+      "avisos_detectados": [
+        "jurisdicao",
+        "contexto"
+      ],
+      "avisos_ok": true,
+      "passou": true
+    },
+    {
+      "id": "GERAL-012",
+      "tipo": "atribuicao_profissional",
+      "status": "rascunho",
+      "acerto_nr": null,
+      "acerto_item": null,
+      "acerto_item_topk": null,
+      "melhor_similaridade": 0.5263477417693381,
+      "falso_relevante": null,
+      "avisos_esperados": [
+        "profissional_habilitado"
+      ],
+      "avisos_detectados": [
+        "profissional_habilitado"
+      ],
+      "avisos_ok": true,
+      "passou": true
+    },
+    {
+      "id": "GERAL-013",
+      "tipo": "atribuicao_profissional",
+      "status": "rascunho",
+      "acerto_nr": null,
+      "acerto_item": null,
+      "acerto_item_topk": null,
+      "melhor_similaridade": 0.5768158829146619,
+      "falso_relevante": null,
+      "avisos_esperados": [
+        "profissional_habilitado"
+      ],
+      "avisos_detectados": [
+        "profissional_habilitado"
+      ],
+      "avisos_ok": true,
+      "passou": true
+    },
+    {
+      "id": "GERAL-014",
+      "tipo": "atribuicao_profissional",
+      "status": "rascunho",
+      "acerto_nr": null,
+      "acerto_item": null,
+      "acerto_item_topk": null,
+      "melhor_similaridade": 0.6566575710974099,
+      "falso_relevante": null,
+      "avisos_esperados": [
+        "profissional_habilitado"
+      ],
+      "avisos_detectados": [
+        "profissional_habilitado"
+      ],
+      "avisos_ok": true,
+      "passou": true
+    },
+    {
+      "id": "GERAL-015",
+      "tipo": "atribuicao_profissional",
+      "status": "rascunho",
+      "acerto_nr": null,
+      "acerto_item": null,
+      "acerto_item_topk": null,
+      "melhor_similaridade": 0.6336142412203818,
+      "falso_relevante": null,
+      "avisos_esperados": [
+        "profissional_habilitado"
+      ],
+      "avisos_detectados": [
+        "profissional_habilitado"
+      ],
+      "avisos_ok": true,
+      "passou": true
+    },
+    {
+      "id": "GERAL-016",
+      "tipo": "atribuicao_profissional",
+      "status": "rascunho",
+      "acerto_nr": false,
+      "acerto_item": false,
+      "acerto_item_topk": false,
+      "melhor_similaridade": 0.6581588875822765,
+      "falso_relevante": null,
+      "avisos_esperados": [
+        "profissional_habilitado"
+      ],
+      "avisos_detectados": [],
+      "avisos_ok": false,
+      "passou": false
+    },
+    {
+      "id": "GERAL-017",
+      "tipo": "sem_evidencia",
+      "status": "rascunho",
+      "acerto_nr": null,
+      "acerto_item": null,
+      "acerto_item_topk": null,
+      "melhor_similaridade": 0.4629824068011035,
+      "falso_relevante": true,
+      "avisos_esperados": [],
+      "avisos_detectados": [],
+      "avisos_ok": true,
+      "passou": false
+    },
+    {
+      "id": "GERAL-018",
+      "tipo": "sem_evidencia",
+      "status": "rascunho",
+      "acerto_nr": null,
+      "acerto_item": null,
+      "acerto_item_topk": null,
+      "melhor_similaridade": 0.5199161647617132,
+      "falso_relevante": true,
+      "avisos_esperados": [],
+      "avisos_detectados": [],
+      "avisos_ok": true,
+      "passou": false
+    },
+    {
+      "id": "GERAL-019",
+      "tipo": "sem_evidencia",
+      "status": "rascunho",
+      "acerto_nr": null,
+      "acerto_item": null,
+      "acerto_item_topk": null,
+      "melhor_similaridade": 0.580788428922332,
+      "falso_relevante": true,
+      "avisos_esperados": [],
+      "avisos_detectados": [],
+      "avisos_ok": true,
+      "passou": false
+    },
+    {
+      "id": "GERAL-020",
+      "tipo": "sem_evidencia",
+      "status": "rascunho",
+      "acerto_nr": null,
+      "acerto_item": null,
+      "acerto_item_topk": null,
+      "melhor_similaridade": 0.4916483373802657,
+      "falso_relevante": true,
+      "avisos_esperados": [],
+      "avisos_detectados": [],
+      "avisos_ok": true,
+      "passou": false
+    },
+    {
+      "id": "GERAL-021",
+      "tipo": "sem_evidencia",
+      "status": "rascunho",
+      "acerto_nr": null,
+      "acerto_item": null,
+      "acerto_item_topk": null,
+      "melhor_similaridade": 0.5250309212374785,
+      "falso_relevante": true,
+      "avisos_esperados": [],
+      "avisos_detectados": [],
+      "avisos_ok": true,
+      "passou": false
+    }
+  ],
+  "agregados": {
+    "geral": {
+      "total": 60,
+      "passou": 39,
+      "com_fontes": 40,
+      "acerto_nr": 38,
+      "acerto_item": 28,
+      "acerto_item_topk": 28,
+      "recusa_total": 6,
+      "falso_relevante": 6,
+      "avisos_ok": 56
+    },
+    "validado": {
+      "total": 0,
+      "passou": 0,
+      "com_fontes": 0,
+      "acerto_nr": 0,
+      "acerto_item": 0,
+      "acerto_item_topk": 0,
+      "recusa_total": 0,
+      "falso_relevante": 0,
+      "avisos_ok": 0
+    },
+    "rascunho": {
+      "total": 60,
+      "passou": 39,
+      "com_fontes": 40,
+      "acerto_nr": 38,
+      "acerto_item": 28,
+      "acerto_item_topk": 28,
+      "recusa_total": 6,
+      "falso_relevante": 6,
+      "avisos_ok": 56
+    },
+    "por_tipo": {
+      "conceitual": {
+        "total": 8,
+        "passou": 6,
+        "com_fontes": 8,
+        "acerto_nr": 8,
+        "acerto_item": 6,
+        "acerto_item_topk": 6,
+        "recusa_total": 0,
+        "falso_relevante": 0,
+        "avisos_ok": 8
+      },
+      "aplicacao": {
+        "total": 8,
+        "passou": 6,
+        "com_fontes": 8,
+        "acerto_nr": 8,
+        "acerto_item": 6,
+        "acerto_item_topk": 6,
+        "recusa_total": 0,
+        "falso_relevante": 0,
+        "avisos_ok": 8
+      },
+      "caso_real": {
+        "total": 8,
+        "passou": 7,
+        "com_fontes": 8,
+        "acerto_nr": 8,
+        "acerto_item": 7,
+        "acerto_item_topk": 7,
+        "recusa_total": 0,
+        "falso_relevante": 0,
+        "avisos_ok": 8
+      },
+      "contexto_incompleto": {
+        "total": 8,
+        "passou": 1,
+        "com_fontes": 7,
+        "acerto_nr": 6,
+        "acerto_item": 3,
+        "acerto_item_topk": 3,
+        "recusa_total": 0,
+        "falso_relevante": 0,
+        "avisos_ok": 5
+      },
+      "pegadinha": {
+        "total": 8,
+        "passou": 6,
+        "com_fontes": 8,
+        "acerto_nr": 8,
+        "acerto_item": 6,
+        "acerto_item_topk": 6,
+        "recusa_total": 0,
+        "falso_relevante": 0,
+        "avisos_ok": 8
+      },
+      "jurisdicional": {
+        "total": 8,
+        "passou": 8,
+        "com_fontes": 0,
+        "acerto_nr": 0,
+        "acerto_item": 0,
+        "acerto_item_topk": 0,
+        "recusa_total": 0,
+        "falso_relevante": 0,
+        "avisos_ok": 8
+      },
+      "atribuicao_profissional": {
+        "total": 6,
+        "passou": 5,
+        "com_fontes": 1,
+        "acerto_nr": 0,
+        "acerto_item": 0,
+        "acerto_item_topk": 0,
+        "recusa_total": 0,
+        "falso_relevante": 0,
+        "avisos_ok": 5
+      },
+      "sem_evidencia": {
+        "total": 6,
+        "passou": 0,
+        "com_fontes": 0,
+        "acerto_nr": 0,
+        "acerto_item": 0,
+        "acerto_item_topk": 0,
+        "recusa_total": 6,
+        "falso_relevante": 6,
+        "avisos_ok": 6
+      }
+    }
+  }
+}

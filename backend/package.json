@@ -13,6 +13,9 @@
     "eval:lint": "tsx eval/lint-golden.ts",
     "eval:nr": "tsx eval/nr-text.ts",
     "eval:notices": "tsx eval/notices-check.ts",
+    "eval:retrieval": "tsx eval/run-eval.ts retrieval",
+    "eval:answer": "tsx eval/run-eval.ts answer",
+    "eval:usage": "tsx eval/usage-report.ts",
     "test:e2e": "jest --config ./test/jest-e2e.json --runInBand",
     "test:unit": "jest --config ./test/jest-unit.json"
   },
