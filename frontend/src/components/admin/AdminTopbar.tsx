@@ -32,21 +32,27 @@ function StatusPill() {
 function AlertBell() {
   const { alertas } = useAdminStatus();
   const count = alertBadgeCount(alertas);
-  const label =
-    count > 0
+  // Sem leitura ainda (carregando ou falha) não é o mesmo que "sem alertas":
+  // só afirmamos "nenhum alerta" quando `alertas.data` de fato chegou.
+  const label = alertas.data
+    ? count > 0
       ? `${count} ${count === 1 ? 'alerta precisa' : 'alertas precisam'} de atenção`
-      : 'Nenhum alerta que precise de atenção';
+      : 'Nenhum alerta que precise de atenção'
+    : alertas.error
+      ? 'Alertas indisponíveis'
+      : 'Verificando alertas…';
   return (
     <Link
       href="/admin/overview#alertas"
       aria-label={label}
+      title={label}
       className="relative rounded-lg p-2 text-brand-700 hover:bg-brand-50 hover:text-brand-900"
     >
       <AdminIcon name="bell" />
       {count > 0 && (
         <span
           aria-hidden="true"
-          className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white"
+          className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-800 px-1 text-[10px] font-bold text-white"
         >
           {count}
         </span>
@@ -58,6 +64,7 @@ function AlertBell() {
 function UserMenu() {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -65,7 +72,11 @@ function UserMenu() {
       if (!ref.current?.contains(e.target as Node)) setOpen(false);
     };
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setOpen(false);
+      if (e.key === 'Escape') {
+        setOpen(false);
+        // Fechar por Esc não pode deixar o foco cair no <body>: devolve ao gatilho.
+        triggerRef.current?.focus();
+      }
     };
     document.addEventListener('mousedown', onDown);
     document.addEventListener('keydown', onKey);
@@ -76,12 +87,15 @@ function UserMenu() {
   }, [open]);
 
   // O token só carrega id/role/tenantId — sem nome nem e-mail (spec §3, item 1).
+  // Padrão disclosure (não menu): um único item, sem navegação por setas nem
+  // foco automático — role="menu"/aria-haspopup="menu" prometeriam isso.
   return (
     <div ref={ref} className="relative">
       <button
         type="button"
-        aria-haspopup="menu"
+        ref={triggerRef}
         aria-expanded={open}
+        aria-controls="admin-user-menu-panel"
         onClick={() => setOpen((o) => !o)}
         className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm text-brand-900 hover:bg-brand-50"
       >
@@ -95,10 +109,9 @@ function UserMenu() {
         <AdminIcon name="chevron" className="hidden h-4 w-4 text-brand-700 lg:block" />
       </button>
       {open && (
-        <div role="menu" className="adm-card absolute right-0 top-full z-50 mt-2 w-48 p-1">
+        <div id="admin-user-menu-panel" className="adm-card absolute right-0 top-full z-50 mt-2 w-48 p-1">
           <button
             type="button"
-            role="menuitem"
             onClick={logout}
             className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm text-brand-900 hover:bg-brand-50"
           >

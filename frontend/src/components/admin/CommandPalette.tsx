@@ -35,6 +35,21 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
 
   useEffect(() => setActive(0), [query]);
 
+  // Esc no document, não só no onKeyDown do diálogo: o único tab stop é o
+  // input (Tab é bloqueado abaixo), mas isso garante que fechar funcione
+  // mesmo que o foco escape por algum outro caminho.
+  useEffect(() => {
+    if (!open) return;
+    const onDocumentKeyDown = (e: globalThis.KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        onClose();
+      }
+    };
+    document.addEventListener('keydown', onDocumentKeyDown);
+    return () => document.removeEventListener('keydown', onDocumentKeyDown);
+  }, [open, onClose]);
+
   if (!open) return null;
 
   const go = (href: string) => {
@@ -43,9 +58,10 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
   };
 
   const onKeyDown = (e: KeyboardEvent) => {
-    if (e.key === 'Escape') {
+    if (e.key === 'Tab') {
+      // Único tab stop é o input: prende o foco nele em vez de deixá-lo
+      // escapar para a página atrás do diálogo.
       e.preventDefault();
-      onClose();
     } else if (e.key === 'ArrowDown') {
       e.preventDefault();
       setActive((a) => Math.min(a + 1, Math.max(results.length - 1, 0)));
@@ -71,6 +87,12 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
         aria-label="Ir para uma página do painel"
         className="adm-card w-full max-w-lg overflow-hidden"
         onKeyDown={onKeyDown}
+        onMouseDown={(e) => {
+          // Clicar numa área não focável do cartão (lista, borda) não pode
+          // tirar o foco do input. O próprio input e os itens (que navegam
+          // no onClick) continuam funcionando normalmente.
+          if (e.target !== inputRef.current) e.preventDefault();
+        }}
       >
         <div className="flex items-center gap-2 border-b border-brand-100 px-3">
           <AdminIcon name="search" className="h-4 w-4 text-brand-700" />
