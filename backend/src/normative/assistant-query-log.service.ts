@@ -61,7 +61,14 @@ export class AssistantQueryLogService {
         ),
       );
     } catch (err) {
-      this.logger.error('Falha ao registrar o log de uso do Assistente', (err as Error).stack);
+      // `err instanceof Error ? err.stack : String(err)` nunca lança — ao
+      // contrário de `(err as Error).stack`, que quebra se a rejeição for
+      // null/undefined (ou qualquer não-Error). record() é chamado sem
+      // await (`void this.queryLog.record(trace)`, fire-and-forget) em
+      // TODA pergunta real ao Assistente: uma exceção aqui dentro do catch
+      // vira unhandledRejection sem quem trate e derruba o processo Node
+      // inteiro (achado da revisão de código da Task 7).
+      this.logger.error('Falha ao registrar o log de uso do Assistente', err instanceof Error ? err.stack : String(err));
     }
   }
 
@@ -73,7 +80,8 @@ export class AssistantQueryLogService {
       const deleted = await this.purgeOlderThan(QUERY_LOG_RETENTION_DAYS);
       if (deleted > 0) this.logger.log(`Log de uso do Assistente: ${deleted} linha(s) além de ${QUERY_LOG_RETENTION_DAYS} dias apagada(s)`);
     } catch (err) {
-      this.logger.error('Falha ao apagar o log de uso antigo do Assistente', (err as Error).stack);
+      // Mesma blindagem do catch de record() acima — ver comentário ali.
+      this.logger.error('Falha ao apagar o log de uso antigo do Assistente', err instanceof Error ? err.stack : String(err));
     }
   }
 
