@@ -44,6 +44,9 @@ export interface NormativeClaim {
 }
 
 export interface NormativeAnswerProvider {
+  // Rótulo do modelo em uso — só para o trace/log de uso; opcional para não
+  // quebrar provedores de teste.
+  readonly modelName?: string;
   answer(
     question: string,
     chunks: { id: string; content: string }[],

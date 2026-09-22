@@ -13,6 +13,10 @@ import { buildRagChatCompletionBody, parseRagToolCall } from './normative-answer
 export class OpenRouterNormativeAnswerService implements NormativeAnswerProvider {
   private readonly logger = new Logger(OpenRouterNormativeAnswerService.name);
 
+  get modelName(): string {
+    return process.env.OPENROUTER_MODEL || 'anthropic/claude-sonnet-5';
+  }
+
   async answer(
     question: string,
     chunks: { id: string; content: string }[],
@@ -26,7 +30,7 @@ export class OpenRouterNormativeAnswerService implements NormativeAnswerProvider
       throw new ServiceUnavailableException('Assistente ainda não está disponível');
     }
 
-    const model = process.env.OPENROUTER_MODEL || 'anthropic/claude-sonnet-5';
+    const model = this.modelName;
     let response: Response;
     try {
       response = await fetch('https://openrouter.ai/api/v1/chat/completions', {

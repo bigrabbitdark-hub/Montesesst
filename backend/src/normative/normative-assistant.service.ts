@@ -18,6 +18,7 @@ import { extractDocxText, DOCX_MIME_TYPE } from '../common/docx/docx-text.util';
 import { extractXlsxRows, XLSX_MIME_TYPE } from '../common/xlsx/xlsx-text.util';
 import { detectNotices, NormativeNotice } from './question-notices';
 import { checkClaimSupport } from './claim-support';
+import { QueryOutcome, QueryTrace, hashQuestion, tokensAllowedForClaim } from './query-trace';
 
 const FALLBACK_MESSAGE =
   'Não encontrei fundamento suficiente nas fontes consultadas para afirmar isso. Isso não significa que a exigência não exista, só que não a localizei.';
@@ -85,7 +86,7 @@ export interface QueryAttachment {
   mimetype: string;
 }
 
-interface RetrievedChunk {
+export interface RetrievedChunk {
   chunk_id: string;
   content: string;
   document_id: string;
@@ -104,12 +105,29 @@ interface RetrievedCompanyChunk {
   similarity: number;
 }
 
-interface RetrievedChecklistItem {
+export interface RetrievedChecklistItem {
   item_id: string;
   nr_code: string;
   document_name: string;
   content: string;
   similarity: number;
+}
+
+// Resultado da busca de referência (normas oficiais + checklist interno), com os
+// candidatos do topo ANTES do corte pelo limiar de similaridade.
+export interface ReferenceSearch {
+  normativeRows: RetrievedChunk[];
+  checklistRows: RetrievedChecklistItem[];
+}
+
+export interface ReferenceRetrieval extends ReferenceSearch {
+  threshold: number;
+  chunkLimit: number;
+}
+
+export interface TracedQueryResult {
+  result: NormativeQueryResult;
+  trace: QueryTrace;
 }
 
 @Injectable()
@@ -123,15 +141,85 @@ export class NormativeAssistantService {
     private readonly dashboard: DashboardService,
   ) {}
 
+  // Mesma assinatura e mesmo retorno de sempre. O trace só serve ao runner de
+  // avaliação (queryWithTrace) e, depois, ao log de uso.
   async query(
     question: string,
     user: AuthenticatedUser,
     attachment?: QueryAttachment,
     tenantId?: string,
   ): Promise<NormativeQueryResult> {
+    const { result } = await this.queryWithTrace(question, user, attachment, tenantId);
+    return result;
+  }
+
+  // Só a recuperação de referência (embedding + busca), SEM tenant e SEM LLM de
+  // resposta — a Camada A do runner de avaliação mede exatamente isto.
+  async retrieve(question: string, chunkLimit: number = CHUNK_LIMIT_DEFAULT): Promise<ReferenceRetrieval> {
+    const embedding = await this.embeddings.embed(question);
+    const search = await this.searchReference(embedding, chunkLimit);
+    return { ...search, threshold: this.ragThreshold(), chunkLimit };
+  }
+
+  // O pipeline completo, devolvendo também o trace (recuperação, verificador,
+  // avisos). Não persiste nada.
+  async queryWithTrace(
+    question: string,
+    user: AuthenticatedUser,
+    attachment?: QueryAttachment,
+    tenantId?: string,
+  ): Promise<TracedQueryResult> {
     // Avisos determinísticos (sem I/O, sem custo) — calculados antes de
     // qualquer embedding/busca e devolvidos em todos os caminhos de retorno.
     const notices = detectNotices(question);
+
+    // Estado do trace, preenchido nos pontos onde cada dado nasce. O trace NUNCA
+    // carrega texto de pergunta, claim ou resposta — só ids, similaridades e
+    // contagens (ver query-trace.ts).
+    const startedAt = Date.now();
+    let retrievalStartedAt = startedAt;
+    const traceState = {
+      usedAttachment: false,
+      threshold: 0,
+      chunkLimit: 0,
+      normative: [] as QueryTrace['normative'],
+      checklist: [] as QueryTrace['checklist'],
+      company: [] as QueryTrace['company'],
+      operationalCount: 0,
+      claimsTotal: 0,
+      claimsDroppedIds: 0,
+      claimsDroppedSupport: 0,
+      blockingTokens: [] as string[],
+      flaggedNumbers: [] as string[],
+      keptClaims: [] as QueryTrace['kept_claims'],
+      retrievalMs: 0,
+    };
+    const finish = (result: NormativeQueryResult, outcome: QueryOutcome): TracedQueryResult => ({
+      result,
+      trace: {
+        question_hash: hashQuestion(question),
+        role: user.role,
+        tenant_id: tenantId ?? null,
+        threshold: traceState.threshold,
+        chunk_limit: traceState.chunkLimit,
+        normative: traceState.normative,
+        checklist: traceState.checklist,
+        company: traceState.company,
+        operational_count: traceState.operationalCount,
+        claims_total: traceState.claimsTotal,
+        claims_dropped_ids: traceState.claimsDroppedIds,
+        claims_dropped_support: traceState.claimsDroppedSupport,
+        blocking_tokens: traceState.blockingTokens,
+        flagged_numbers: traceState.flaggedNumbers,
+        kept_claims: traceState.keptClaims,
+        notices: notices.map((notice) => notice.tipo),
+        outcome,
+        used_attachment: traceState.usedAttachment,
+        model: this.answerer.modelName ?? null,
+        latency_ms: Date.now() - startedAt,
+        retrieval_ms: traceState.retrievalMs,
+      },
+    });
 
     // `tenantId` aqui é o ALVO (de qual empresa buscar dado operacional
     // e documento) — pra empresa é sempre o próprio `user.tenantId`; pra
@@ -184,6 +272,8 @@ export class NormativeAssistantService {
       }
     }
 
+    traceState.usedAttachment = attachmentInput !== undefined;
+    retrievalStartedAt = Date.now();
     const questionEmbedding = await this.embeddings.embed(question);
     // 0.75 (valor original do plano) nunca teria funcionado de verdade —
     // calibrado contra as 38 NRs reais indexadas em 2026-08-31: pergunta
@@ -193,54 +283,27 @@ export class NormativeAssistantService {
     // embedding-3-small` não produz similaridade alta mesmo pra pares
     // pergunta/trecho genuinamente relevantes — 0.4 separa com folga dos
     // dois lados dessa amostra real.
-    const threshold = envFloat('OPENROUTER_RAG_MIN_SIMILARITY', 0.4);
+    const threshold = this.ragThreshold();
     const chunkLimit = attachmentInput ? CHUNK_LIMIT_WITH_ATTACHMENT : CHUNK_LIMIT_DEFAULT;
 
-    // `official_sources`, `normative_documents` e
-    // `normative_document_chunks` não têm tenant_id nem RLS — não há
-    // contexto de tenant a propagar aqui. Usar withoutTenantContext (só
-    // pool.connect()/release(), sem BEGIN/COMMIT) garante que nenhuma
-    // conexão do pool fica presa "idle in transaction" durante as
-    // chamadas HTTP externas lentas (embed acima, answer abaixo) — ver
-    // Finding C1a da revisão final da Fase 9.
-    const { rows } = await this.db.withoutTenantContext((client) =>
-      client.query<RetrievedChunk>(
-        `SELECT c.id AS chunk_id, c.content, d.id AS document_id, s.title AS source_title, s.code AS source_code, s.official_url,
-                1 - (c.embedding <=> $1::vector) AS similarity
-         FROM normative_document_chunks c
-         JOIN normative_documents d ON d.id = c.document_id
-         JOIN official_sources s ON s.id = d.source_id
-         WHERE d.status = 'vigente' AND d.indexed_at IS NOT NULL
-         ORDER BY c.embedding <=> $1::vector
-         LIMIT $2`,
-        [toVectorLiteral(questionEmbedding), chunkLimit],
-      ),
-    );
-    const relevant = rows.filter((r) => r.similarity >= threshold);
-
-    // Busca no checklist interno de documentação SST (Montese) — mesmo
-    // padrão da busca em normative_document_chunks acima: sempre
-    // executada (não depende de tenantId, é conhecimento geral, não
-    // específico de uma empresa), mesma transação curta e separada
-    // (withoutTenantContext), mesmo threshold/limit. `content` usa a
-    // MESMA fórmula de 4 campos do texto embedado (ver Global
-    // Constraints) — assim o texto que o modelo lê no prompt é
-    // exatamente o texto que foi usado pra calcular a similaridade que
-    // trouxe esse item pra cá, incluindo o requisito legal literal
-    // (útil quando a pergunta cita um número de item de norma).
-    const { rows: checklistRows } = await this.db.withoutTenantContext((client) =>
-      client.query<RetrievedChecklistItem>(
-        `SELECT id AS item_id, nr_code, document_name,
-                nr_code || ' — ' || document_name || ': ' || description || ' — ' || legal_requirement AS content,
-                1 - (embedding <=> $1::vector) AS similarity
-         FROM sst_checklist_items
-         WHERE embedding IS NOT NULL
-         ORDER BY embedding <=> $1::vector
-         LIMIT $2`,
-        [toVectorLiteral(questionEmbedding), chunkLimit],
-      ),
-    );
+    const { normativeRows, checklistRows } = await this.searchReference(questionEmbedding, chunkLimit);
+    const relevant = normativeRows.filter((r) => r.similarity >= threshold);
     const relevantChecklist = checklistRows.filter((r) => r.similarity >= threshold);
+    traceState.threshold = threshold;
+    traceState.chunkLimit = chunkLimit;
+    traceState.normative = normativeRows.map((r) => ({
+      chunk_id: r.chunk_id,
+      document_id: r.document_id,
+      source_code: r.source_code,
+      similarity: r.similarity,
+      passed_threshold: r.similarity >= threshold,
+    }));
+    traceState.checklist = checklistRows.map((r) => ({
+      item_id: r.item_id,
+      nr_code: r.nr_code,
+      similarity: r.similarity,
+      passed_threshold: r.similarity >= threshold,
+    }));
 
     // Busca operacional, numa transação curta e SEPARADA — mesma regra
     // de nunca segurar conexão durante chamada de IA (ver Finding C1a).
@@ -289,6 +352,8 @@ export class NormativeAssistantService {
         }));
     }
 
+    traceState.operationalCount = operationalItems.length;
+
     // Busca de trechos de documento da própria empresa (PGR/PCMSO/LTCAT/
     // LIP, Fase 24) — mesma condição do bloco operacional acima: roda
     // sempre que houver um `tenantId` já validado. Transação curta e
@@ -311,7 +376,13 @@ export class NormativeAssistantService {
           ),
       );
       companyChunks = companyRows.filter((r) => r.similarity >= threshold);
+      traceState.company = companyRows.map((r) => ({
+        similarity: r.similarity,
+        passed_threshold: r.similarity >= threshold,
+      }));
     }
+
+    traceState.retrievalMs = Date.now() - retrievalStartedAt;
 
     if (
       relevant.length === 0 &&
@@ -320,15 +391,18 @@ export class NormativeAssistantService {
       relevantChecklist.length === 0 &&
       !attachmentInput
     ) {
-      return {
-        answer: null,
-        message: FALLBACK_MESSAGE,
-        citations: [],
-        company_citations: [],
-        checklist_citations: [],
-        notices,
-        attachment_warning: attachmentWarning,
-      };
+      return finish(
+        {
+          answer: null,
+          message: FALLBACK_MESSAGE,
+          citations: [],
+          company_citations: [],
+          checklist_citations: [],
+          notices,
+          attachment_warning: attachmentWarning,
+        },
+        'fallback_sem_evidencia',
+      );
     }
 
     const claims = await this.answerer.answer(
@@ -339,6 +413,7 @@ export class NormativeAssistantService {
       relevantChecklist.map((c): ChecklistItem => ({ id: c.item_id, content: c.content })),
       attachmentInput,
     );
+    traceState.claimsTotal = claims.length;
 
     const validChunkIds = new Set(relevant.map((r) => r.chunk_id));
     const validOperationalIds = new Set(operationalItems.map((o) => o.id));
@@ -402,7 +477,10 @@ export class NormativeAssistantService {
         claim.operational_ref_ids.every((id) => validOperationalIds.has(id)) &&
         claim.company_chunk_ids.every((id) => validCompanyChunkIds.has(id)) &&
         claim.checklist_ref_ids.every((id) => validChecklistIds.has(id));
-      if (!idsAreValid) return false;
+      if (!idsAreValid) {
+        traceState.claimsDroppedIds += 1;
+        return false;
+      }
 
       const evidenceTexts = [
         ...claim.chunk_ids.map((id) => chunkEvidence.get(id) as string),
@@ -423,30 +501,46 @@ export class NormativeAssistantService {
         ...claim.company_chunk_ids,
         ...claim.checklist_ref_ids,
       ];
+      // Regra de privacidade do trace: os tokens só são guardados quando a claim cita
+      // EXCLUSIVAMENTE trechos normativos oficiais (ver tokensAllowedForClaim).
+      const tokensAllowed = tokensAllowedForClaim({
+        chunk_ids: claim.chunk_ids,
+        operational_ref_ids: claim.operational_ref_ids,
+        company_chunk_ids: claim.company_chunk_ids,
+        checklist_ref_ids: claim.checklist_ref_ids,
+        uses_attachment: attachmentIsReal && claim.uses_attachment === true,
+      });
       if (support.logged.length > 0) {
+        if (tokensAllowed) traceState.flaggedNumbers.push(...support.logged);
         this.logger.warn(
           `Número com unidade sem base nas fontes citadas (só registrado): ${support.logged.join('; ')} — fontes: ${citedIds.join(', ')}`,
         );
       }
       if (support.blocking.length > 0) {
+        traceState.claimsDroppedSupport += 1;
+        if (tokensAllowed) traceState.blockingTokens.push(...support.blocking);
         this.logger.warn(
           `Claim descartada — item/NR sem base nas fontes citadas: ${support.blocking.join('; ')} — fontes: ${citedIds.join(', ')}`,
         );
         return false;
       }
+      traceState.keptClaims.push({ chunk_ids: claim.chunk_ids });
       return true;
     });
 
     if (survivingClaims.length === 0) {
-      return {
-        answer: null,
-        message: FALLBACK_MESSAGE,
-        citations: [],
-        company_citations: [],
-        checklist_citations: [],
-        notices,
-        attachment_warning: attachmentWarning,
-      };
+      return finish(
+        {
+          answer: null,
+          message: FALLBACK_MESSAGE,
+          citations: [],
+          company_citations: [],
+          checklist_citations: [],
+          notices,
+          attachment_warning: attachmentWarning,
+        },
+        'fallback_claims_descartadas',
+      );
     }
 
     const usedChunkIds = new Set(survivingClaims.flatMap((c) => c.chunk_ids));
@@ -489,7 +583,7 @@ export class NormativeAssistantService {
 
     const usedAttachment = attachmentIsReal && survivingClaims.some((c) => c.uses_attachment);
 
-    return {
+    const result: NormativeQueryResult = {
       answer: survivingClaims.map((c) => c.claim).join('\n\n'),
       citations: Array.from(citationsByDocument.values()),
       company_citations: Array.from(companyCitationsByDocument.values()),
@@ -498,5 +592,60 @@ export class NormativeAssistantService {
       used_attachment: usedAttachment ? true : undefined,
       attachment_warning: attachmentWarning,
     };
+    return finish(result, 'respondeu');
+  }
+
+  private ragThreshold(): number {
+    return envFloat('OPENROUTER_RAG_MIN_SIMILARITY', 0.4);
+  }
+
+  // Busca de referência (sem tenant e sem LLM): normas oficiais vigentes e checklist
+  // interno. Extraída de queryWithTrace para que o runner de avaliação (Camada A) e a
+  // pergunta real usem EXATAMENTE a mesma busca — sem cópia que possa divergir.
+  private async searchReference(questionEmbedding: number[], chunkLimit: number): Promise<ReferenceSearch> {
+    // `official_sources`, `normative_documents` e
+    // `normative_document_chunks` não têm tenant_id nem RLS — não há
+    // contexto de tenant a propagar aqui. Usar withoutTenantContext (só
+    // pool.connect()/release(), sem BEGIN/COMMIT) garante que nenhuma
+    // conexão do pool fica presa "idle in transaction" durante as
+    // chamadas HTTP externas lentas (embed acima, answer abaixo) — ver
+    // Finding C1a da revisão final da Fase 9.
+    const { rows: normativeRows } = await this.db.withoutTenantContext((client) =>
+      client.query<RetrievedChunk>(
+        `SELECT c.id AS chunk_id, c.content, d.id AS document_id, s.title AS source_title, s.code AS source_code, s.official_url,
+                1 - (c.embedding <=> $1::vector) AS similarity
+         FROM normative_document_chunks c
+         JOIN normative_documents d ON d.id = c.document_id
+         JOIN official_sources s ON s.id = d.source_id
+         WHERE d.status = 'vigente' AND d.indexed_at IS NOT NULL
+         ORDER BY c.embedding <=> $1::vector
+         LIMIT $2`,
+        [toVectorLiteral(questionEmbedding), chunkLimit],
+      ),
+    );
+
+    // Busca no checklist interno de documentação SST (Montese) — mesmo
+    // padrão da busca em normative_document_chunks acima: sempre
+    // executada (não depende de tenantId, é conhecimento geral, não
+    // específico de uma empresa), mesma transação curta e separada
+    // (withoutTenantContext), mesmo threshold/limit. `content` usa a
+    // MESMA fórmula de 4 campos do texto embedado (ver Global
+    // Constraints) — assim o texto que o modelo lê no prompt é
+    // exatamente o texto que foi usado pra calcular a similaridade que
+    // trouxe esse item pra cá, incluindo o requisito legal literal
+    // (útil quando a pergunta cita um número de item de norma).
+    const { rows: checklistRows } = await this.db.withoutTenantContext((client) =>
+      client.query<RetrievedChecklistItem>(
+        `SELECT id AS item_id, nr_code, document_name,
+                nr_code || ' — ' || document_name || ': ' || description || ' — ' || legal_requirement AS content,
+                1 - (embedding <=> $1::vector) AS similarity
+         FROM sst_checklist_items
+         WHERE embedding IS NOT NULL
+         ORDER BY embedding <=> $1::vector
+         LIMIT $2`,
+        [toVectorLiteral(questionEmbedding), chunkLimit],
+      ),
+    );
+    return { normativeRows, checklistRows };
   }
 }

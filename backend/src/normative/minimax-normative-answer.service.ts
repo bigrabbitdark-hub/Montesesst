@@ -29,6 +29,10 @@ export class MiniMaxNormativeAnswerService implements NormativeAnswerProvider {
 
   constructor(private readonly usageLog: AiUsageLogService) {}
 
+  get modelName(): string {
+    return process.env.MINIMAX_MODEL || 'MiniMax-M3';
+  }
+
   async answer(
     question: string,
     chunks: { id: string; content: string }[],
@@ -42,7 +46,7 @@ export class MiniMaxNormativeAnswerService implements NormativeAnswerProvider {
       throw new ServiceUnavailableException('Assistente ainda não está disponível');
     }
 
-    const model = process.env.MINIMAX_MODEL || 'MiniMax-M3';
+    const model = this.modelName;
     const requestBody = buildRagChatCompletionBody(
       model,
       question,
