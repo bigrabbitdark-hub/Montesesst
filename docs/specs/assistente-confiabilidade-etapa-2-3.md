@@ -116,6 +116,16 @@ função hoje:
 | `gerado_por` | string | ex.: `claude-sonnet-5 (rascunho)` |
 | `validado_por`, `validado_em` | string/data \| null | preenchidos só na validação |
 
+`proibido_regex` é uma heurística de grau-rascunho: um regex aplicado ao
+texto CRU da resposta, sem normalização de acento e sem análise de negação
+de verdade. Uma resposta CORRETA que nega a premissa falsa repetindo parte
+dela ("Não, não é X...") pode disparar um falso positivo se o padrão não
+tiver guarda de negação (lookbehind cobrindo `não|nao|nem|nunca|jamais`).
+Por isso, toda pergunta `pegadinha` precisa ter seu(s) `proibido_regex`
+reauditado(s) manualmente no momento da validação humana, antes de `status`
+virar `validado` — não é garantia automática de correção, só um sinal
+barato de alerta para a revisão.
+
 Omitidos por YAGNI (não têm função hoje): `nivel`, `cargo`,
 `palavras_chave`, `aplica_se`, `excecoes`, `fonte_url` (deriva de
 `official_sources`), `deve_pedir_contexto` e `pode_responder_sem_consulta`
@@ -293,12 +303,17 @@ Saída: `--out backend/eval/baselines/<data>-<camada>.json` e
 Chama só `retrieve()` (embedding + busca SQL) e `detectNotices`. Por
 pergunta e agregado por tipo:
 
-- **Acerto de NR** — algum dos `chunk_limit` (6) trechos do topo é da
-  `source_code` esperada.
-- **Acerto de item** — algum dos trechos do topo é da NR esperada **e**
-  contém o `item` esperado. Hoje o chunking corta no meio de frase, então
-  esta métrica deve sair baixa — é o número que justifica mexer no chunking
-  depois.
+- **Acerto de NR** — dentre os trechos do topo (`chunk_limit`, 6) que
+  **passam o limiar** de similaridade (os que de fato chegariam ao LLM),
+  algum é da `source_code` esperada.
+- **Acerto de item** — dentre os mesmos trechos que passam o limiar, algum é
+  da NR esperada **e** contém o `item` esperado. Hoje o chunking corta no
+  meio de frase, então esta métrica deve sair baixa — é o número que
+  justifica mexer no chunking depois. À parte, `acerto_item_topk` calcula o
+  mesmo acerto de item sobre os `chunk_limit` trechos do topo BRUTOS, sem o
+  corte do limiar — serve de diagnóstico, para distinguir se a falha é da
+  busca (o item nem aparece no topo) ou do corte pelo limiar (aparece, mas
+  abaixo dele).
 - **Falso relevante** — das perguntas `recusar_sem_evidencia`, a proporção
   cuja melhor similaridade fica acima do limiar (chegaria ao LLM com trecho
   irrelevante).
