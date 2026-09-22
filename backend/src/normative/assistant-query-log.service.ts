@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { DatabaseService } from '../common/database/database.service';
 import { QueryTrace } from './query-trace';
@@ -12,7 +12,12 @@ export const QUERY_LOG_RETENTION_DAYS = 90;
 export class AssistantQueryLogService {
   private readonly logger = new Logger(AssistantQueryLogService.name);
 
-  constructor(private readonly db: DatabaseService) {}
+  // @Inject(ClasseConcreta) explícito: mesmo padrão de NormativeAssistantService,
+  // MiniMaxNormativeAnswerService e AiUsageLogService — sem isto, sob tsx
+  // (esbuild não emite design:paramtypes), `this.db` chegaria `undefined`.
+  // Aqui record()/handlePurgeCron() têm try/catch, então o sintoma não seria
+  // um crash visível: seria o log de uso ficando silenciosamente vazio.
+  constructor(@Inject(DatabaseService) private readonly db: DatabaseService) {}
 
   // Nunca lança: registrar uso é best-effort e jamais pode atrasar nem derrubar
   // a resposta ao usuário (quem chama não espera por isto). Sem RETURNING: o
@@ -22,7 +27,7 @@ export class AssistantQueryLogService {
     // (todos, inclusive os de outros módulos) chamam o Assistente — sem isto
     // cada execução da suíte gravaria linhas de teste no log de uso real e
     // poluiria as estatísticas que este log existe para medir.
-    // test/jest-e2e-setup.js liga o interruptor; só o e2e do próprio log o desliga.
+    // test/jest-e2e-setup.ts liga o interruptor; só o e2e do próprio log o desliga.
     if (process.env.ASSISTANT_QUERY_LOG_DISABLED === 'true') return;
     try {
       const retrieved = {
