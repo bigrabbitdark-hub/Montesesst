@@ -138,9 +138,19 @@ export class NormativeAssistantService {
   constructor(
     @Inject(EMBEDDING_PROVIDER) private readonly embeddings: EmbeddingProvider,
     @Inject(NORMATIVE_ANSWER_PROVIDER) private readonly answerer: NormativeAnswerProvider,
-    private readonly db: DatabaseService,
-    private readonly dashboard: DashboardService,
-    private readonly queryLog: AssistantQueryLogService,
+    // @Inject(ClasseConcreta) explícito nestes 3 (a própria classe já é o
+    // token, diferente de embeddings/answerer acima, que são interface e
+    // por isso usam @Inject(TOKEN)): sem isto, o Nest resolve o parâmetro
+    // lendo o metadado design:paramtypes que o TypeScript emite via
+    // emitDecoratorMetadata — funciona sob nest build/tsc (produção e2e),
+    // mas o esbuild por trás do tsx NÃO emite esse metadado (limitação
+    // conhecida e antiga do esbuild), então os 3 chegavam `undefined` ao
+    // rodar via tsx (achado do runner de avaliação, Task 8 — primeiro
+    // script do repo a subir o AppModule inteiro pelo container de DI do
+    // Nest fora do bootstrap HTTP). Comportamento idêntico em produção.
+    @Inject(DatabaseService) private readonly db: DatabaseService,
+    @Inject(DashboardService) private readonly dashboard: DashboardService,
+    @Inject(AssistantQueryLogService) private readonly queryLog: AssistantQueryLogService,
   ) {}
 
   // Mesma assinatura e mesmo retorno de sempre. Além de responder, grava o trace
