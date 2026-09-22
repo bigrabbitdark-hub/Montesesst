@@ -1046,8 +1046,8 @@
     ],
     "avisos_esperados": [],
     "proibido_regex": [
-      "acima de 3 ?metros",
-      "(sim|correto|isso mesmo)[^.]{0,30}3 metros"
+      "(?<!(?:não|nao|nem|nunca|jamais)[^.]{0,30})acima de 3 ?metros",
+      "(?<!(?:não|nao|nem|nunca|jamais)[^.]{0,20})(sim|correto|isso mesmo)[^.]{0,30}3 metros"
     ],
     "jurisdicao": "federal",
     "risco_resposta": "medio",
