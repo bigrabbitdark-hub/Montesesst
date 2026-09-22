@@ -5,6 +5,7 @@ import { NormativeDocumentsService } from './normative-documents.service';
 import { NormativeDocumentsController } from './normative-documents.controller';
 import { NormativeMonitorService } from './normative-monitor.service';
 import { NormativeAssistantService } from './normative-assistant.service';
+import { AssistantQueryLogService } from './assistant-query-log.service';
 import { NormativeAssistantController } from './normative-assistant.controller';
 import { NORMATIVE_ANSWER_PROVIDER } from './normative-answer-provider.interface';
 import { OpenRouterNormativeAnswerService } from './openrouter-normative-answer.service';
@@ -40,6 +41,7 @@ import { DashboardModule } from '../dashboard/dashboard.module';
     NormativeDocumentsService,
     NormativeMonitorService,
     NormativeAssistantService,
+    AssistantQueryLogService,
     OpenRouterNormativeAnswerService,
     MiniMaxNormativeAnswerService,
     { provide: NORMATIVE_ANSWER_PROVIDER, useClass: MiniMaxNormativeAnswerService },

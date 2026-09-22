@@ -19,6 +19,7 @@ import { extractXlsxRows, XLSX_MIME_TYPE } from '../common/xlsx/xlsx-text.util';
 import { detectNotices, NormativeNotice } from './question-notices';
 import { checkClaimSupport } from './claim-support';
 import { QueryOutcome, QueryTrace, hashQuestion, tokensAllowedForClaim } from './query-trace';
+import { AssistantQueryLogService } from './assistant-query-log.service';
 
 const FALLBACK_MESSAGE =
   'Não encontrei fundamento suficiente nas fontes consultadas para afirmar isso. Isso não significa que a exigência não exista, só que não a localizei.';
@@ -139,17 +140,20 @@ export class NormativeAssistantService {
     @Inject(NORMATIVE_ANSWER_PROVIDER) private readonly answerer: NormativeAnswerProvider,
     private readonly db: DatabaseService,
     private readonly dashboard: DashboardService,
+    private readonly queryLog: AssistantQueryLogService,
   ) {}
 
-  // Mesma assinatura e mesmo retorno de sempre. O trace só serve ao runner de
-  // avaliação (queryWithTrace) e, depois, ao log de uso.
+  // Mesma assinatura e mesmo retorno de sempre. Além de responder, grava o trace
+  // no log de uso (só metadados e ids) — sem esperar e sem nunca derrubar a
+  // resposta: record() captura qualquer erro.
   async query(
     question: string,
     user: AuthenticatedUser,
     attachment?: QueryAttachment,
     tenantId?: string,
   ): Promise<NormativeQueryResult> {
-    const { result } = await this.queryWithTrace(question, user, attachment, tenantId);
+    const { result, trace } = await this.queryWithTrace(question, user, attachment, tenantId);
+    void this.queryLog.record(trace);
     return result;
   }
 
