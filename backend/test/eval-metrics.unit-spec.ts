@@ -415,6 +415,51 @@ describe('avisos comparados como conjunto (unit)', () => {
     expect(evaluateAnswer(q, { ...base, notices: ['jurisdicao'] }).avisos_ok).toBe(true);
     expect(evaluateAnswer(q, { ...base, notices: ['contexto'] }).avisos_ok).toBe(false);
   });
+
+  // Lacunas de cobertura achadas por mutação na revisão final (Fix Wave):
+  // sameSet reduzido a comparar só o TAMANHO dos conjuntos, e isSubset com
+  // `every` trocado por `some` (ou retornando `false` para `expected` vazio)
+  // sobreviviam aos testes acima porque nenhum cobria esses casos.
+
+  it('Camada A: esperado e detectado do MESMO tamanho mas com tipos diferentes reprova (sameSet checa os elementos, não só o tamanho)', () => {
+    const q = question({ fontes_esperadas: [], comportamento_esperado: 'alertar_jurisdicao', avisos_esperados: ['jurisdicao'] });
+    const result = evaluateRetrieval(q, { chunks: [], threshold: THRESHOLD, notices: ['contexto'] });
+    expect(result.avisos_ok).toBe(false);
+  });
+
+  it('Camada B: 2 avisos esperados e só 1 detectado não cobre (isSubset exige TODOS os elementos, não `some`)', () => {
+    const q = question({
+      fontes_esperadas: [],
+      comportamento_esperado: 'alertar_jurisdicao',
+      avisos_esperados: ['jurisdicao', 'contexto'],
+    });
+    const result = evaluateAnswer(q, {
+      answer: null,
+      notices: ['jurisdicao'],
+      retrieved: [],
+      kept_claims_chunk_ids: [],
+      claims_dropped_support: 0,
+      flagged_numbers: [],
+    });
+    expect(result.avisos_ok).toBe(false);
+  });
+
+  it('Camada B: avisos_esperados vazio é sempre subconjunto (isSubset com `expected` vazio dá true)', () => {
+    const q = question({
+      fontes_esperadas: [],
+      comportamento_esperado: 'pedir_contexto',
+      avisos_esperados: [],
+    });
+    const result = evaluateAnswer(q, {
+      answer: 'Depende da atividade.',
+      notices: ['contexto'],
+      retrieved: [],
+      kept_claims_chunk_ids: [],
+      claims_dropped_support: 0,
+      flagged_numbers: [],
+    });
+    expect(result.avisos_ok).toBe(true);
+  });
 });
 
 describe('aggregateNotices — precisão e recall por tipo de aviso (unit)', () => {
