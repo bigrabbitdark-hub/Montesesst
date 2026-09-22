@@ -160,8 +160,12 @@ Não há LLM em runtime nessa etapa. Todo registro nasce `status: rascunho`,
 `backend/eval/lint-golden.ts` (só leitura no banco) confere **por código**
 que cada `evidencia` de `fontes_esperadas` existe literalmente no texto
 vigente da `source_code` indicada, com espaços em branco normalizados
-(quebras de linha, espaços duplos) nos dois lados, e que o `item` aparece
-no trecho ou imediatamente antes dele. Também grava `versao_fonte` a partir
+(quebras de linha, espaços duplos) nos dois lados, e que a `evidencia`
+**começa pelo número do `item`** ("35.4.1 Todo trabalho em altura deve…") —
+isso ancora a citação numa seção real e a distingue do sumário que abre as
+NRs e repete os títulos. Também rejeita citação com artefato de página no
+meio (`-- 2 of 12 --`, "Este texto não substitui o publicado no DOU") e
+citação que é só o título. Também grava `versao_fonte` a partir
 do `content_hash` do documento vigente. Citação que não existe no PDF é
 **erro** e o lint sai com código 1 — protege o dataset contra alucinação de
 quem o redige. Falha legítima de normalização (hifenização, cabeçalho de

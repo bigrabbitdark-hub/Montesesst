@@ -81,6 +81,14 @@ habilitação profissional ou de contexto não informado recebem um aviso fixo
 e determinístico (`backend/src/normative/question-notices.ts`), sem LLM.
 Spec: `docs/specs/assistente-confiabilidade-etapa-1.md`.
 
+A qualidade do Assistente é medida, não presumida: o banco de perguntas golden
+(`backend/eval/golden/perguntas.json`) e o runner (`npm run eval:retrieval`,
+`eval:answer`) comparam qualquer mudança de chunking, busca, prompt, modelo ou
+limiar com um baseline versionado (`backend/eval/baselines/`); só perguntas
+`validado` por um profissional de SST reprovam o gate. O uso real é registrado
+apenas como metadados em `assistant_query_log` (sem texto de pergunta, claim ou
+resposta; 90 dias). Spec: `docs/specs/assistente-confiabilidade-etapa-2-3.md`.
+
 ## 4. Hierarquia de fontes
 
 Quando uma resposta depende de mais de uma fonte, a ordem de confiança é:

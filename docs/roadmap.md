@@ -4754,3 +4754,24 @@ fontes (todas `ok`, 0 falhas), não criou nenhuma versão em
   por a lista estar cortada, NR-33). Nenhum texto legal foi alterado. Segue
   o item "A NR-02 foi revogada" (NR-02 e NR-27 são as duas NRs revogadas do
   documento original).
+
+## Confiabilidade do Assistente — Etapas 1, 2 e 3: status
+
+Série que saiu da auditoria dos agentes Montese SST (2026-09-20).
+
+- **Etapa 1** (em `main`): avisos determinísticos de jurisdição/atribuição/contexto,
+  Verificador v2 (item e NR citados precisam constar nas fontes da claim) e monitor
+  normativo com estado por fonte e alerta por e-mail. Spec:
+  [`docs/specs/assistente-confiabilidade-etapa-1.md`](specs/assistente-confiabilidade-etapa-1.md).
+- **Etapas 2 e 3**: banco de perguntas golden (60, `status: rascunho` até a validação de
+  um profissional de SST), runner de avaliação em duas camadas com baseline versionado e
+  log de uso real só com metadados. Spec:
+  [`docs/specs/assistente-confiabilidade-etapa-2-3.md`](specs/assistente-confiabilidade-etapa-2-3.md).
+  Comandos: `eval:lint`, `eval:nr`, `eval:notices` (grátis, só leitura), `eval:retrieval`
+  (Camada A, centavos de embedding), `eval:answer -- --llm` (Camada B, LLM pago, teto de
+  15), `eval:usage`. Baselines em `backend/eval/baselines/`.
+- **Pendências do fundador:** definir quem valida o dataset (`validado_por`); registrar o
+  log de uso em `docs/compliance/lgpd-compliance.md`; decidir, com o `eval:usage` e a
+  Camada B na mão, se números com unidade sem base podem virar bloqueio; decidir o
+  guard de evidência vazia do verificador (claim sobre imagem anexada passa sem checagem).
+- **Próxima etapa (guiada pelo baseline):** chunking estrutural e busca híbrida.
