@@ -1,0 +1,1518 @@
+[
+  {
+    "id": "NR35-001",
+    "tipo": "conceitual",
+    "categoria": "NR-35",
+    "subcategoria": "Autorização",
+    "pergunta": "Que condição o trabalhador precisa cumprir para executar trabalho em altura?",
+    "resposta_esperada": "Somente o trabalhador formalmente autorizado pela organização.",
+    "comportamento_esperado": "responder",
+    "fontes_esperadas": [
+      {
+        "fonte": "norma",
+        "source_code": "NR-35",
+        "item": "35.4.1",
+        "evidencia": "35.4.1 Todo trabalho em altura deve ser realizado por trabalhador formalmente autorizado pela organização."
+      }
+    ],
+    "avisos_esperados": [],
+    "jurisdicao": "federal",
+    "risco_resposta": "medio",
+    "versao_fonte": "NR-35:ade78234",
+    "data_verificacao": "2026-09-22",
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (rascunho)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "NR07-001",
+    "tipo": "aplicacao",
+    "categoria": "NR-07",
+    "subcategoria": "ASO",
+    "pergunta": "O ASO precisa ser entregue ao empregado?",
+    "resposta_esperada": "Sim: o ASO deve ser comprovadamente disponibilizado ao empregado, em meio físico quando solicitado.",
+    "comportamento_esperado": "responder",
+    "fontes_esperadas": [
+      {
+        "fonte": "norma",
+        "source_code": "NR-07",
+        "item": "7.5.19",
+        "evidencia": "7.5.19 Para cada exame clínico ocupacional realizado, o médico emitirá Atestado de Saúde Ocupacional - ASO, que deve ser comprovadamente disponibilizado ao empregado, devendo ser fornecido em meio físico quando solicitado."
+      }
+    ],
+    "avisos_esperados": [],
+    "jurisdicao": "federal",
+    "risco_resposta": "medio",
+    "versao_fonte": "NR-07:682207e1",
+    "data_verificacao": "2026-09-22",
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (rascunho)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "NR06-001",
+    "tipo": "pegadinha",
+    "categoria": "NR-06",
+    "subcategoria": "Fornecimento",
+    "pergunta": "O empregador pode cobrar do empregado pelo EPI?",
+    "resposta_esperada": "Não: cabe à organização fornecer o EPI gratuitamente, adequado ao risco e em perfeito estado.",
+    "comportamento_esperado": "responder",
+    "fontes_esperadas": [
+      {
+        "fonte": "norma",
+        "source_code": "NR-06",
+        "item": "6.5.1",
+        "evidencia": "6.5.1 Cabe à organização, quanto ao EPI: a) adquirir somente o aprovado pelo órgão de âmbito nacional competente em matéria de segurança e saúde no trabalho; b) orientar e treinar o empregado; c) fornecer ao empregado, gratuitamente, EPI adequado ao risco, em perfeito estado de conservação e funcionamento, nas situações previstas no subitem 1.5.5.1.2 da Norma"
+      }
+    ],
+    "avisos_esperados": [],
+    "proibido_regex": [
+      "pode ser cobrad",
+      "(sim|pode)[^.]{0,30}cobrar"
+    ],
+    "jurisdicao": "federal",
+    "risco_resposta": "medio",
+    "versao_fonte": "NR-06:b4979ff2",
+    "data_verificacao": "2026-09-22",
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (rascunho)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "NR01-001",
+    "tipo": "contexto_incompleto",
+    "categoria": "NR-01",
+    "subcategoria": "GRO",
+    "pergunta": "Minha empresa precisa de PGR?",
+    "resposta_esperada": "Depende: o gerenciamento de riscos é por estabelecimento; faltam atividade, número de empregados e grau de risco.",
+    "comportamento_esperado": "pedir_contexto",
+    "fontes_esperadas": [
+      {
+        "fonte": "norma",
+        "source_code": "NR-01",
+        "item": "1.5.3.1",
+        "evidencia": "1.5.3.1 A organização deve implementar, por estabelecimento, o gerenciamento de riscos ocupacionais em suas atividades."
+      }
+    ],
+    "avisos_esperados": [
+      "contexto"
+    ],
+    "jurisdicao": "federal",
+    "risco_resposta": "medio",
+    "versao_fonte": "NR-01:b1eec52b",
+    "data_verificacao": "2026-09-22",
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (rascunho)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "GERAL-001",
+    "tipo": "jurisdicional",
+    "categoria": "PPCI",
+    "subcategoria": "Exigência local",
+    "pergunta": "Minha empresa precisa de PPCI no meu município?",
+    "resposta_esperada": "Depende da legislação estadual e municipal do Corpo de Bombeiros, que não está na base; pedir UF, município e dados da edificação.",
+    "comportamento_esperado": "alertar_jurisdicao",
+    "fontes_esperadas": [],
+    "avisos_esperados": [
+      "jurisdicao",
+      "contexto"
+    ],
+    "jurisdicao": "municipal",
+    "risco_resposta": "alto",
+    "versao_fonte": null,
+    "data_verificacao": null,
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (rascunho)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "GERAL-002",
+    "tipo": "atribuicao_profissional",
+    "categoria": "PGR",
+    "subcategoria": "Responsável",
+    "pergunta": "Quem pode assinar o PGR?",
+    "resposta_esperada": "Depende da habilitação profissional exigida; o Assistente explica o requisito e remete ao conselho competente.",
+    "comportamento_esperado": "alertar_habilitacao",
+    "fontes_esperadas": [],
+    "avisos_esperados": [
+      "profissional_habilitado"
+    ],
+    "jurisdicao": "federal",
+    "risco_resposta": "alto",
+    "versao_fonte": null,
+    "data_verificacao": null,
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (rascunho)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "GERAL-003",
+    "tipo": "sem_evidencia",
+    "categoria": "eSocial",
+    "subcategoria": "S-2240",
+    "pergunta": "Qual o prazo para transmitir o evento S-2240 no eSocial?",
+    "resposta_esperada": "Não há fundamento nas fontes disponíveis (a base só tem as NRs federais); deve recusar.",
+    "comportamento_esperado": "recusar_sem_evidencia",
+    "fontes_esperadas": [],
+    "avisos_esperados": [],
+    "jurisdicao": "federal",
+    "risco_resposta": "alto",
+    "versao_fonte": null,
+    "data_verificacao": null,
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (rascunho)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "NR05-001",
+    "tipo": "conceitual",
+    "categoria": "NR-05",
+    "subcategoria": "CIPA",
+    "pergunta": "Qual é o objetivo da CIPA?",
+    "resposta_esperada": "Prevenir acidentes e doenças relacionadas ao trabalho, tornando compatível o trabalho com a preservação da vida e a promoção da saúde do trabalhador.",
+    "comportamento_esperado": "responder",
+    "fontes_esperadas": [
+      {
+        "fonte": "norma",
+        "source_code": "NR-05",
+        "item": "5.1.1",
+        "evidencia": "5.1.1 Esta norma regulamentadora - NR estabelece dos parâmetros e os requisitos da Comissão Interna de Prevenção de Acidentes e de Assédio - CIPA tendo por objetivo a prevenção de acidentes e doenças relacionadas ao trabalho, de modo a tornar compatível permanentemente o trabalho com a preservação da vida e promoção da saúde do trabalhador."
+      }
+    ],
+    "avisos_esperados": [],
+    "jurisdicao": "federal",
+    "risco_resposta": "medio",
+    "versao_fonte": "NR-05:35ba381c",
+    "data_verificacao": "2026-09-22",
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (rascunho)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "NR06-002",
+    "tipo": "conceitual",
+    "categoria": "NR-06",
+    "subcategoria": "EPI",
+    "pergunta": "O que é considerado EPI?",
+    "resposta_esperada": "Dispositivo ou produto de uso individual, utilizado pelo trabalhador, concebido e fabricado para oferecer proteção contra riscos ocupacionais existentes no ambiente de trabalho.",
+    "comportamento_esperado": "responder",
+    "fontes_esperadas": [
+      {
+        "fonte": "norma",
+        "source_code": "NR-06",
+        "item": "6.3.1",
+        "evidencia": "6.3.1 Para os fins de aplicação desta NR considera-se EPI o dispositivo ou produto de uso individual utilizado pelo trabalhador, concebido e fabricado para oferecer proteção contra osriscos ocupacionais existentes no ambiente de trabalho, conforme previsto no Anexo I."
+      }
+    ],
+    "avisos_esperados": [],
+    "jurisdicao": "federal",
+    "risco_resposta": "medio",
+    "versao_fonte": "NR-06:b4979ff2",
+    "data_verificacao": "2026-09-22",
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (rascunho)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "NR07-002",
+    "tipo": "conceitual",
+    "categoria": "NR-07",
+    "subcategoria": "PCMSO",
+    "pergunta": "Para que serve o PCMSO?",
+    "resposta_esperada": "Entre suas diretrizes, o PCMSO deve rastrear e detectar precocemente os agravos à saúde relacionados ao trabalho.",
+    "comportamento_esperado": "responder",
+    "fontes_esperadas": [
+      {
+        "fonte": "norma",
+        "source_code": "NR-07",
+        "item": "7.3.2",
+        "evidencia": "7.3.2 São diretrizes do PCMSO: a) rastrear e detectar precocemente os agravos à saúde relacionados ao trabalho;"
+      }
+    ],
+    "avisos_esperados": [],
+    "jurisdicao": "federal",
+    "risco_resposta": "medio",
+    "versao_fonte": "NR-07:682207e1",
+    "data_verificacao": "2026-09-22",
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (rascunho)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "NR01-002",
+    "tipo": "conceitual",
+    "categoria": "NR-01",
+    "subcategoria": "GRO",
+    "pergunta": "Qual é o objetivo geral do gerenciamento de riscos ocupacionais?",
+    "resposta_esperada": "Estabelecer diretrizes e requisitos para o gerenciamento de riscos ocupacionais e as medidas de prevenção em Segurança e Saúde no Trabalho.",
+    "comportamento_esperado": "responder",
+    "fontes_esperadas": [
+      {
+        "fonte": "norma",
+        "source_code": "NR-01",
+        "item": "1.1.1",
+        "evidencia": "1.1.1 O objetivo desta Norma é estabelecer as disposições gerais, o campo de aplicação, os termos e as definições comuns às Normas Regulamentadoras - NR relativas a segurança e saúde no trabalho e as diretrizes e os requisitos para o gerenciamento de riscos ocupacionais e as medidas de prevenção em Segurança e Saúde no Trabalho - SST."
+      }
+    ],
+    "avisos_esperados": [],
+    "jurisdicao": "federal",
+    "risco_resposta": "medio",
+    "versao_fonte": "NR-01:b1eec52b",
+    "data_verificacao": "2026-09-22",
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (rascunho)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "NR33-001",
+    "tipo": "conceitual",
+    "categoria": "NR-33",
+    "subcategoria": "Espaço confinado",
+    "pergunta": "O que caracteriza um espaço confinado?",
+    "resposta_esperada": "Área ou ambiente que, simultaneamente, não é projetado para ocupação humana contínua, tem meios limitados de entrada e saída, e pode ter atmosfera perigosa.",
+    "comportamento_esperado": "responder",
+    "fontes_esperadas": [
+      {
+        "fonte": "norma",
+        "source_code": "NR-33",
+        "item": "33.2.2",
+        "evidencia": "33.2.2 Considera-se espaço confinado qualquer área ou ambiente que atenda simultaneamente aos seguintes requisitos: a) não ser projetado para ocupação humana contínua; b) possuir meios limitados de entrada e saída; e c) em que exista ou possa existir atmosfera perigosa."
+      }
+    ],
+    "avisos_esperados": [],
+    "jurisdicao": "federal",
+    "risco_resposta": "medio",
+    "versao_fonte": "NR-33:13d3a18b",
+    "data_verificacao": "2026-09-22",
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (rascunho)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "NR10-001",
+    "tipo": "conceitual",
+    "categoria": "NR-10",
+    "subcategoria": "Objetivo",
+    "pergunta": "Qual é o objetivo da norma sobre segurança em instalações e serviços com eletricidade?",
+    "resposta_esperada": "Estabelecer requisitos e diretrizes mínimos para a implementação e o acompanhamento do controle dos riscos ocupacionais decorrentes do emprego da energia elétrica, assegurando a segurança e a saúde dos trabalhadores expostos.",
+    "comportamento_esperado": "responder",
+    "fontes_esperadas": [
+      {
+        "fonte": "norma",
+        "source_code": "NR-10",
+        "item": "10.1.1",
+        "evidencia": "10.1.1 Esta Norma estabelece os requisitos e diretrizes mínimos objetivando a implementação e o acompanhamento do controle dos riscos ocupacionais e das medidas de prevenção, de forma a assegurar a segurança e a saúde dos trabalhadores expostos aos perigos decorrentes do emprego da energia elétrica"
+      }
+    ],
+    "avisos_esperados": [],
+    "jurisdicao": "federal",
+    "risco_resposta": "medio",
+    "versao_fonte": "NR-10:55860d42",
+    "data_verificacao": "2026-09-22",
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (rascunho)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "NR17-001",
+    "tipo": "conceitual",
+    "categoria": "NR-17",
+    "subcategoria": "Ergonomia",
+    "pergunta": "Qual é o objetivo da norma de ergonomia?",
+    "resposta_esperada": "Estabelecer diretrizes e requisitos que permitam adaptar as condições de trabalho às características psicofisiológicas dos trabalhadores, proporcionando conforto, segurança, saúde e desempenho eficiente.",
+    "comportamento_esperado": "responder",
+    "fontes_esperadas": [
+      {
+        "fonte": "norma",
+        "source_code": "NR-17",
+        "item": "17.1.1",
+        "evidencia": "17.1.1 Esta Norma Regulamentadora - NR visa estabelecer as diretrizes e os requisitos que permitam a adaptação das condições de trabalho às características psicofisiológicas dos trabalhadores, de modo a proporcionar conforto, segurança, saúde e desempenho eficiente no trabalho."
+      }
+    ],
+    "avisos_esperados": [],
+    "jurisdicao": "federal",
+    "risco_resposta": "medio",
+    "versao_fonte": "NR-17:9e5760a2",
+    "data_verificacao": "2026-09-22",
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (rascunho)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "NR06-003",
+    "tipo": "aplicacao",
+    "categoria": "NR-06",
+    "subcategoria": "Fornecimento",
+    "pergunta": "Quando não for possível registrar o fornecimento de EPI descartável, o que a empresa precisa garantir?",
+    "resposta_esperada": "A disponibilização do EPI descartável ou creme de proteção na embalagem original, em quantidade suficiente para cada trabalhador, com fornecimento ou reposição imediata.",
+    "comportamento_esperado": "responder",
+    "fontes_esperadas": [
+      {
+        "fonte": "norma",
+        "source_code": "NR-06",
+        "item": "6.5.1.2",
+        "evidencia": "6.5.1.2 Quando inviável o registro de fornecimento de EPI descartável e creme de proteção, cabe à organização garantir sua disponibilização, na embalagem original, em quantidade suficiente para cada trabalhador nos locais de trabalho, assegurando-se imediato fornecimento ou reposição."
+      }
+    ],
+    "avisos_esperados": [],
+    "jurisdicao": "federal",
+    "risco_resposta": "medio",
+    "versao_fonte": "NR-06:b4979ff2",
+    "data_verificacao": "2026-09-22",
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (rascunho)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "NR07-003",
+    "tipo": "aplicacao",
+    "categoria": "NR-07",
+    "subcategoria": "Exames",
+    "pergunta": "Quais são alguns dos exames médicos que o PCMSO deve incluir obrigatoriamente?",
+    "resposta_esperada": "Entre outros, o PCMSO deve incluir os exames admissional, periódico e de retorno ao trabalho.",
+    "comportamento_esperado": "responder",
+    "fontes_esperadas": [
+      {
+        "fonte": "norma",
+        "source_code": "NR-07",
+        "item": "7.5.6",
+        "evidencia": "7.5.6 O PCMSO deve incluir a realização obrigatória dos exames médicos: a) admissional; b) periódico; c) de retorno ao trabalho;"
+      }
+    ],
+    "avisos_esperados": [],
+    "jurisdicao": "federal",
+    "risco_resposta": "medio",
+    "versao_fonte": "NR-07:682207e1",
+    "data_verificacao": "2026-09-22",
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (rascunho)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "NR35-002",
+    "tipo": "aplicacao",
+    "categoria": "NR-35",
+    "subcategoria": "Capacitação",
+    "pergunta": "Com que periodicidade deve ser feito o treinamento periódico de trabalho em altura?",
+    "resposta_esperada": "A cada dois anos, com carga horária mínima de oito horas, conforme conteúdo programático definido pelo empregador.",
+    "comportamento_esperado": "responder",
+    "fontes_esperadas": [
+      {
+        "fonte": "norma",
+        "source_code": "NR-35",
+        "item": "35.4.2.2",
+        "evidencia": "35.4.2.2 O treinamento periódico deve ser realizado a cada dois anos, com carga horária mínima de oito horas, conforme conteúdo programático definido pelo empregador."
+      }
+    ],
+    "avisos_esperados": [],
+    "jurisdicao": "federal",
+    "risco_resposta": "medio",
+    "versao_fonte": "NR-35:ade78234",
+    "data_verificacao": "2026-09-22",
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (rascunho)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "NR12-001",
+    "tipo": "aplicacao",
+    "categoria": "NR-12",
+    "subcategoria": "Proteção",
+    "pergunta": "O que a empresa deve adotar para o trabalho com máquinas e equipamentos?",
+    "resposta_esperada": "Medidas de proteção capazes de resguardar a saúde e a integridade física dos trabalhadores.",
+    "comportamento_esperado": "responder",
+    "fontes_esperadas": [
+      {
+        "fonte": "norma",
+        "source_code": "NR-12",
+        "item": "12.1.7",
+        "evidencia": "12.1.7 O empregador deve adotar medidas de proteção para o trabalho em máquinas e equipamentos, capazes de resguardar a saúde e a integridade física dos trabalhadores."
+      }
+    ],
+    "avisos_esperados": [],
+    "jurisdicao": "federal",
+    "risco_resposta": "medio",
+    "versao_fonte": "NR-12:d4a32021",
+    "data_verificacao": "2026-09-22",
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (rascunho)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "NR18-001",
+    "tipo": "aplicacao",
+    "categoria": "NR-18",
+    "subcategoria": "Capacitação",
+    "pergunta": "Como deve ser feita a capacitação dos trabalhadores da indústria da construção?",
+    "resposta_esperada": "De acordo com o disposto na NR-01 (Disposições Gerais).",
+    "comportamento_esperado": "responder",
+    "fontes_esperadas": [
+      {
+        "fonte": "norma",
+        "source_code": "NR-18",
+        "item": "18.14.1",
+        "evidencia": "18.14.1 A capacitação dos trabalhadores da indústria da construção será feita de acordo com o disposto na NR-01 (Disposições Gerais)."
+      }
+    ],
+    "avisos_esperados": [],
+    "jurisdicao": "federal",
+    "risco_resposta": "medio",
+    "versao_fonte": "NR-18:d08adc4e",
+    "data_verificacao": "2026-09-22",
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (rascunho)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "NR23-001",
+    "tipo": "aplicacao",
+    "categoria": "NR-23",
+    "subcategoria": "Prevenção contra incêndio",
+    "pergunta": "O que a norma de proteção contra incêndio estabelece para os ambientes de trabalho?",
+    "resposta_esperada": "Medidas de prevenção contra incêndios nos ambientes de trabalho.",
+    "comportamento_esperado": "responder",
+    "fontes_esperadas": [
+      {
+        "fonte": "norma",
+        "source_code": "NR-23",
+        "item": "23.1.1",
+        "evidencia": "23.1.1 Esta Norma Regulamentadora - NR estabelece medidas de prevenção contra incêndios nos ambientes de trabalho."
+      }
+    ],
+    "avisos_esperados": [],
+    "jurisdicao": "federal",
+    "risco_resposta": "medio",
+    "versao_fonte": "NR-23:35c49c63",
+    "data_verificacao": "2026-09-22",
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (rascunho)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "NR26-001",
+    "tipo": "aplicacao",
+    "categoria": "NR-26",
+    "subcategoria": "Sinalização",
+    "pergunta": "O que a norma de sinalização de segurança estabelece?",
+    "resposta_esperada": "Medidas quanto à sinalização e identificação de segurança a serem adotadas nos locais de trabalho.",
+    "comportamento_esperado": "responder",
+    "fontes_esperadas": [
+      {
+        "fonte": "norma",
+        "source_code": "NR-26",
+        "item": "26.1.1",
+        "evidencia": "26.1.1 Esta Norma Regulamentadora - NR estabelece medidas quanto à sinalização e identificação de segurança a serem adotadas nos locais de trabalho."
+      }
+    ],
+    "avisos_esperados": [],
+    "jurisdicao": "federal",
+    "risco_resposta": "medio",
+    "versao_fonte": "NR-26:df2dc7ad",
+    "data_verificacao": "2026-09-22",
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (rascunho)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "NR35-003",
+    "tipo": "caso_real",
+    "categoria": "NR-35",
+    "subcategoria": "Planejamento",
+    "pergunta": "Antes de liberar um serviço de manutenção em altura, que hierarquia de medidas o planejamento deve seguir?",
+    "resposta_esperada": "Primeiro evitar o trabalho em altura quando houver alternativa; se não houver, eliminar o risco de queda; e, quando não for possível eliminar, minimizar as consequências da queda.",
+    "comportamento_esperado": "responder",
+    "fontes_esperadas": [
+      {
+        "fonte": "norma",
+        "source_code": "NR-35",
+        "item": "35.5.2",
+        "evidencia": "35.5.2 No planejamento do trabalho devem ser adotadas, de acordo com a seguinte hierarquia: a) medidas para evitar o trabalho em altura, sempre que existir meio alternativo de execução; b) medidas que eliminem o risco de queda dos trabalhadores, na impossibilidade de execução do trabalho de outra forma; e c) medidas que minimizem as consequências da queda, quando o risco de queda não puder ser eliminado."
+      }
+    ],
+    "avisos_esperados": [],
+    "jurisdicao": "federal",
+    "risco_resposta": "medio",
+    "versao_fonte": "NR-35:ade78234",
+    "data_verificacao": "2026-09-22",
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (rascunho)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "NR33-002",
+    "tipo": "caso_real",
+    "categoria": "NR-33",
+    "subcategoria": "Entrada",
+    "pergunta": "Antes de trabalhadores entrarem em um espaço confinado, o que deve ser verificado?",
+    "resposta_esperada": "As avaliações atmosféricas iniciais devem ser realizadas pelo supervisor de entrada, fora do espaço confinado, imediatamente antes da entrada dos trabalhadores, para verificar se o interior é seguro.",
+    "comportamento_esperado": "responder",
+    "fontes_esperadas": [
+      {
+        "fonte": "norma",
+        "source_code": "NR-33",
+        "item": "33.5.15.1",
+        "evidencia": "33.5.15.1 As avaliações atmosféricas iniciais do interior do espaço confinado devem ser realizadas com o supervisor de entrada fora do espaço confinado, imediatamente antes da entrada dos trabalhadores, para verificar se o seu interior é seguro."
+      }
+    ],
+    "avisos_esperados": [],
+    "jurisdicao": "federal",
+    "risco_resposta": "medio",
+    "versao_fonte": "NR-33:13d3a18b",
+    "data_verificacao": "2026-09-22",
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (rascunho)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "NR10-002",
+    "tipo": "caso_real",
+    "categoria": "NR-10",
+    "subcategoria": "Permissão de trabalho",
+    "pergunta": "Para um serviço não rotineiro em instalações elétricas, o que deve ser emitido antes do início dos trabalhos?",
+    "resposta_esperada": "Deve ser emitida permissão de trabalho, precedida de análise de riscos, aprovada por trabalhador autorizado.",
+    "comportamento_esperado": "responder",
+    "fontes_esperadas": [
+      {
+        "fonte": "norma",
+        "source_code": "NR-10",
+        "item": "10.7.2",
+        "evidencia": "10.7.2 Para os serviços em eletricidade e os trabalhos em proximidade de instalações elétricas não rotineiros deve ser emitida permissão de trabalho, precedida de análise de riscos, aprovada por trabalhador autorizado."
+      }
+    ],
+    "avisos_esperados": [],
+    "jurisdicao": "federal",
+    "risco_resposta": "medio",
+    "versao_fonte": "NR-10:55860d42",
+    "data_verificacao": "2026-09-22",
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (rascunho)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "NR12-002",
+    "tipo": "caso_real",
+    "categoria": "NR-12",
+    "subcategoria": "Manutenção",
+    "pergunta": "Durante a manutenção de uma máquina, o que a norma exige quanto ao acionamento por pessoas não autorizadas?",
+    "resposta_esperada": "Se o acionamento por pessoas não autorizadas puder oferecer risco à saúde ou integridade física, a máquina deve possuir sistema que possibilite o bloqueio de seus dispositivos de acionamento.",
+    "comportamento_esperado": "responder",
+    "fontes_esperadas": [
+      {
+        "fonte": "norma",
+        "source_code": "NR-12",
+        "item": "12.4.9",
+        "evidencia": "12.4.9 As máquinas e equipamentos, cujo acionamento por pessoas não autorizadas possam oferecer risco à saúde ou integridade física de qualquer pessoa, devem possuir sistema que possibilite o bloqueio de seus dispositivos de acionamento."
+      }
+    ],
+    "avisos_esperados": [],
+    "jurisdicao": "federal",
+    "risco_resposta": "medio",
+    "versao_fonte": "NR-12:d4a32021",
+    "data_verificacao": "2026-09-22",
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (rascunho)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "NR06-004",
+    "tipo": "caso_real",
+    "categoria": "NR-06",
+    "subcategoria": "EPI danificado",
+    "pergunta": "O EPI de um trabalhador foi danificado durante o uso. O que ele deve fazer e o que cabe à empresa?",
+    "resposta_esperada": "O trabalhador deve comunicar a organização quando o EPI ficar danificado; cabe à organização fornecer o EPI gratuitamente, em perfeito estado de conservação e funcionamento.",
+    "comportamento_esperado": "responder",
+    "fontes_esperadas": [
+      {
+        "fonte": "norma",
+        "source_code": "NR-06",
+        "item": "6.6.1",
+        "evidencia": "6.6.1 Cabe ao trabalhador, quanto ao EPI: a) usar o fornecido pela organização, observado o disposto no item 6.5.2; b) utilizar apenas para a finalidade a que se destina; c) responsabilizar-se pela limpeza, guarda e conservação; d) comunicar à organização quando extraviado, danificado ou qualquer alteração que o torne impróprio para uso; e e) cumprir as determinações da organização sobre o uso adequado."
+      },
+      {
+        "fonte": "norma",
+        "source_code": "NR-06",
+        "item": "6.5.1",
+        "evidencia": "6.5.1 Cabe à organização, quanto ao EPI: a) adquirir somente o aprovado pelo órgão de âmbito nacional competente em matéria de segurança e saúde no trabalho; b) orientar e treinar o empregado; c) fornecer ao empregado, gratuitamente, EPI adequado ao risco, em perfeito estado de conservação e funcionamento, nas situações previstas no subitem 1.5.5.1.2 da Norma"
+      }
+    ],
+    "avisos_esperados": [],
+    "jurisdicao": "federal",
+    "risco_resposta": "medio",
+    "versao_fonte": "NR-06:b4979ff2",
+    "data_verificacao": "2026-09-22",
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (rascunho)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "NR07-004",
+    "tipo": "caso_real",
+    "categoria": "NR-07",
+    "subcategoria": "Retorno ao trabalho",
+    "pergunta": "Um empregado ficou afastado 35 dias por doença não ocupacional. Antes de retornar, ele precisa passar por exame clínico?",
+    "resposta_esperada": "Sim: no exame de retorno ao trabalho, o exame clínico deve ser realizado antes que o empregado reassuma suas funções, quando ausente por 30 dias ou mais, por doença ou acidente, ocupacional ou não.",
+    "comportamento_esperado": "responder",
+    "fontes_esperadas": [
+      {
+        "fonte": "norma",
+        "source_code": "NR-07",
+        "item": "7.5.9",
+        "evidencia": "7.5.9 No exame de retorno ao trabalho, o exame clínico deve ser realizado antes que o empregado reassuma suas funções, quando ausente por período igual ou superior a 30 (trinta) dias por motivo de doença ou acidente, de natureza ocupacional ou não."
+      }
+    ],
+    "avisos_esperados": [],
+    "jurisdicao": "federal",
+    "risco_resposta": "medio",
+    "versao_fonte": "NR-07:682207e1",
+    "data_verificacao": "2026-09-22",
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (rascunho)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "NR18-002",
+    "tipo": "caso_real",
+    "categoria": "NR-18",
+    "subcategoria": "Proteção contra quedas",
+    "pergunta": "A partir de que momento da obra é obrigatória a instalação de proteção contra queda na periferia da edificação?",
+    "resposta_esperada": "A partir do início dos serviços necessários à concretagem da primeira laje.",
+    "comportamento_esperado": "responder",
+    "fontes_esperadas": [
+      {
+        "fonte": "norma",
+        "source_code": "NR-18",
+        "item": "18.9.4",
+        "evidencia": "18.9.4 É obrigatória, na periferia da edificação, a instalação de proteção contra queda de trabalhadores e projeção de materiais a partir do início dos serviços necessários à concretagem da primeira laje."
+      }
+    ],
+    "avisos_esperados": [],
+    "jurisdicao": "federal",
+    "risco_resposta": "medio",
+    "versao_fonte": "NR-18:d08adc4e",
+    "data_verificacao": "2026-09-22",
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (rascunho)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "NR20-001",
+    "tipo": "caso_real",
+    "categoria": "NR-20",
+    "subcategoria": "Inflamáveis e combustíveis",
+    "pergunta": "Que documento a empresa deve elaborar para operações com inflamáveis em instalações classes I, II ou III?",
+    "resposta_esperada": "A análise de riscos das operações que envolvam processo ou processamento nas atividades com inflamáveis e líquidos combustíveis.",
+    "comportamento_esperado": "responder",
+    "fontes_esperadas": [
+      {
+        "fonte": "norma",
+        "source_code": "NR-20",
+        "item": "20.7.1",
+        "evidencia": "20.7.1 Nas instalações classes I, II e III, o empregador deve elaborar e documentar as análises de riscos das operações que envolvam processo ou processamento nas atividades de extração, produção, armazenamento, transferência, manuseio e manipulação de inflamáveis e de líquidos combustíveis."
+      }
+    ],
+    "avisos_esperados": [],
+    "jurisdicao": "federal",
+    "risco_resposta": "medio",
+    "versao_fonte": "NR-20:ff993fc1",
+    "data_verificacao": "2026-09-22",
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (rascunho)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "NR05-002",
+    "tipo": "contexto_incompleto",
+    "categoria": "NR-05",
+    "subcategoria": "Dimensionamento",
+    "pergunta": "Preciso de CIPA?",
+    "resposta_esperada": "Depende: a CIPA é dimensionada por estabelecimento conforme o Quadro I da norma; faltam o número de empregados e o grau de risco do estabelecimento.",
+    "comportamento_esperado": "pedir_contexto",
+    "fontes_esperadas": [
+      {
+        "fonte": "norma",
+        "source_code": "NR-05",
+        "item": "5.4.1",
+        "evidencia": "5.4.1 A CIPA será constituída por estabelecimento e composta de representantes da organização e dos empregados, de acordo com o dimensionamento previsto no Quadro I desta NR, ressalvadasas disposições para setores econômicos específicos."
+      }
+    ],
+    "avisos_esperados": [
+      "contexto"
+    ],
+    "jurisdicao": "federal",
+    "risco_resposta": "medio",
+    "versao_fonte": "NR-05:35ba381c",
+    "data_verificacao": "2026-09-22",
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (rascunho)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "NR04-001",
+    "tipo": "contexto_incompleto",
+    "categoria": "NR-04",
+    "subcategoria": "Dimensionamento",
+    "pergunta": "Preciso de SESMT?",
+    "resposta_esperada": "Depende: o dimensionamento do SESMT vincula-se ao número de empregados da organização e ao maior grau de risco entre a atividade econômica principal e a preponderante no estabelecimento.",
+    "comportamento_esperado": "pedir_contexto",
+    "fontes_esperadas": [
+      {
+        "fonte": "norma",
+        "source_code": "NR-04",
+        "item": "4.5.1",
+        "evidencia": "4.5.1 O dimensionamento do SESMT vincula-se ao número de empregados da organização e ao maior grau de risco entre a atividade econômica principal e atividade econômica preponderante no estabelecimento, nos termos dos Anexos I e II, observadas as exceções previstas nesta NR."
+      }
+    ],
+    "avisos_esperados": [
+      "contexto"
+    ],
+    "jurisdicao": "federal",
+    "risco_resposta": "medio",
+    "versao_fonte": "NR-04:2c3e97cb",
+    "data_verificacao": "2026-09-22",
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (rascunho)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "NR07-005",
+    "tipo": "contexto_incompleto",
+    "categoria": "NR-07",
+    "subcategoria": "Dispensa",
+    "pergunta": "Preciso de PCMSO?",
+    "resposta_esperada": "Depende: a organização pode estar dispensada da elaboração do PCMSO, de acordo com a NR-01, quando a função que o empregado exerce ou irá exercer não apresenta riscos ocupacionais; faltam esses dados sobre a atividade.",
+    "comportamento_esperado": "pedir_contexto",
+    "fontes_esperadas": [
+      {
+        "fonte": "norma",
+        "source_code": "NR-07",
+        "item": "7.7.2",
+        "evidencia": "7.7.2 A organização deve informar, ao médico do trabalho ou ao serviço médico especializado em medicina do trabalho, que está dispensada da elaboração do PCMSO, de acordo com a NR-01, e que a função que o empregado exerce ou irá exercer não apresenta riscos ocupacionais."
+      }
+    ],
+    "avisos_esperados": [
+      "contexto"
+    ],
+    "jurisdicao": "federal",
+    "risco_resposta": "medio",
+    "versao_fonte": "NR-07:682207e1",
+    "data_verificacao": "2026-09-22",
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (rascunho)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "NR23-002",
+    "tipo": "contexto_incompleto",
+    "categoria": "NR-23",
+    "subcategoria": "Brigada de incêndio",
+    "pergunta": "Preciso de brigada de incêndio?",
+    "resposta_esperada": "Depende: a norma exige que a organização adote medidas de prevenção contra incêndios, entre elas uma eventual brigada, em conformidade com a legislação estadual; faltam o estado e o tipo de estabelecimento.",
+    "comportamento_esperado": "pedir_contexto",
+    "fontes_esperadas": [
+      {
+        "fonte": "norma",
+        "source_code": "NR-23",
+        "item": "23.3.1",
+        "evidencia": "23.3.1 Toda organização deve adotar medidas de prevenção contra incêndios em conformidade com a legislação estadual e, quando aplicável, de forma complementar, com as normas técnicas oficiais."
+      }
+    ],
+    "avisos_esperados": [
+      "contexto"
+    ],
+    "jurisdicao": "federal",
+    "risco_resposta": "medio",
+    "versao_fonte": "NR-23:35c49c63",
+    "data_verificacao": "2026-09-22",
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (rascunho)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "NR06-005",
+    "tipo": "contexto_incompleto",
+    "categoria": "NR-06",
+    "subcategoria": "Seleção",
+    "pergunta": "Qual EPI devo fornecer?",
+    "resposta_esperada": "Depende: a seleção do EPI deve considerar a atividade exercida, os perigos identificados e os riscos ocupacionais avaliados, entre outros fatores; faltam esses dados.",
+    "comportamento_esperado": "pedir_contexto",
+    "fontes_esperadas": [
+      {
+        "fonte": "norma",
+        "source_code": "NR-06",
+        "item": "6.5.2",
+        "evidencia": "6.5.2 A organização deve selecionar os EPI, considerando: a) a atividade exercida; b) as medidas de prevenção em função dos perigos identificados e dos riscos ocupacionais avaliados; c) o disposto no Anexo I;"
+      }
+    ],
+    "avisos_esperados": [
+      "contexto"
+    ],
+    "jurisdicao": "federal",
+    "risco_resposta": "medio",
+    "versao_fonte": "NR-06:b4979ff2",
+    "data_verificacao": "2026-09-22",
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (rascunho)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "NR35-004",
+    "tipo": "contexto_incompleto",
+    "categoria": "NR-35",
+    "subcategoria": "Capacitação",
+    "pergunta": "Que treinamento é exigido para trabalhar em altura?",
+    "resposta_esperada": "Depende: a norma exige capacitação com treinamento teórico e prático, inicial, periódico e eventual, mas o conteúdo específico varia conforme a atividade; faltam esses dados.",
+    "comportamento_esperado": "pedir_contexto",
+    "fontes_esperadas": [
+      {
+        "fonte": "norma",
+        "source_code": "NR-35",
+        "item": "35.4.2",
+        "evidencia": "35.4.2 Considera-se trabalhador capacitado para trabalho em altura aquele que foi submetido e aprovado no processo de capacitação, envolvendo treinamento, teórico e prático, inicial, periódico e eventual, observado o disposto na NR-01."
+      }
+    ],
+    "avisos_esperados": [
+      "contexto"
+    ],
+    "jurisdicao": "federal",
+    "risco_resposta": "medio",
+    "versao_fonte": "NR-35:ade78234",
+    "data_verificacao": "2026-09-22",
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (rascunho)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "GERAL-004",
+    "tipo": "contexto_incompleto",
+    "categoria": "Exames ocupacionais",
+    "subcategoria": "Periodicidade",
+    "pergunta": "Qual a periodicidade dos exames?",
+    "resposta_esperada": "Depende: a periodicidade varia conforme o tipo de exame, a norma aplicável e o grau de risco da atividade; falta especificar de qual exame se trata.",
+    "comportamento_esperado": "pedir_contexto",
+    "fontes_esperadas": [],
+    "avisos_esperados": [
+      "contexto"
+    ],
+    "jurisdicao": "federal",
+    "risco_resposta": "medio",
+    "versao_fonte": null,
+    "data_verificacao": null,
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (rascunho)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "NR35-005",
+    "tipo": "pegadinha",
+    "categoria": "NR-35",
+    "subcategoria": "Campo de aplicação",
+    "pergunta": "É verdade que todo trabalhador que usa escada está automaticamente sujeito à NR-35?",
+    "resposta_esperada": "Não: a NR-35 se aplica a toda atividade com diferença de nível acima de 2,0 metros do nível inferior, onde haja risco de queda — o uso de escada, por si só, não é o critério.",
+    "comportamento_esperado": "responder",
+    "fontes_esperadas": [
+      {
+        "fonte": "norma",
+        "source_code": "NR-35",
+        "item": "35.2.1",
+        "evidencia": "35.2.1 Aplica-se o disposto nessa Norma a toda atividade com diferença de nível acima de 2,0m (dois metros) do nível inferior, onde haja risco de queda."
+      }
+    ],
+    "avisos_esperados": [],
+    "proibido_regex": [
+      "todo trabalhador que usa escada precisa",
+      "(sim|qualquer uso de escada)[^.]{0,30}nr-?35"
+    ],
+    "jurisdicao": "federal",
+    "risco_resposta": "medio",
+    "versao_fonte": "NR-35:ade78234",
+    "data_verificacao": "2026-09-22",
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (rascunho)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "NR07-006",
+    "tipo": "pegadinha",
+    "categoria": "NR-07",
+    "subcategoria": "ASO",
+    "pergunta": "É verdade que o ASO é opcional e a empresa pode dispensar sua emissão?",
+    "resposta_esperada": "Não: para cada exame clínico ocupacional realizado, o médico emitirá o ASO, que deve ser comprovadamente disponibilizado ao empregado.",
+    "comportamento_esperado": "responder",
+    "fontes_esperadas": [
+      {
+        "fonte": "norma",
+        "source_code": "NR-07",
+        "item": "7.5.19",
+        "evidencia": "7.5.19 Para cada exame clínico ocupacional realizado, o médico emitirá Atestado de Saúde Ocupacional - ASO, que deve ser comprovadamente disponibilizado ao empregado, devendo ser fornecido em meio físico quando solicitado."
+      }
+    ],
+    "avisos_esperados": [],
+    "proibido_regex": [
+      "é opcional",
+      "pode (ser )?dispensad"
+    ],
+    "jurisdicao": "federal",
+    "risco_resposta": "medio",
+    "versao_fonte": "NR-07:682207e1",
+    "data_verificacao": "2026-09-22",
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (rascunho)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "NR05-003",
+    "tipo": "pegadinha",
+    "categoria": "NR-05",
+    "subcategoria": "Dispensa",
+    "pergunta": "É verdade que a CIPA é obrigatória para toda empresa, de qualquer tamanho?",
+    "resposta_esperada": "Não: o Microempreendedor Individual (MEI) está dispensado de nomear o representante da NR-05, e o dimensionamento da CIPA depende do número de empregados e do grau de risco do estabelecimento.",
+    "comportamento_esperado": "responder",
+    "fontes_esperadas": [
+      {
+        "fonte": "norma",
+        "source_code": "NR-05",
+        "item": "5.4.13.2",
+        "evidencia": "5.4.13.2 O microempreendedor individual - MEI está dispensado de nomear o representante da NR-05."
+      }
+    ],
+    "avisos_esperados": [],
+    "proibido_regex": [
+      "obrigatória para toda",
+      "qualquer tamanho[^.]{0,20}(sim|obrigat)"
+    ],
+    "jurisdicao": "federal",
+    "risco_resposta": "medio",
+    "versao_fonte": "NR-05:35ba381c",
+    "data_verificacao": "2026-09-22",
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (rascunho)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "NR35-006",
+    "tipo": "pegadinha",
+    "categoria": "NR-35",
+    "subcategoria": "Campo de aplicação",
+    "pergunta": "É verdade que só é considerado trabalho em altura acima de 3 metros de altura?",
+    "resposta_esperada": "Não: a NR-35 se aplica a toda atividade com diferença de nível acima de 2,0 metros do nível inferior, onde haja risco de queda.",
+    "comportamento_esperado": "responder",
+    "fontes_esperadas": [
+      {
+        "fonte": "norma",
+        "source_code": "NR-35",
+        "item": "35.2.1",
+        "evidencia": "35.2.1 Aplica-se o disposto nessa Norma a toda atividade com diferença de nível acima de 2,0m (dois metros) do nível inferior, onde haja risco de queda."
+      }
+    ],
+    "avisos_esperados": [],
+    "proibido_regex": [
+      "acima de 3 ?metros",
+      "(sim|correto|isso mesmo)[^.]{0,30}3 metros"
+    ],
+    "jurisdicao": "federal",
+    "risco_resposta": "medio",
+    "versao_fonte": "NR-35:ade78234",
+    "data_verificacao": "2026-09-22",
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (rascunho)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "NR12-003",
+    "tipo": "pegadinha",
+    "categoria": "NR-12",
+    "subcategoria": "Campo de aplicação",
+    "pergunta": "É verdade que a NR-12 só vale para máquinas novas?",
+    "resposta_esperada": "Não: a NR-12 estabelece requisitos tanto para a fase de projeto quanto para a fase de utilização das máquinas e equipamentos, que inclui transporte, montagem, instalação, ajuste, operação, limpeza, manutenção, inspeção, desativação e desmonte.",
+    "comportamento_esperado": "responder",
+    "fontes_esperadas": [
+      {
+        "fonte": "norma",
+        "source_code": "NR-12",
+        "item": "12.1.1",
+        "evidencia": "12.1.1 Esta Norma Regulamentadora - NR e seus anexos definem referências técnicas, princípios fundamentais e medidas de proteção para resguardar a saúde e a integridade física dos trabalhadores e estabelece requisitos mínimos para a prevenção de acidentes e doenças do trabalho nas fases de projeto e de utilização de máquinas e equipamentos,"
+      },
+      {
+        "fonte": "norma",
+        "source_code": "NR-12",
+        "item": "12.1.1.1",
+        "evidencia": "12.1.1.1 Entende-se como fase de utilização o transporte, montagem, instalação, ajuste, operação, limpeza, manutenção, inspeção, desativação e desmonte da máquina ou equipamento."
+      }
+    ],
+    "avisos_esperados": [],
+    "proibido_regex": [
+      "(sim|apenas|somente|só)[^.]{0,20}m[aá]quinas novas",
+      "n[ãa]o se aplica a m[aá]quinas (usadas|antigas|existentes)"
+    ],
+    "jurisdicao": "federal",
+    "risco_resposta": "medio",
+    "versao_fonte": "NR-12:d4a32021",
+    "data_verificacao": "2026-09-22",
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (rascunho)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "NR33-003",
+    "tipo": "pegadinha",
+    "categoria": "NR-33",
+    "subcategoria": "Espaço confinado",
+    "pergunta": "É verdade que todo local fechado é considerado espaço confinado?",
+    "resposta_esperada": "Não: espaço confinado exige, simultaneamente, não ser projetado para ocupação humana contínua, ter meios limitados de entrada e saída, e possível atmosfera perigosa — não basta estar fechado.",
+    "comportamento_esperado": "responder",
+    "fontes_esperadas": [
+      {
+        "fonte": "norma",
+        "source_code": "NR-33",
+        "item": "33.2.2",
+        "evidencia": "33.2.2 Considera-se espaço confinado qualquer área ou ambiente que atenda simultaneamente aos seguintes requisitos: a) não ser projetado para ocupação humana contínua; b) possuir meios limitados de entrada e saída; e c) em que exista ou possa existir atmosfera perigosa."
+      }
+    ],
+    "avisos_esperados": [],
+    "proibido_regex": [
+      "todo local fechado (e|é) espa[çc]o confinado",
+      "qualquer (sala|ambiente) fechado[^.]{0,20}espa[çc]o confinado"
+    ],
+    "jurisdicao": "federal",
+    "risco_resposta": "medio",
+    "versao_fonte": "NR-33:13d3a18b",
+    "data_verificacao": "2026-09-22",
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (rascunho)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "NR01-003",
+    "tipo": "pegadinha",
+    "categoria": "NR-01",
+    "subcategoria": "Dispensa",
+    "pergunta": "É verdade que o PGR só precisa ser feito em empresas com mais de 20 funcionários?",
+    "resposta_esperada": "Não: a dispensa de elaborar o PGR depende da classificação da empresa (MEI, ou ME/EPP com grau de risco 1 ou 2 que não identifiquem exposições ocupacionais), não de um número fixo de funcionários.",
+    "comportamento_esperado": "responder",
+    "fontes_esperadas": [
+      {
+        "fonte": "norma",
+        "source_code": "NR-01",
+        "item": "1.8.4",
+        "evidencia": "1.8.4 As microempresas e empresas de pequeno porte, graus de risco 1 e 2, que no levantamento preliminar de perigos não identificarem exposições ocupacionais a agentes físicos, químicos e biológicos, em conformidade com a NR-9, e declararem as informações digitais na forma dosubitem 1.6.1, ficam dispensadas da elaboração do PGR."
+      }
+    ],
+    "avisos_esperados": [],
+    "proibido_regex": [
+      "acima de 20 funcionarios",
+      "(sim|somente|apenas)[^.]{0,30}20 funcionarios"
+    ],
+    "jurisdicao": "federal",
+    "risco_resposta": "medio",
+    "versao_fonte": "NR-01:b1eec52b",
+    "data_verificacao": "2026-09-22",
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (rascunho)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "GERAL-005",
+    "tipo": "jurisdicional",
+    "categoria": "AVCB/CLCB",
+    "subcategoria": "Exigência local",
+    "pergunta": "Minha empresa precisa de AVCB ou CLCB em Santa Catarina?",
+    "resposta_esperada": "Depende da legislação estadual do Corpo de Bombeiros de Santa Catarina, que não está na base; pedir o município, a atividade e os dados da edificação.",
+    "comportamento_esperado": "alertar_jurisdicao",
+    "fontes_esperadas": [],
+    "avisos_esperados": [
+      "jurisdicao",
+      "contexto"
+    ],
+    "jurisdicao": "estadual",
+    "risco_resposta": "alto",
+    "versao_fonte": null,
+    "data_verificacao": null,
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (rascunho)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "GERAL-006",
+    "tipo": "jurisdicional",
+    "categoria": "Alvará",
+    "subcategoria": "Exigência local",
+    "pergunta": "Minha empresa precisa de alvará de funcionamento municipal para operar?",
+    "resposta_esperada": "Depende da legislação municipal sobre alvará de funcionamento, que não está na base; pedir o município e a atividade exercida.",
+    "comportamento_esperado": "alertar_jurisdicao",
+    "fontes_esperadas": [],
+    "avisos_esperados": [
+      "jurisdicao",
+      "contexto"
+    ],
+    "jurisdicao": "municipal",
+    "risco_resposta": "alto",
+    "versao_fonte": null,
+    "data_verificacao": null,
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (rascunho)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "GERAL-007",
+    "tipo": "jurisdicional",
+    "categoria": "Licença ambiental",
+    "subcategoria": "Exigência local",
+    "pergunta": "Minha empresa precisa de licença ambiental estadual para funcionar?",
+    "resposta_esperada": "Depende da legislação estadual e do órgão ambiental competente, que não está na base; pedir o estado e o tipo de atividade.",
+    "comportamento_esperado": "alertar_jurisdicao",
+    "fontes_esperadas": [],
+    "avisos_esperados": [
+      "jurisdicao",
+      "contexto"
+    ],
+    "jurisdicao": "estadual",
+    "risco_resposta": "alto",
+    "versao_fonte": null,
+    "data_verificacao": null,
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (rascunho)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "GERAL-008",
+    "tipo": "jurisdicional",
+    "categoria": "Código de obras",
+    "subcategoria": "Exigência local",
+    "pergunta": "Minha empresa precisa seguir o código de obras do município para o pé-direito mínimo?",
+    "resposta_esperada": "Depende do código de obras do município, que não está na base; pedir o município e o uso pretendido da edificação.",
+    "comportamento_esperado": "alertar_jurisdicao",
+    "fontes_esperadas": [],
+    "avisos_esperados": [
+      "jurisdicao",
+      "contexto"
+    ],
+    "jurisdicao": "municipal",
+    "risco_resposta": "alto",
+    "versao_fonte": null,
+    "data_verificacao": null,
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (rascunho)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "GERAL-009",
+    "tipo": "jurisdicional",
+    "categoria": "Extintores",
+    "subcategoria": "Exigência local",
+    "pergunta": "Minha empresa precisa seguir a lei estadual do Paraná sobre extintores e inspeção?",
+    "resposta_esperada": "Depende da legislação estadual do Paraná sobre extintores e inspeção, que não está na base; pedir o município e a atividade exercida.",
+    "comportamento_esperado": "alertar_jurisdicao",
+    "fontes_esperadas": [],
+    "avisos_esperados": [
+      "jurisdicao",
+      "contexto"
+    ],
+    "jurisdicao": "estadual",
+    "risco_resposta": "alto",
+    "versao_fonte": null,
+    "data_verificacao": null,
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (rascunho)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "GERAL-010",
+    "tipo": "jurisdicional",
+    "categoria": "Inspeção predial",
+    "subcategoria": "Exigência local",
+    "pergunta": "Minha empresa precisa de inspeção predial obrigatória pela lei municipal?",
+    "resposta_esperada": "Depende da lei municipal de inspeção predial, que não está na base; pedir o município e as características da edificação.",
+    "comportamento_esperado": "alertar_jurisdicao",
+    "fontes_esperadas": [],
+    "avisos_esperados": [
+      "jurisdicao",
+      "contexto"
+    ],
+    "jurisdicao": "municipal",
+    "risco_resposta": "alto",
+    "versao_fonte": null,
+    "data_verificacao": null,
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (rascunho)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "GERAL-011",
+    "tipo": "jurisdicional",
+    "categoria": "Brigada de incêndio",
+    "subcategoria": "Exigência local",
+    "pergunta": "Minha empresa precisa atender à exigência do Corpo de Bombeiros do RS quanto à brigada de incêndio?",
+    "resposta_esperada": "Depende da legislação estadual do Corpo de Bombeiros do Rio Grande do Sul, que não está na base; pedir o município e os dados da edificação.",
+    "comportamento_esperado": "alertar_jurisdicao",
+    "fontes_esperadas": [],
+    "avisos_esperados": [
+      "jurisdicao",
+      "contexto"
+    ],
+    "jurisdicao": "estadual",
+    "risco_resposta": "alto",
+    "versao_fonte": null,
+    "data_verificacao": null,
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (rascunho)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "GERAL-012",
+    "tipo": "atribuicao_profissional",
+    "categoria": "LTCAT",
+    "subcategoria": "Habilitação",
+    "pergunta": "Técnico de segurança pode assinar LTCAT?",
+    "resposta_esperada": "Depende da habilitação profissional exigida para o LTCAT; o Assistente explica o requisito e remete ao conselho competente.",
+    "comportamento_esperado": "alertar_habilitacao",
+    "fontes_esperadas": [],
+    "avisos_esperados": [
+      "profissional_habilitado"
+    ],
+    "jurisdicao": "federal",
+    "risco_resposta": "alto",
+    "versao_fonte": null,
+    "data_verificacao": null,
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (rascunho)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "GERAL-013",
+    "tipo": "atribuicao_profissional",
+    "categoria": "ART",
+    "subcategoria": "Habilitação",
+    "pergunta": "Quem pode assinar a ART de instalação elétrica?",
+    "resposta_esperada": "Depende da habilitação profissional exigida para a ART de instalação elétrica; o Assistente explica o requisito e remete ao conselho competente.",
+    "comportamento_esperado": "alertar_habilitacao",
+    "fontes_esperadas": [],
+    "avisos_esperados": [
+      "profissional_habilitado"
+    ],
+    "jurisdicao": "federal",
+    "risco_resposta": "alto",
+    "versao_fonte": null,
+    "data_verificacao": null,
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (rascunho)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "GERAL-014",
+    "tipo": "atribuicao_profissional",
+    "categoria": "PCMSO",
+    "subcategoria": "Habilitação",
+    "pergunta": "Quem pode elaborar o PCMSO?",
+    "resposta_esperada": "Depende da habilitação profissional exigida para elaborar o PCMSO; o Assistente explica o requisito e remete ao conselho competente.",
+    "comportamento_esperado": "alertar_habilitacao",
+    "fontes_esperadas": [],
+    "avisos_esperados": [
+      "profissional_habilitado"
+    ],
+    "jurisdicao": "federal",
+    "risco_resposta": "alto",
+    "versao_fonte": null,
+    "data_verificacao": null,
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (rascunho)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "GERAL-015",
+    "tipo": "atribuicao_profissional",
+    "categoria": "Projeto de máquinas",
+    "subcategoria": "Habilitação",
+    "pergunta": "Quem pode emitir o projeto de proteção de máquinas?",
+    "resposta_esperada": "Depende da habilitação profissional exigida para o projeto de proteção de máquinas; o Assistente explica o requisito e remete ao conselho competente.",
+    "comportamento_esperado": "alertar_habilitacao",
+    "fontes_esperadas": [],
+    "avisos_esperados": [
+      "profissional_habilitado"
+    ],
+    "jurisdicao": "federal",
+    "risco_resposta": "alto",
+    "versao_fonte": null,
+    "data_verificacao": null,
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (rascunho)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "GERAL-016",
+    "tipo": "atribuicao_profissional",
+    "categoria": "NR-35",
+    "subcategoria": "Instrutor",
+    "pergunta": "Quem pode ministrar o treinamento de NR-35?",
+    "resposta_esperada": "Instrutores com comprovada proficiência no assunto, sob a responsabilidade de profissional qualificado ou legalmente habilitado em segurança do trabalho; a habilitação específica deve ser confirmada com o conselho competente.",
+    "comportamento_esperado": "alertar_habilitacao",
+    "fontes_esperadas": [
+      {
+        "fonte": "norma",
+        "source_code": "NR-35",
+        "item": "35.4.3",
+        "evidencia": "35.4.3 Os treinamentos devem ser ministrados por instrutores com comprovada proficiência no assunto, sob a responsabilidade de profissional qualificado ou legalmente habilitado em segurança no trabalho."
+      }
+    ],
+    "avisos_esperados": [
+      "profissional_habilitado"
+    ],
+    "jurisdicao": "federal",
+    "risco_resposta": "alto",
+    "versao_fonte": "NR-35:ade78234",
+    "data_verificacao": "2026-09-22",
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (rascunho)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "GERAL-017",
+    "tipo": "sem_evidencia",
+    "categoria": "RAT/FAP",
+    "subcategoria": "Alíquota",
+    "pergunta": "Qual é a alíquota do RAT/FAP da minha empresa?",
+    "resposta_esperada": "Não há fundamento nas fontes disponíveis (a base só tem as NRs federais, não a legislação previdenciária); deve recusar.",
+    "comportamento_esperado": "recusar_sem_evidencia",
+    "fontes_esperadas": [],
+    "avisos_esperados": [],
+    "jurisdicao": "federal",
+    "risco_resposta": "alto",
+    "versao_fonte": null,
+    "data_verificacao": null,
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (rascunho)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "GERAL-018",
+    "tipo": "sem_evidencia",
+    "categoria": "PPP",
+    "subcategoria": "Prazo de guarda",
+    "pergunta": "Por quanto tempo a empresa deve guardar o PPP?",
+    "resposta_esperada": "Não há fundamento nas fontes disponíveis (a base só tem as NRs federais); deve recusar.",
+    "comportamento_esperado": "recusar_sem_evidencia",
+    "fontes_esperadas": [],
+    "avisos_esperados": [],
+    "jurisdicao": "federal",
+    "risco_resposta": "alto",
+    "versao_fonte": null,
+    "data_verificacao": null,
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (rascunho)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "GERAL-019",
+    "tipo": "sem_evidencia",
+    "categoria": "NR-99",
+    "subcategoria": "Norma inexistente",
+    "pergunta": "O que a NR-99 estabelece?",
+    "resposta_esperada": "Não há fundamento nas fontes disponíveis (não existe NR-99 na base); deve recusar.",
+    "comportamento_esperado": "recusar_sem_evidencia",
+    "fontes_esperadas": [],
+    "avisos_esperados": [],
+    "jurisdicao": "federal",
+    "risco_resposta": "alto",
+    "versao_fonte": null,
+    "data_verificacao": null,
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (rascunho)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "GERAL-020",
+    "tipo": "sem_evidencia",
+    "categoria": "ISO 14001",
+    "subcategoria": "Certificação",
+    "pergunta": "A certificação ISO 14001 é obrigatória para funcionar?",
+    "resposta_esperada": "Não há fundamento nas fontes disponíveis (a base só tem as NRs federais, não normas técnicas de certificação); deve recusar.",
+    "comportamento_esperado": "recusar_sem_evidencia",
+    "fontes_esperadas": [],
+    "avisos_esperados": [],
+    "jurisdicao": "federal",
+    "risco_resposta": "alto",
+    "versao_fonte": null,
+    "data_verificacao": null,
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (rascunho)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "GERAL-021",
+    "tipo": "sem_evidencia",
+    "categoria": "Piso salarial",
+    "subcategoria": "Técnico de segurança do trabalho",
+    "pergunta": "Qual é o piso salarial do técnico de segurança do trabalho?",
+    "resposta_esperada": "Não há fundamento nas fontes disponíveis (a base só tem as NRs federais, não legislação trabalhista salarial); deve recusar.",
+    "comportamento_esperado": "recusar_sem_evidencia",
+    "fontes_esperadas": [],
+    "avisos_esperados": [],
+    "jurisdicao": "federal",
+    "risco_resposta": "alto",
+    "versao_fonte": null,
+    "data_verificacao": null,
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (rascunho)",
+    "validado_por": null,
+    "validado_em": null
+  }
+]
