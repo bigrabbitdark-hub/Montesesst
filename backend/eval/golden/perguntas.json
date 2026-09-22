@@ -1148,7 +1148,7 @@
     ],
     "avisos_esperados": [],
     "proibido_regex": [
-      "(?<!(?:não|nao|nem|nunca|jamais)[^.]{0,20})acima de 20 funcion[aá]rios",
+      "(?<!(?:não|nao|nem|nunca|jamais)[^.]{0,30})acima de 20 funcion[aá]rios",
       "(?<!(?:não|nao|nem|nunca|jamais)[^.]{0,20})(sim|somente|apenas)[^.]{0,30}20 funcion[aá]rios"
     ],
     "jurisdicao": "federal",
