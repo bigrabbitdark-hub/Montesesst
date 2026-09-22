@@ -1,6 +1,6 @@
 'use client';
 
-import { useId, useState } from 'react';
+import { useId, useLayoutEffect, useRef, useState } from 'react';
 import type { KeyboardEvent, PointerEvent } from 'react';
 
 export interface ChartSeries {
@@ -38,12 +38,37 @@ export function AreaChart({
 }) {
   const gid = useId().replace(/:/g, '');
   const [hover, setHover] = useState<number | null>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const tooltipRef = useRef<HTMLDivElement>(null);
+  // Posição da tooltip em px, medida a partir da largura REAL do container (ver
+  // efeito abaixo). `null` = ainda não medida (usa o palpite em % como 1º pintura).
+  const [tooltipLeftPx, setTooltipLeftPx] = useState<number | null>(null);
   const n = labels.length;
+  const x = (i: number) => PAD.l + (n > 1 ? (i / (n - 1)) * IW : IW / 2);
+
+  // Corrige a posição da tooltip ANTES da pintura do navegador (useLayoutEffect),
+  // usando a largura real do container e da própria tooltip — evita que ela
+  // estoure a borda direita em cards estreitos (mobile), onde 70% do container
+  // + a largura mínima da tooltip não cabe (bug encontrado na verificação da
+  // Tarefa 10 nesta tarefa).
+  useLayoutEffect(() => {
+    if (hover === null || !rootRef.current) {
+      setTooltipLeftPx(null);
+      return;
+    }
+    const containerWidth = rootRef.current.clientWidth || W;
+    const pointXPx = (x(hover) / W) * containerWidth;
+    const tooltipWidth = tooltipRef.current?.offsetWidth ?? 144;
+    const margin = 8;
+    const raw = pointXPx - tooltipWidth * 0.12;
+    setTooltipLeftPx(Math.min(containerWidth - tooltipWidth - margin, Math.max(margin, raw)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hover, n]);
+
   if (n === 0) return null;
 
   const axis = formatAxis ?? format;
   const max = niceMax(Math.max(1, ...series.flatMap((s) => s.values)));
-  const x = (i: number) => PAD.l + (n > 1 ? (i / (n - 1)) * IW : IW / 2);
   const y = (v: number) => PAD.t + IH - (v / max) * IH;
   const ticks = [0, 0.25, 0.5, 0.75, 1].map((f) => f * max);
   const every = Math.max(1, Math.ceil(n / 6));
@@ -73,6 +98,7 @@ export function AreaChart({
 
   return (
     <div
+      ref={rootRef}
       className="relative"
       tabIndex={0}
       role="group"
@@ -132,9 +158,15 @@ export function AreaChart({
 
       {hover !== null && (
         <div
+          ref={tooltipRef}
           role="status"
           className="adm-card-2 pointer-events-none absolute top-2 min-w-36 px-3 py-2 text-xs shadow-lg"
-          style={{ left: `${Math.min(70, Math.max(0, (x(hover) / W) * 100 - 8))}%` }}
+          style={{
+            left:
+              tooltipLeftPx !== null
+                ? `${tooltipLeftPx}px`
+                : `${Math.min(70, Math.max(0, (x(hover) / W) * 100 - 8))}%`,
+          }}
         >
           <p className="font-semibold text-brand-900">{labels[hover]}</p>
           {series.map((s) => (
@@ -146,27 +178,37 @@ export function AreaChart({
         </div>
       )}
 
-      <table className="sr-only">
-        <caption>{ariaLabel}</caption>
-        <thead>
-          <tr>
-            <th>Dia</th>
-            {series.map((s) => (
-              <th key={s.name}>{s.name}</th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {labels.map((l, i) => (
-            <tr key={`${l}-${i}`}>
-              <td>{l}</td>
+      {/* .sr-only no <table> direto não funciona: com table-layout automático o
+          navegador ignora o width:1px e expande a caixa da tabela para caber o
+          conteúdo (CSS 2.1 §17.5.2 — a largura usada é o MAIOR entre o
+          'width' declarado e a largura das colunas). Isso criava rolagem
+          horizontal da PÁGINA inteira em telas estreitas (achado nesta mesma
+          verificação, junto com o bug da tooltip acima). Um <div> não tem essa
+          regra de tabela: aplicamos sr-only nele e deixamos a tabela livre —
+          o overflow:hidden do div clipa a tabela sem afetar o layout da página. */}
+      <div className="sr-only">
+        <table>
+          <caption>{ariaLabel}</caption>
+          <thead>
+            <tr>
+              <th>Dia</th>
               {series.map((s) => (
-                <td key={s.name}>{format(s.values[i])}</td>
+                <th key={s.name}>{s.name}</th>
               ))}
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {labels.map((l, i) => (
+              <tr key={`${l}-${i}`}>
+                <td>{l}</td>
+                {series.map((s) => (
+                  <td key={s.name}>{format(s.values[i])}</td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
