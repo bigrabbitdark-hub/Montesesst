@@ -22,12 +22,31 @@ export interface EvalArgs {
 const BOOLEAN_FLAGS = new Set(['--llm', '--allow-full', '--fail-on-regression', '--write']);
 const VALUE_FLAGS = new Set(['--tipo', '--ids', '--out', '--compare', '--file', '--grep', '--max-llm-calls', '--days']);
 
+// Só inteiro decimal puro ("15", "007"): Number() aceitaria "1e3", "0x10",
+// "0b11", "+5" e " 7 ", e um teto de chamadas PAGAS não pode ser frouxo assim.
+const DECIMAL_INTEGER = /^\d+$/;
+
 function parsePositiveInt(flag: string, raw: string): number {
-  const value = Number(raw);
-  if (!Number.isInteger(value) || value <= 0) {
+  const value = DECIMAL_INTEGER.test(raw) ? Number(raw) : NaN;
+  if (!Number.isSafeInteger(value) || value < 1) {
     throw new Error(`${flag} exige um inteiro positivo (recebido "${raw}")`);
   }
   return value;
+}
+
+// Teto de chamadas pagas ao LLM (spec §5.3): acima do padrão, só com
+// --allow-full explícito. Recusa, em vez de limitar em silêncio, para quem
+// pediu 60 não achar que rodou 60. Exportada porque planLlmRun repete a
+// checagem: ela recebe EvalArgs que podem não ter passado por parseEvalArgs.
+export function assertLlmCallLimit(maxLlmCalls: number, allowFull: boolean): void {
+  if (!Number.isSafeInteger(maxLlmCalls) || maxLlmCalls < 1) {
+    throw new Error(`--max-llm-calls exige um inteiro positivo (recebido "${maxLlmCalls}")`);
+  }
+  if (!allowFull && maxLlmCalls > DEFAULT_MAX_LLM_CALLS) {
+    throw new Error(
+      `--max-llm-calls acima de ${DEFAULT_MAX_LLM_CALLS} exige --allow-full (recebido ${maxLlmCalls}): a Camada B chama o LLM real e PAGO`,
+    );
+  }
 }
 
 function parseList(raw: string): string[] {
@@ -84,5 +103,7 @@ export function parseEvalArgs(argv: string[]): EvalArgs {
     if (token === '--max-llm-calls') args.maxLlmCalls = parsePositiveInt(token, value);
     if (token === '--days') args.days = parsePositiveInt(token, value);
   }
+  // Depois do laço: --allow-full pode vir depois de --max-llm-calls.
+  assertLlmCallLimit(args.maxLlmCalls, args.allowFull);
   return args;
 }

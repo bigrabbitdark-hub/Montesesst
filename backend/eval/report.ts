@@ -22,6 +22,9 @@ export interface BaselineMeta {
   questions: number;
   threshold: number | null;
   chunk_limit: number | null;
+  // Modelo do provedor que respondeu (Camada B); null na Camada A, que não
+  // chama LLM de resposta.
+  model: string | null;
   llm_calls: number | null;
   llm_tokens_delta: number | null;
 }
@@ -39,6 +42,34 @@ export interface BaselineFile<Result, Aggregate> {
 
 export function datasetHash(datasetJson: string): string {
   return createHash('sha256').update(datasetJson).digest('hex');
+}
+
+function show(value: string | number | null | undefined): string {
+  return value === null || value === undefined ? 'n/d' : String(value);
+}
+
+// Compara os metadados de dois baselines e devolve, em português, uma frase por
+// divergência que torna a comparação enganosa: outro dataset, outro limiar,
+// outro top-k ou outro modelo (spec §5.4: o gate compara antes e depois de
+// mexer nisso). Commit e data mudam por natureza e ficam de fora. Lista vazia =
+// comparável.
+export function describeMetaDifferences(a: BaselineMeta, b: BaselineMeta): string[] {
+  const differences: string[] = [];
+  if (a.dataset_sha256 !== b.dataset_sha256) {
+    differences.push(
+      `dataset_sha256 difere (${a.dataset_sha256.slice(0, 12)} x ${b.dataset_sha256.slice(0, 12)}): o dataset de perguntas mudou (ou foi reformatado)`,
+    );
+  }
+  if ((a.threshold ?? null) !== (b.threshold ?? null)) {
+    differences.push(`threshold difere (${show(a.threshold)} x ${show(b.threshold)}): o limiar de similaridade não é o mesmo`);
+  }
+  if ((a.chunk_limit ?? null) !== (b.chunk_limit ?? null)) {
+    differences.push(`chunk_limit difere (${show(a.chunk_limit)} x ${show(b.chunk_limit)}): o número de trechos do topo não é o mesmo`);
+  }
+  if ((a.model ?? null) !== (b.model ?? null)) {
+    differences.push(`model difere (${show(a.model)} x ${show(b.model)}): o modelo do provedor não é o mesmo`);
+  }
+  return differences;
 }
 
 function build<Result extends { tipo: string; status: string }, Aggregate>(
@@ -136,6 +167,10 @@ export function formatAnswerSummary(baseline: BaselineFile<AnswerResult, AnswerA
     answerLine('  validado (gate)', agregados.validado),
     answerLine('  rascunho', agregados.rascunho),
     ...Object.entries(agregados.por_tipo).map(([tipo, a]) => answerLine(`  ${tipo}`, a)),
+    // Spec §5.3: a lacuna "o sistema ainda não pergunta de volta" (pedir_contexto)
+    // é marcada à parte, sem reprovar por ela; e a alucinação é só reportada.
+    `  lacuna à parte (não reprova): o sistema ainda não pergunta de volta — perguntas pedir_contexto afetadas: ${baseline.resultados.filter((r) => r.nao_pergunta_de_volta).length}`,
+    `  respostas que violaram proibido_regex: ${baseline.resultados.filter((r) => !r.proibido_ok).length}`,
   ];
   return lines.join('\n');
 }
