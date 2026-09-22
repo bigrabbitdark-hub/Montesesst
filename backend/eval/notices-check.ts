@@ -17,17 +17,24 @@ import { parseGoldenDataset } from './golden/golden-schema';
 // Uso: ./run-backend-tests.sh eval:notices [-- --file caminho.json]
 const DEFAULT_FILE = join(__dirname, 'golden', 'perguntas.json');
 
-const args = parseEvalArgs(process.argv.slice(2));
-const questions = parseGoldenDataset(JSON.parse(readFileSync(args.file ?? DEFAULT_FILE, 'utf8')));
+async function main() {
+  const args = parseEvalArgs(process.argv.slice(2));
+  const questions = parseGoldenDataset(JSON.parse(readFileSync(args.file ?? DEFAULT_FILE, 'utf8')));
 
-let diferentes = 0;
-for (const q of questions) {
-  const detectados = detectNotices(q.pergunta).map((notice) => notice.tipo);
-  const iguais =
-    detectados.length === q.avisos_esperados.length && detectados.every((tipo) => q.avisos_esperados.includes(tipo));
-  if (!iguais) {
-    diferentes += 1;
-    console.log(`DIFERENTE ${q.id}: esperado=${JSON.stringify(q.avisos_esperados)} detectado=${JSON.stringify(detectados)}`);
+  let diferentes = 0;
+  for (const q of questions) {
+    const detectados = detectNotices(q.pergunta).map((notice) => notice.tipo);
+    const iguais =
+      detectados.length === q.avisos_esperados.length && detectados.every((tipo) => q.avisos_esperados.includes(tipo));
+    if (!iguais) {
+      diferentes += 1;
+      console.log(`DIFERENTE ${q.id}: esperado=${JSON.stringify(q.avisos_esperados)} detectado=${JSON.stringify(detectados)}`);
+    }
   }
+  console.log(`\n[eval:notices] ${questions.length - diferentes}/${questions.length} perguntas com avisos iguais aos esperados`);
 }
-console.log(`\n[eval:notices] ${questions.length - diferentes}/${questions.length} perguntas com avisos iguais aos esperados`);
+
+main().catch((err) => {
+  console.error('[eval:notices] falhou:', err);
+  process.exit(1);
+});
