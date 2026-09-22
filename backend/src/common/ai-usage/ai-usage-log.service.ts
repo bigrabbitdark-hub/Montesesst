@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { DatabaseService } from '../database/database.service';
 
 export interface TokenUsage {
@@ -28,7 +28,13 @@ export interface UsageSummary {
 export class AiUsageLogService {
   private readonly logger = new Logger(AiUsageLogService.name);
 
-  constructor(private readonly db: DatabaseService) {}
+  // @Inject(ClasseConcreta) explícito: mesma causa raiz do fix em
+  // NormativeAssistantService (Task 8) e em MiniMaxNormativeAnswerService
+  // (Task 9) — sem isto, sob tsx (esbuild não emite design:paramtypes),
+  // `this.db` chegava `undefined`. Aqui o método log() já tinha try/catch
+  // (nunca lança), então o sintoma não era um crash visível: era o log de
+  // uso real da IA ficando silenciosamente vazio, mascarando o gasto.
+  constructor(@Inject(DatabaseService) private readonly db: DatabaseService) {}
 
   // Nunca lança — registrar uso é best-effort; uma falha aqui não pode
   // derrubar a resposta real da IA que já foi obtida com sucesso.

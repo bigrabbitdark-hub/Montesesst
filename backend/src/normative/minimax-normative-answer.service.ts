@@ -1,4 +1,4 @@
-import { BadGatewayException, Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
+import { BadGatewayException, Inject, Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
 import {
   AttachmentInput,
   ChecklistItem,
@@ -27,7 +27,16 @@ const RETRY_MAX_ELAPSED_MS = 45_000;
 export class MiniMaxNormativeAnswerService implements NormativeAnswerProvider {
   private readonly logger = new Logger(MiniMaxNormativeAnswerService.name);
 
-  constructor(private readonly usageLog: AiUsageLogService) {}
+  // @Inject(ClasseConcreta) explícito: mesma causa raiz do fix em
+  // NormativeAssistantService (Task 8) — sem isto, o Nest resolveria o
+  // parâmetro pelo metadado design:paramtypes que o TypeScript emite via
+  // emitDecoratorMetadata, mas o esbuild por trás do tsx não emite esse
+  // metadado. Sob tsx, `this.usageLog` chegava `undefined` — e o crash só
+  // acontecia DEPOIS da chamada real e paga ao MiniMax já ter respondido
+  // (achado do runner de avaliação, Task 9: a chamada acontecia, só o
+  // registro do uso em minimax_usage_log é que quebrava). Comportamento
+  // idêntico em produção/e2e (nest build/ts-jest emitem o metadado certo).
+  constructor(@Inject(AiUsageLogService) private readonly usageLog: AiUsageLogService) {}
 
   get modelName(): string {
     return process.env.MINIMAX_MODEL || 'MiniMax-M3';
