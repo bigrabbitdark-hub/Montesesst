@@ -69,8 +69,8 @@
     ],
     "avisos_esperados": [],
     "proibido_regex": [
-      "pode ser cobrad",
-      "(sim|pode)[^.]{0,30}cobrar"
+      "(?<!(?:não|nao|nem|nunca|jamais)[^.]{0,20})pode ser cobrad",
+      "(?<!(?:não|nao|nem|nunca|jamais)[^.]{0,20})\\b(sim|pode)\\b[^.]{0,30}cobrar"
     ],
     "jurisdicao": "federal",
     "risco_resposta": "medio",
@@ -956,8 +956,8 @@
     ],
     "avisos_esperados": [],
     "proibido_regex": [
-      "todo trabalhador que usa escada precisa",
-      "(sim|qualquer uso de escada)[^.]{0,30}nr-?35"
+      "(?<!(?:não|nao|nem|nunca|jamais)[^.]{0,25})todo trabalhador que usa escada precisa",
+      "(?<!(?:não|nao|nem|nunca|jamais)[^.]{0,20})(\\bsim\\b|qualquer uso de escada)[^.]{0,30}nr-?35"
     ],
     "jurisdicao": "federal",
     "risco_resposta": "medio",
@@ -986,8 +986,8 @@
     ],
     "avisos_esperados": [],
     "proibido_regex": [
-      "é opcional",
-      "pode (ser )?dispensad"
+      "(?<!(?:não|nao|nem|nunca|jamais)[^.]{0,25})é opcional",
+      "(?<!(?:não|nao|nem|nunca|jamais)[^.]{0,25})pode (ser )?dispensa"
     ],
     "jurisdicao": "federal",
     "risco_resposta": "medio",
@@ -1016,8 +1016,8 @@
     ],
     "avisos_esperados": [],
     "proibido_regex": [
-      "obrigatória para toda",
-      "qualquer tamanho[^.]{0,20}(sim|obrigat)"
+      "(?<!(?:não|nao|nem|nunca|jamais)[^.]{0,30})obrigatória para toda",
+      "(?<!(?:não|nao|nem|nunca|jamais)[^.]{0,20})qualquer tamanho[^.]{0,20}(sim|obriga)"
     ],
     "jurisdicao": "federal",
     "risco_resposta": "medio",
@@ -1082,7 +1082,7 @@
     ],
     "avisos_esperados": [],
     "proibido_regex": [
-      "(sim|apenas|somente|só)[^.]{0,20}m[aá]quinas novas",
+      "(?<!(?:não|nao|nem|nunca|jamais)[^.]{0,30})(sim|apenas|somente|só)[^.]{0,20}m[aá]quinas novas",
       "n[ãa]o se aplica a m[aá]quinas (usadas|antigas|existentes)"
     ],
     "jurisdicao": "federal",
@@ -1112,8 +1112,8 @@
     ],
     "avisos_esperados": [],
     "proibido_regex": [
-      "todo local fechado (e|é) espa[çc]o confinado",
-      "qualquer (sala|ambiente) fechado[^.]{0,20}espa[çc]o confinado"
+      "(?<!(?:não|nao|nem|nunca|jamais)[^.]{0,20})todo local fechado (e|é) espa[çc]o confinado",
+      "(?<!(?:não|nao|nem|nunca|jamais)[^.]{0,20})qualquer (sala|ambiente) fechado[^.]{0,20}espa[çc]o confinado"
     ],
     "jurisdicao": "federal",
     "risco_resposta": "medio",
@@ -1148,8 +1148,8 @@
     ],
     "avisos_esperados": [],
     "proibido_regex": [
-      "acima de 20 funcion[aá]rios",
-      "(sim|somente|apenas)[^.]{0,30}20 funcion[aá]rios"
+      "(?<!(?:não|nao|nem|nunca|jamais)[^.]{0,20})acima de 20 funcion[aá]rios",
+      "(?<!(?:não|nao|nem|nunca|jamais)[^.]{0,20})(sim|somente|apenas)[^.]{0,30}20 funcion[aá]rios"
     ],
     "jurisdicao": "federal",
     "risco_resposta": "medio",
