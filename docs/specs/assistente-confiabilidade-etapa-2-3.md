@@ -162,10 +162,15 @@ que cada `evidencia` de `fontes_esperadas` existe literalmente no texto
 vigente da `source_code` indicada, com espaços em branco normalizados
 (quebras de linha, espaços duplos) nos dois lados, e que a `evidencia`
 **começa pelo número do `item`** ("35.4.1 Todo trabalho em altura deve…") —
-isso ancora a citação numa seção real e a distingue do sumário que abre as
-NRs e repete os títulos. Também rejeita citação com artefato de página no
-meio (`-- 2 of 12 --`, "Este texto não substitui o publicado no DOU") e
-citação que é só o título. Também grava `versao_fonte` a partir
+isso ancora a citação no item declarado e evita colisão entre itens (ex.:
+"4.1" dentro de "35.4.1"); o sumário que abre as NRs também começa pelo
+número do item, então essa âncora sozinha não o distingue. Também rejeita
+citação com artefato de página no meio (`-- 2 of 12 --`, "Este texto não
+substitui o publicado no DOU") e citação curta demais (piso de 30
+caracteres de texto após o número do item, o que barra a linha curta de
+um sumário — uma entrada de sumário mais longa, ou com pontilhado e
+número de página, ainda pode passar; uma checagem mais forte fica para
+trabalho futuro ou revisão humana). Também grava `versao_fonte` a partir
 do `content_hash` do documento vigente. Citação que não existe no PDF é
 **erro** e o lint sai com código 1 — protege o dataset contra alucinação de
 quem o redige. Falha legítima de normalização (hifenização, cabeçalho de
