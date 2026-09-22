@@ -25,6 +25,10 @@ export interface BaselineMeta {
   // Modelo do provedor que respondeu (Camada B); null na Camada A, que não
   // chama LLM de resposta.
   model: string | null;
+  // Conta PERGUNTAS selecionadas na Camada B, não requisições HTTP reais: o
+  // provedor pode fazer até MAX_REQUESTS_PER_QUESTION (2) requisições por
+  // pergunta (retry em tool call inválido — ver llm-plan.ts), então o gasto
+  // real de chamadas pode chegar a até 2x este número.
   llm_calls: number | null;
   llm_tokens_delta: number | null;
 }
@@ -162,6 +166,9 @@ export function formatRetrievalSummary(baseline: BaselineFile<RetrievalResult, R
 export function formatAnswerSummary(baseline: BaselineFile<AnswerResult, AnswerAggregate>): string {
   const { agregados, meta } = baseline;
   const lines = [
+    // "chamadas ao LLM" aqui é `llm_calls`: número de PERGUNTAS, não de
+    // requisições HTTP reais (ver comentário do campo em BaselineMeta acima) —
+    // o gasto real pode ser até 2x este número.
     `Camada B — resposta real (${meta.questions} perguntas, ${meta.llm_calls ?? 0} chamadas ao LLM, tokens ${meta.llm_tokens_delta ?? 'n/d'})`,
     answerLine('GERAL', agregados.geral),
     answerLine('  validado (gate)', agregados.validado),

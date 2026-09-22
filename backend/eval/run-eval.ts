@@ -25,6 +25,7 @@ import {
   buildAnswerBaseline,
   buildRetrievalBaseline,
   datasetHash,
+  describeMetaDifferences,
   formatAnswerSummary,
   formatRetrievalSummary,
   renderReviewMarkdown,
@@ -193,7 +194,8 @@ async function main() {
     questions = plan.questions;
     console.log(
       `Camada B: ${questions.length} de ${selected.length} perguntas, ~${plan.estimatedTokens} tokens estimados ` +
-        `(chamadas REAIS e PAGAS ao LLM configurado)`,
+        `(pior caso ~${plan.worstCaseTokens} tokens, se o provedor repetir a chamada) — ` +
+        `chamadas REAIS e PAGAS ao LLM configurado`,
     );
   } else {
     console.log(`Camada A: ${questions.length} pergunta(s) — só embedding, sem LLM de resposta`);
@@ -233,6 +235,11 @@ async function main() {
       if (previous.meta?.layer !== layer) {
         throw new Error(`--compare aponta para um baseline da camada "${previous.meta?.layer}", esta rodada é "${layer}"`);
       }
+      // Avisa (sem interromper) quando o baseline anterior foi gerado com
+      // dataset/limiar/top-k/modelo diferentes: a comparação continua rodando,
+      // mas o resultado pode estar enganoso.
+      const diferencas = describeMetaDifferences(previous.meta, baseline.meta);
+      for (const diferenca of diferencas) console.log(`AVISO: ${diferenca}`);
       const regressions = findRegressions(
         previous.resultados as ComparableResult[],
         baseline.resultados as ComparableResult[],
