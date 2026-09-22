@@ -839,7 +839,7 @@
     "categoria": "NR-23",
     "subcategoria": "Brigada de incêndio",
     "pergunta": "Preciso de brigada de incêndio?",
-    "resposta_esperada": "Depende: a norma exige que a organização adote medidas de prevenção contra incêndios, entre elas uma eventual brigada, em conformidade com a legislação estadual; faltam o estado e o tipo de estabelecimento.",
+    "resposta_esperada": "Depende: a norma exige que a organização adote medidas de prevenção contra incêndios em conformidade com a legislação estadual; faltam o estado e o tipo de estabelecimento.",
     "comportamento_esperado": "pedir_contexto",
     "fontes_esperadas": [
       {
@@ -1004,7 +1004,7 @@
     "categoria": "NR-05",
     "subcategoria": "Dispensa",
     "pergunta": "É verdade que a CIPA é obrigatória para toda empresa, de qualquer tamanho?",
-    "resposta_esperada": "Não: o Microempreendedor Individual (MEI) está dispensado de nomear o representante da NR-05, e o dimensionamento da CIPA depende do número de empregados e do grau de risco do estabelecimento.",
+    "resposta_esperada": "Não: o Microempreendedor Individual (MEI) está dispensado de nomear o representante da NR-05.",
     "comportamento_esperado": "responder",
     "fontes_esperadas": [
       {
@@ -1138,12 +1138,18 @@
         "source_code": "NR-01",
         "item": "1.8.4",
         "evidencia": "1.8.4 As microempresas e empresas de pequeno porte, graus de risco 1 e 2, que no levantamento preliminar de perigos não identificarem exposições ocupacionais a agentes físicos, químicos e biológicos, em conformidade com a NR-9, e declararem as informações digitais na forma dosubitem 1.6.1, ficam dispensadas da elaboração do PGR."
+      },
+      {
+        "fonte": "norma",
+        "source_code": "NR-01",
+        "item": "1.8.1",
+        "evidencia": "1.8.1 O Microempreendedor Individual - MEI está dispensado de elaborar o PGR"
       }
     ],
     "avisos_esperados": [],
     "proibido_regex": [
-      "acima de 20 funcionarios",
-      "(sim|somente|apenas)[^.]{0,30}20 funcionarios"
+      "acima de 20 funcion[aá]rios",
+      "(sim|somente|apenas)[^.]{0,30}20 funcion[aá]rios"
     ],
     "jurisdicao": "federal",
     "risco_resposta": "medio",
