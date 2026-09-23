@@ -4775,3 +4775,36 @@ Série que saiu da auditoria dos agentes Montese SST (2026-09-20).
   Camada B na mão, se números com unidade sem base podem virar bloqueio; decidir o
   guard de evidência vazia do verificador (claim sobre imagem anexada passa sem checagem).
 - **Próxima etapa (guiada pelo baseline):** chunking estrutural e busca híbrida.
+
+## Fase 7 (sub-projeto F — Montese Control SP1: shell escuro + Visão Geral): status
+
+Primeiro sub-projeto da reformulação do painel `/admin` inspirada na referência
+"Montese Control" do fundador (spec completa de 8 fases decomposta em
+brainstorming de 2026-09-21). Spec em
+[`docs/specs/admin-montese-control-shell-visao-geral.md`](specs/admin-montese-control-shell-visao-geral.md),
+plano em
+[`docs/superpowers/plans/2026-09-21-admin-montese-control-shell-visao-geral.md`](superpowers/plans/2026-09-21-admin-montese-control-shell-visao-geral.md).
+
+**Implementado e verificado localmente** (unitário, e2e contra o Postgres real,
+`tsc`, QA visual com respostas interceptadas em 3 larguras e 4 cenários,
+verificações automáticas de contraste/teclado/overflow). **Deploy pendente**
+(rebuild de frontend e backend exige o OK do fundador).
+
+| Área | Estado |
+|---|---|
+| Shell (tema marinho + verde da marca, sidebar/drawer, topbar, Ctrl+K de navegação, logo) | ✅ |
+| Visão Geral com dado real: MRR, clientes, uso de IA, alertas, financeiro, serviços, VPS, IA & tokens, clientes recentes, pagamentos, logs (auditoria) | ✅ |
+| 3 endpoints `GET /admin/dashboard/{alertas,financeiro,clientes-recentes}` | ✅ (sem migration) |
+| CNPJ nos rodapés e telas de pagamento; endereço só nos Termos/Privacidade | ✅ |
+| Score de saúde, rede/histórico 24 h, Qdrant/Docker/worker/WhatsApp, uso por modelo/agente, segurança, backups | ⏳ "Em construção" na tela, sem número |
+
+Achados: `users.last_login_at` existe mas nada a grava (último acesso vem de
+`audit_log`); `/admin/ai-usage` não devolve dias sem uso (o cliente preenche);
+`used_percent` de RAM — medição de 2026-09-21: `os.freemem()` = 31.7%, `MemAvailable` = 31.7% (Node do host 20 — v20.20.2, imagem do backend 20 — `node:20-alpine`); alerta de RAM ligado.
+
+Pendências do fundador: **razão social** (placeholder nos Termos e na
+Privacidade) e **foro** dos Termos (escolha jurídica). Próximos sub-projetos:
+SP2 IA & Tokens (custo por modelo/agente — exige migration), SP3 Infraestrutura
+(histórico de CPU/RAM, rede), SP4 Logs & Segurança (o `audit_log` já tem
+`login_success`/`login_failure` com IP), SP5 Backups, alertas persistentes e
+Control AI.

@@ -39,7 +39,7 @@ restante).
 | Item | Onde vive / Status | Evidência | Observação |
 |---|---|---|---|
 | Política de Privacidade | **✅ Publicada** — `/privacidade`, conteúdo em `frontend/content/legal/privacidade.mdx`, traduzido de `lgpd-compliance.md` §3-6 | Build isolado confirmado, rota estática gerada | Marcada como "documento inicial, sem revisão jurídica formal" no topo da própria página — nenhum prazo de retenção específico foi publicado (ainda ⚠️ no doc interno) |
-| Termos de Uso | **✅ Publicado** — `/termos`, conteúdo em `frontend/content/legal/termos.mdx` | Build isolado confirmado, rota estática gerada | Inclui a cláusula operador/controlador, a frase "não substitui avaliação profissional habilitado", e dois placeholders explícitos (`[RAZÃO SOCIAL/CNPJ — PREENCHER]`, `[CIDADE/ESTADO — PREENCHER]`) aguardando dado real do fundador |
+| Termos de Uso | **✅ Publicado** — `/termos`, conteúdo em `frontend/content/legal/termos.mdx` | Build isolado confirmado, rota estática gerada | Inclui a cláusula operador/controlador, a frase "não substitui avaliação profissional habilitado", CNPJ e endereço comercial preenchidos em 2026-09-21; seguem como placeholders explícitos a razão social (`[RAZÃO SOCIAL — PREENCHER]`) e o foro (`[CIDADE/ESTADO — PREENCHER]`), aguardando dado real do fundador |
 | Política de Segurança da Informação | **✅ Publicada** — `/seguranca`, tradução de `lgpd-compliance.md` §8 pra linguagem acessível, com seção honesta de limitações conhecidas | `frontend/content/legal/seguranca.mdx` | Fechada em 2026-08-26 |
 | Política de Cookies | **✅ Resolvida como seção**, não página própria — nota no topo de `/privacidade` ("não usamos cookies hoje") | `frontend/content/legal/privacidade.mdx` | Decisão confirmada: página própria seria promessa vazia, já que não há cookie nenhum hoje |
 | Política de Tratamento de Dados | **✅ Resolvida como o mesmo documento** que a Política de Privacidade, com nota explícita no topo de `/privacidade` explicando a equivalência | `frontend/content/legal/privacidade.mdx` | Decisão confirmada: evita duplicar texto que podia dessincronizar |
@@ -208,9 +208,12 @@ decompostas.
   está em produção como código, e desde 2026-08-28 o Copiloto de IA
   está ativo de verdade (não só planejado) — recomendado priorizar
   esse documento agora, não é mais "sem pressa".
-- **Dois placeholders nos Termos de Uso** (`[RAZÃO SOCIAL/CNPJ —
-  PREENCHER]`, `[CIDADE/ESTADO — PREENCHER]`) — precisam do dado real
-  do fundador antes do documento ser considerado final.
+- **Placeholders nos Termos de Uso e na Política de Privacidade** — CNPJ
+  (`69.203.754/0001-45`) e endereço comercial preenchidos em 2026-09-21
+  (fonte: `frontend/src/lib/company.ts`). Pendentes, dependem do
+  fundador: **razão social** (`[RAZÃO SOCIAL — PREENCHER]`) e **foro**
+  (`[CIDADE/ESTADO — PREENCHER]`, cláusula 10 dos Termos — escolha
+  jurídica; não decorre do endereço da sede).
 - **Pontos ⚠️ que dependem de validação jurídica**, espalhados por
   `lgpd-compliance.md` e pelas páginas publicadas hoje (prazo de
   retenção de dado de saúde, prazo de comunicação de incidente,
