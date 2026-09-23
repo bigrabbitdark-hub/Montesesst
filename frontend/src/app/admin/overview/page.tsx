@@ -2,14 +2,28 @@
 
 import { useState } from 'react';
 import { useAdminStatus } from '@/components/admin/AdminStatusProvider';
+import { UnderConstructionCard } from '@/components/admin/Card';
 import { relativeTime } from '@/components/admin/format';
 import { AdminIcon } from '@/components/admin/icons';
+import { AiTokensCard } from '@/components/admin/overview/AiTokensCard';
 import { AlertsCard } from '@/components/admin/overview/AlertsCard';
 import { FinanceCard } from '@/components/admin/overview/FinanceCard';
 import type { Periodo } from '@/components/admin/overview/FinanceCard';
 import { HealthCard } from '@/components/admin/overview/HealthCard';
 import { KpiRow } from '@/components/admin/overview/KpiRow';
-import type { FinanceiroResponse, MiniMaxUsage, OpenRouterUsage, OverviewMetrics } from '@/components/admin/types';
+import { RecentClientsCard } from '@/components/admin/overview/RecentClientsCard';
+import { RecentLogsCard } from '@/components/admin/overview/RecentLogsCard';
+import { RecentPaymentsCard } from '@/components/admin/overview/RecentPaymentsCard';
+import { ServicesCard } from '@/components/admin/overview/ServicesCard';
+import { VpsCard } from '@/components/admin/overview/VpsCard';
+import type {
+  AuditLogRow,
+  ClienteRecente,
+  FinanceiroResponse,
+  MiniMaxUsage,
+  OpenRouterUsage,
+  OverviewMetrics,
+} from '@/components/admin/types';
 import { useAdminFetch } from '@/components/admin/useAdminFetch';
 import { useNow } from '@/components/admin/useNow';
 
@@ -19,10 +33,13 @@ export default function AdminOverviewPage() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [dias, setDias] = useState<Periodo>(30);
 
+  // Um fetch por endpoint; os cards recebem o estado e falham isolados.
   const overview = useAdminFetch<OverviewMetrics>('/api/overview', refreshKey);
   const miniMax = useAdminFetch<MiniMaxUsage>('/api/admin/ai-usage', refreshKey);
   const openrouter = useAdminFetch<OpenRouterUsage>('/api/ai-copilot/usage', refreshKey);
   const financeiro = useAdminFetch<FinanceiroResponse>(`/api/admin/dashboard/financeiro?dias=${dias}`, refreshKey);
+  const clientes = useAdminFetch<ClienteRecente[]>('/api/admin/dashboard/clientes-recentes?limit=5', refreshKey);
+  const logs = useAdminFetch<AuditLogRow[]>('/api/audit-log?limit=8', refreshKey);
 
   const refreshAll = () => {
     setRefreshKey((k) => k + 1);
@@ -61,13 +78,43 @@ export default function AdminOverviewPage() {
           <div className="order-4 xl:order-none">
             <FinanceCard state={financeiro} dias={dias} onDias={setDias} />
           </div>
+          <div className="order-5 grid gap-4 md:grid-cols-2 xl:order-none xl:grid-cols-3">
+            <ServicesCard />
+            <VpsCard />
+            <AiTokensCard miniMax={miniMax} className="md:col-span-2 xl:col-span-1" />
+          </div>
+          <div className="order-6 grid gap-4 md:grid-cols-2 xl:order-none">
+            <RecentClientsCard state={clientes} className="md:col-span-2" />
+            <RecentPaymentsCard state={financeiro} className="md:col-span-2" />
+            <RecentLogsCard state={logs} />
+            <UnderConstructionCard
+              id="seguranca"
+              title="Segurança"
+              description="Tentativas de login, IPs bloqueados e sessões ativas ainda não são medidos aqui."
+            />
+          </div>
         </div>
+
         <div className="contents xl:flex xl:flex-col xl:gap-4">
           <div className="order-1 xl:order-none">
             <AlertsCard />
           </div>
           <div className="order-3 xl:order-none">
             <HealthCard />
+          </div>
+          <div className="order-7 xl:order-none">
+            <UnderConstructionCard
+              id="modelos"
+              title="Uso de modelos e roteamento"
+              description="Divisão de tokens por modelo e regras de roteamento entre provedores. Hoje o registro de uso guarda só a capacidade, não o modelo."
+            />
+          </div>
+          <div className="order-8 xl:order-none">
+            <UnderConstructionCard
+              id="backups"
+              title="Backups"
+              description="O backup diário do Postgres roda por script na VPS; o status ainda não é exibido no painel."
+            />
           </div>
         </div>
       </div>
