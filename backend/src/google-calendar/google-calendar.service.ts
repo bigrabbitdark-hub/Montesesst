@@ -37,7 +37,7 @@ export class GoogleCalendarService {
   private signState(technicianUserId: string): string {
     const expiresAt = Date.now() + STATE_TTL_MS;
     const payload = `${technicianUserId}.${expiresAt}`;
-    const signature = createHmac('sha256', process.env.JWT_SECRET || 'dev-secret-change-me')
+    const signature = createHmac('sha256', process.env.JWT_SECRET as string)
       .update(payload)
       .digest('hex');
     return Buffer.from(`${payload}.${signature}`).toString('base64url');
@@ -48,7 +48,7 @@ export class GoogleCalendarService {
     const [technicianUserId, expiresAtRaw, signature] = decoded.split('.');
     const expiresAt = Number(expiresAtRaw);
     const payload = `${technicianUserId}.${expiresAtRaw}`;
-    const expectedSignature = createHmac('sha256', process.env.JWT_SECRET || 'dev-secret-change-me')
+    const expectedSignature = createHmac('sha256', process.env.JWT_SECRET as string)
       .update(payload)
       .digest('hex');
     const signatureBuffer = Buffer.from(signature ?? '', 'hex');

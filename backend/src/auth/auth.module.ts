@@ -10,7 +10,11 @@ import { JwtStrategy } from './strategies/jwt.strategy';
   imports: [
     PassportModule,
     JwtModule.register({
-      secret: process.env.JWT_SECRET || 'dev-secret-change-me',
+      // F-21: validateProductionEnv() (chamado em main.ts antes de
+      // NestFactory.create) garante que JWT_SECRET está definido e não é
+      // um valor placeholder conhecido em produção. Em dev/test, o valor
+      // continua sendo lido do ambiente (sem fallback silencioso).
+      secret: process.env.JWT_SECRET as string,
       signOptions: { expiresIn: process.env.JWT_EXPIRES_IN || '8h' },
     }),
   ],
