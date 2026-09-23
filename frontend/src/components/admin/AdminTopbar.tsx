@@ -6,6 +6,7 @@ import { logout } from '@/lib/auth';
 import { AdminBrand } from './AdminBrand';
 import { useAdminStatus } from './AdminStatusProvider';
 import { AdminIcon } from './icons';
+import type { AdminIconName } from './icons';
 import { alertBadgeCount, deriveSystemState, SYSTEM_STATE_LABEL } from './status-state';
 import type { SystemState } from './status-state';
 
@@ -16,14 +17,25 @@ const PILL: Record<SystemState, { dot: string; text: string; box: string }> = {
   'sem-resposta': { dot: 'bg-slate-400', text: 'text-slate-300', box: 'border-slate-500/40 bg-slate-500/10' },
 };
 
-// O texto é o que comunica o estado; o ponto colorido é só reforço visual.
+// Ícone por estado: abaixo de `sm` o texto vira sr-only e o ícone passa a ser
+// o único indicador visível — por isso a FORMA precisa distinguir o estado,
+// não só a cor (spec: "estado nunca só por cor").
+const PILL_ICON: Record<SystemState, AdminIconName> = {
+  carregando: 'info',
+  online: 'check',
+  degradado: 'alert',
+  'sem-resposta': 'info',
+};
+
+// O texto é o que comunica o estado a partir de `sm`; abaixo disso, o ícone
+// (que varia por forma, não só por cor) é o reforço — nunca só o ponto colorido.
 function StatusPill() {
   const { system } = useAdminStatus();
   const state = deriveSystemState(system);
   const s = PILL[state];
   return (
     <span role="status" className={`inline-flex items-center gap-2 rounded-full border px-2.5 py-1.5 text-xs font-medium ${s.box} ${s.text}`}>
-      <span aria-hidden="true" className={`h-2 w-2 rounded-full ${s.dot}`} />
+      <AdminIcon name={PILL_ICON[state]} className="h-3.5 w-3.5 shrink-0" />
       <span className="sr-only sm:not-sr-only">{SYSTEM_STATE_LABEL[state]}</span>
     </span>
   );

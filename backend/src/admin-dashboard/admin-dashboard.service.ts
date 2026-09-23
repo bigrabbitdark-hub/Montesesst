@@ -3,7 +3,7 @@ import { PoolClient } from 'pg';
 import { OverviewService } from '../overview/overview.service';
 import { SystemStatusService } from '../system-status/system-status.service';
 import { AlertResult, computeAlerts, PENDING_STALE_DAYS, REJECTED_WINDOW_DAYS } from './alert-rules';
-import { APPROVED_STATUSES, PENDING_STATUSES, REJECTED_STATUSES } from './payment-status';
+import { APPROVED_STATUSES, PENDING_STATUSES, REJECTED_STATUSES, STALE_PENDING_STATUSES } from './payment-status';
 
 export interface AlertasResponse extends AlertResult {
   gerado_em: string;
@@ -211,7 +211,7 @@ export class AdminDashboardService {
          (SELECT count(*) FROM payment_events
             WHERE status = ANY($2::text[])
               AND occurred_at < now() - make_interval(days => $4::int))::int AS pending_stale`,
-      [[...REJECTED_STATUSES], [...PENDING_STATUSES], REJECTED_WINDOW_DAYS, PENDING_STALE_DAYS],
+      [[...REJECTED_STATUSES], [...STALE_PENDING_STATUSES], REJECTED_WINDOW_DAYS, PENDING_STALE_DAYS],
     );
     return { rejected: result.rows[0].rejected, pendingStale: result.rows[0].pending_stale };
   }

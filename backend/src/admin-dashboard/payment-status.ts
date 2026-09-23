@@ -6,3 +6,9 @@
 export const APPROVED_STATUSES = ['approved'] as const;
 export const PENDING_STATUSES = ['pending', 'in_process', 'authorized'] as const;
 export const REJECTED_STATUSES = ['rejected', 'cancelled'] as const;
+
+// Só para a regra de alerta payments_pending_stale (spec §7) — diferente de
+// PENDING_STATUSES (usado nos agregados financeiros), que inclui 'authorized'
+// de propósito. Um evento 'authorized' já foi confirmado; não é "pendente
+// há dias" no sentido do alerta.
+export const STALE_PENDING_STATUSES = ['pending', 'in_process'] as const;
