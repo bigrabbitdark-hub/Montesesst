@@ -47,7 +47,7 @@ function statusLabel(code: number): string {
 
 function statusColorClass(code: number): string {
   if (code >= 200 && code < 300) return 'text-green-700';
-  if (code >= 400 && code < 500) return 'text-yellow-700';
+  if (code >= 400 && code < 500) return 'text-yellow-800';
   if (code >= 500) return 'text-red-700';
   return 'text-brand-700';
 }
@@ -123,13 +123,13 @@ export default function AdminAuditoriaPage() {
       </p>
 
       <form onSubmit={handleFilterSubmit} className="mt-6 flex items-end gap-3">
-        <label className="flex flex-col gap-1 text-sm text-brand-900">
+        <label className="flex min-w-0 flex-1 flex-col gap-1 text-sm text-brand-900">
           Filtrar por tipo de recurso
           <input
             value={resourceTypeFilter}
             onChange={(e) => setResourceTypeFilter(e.target.value)}
             placeholder="ex: technicians, documents, inspections"
-            className="rounded-md border border-brand-100 px-3 py-2"
+            className="w-full min-w-0 rounded-md border border-brand-100 px-3 py-2"
           />
         </label>
         <button
@@ -197,11 +197,11 @@ export default function AdminAuditoriaPage() {
               <strong className="text-green-700">200/201</strong> — deu certo
             </span>
             <span>
-              <strong className="text-yellow-700">400/401/403/404</strong> — algo no pedido não foi
+              <strong className="text-yellow-800">400/401/403/404</strong> — algo no pedido não foi
               aceito (dado errado, sem permissão, ou não existe)
             </span>
             <span>
-              <strong className="text-yellow-700">429</strong> — muitas tentativas seguidas, bloqueado
+              <strong className="text-yellow-800">429</strong> — muitas tentativas seguidas, bloqueado
               temporariamente
             </span>
             <span>

@@ -53,44 +53,46 @@ export default function AdminEmpresasPage() {
         {tenants.length === 0 && !error ? (
           <p className="text-sm text-brand-700">Nenhuma empresa cadastrada ainda.</p>
         ) : (
-          <table className="w-full text-left text-sm">
-            <thead>
-              <tr className="border-b border-brand-100 text-brand-700">
-                <th className="py-2">Empresa</th>
-                <th className="py-2">CNPJ</th>
-                <th className="py-2">Plano</th>
-                <th className="py-2">Status</th>
-                <th className="py-2">Técnicos</th>
-                <th className="py-2">Parceiros</th>
-                <th className="py-2"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {tenants.map((tenant) => (
-                <tr key={tenant.id} className="border-b border-brand-100">
-                  <td className="py-2 font-medium text-brand-900">{tenant.name}</td>
-                  <td className="py-2 text-brand-700">{tenant.cnpj}</td>
-                  <td className="py-2 text-brand-700">{tenant.plan}</td>
-                  <td className="py-2 text-brand-700">{tenant.status}</td>
-                  <td className="py-2 text-brand-700">
-                    {tenant.technicians.length === 0
-                      ? '—'
-                      : tenant.technicians.map((t) => t.name).join(', ')}
-                  </td>
-                  <td className="py-2 text-brand-700">
-                    {tenant.partners.length === 0
-                      ? '—'
-                      : tenant.partners.map((p) => p.name).join(', ')}
-                  </td>
-                  <td className="py-2">
-                    <Link href={`/admin/empresas/${tenant.id}`} className="text-brand-500 hover:underline">
-                      Ver detalhes
-                    </Link>
-                  </td>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm">
+              <thead>
+                <tr className="border-b border-brand-100 text-brand-700">
+                  <th className="py-2">Empresa</th>
+                  <th className="py-2">CNPJ</th>
+                  <th className="py-2">Plano</th>
+                  <th className="py-2">Status</th>
+                  <th className="py-2">Técnicos</th>
+                  <th className="py-2">Parceiros</th>
+                  <th className="py-2"></th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {tenants.map((tenant) => (
+                  <tr key={tenant.id} className="border-b border-brand-100">
+                    <td className="py-2 font-medium text-brand-900">{tenant.name}</td>
+                    <td className="py-2 text-brand-700">{tenant.cnpj}</td>
+                    <td className="py-2 text-brand-700">{tenant.plan}</td>
+                    <td className="py-2 text-brand-700">{tenant.status}</td>
+                    <td className="py-2 text-brand-700">
+                      {tenant.technicians.length === 0
+                        ? '—'
+                        : tenant.technicians.map((t) => t.name).join(', ')}
+                    </td>
+                    <td className="py-2 text-brand-700">
+                      {tenant.partners.length === 0
+                        ? '—'
+                        : tenant.partners.map((p) => p.name).join(', ')}
+                    </td>
+                    <td className="py-2">
+                      <Link href={`/admin/empresas/${tenant.id}`} className="text-brand-500 hover:underline">
+                        Ver detalhes
+                      </Link>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
     </div>

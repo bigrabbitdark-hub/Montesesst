@@ -174,7 +174,7 @@ export default function AdminNormativaPage() {
               {s.entity} {s.code ? `— ${s.code}` : ''} — {s.title}
               <span className="ml-2 text-xs text-brand-500">{formatChecked(s.last_checked_at)}</span>
               {s.consecutive_failures > 0 && (
-                <span className="ml-2 rounded bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">
+                <span className="ml-2 rounded bg-red-500/10 px-2 py-0.5 text-xs font-medium text-red-300">
                   Falhando ({s.consecutive_failures}){s.last_error ? ` — ${s.last_error}` : ''}
                 </span>
               )}

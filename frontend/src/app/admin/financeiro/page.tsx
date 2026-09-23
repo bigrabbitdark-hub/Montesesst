@@ -177,65 +177,67 @@ export default function AdminFinanceiroPage() {
 
       <section className="mt-6 rounded-lg border border-brand-100 p-6">
         <h3 className="text-lg font-bold text-brand-900">Planos</h3>
-        <table className="mt-4 w-full text-left text-sm">
-          <thead>
-            <tr className="border-b border-brand-100 text-brand-700">
-              <th className="py-2">Plano</th>
-              <th className="py-2">Público</th>
-              <th className="py-2">Preço</th>
-              <th className="py-2">Limite de funcionários</th>
-              <th className="py-2"></th>
-            </tr>
-          </thead>
-          <tbody>
-            {plans.map((plan) => (
-              <tr key={plan.id} className="border-b border-brand-100">
-                <td className="py-2 font-medium text-brand-900">{plan.name}</td>
-                <td className="py-2 text-brand-700">{plan.audience}</td>
-                <td className="py-2 text-brand-700">
-                  {editingPlanId === plan.id ? (
-                    <form onSubmit={(e) => handleEditPrice(e, plan.id)} className="flex items-center gap-2">
-                      <input
-                        required
-                        value={editPriceReais}
-                        onChange={(e) => setEditPriceReais(e.target.value)}
-                        placeholder="0,00"
-                        className="w-24 rounded-md border border-brand-100 px-2 py-1"
-                      />
-                      <button type="submit" className="text-brand-500 hover:underline">
-                        Salvar
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setEditingPlanId(null)}
-                        className="text-brand-700 hover:underline"
-                      >
-                        Cancelar
-                      </button>
-                    </form>
-                  ) : (
-                    formatCents(plan.price_cents)
-                  )}
-                </td>
-                <td className="py-2 text-brand-700">{plan.employee_limit ?? '—'}</td>
-                <td className="py-2">
-                  {editingPlanId !== plan.id && (
-                    <button
-                      onClick={() => {
-                        setEditingPlanId(plan.id);
-                        setEditPriceReais((plan.price_cents / 100).toFixed(2).replace('.', ','));
-                        setEditStatus('idle');
-                      }}
-                      className="text-brand-500 hover:underline"
-                    >
-                      Editar preço
-                    </button>
-                  )}
-                </td>
+        <div className="overflow-x-auto">
+          <table className="mt-4 w-full text-left text-sm">
+            <thead>
+              <tr className="border-b border-brand-100 text-brand-700">
+                <th className="py-2">Plano</th>
+                <th className="py-2">Público</th>
+                <th className="py-2">Preço</th>
+                <th className="py-2">Limite de funcionários</th>
+                <th className="py-2"></th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {plans.map((plan) => (
+                <tr key={plan.id} className="border-b border-brand-100">
+                  <td className="py-2 font-medium text-brand-900">{plan.name}</td>
+                  <td className="py-2 text-brand-700">{plan.audience}</td>
+                  <td className="py-2 text-brand-700">
+                    {editingPlanId === plan.id ? (
+                      <form onSubmit={(e) => handleEditPrice(e, plan.id)} className="flex items-center gap-2">
+                        <input
+                          required
+                          value={editPriceReais}
+                          onChange={(e) => setEditPriceReais(e.target.value)}
+                          placeholder="0,00"
+                          className="w-24 rounded-md border border-brand-100 px-2 py-1"
+                        />
+                        <button type="submit" className="text-brand-500 hover:underline">
+                          Salvar
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setEditingPlanId(null)}
+                          className="text-brand-700 hover:underline"
+                        >
+                          Cancelar
+                        </button>
+                      </form>
+                    ) : (
+                      formatCents(plan.price_cents)
+                    )}
+                  </td>
+                  <td className="py-2 text-brand-700">{plan.employee_limit ?? '—'}</td>
+                  <td className="py-2">
+                    {editingPlanId !== plan.id && (
+                      <button
+                        onClick={() => {
+                          setEditingPlanId(plan.id);
+                          setEditPriceReais((plan.price_cents / 100).toFixed(2).replace('.', ','));
+                          setEditStatus('idle');
+                        }}
+                        className="text-brand-500 hover:underline"
+                      >
+                        Editar preço
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
         {editStatus === 'erro' && <p className="mt-2 text-sm text-red-600">Não foi possível salvar o preço.</p>}
       </section>
 
@@ -248,13 +250,13 @@ export default function AdminFinanceiroPage() {
           <ul className="mt-4 flex flex-col gap-4">
             {subscriptions.map((sub) => (
               <li key={sub.id} className="rounded-md border border-brand-100 px-4 py-3 text-sm">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
                   <div>
                     <strong className="text-brand-900">{sub.tenant_name ?? sub.technician_name ?? '—'}</strong>
                     <span className="ml-2 text-brand-700">{sub.plan_name}</span>
                     <span className="ml-2 text-brand-700">({sub.status})</span>
                   </div>
-                  <div className="flex items-center gap-3">
+                  <div className="flex flex-wrap items-center gap-3">
                     {sub.status === 'authorized' && (
                       <button
                         onClick={() => handleUpdateStatus(sub.id, 'paused')}
