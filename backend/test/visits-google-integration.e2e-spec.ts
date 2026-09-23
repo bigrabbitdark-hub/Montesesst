@@ -31,6 +31,14 @@ describe('Confirmar visita cria evento no Google Calendar (e2e)', () => {
 
   beforeAll(async () => {
     process.env.GOOGLE_TOKEN_ENCRYPTION_KEY = process.env.GOOGLE_TOKEN_ENCRYPTION_KEY || 'c'.repeat(64);
+    // O google-oauth-calendar-client.service.ts valida essas duas no
+    // constructor (F-27) — sem elas o provider registrado em
+    // google-calendar.module.ts:11 aborta o boot do módulo antes do
+    // .overrideProvider(GOOGLE_CALENDAR_CLIENT) ter efeito. Os valores
+    // aqui não precisam bater com credencial real porque o provider todo
+    // é substituído pelo fakeGoogleClient no .useValue abaixo.
+    process.env.GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || 'fake-client-id-for-e2e';
+    process.env.GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || 'fake-client-secret-for-e2e';
 
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
       .overrideProvider(GOOGLE_CALENDAR_CLIENT)

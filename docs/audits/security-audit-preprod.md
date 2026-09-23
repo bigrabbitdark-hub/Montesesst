@@ -69,6 +69,8 @@ Após a correção dos P0 e dos P1 (recomendado mas não bloqueante), o sistema 
 
 **Achados restantes (P2/P3)** podem ser endereçados em sprints pós-lançamento; nenhum deles representa risco imediato de exploração.
 
+> **Atualização pós-PR1+PR2+PR3 (22→24/09/2026):** F-15, F-20, F-21 (PR1) + F-22 (PR2) + F-27 (PR3) foram fechados. Ver §11. F-19 foi tratado no mesmo PR1 (fechado antecipadamente). O P0 original era 3 (F-15, F-20, F-21) — permanece válido retroativamente porque F-19 não era P0, era P1.
+
 ---
 
 ## 4. Achados por severidade
@@ -320,6 +322,56 @@ private localFallback(req: Request): boolean {
 ```
 
 > Map com TTL exige limpeza periódica para não vazar memória em processos longos. Em Node.js com `restart: unless-stopped`, OK; se migrar para serverless, refatorar.
+
+#### F-27 — Fallback hardcoded de `GOOGLE_CLIENT_ID`/`SECRET` em `google-oauth-calendar-client.service.ts`
+
+**Arquivo:** `backend/src/google-calendar/google-oauth-calendar-client.service.ts:19-22` (constructor) — também linhas 62-63 (segunda instanciação em `refreshAccessToken`)
+
+> **Detecção:** achado durante revisão pré-push do PR 1 (F-21 mencionava `google-calendar.service.ts` mas não este `google-oauth-calendar-client.service.ts`, que é o `useClass` real do provider `GOOGLE_CALENDAR_CLIENT`). A revisão do PR 1 pegou 3 dos 4 fallbacks; este ficou de fora por falha de cobertura do grep.
+
+**Descrição:** O service que encapsula `OAuth2Client` (cliente real que fala com o Google — diferente do `google-calendar.service.ts` de domínio) lia as credenciais com fallback string:
+
+```ts
+process.env.GOOGLE_CLIENT_ID || 'missing-google-client-id',
+process.env.GOOGLE_CLIENT_SECRET || 'missing-google-client-secret',
+```
+
+Diferente de `R2Service`/`EmailService` (que também usam o mesmo padrão e estão documentados em §F-21/F-23), o **erro do Google OAuth é opaco**: o Google devolve `"invalid_client"` sem distinguir "chave errada" de "chave ausente". Resultado em prod sem `GOOGLE_CLIENT_ID`/`SECRET` no `.env`:
+
+1. Backend **sobe** normalmente (boot não falha — o validator centralizado F-21 só cobre segredos sensíveis, não credenciais OAuth).
+2. Primeira tentativa real de "Conectar Google" (técnico clica o botão) ou criar evento via `refreshAccessToken` → usuário vê `"invalid_client"` opaco, sem indicação de que a env var está faltando.
+3. Operador confunde com problema de credencial no Cloud Console, perde horas debugando o lado errado.
+
+**Probabilidade:** Alta — `docker-compose.yml:90-91` exige as duas vars **sem valor default** (falha `docker compose config` se ausentes), mas o `docker-compose up --build` em dev sem `.env` configurado, ou um `.env` antigoesquecido em prod (cenário plausível: deploy feito copiando `.env.example` e esquecendo de preencher), fazem o container subir com `NODE_ENV=production` mas sem as credenciais OAuth. Esse cenário é o mesmo do F-21 e a auditoria documenta explicitamente como "Migração para outra plataforma onde o secret não foi portado".
+
+**Correção (fail-fast no constructor):**
+
+```ts
+// backend/src/google-calendar/google-oauth-calendar-client.service.ts
+constructor() {
+  const clientId = process.env.GOOGLE_CLIENT_ID;
+  const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+
+  if (!clientId || !clientSecret) {
+    throw new Error(
+      'GoogleOAuthCalendarClientService: faltam GOOGLE_CLIENT_ID e/ou ' +
+        'GOOGLE_CLIENT_SECRET no ambiente. Sem elas, o OAuth2Client seria ' +
+        'instanciado com placeholder e a primeira tentativa real de ' +
+        '"Conectar Google" retornaria "invalid_client" sem contexto.',
+    );
+  }
+
+  this.client = new OAuth2Client(clientId, clientSecret, REDIRECT_URI);
+}
+```
+
+**Decisão de não adicionar a `validateProductionEnv`:** Por design, o validator central F-21 cobre só **segredos sensíveis** (chaves de API, tokens de criptografia, JWT_SECRET) — as credenciais OAuth do Google são credenciais de cliente e ficariam melhor tratadas na camada do client. Esta é uma escolha de projeto, não esquecimento. Ver §10 para comando de verificação.
+
+**Decisão de quebrar o padrão `R2Service`/`EmailService`:** Consciente. Nestes dois, o erro real da chamada API identifica o problema ("credenciais inválidas" no Resend, "NoSuchBucket" no R2). No OAuth do Google, `"invalid_client"` é opaco. A quebra fica registrada aqui para o próximo dev saber por que este service é diferente dos outros.
+
+**Impacto nos testes e2e:** Os 2 testes e2e do google-calendar (`google-calendar.e2e-spec.ts:24-32` e `visits-google-integration.e2e-spec.ts:32-39`) agora setam `process.env.GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` no `beforeAll`, mesmo padrão já em uso para `GOOGLE_TOKEN_ENCRYPTION_KEY`. Os valores são placeholders (`fake-client-id-for-e2e`) — o provider inteiro é mockado via `.overrideProvider(GOOGLE_CALENDAR_CLIENT).useValue(fakeGoogleClient)` então nunca chega a ser usado.
+
+> **Cobre com:** `backend/test/google-oauth-calendar-client-constructor.unit-spec.ts` (novo, 4 cenários: ID faltando, SECRET faltando, ambos faltando, ambos presentes).
 
 ---
 
@@ -580,6 +632,16 @@ curl -I https://montesesst.com.br/api/health
 docker run --rm -e NODE_ENV=production montese/backend
 # sem JWT_SECRET: container deve exit(1) com mensagem clara, NÃO subir
 
+# F-27 — Google OAuth fail-fast (sem docker, só localmente, pois o
+# provider é instanciado no boot do NestJS):
+NODE_ENV=development npm run start:dev
+# sem GOOGLE_CLIENT_ID/SECRET no .env: erro imediato no NestJS
+# apontando exatamente a(s) var(s) faltando(s) — NÃO subir
+#
+# Repetir o teste confirmando o caminho feliz:
+# GOOGLE_CLIENT_ID=<id-real> GOOGLE_CLIENT_SECRET=<secret-real> npm run start:dev
+# esperado: backend sobe, rota /api/health retorna 200
+
 # F-11 — cross-tenant (smoke)
 TOKEN_A=…; TOKEN_B=…
 curl -i -X POST http://localhost:4000/api/documents/upload \
@@ -600,6 +662,9 @@ done
 ## 11. Histórico
 
 - **2026-09-22**: primeira versão da auditoria pré-produção. Cobre 14 achados numerados (F-11..F-26), sendo 3 P0 (F-15, F-20, F-21), 2 P1 (F-19, F-22), 2 P2 (F-17, F-26), 5 P3 (F-16, F-18, F-23, F-24, F-25), e 2 verificados seguros por revisão de código (F-11, F-14).
+- **2026-09-22 (PR 1)**: fechamento de F-15 (`ValidationPipe` + decorators `LoginDto`), F-19 (allowlist CORS), F-20 (`helmet` + `add_header` nginx), F-21 (`validateProductionEnv` centralizado + remoção dos fallbacks `JWT_SECRET ||`). 10 arquivos / +759/-6.
+- **2026-09-22 (PR 2)**: fechamento de F-22 (fallback local no `RateLimitGuard` quando Redis cai — `localBuckets` LRU com cap 60 req/min/IP). 2 arquivos / +209/-9. Inclui teste unit novo (`rate-limit-fallback.unit-spec.ts`, 4 cenários).
+- **2026-09-23 (PR 3)**: achado novo F-27 adicionado em §4.2 P1 (fallback hardcoded em `google-oauth-calendar-client.service.ts`, falha de cobertura do grep do PR 1). Fechamento: constructor fail-fast com mensagem explícita apontando a(s) var(s) faltando(s), documento `.env.example` adicionado bloco Google Calendar com 4 vars (`GOOGLE_CLIENT_ID`/`SECRET`/`TOKEN_ENCRYPTION_KEY`/`APP_BASE_URL`), 2 testes e2e existentes atualizados para setar as vars no `beforeAll` (mesmo padrão já usado para `GOOGLE_TOKEN_ENCRYPTION_KEY`), 1 teste unit novo (`google-oauth-calendar-client-constructor.unit-spec.ts`, 4 cenários — todos passam). Decisão consciente de quebrar o padrão `R2Service`/`EmailService` registrada em §F-27 (erro do Google OAuth é opaco, `'invalid_client'` não distingue "chave errada" de "chave ausente"). 6 arquivos / +210/-12 (5 modificados + 1 novo). Suite unit: 387 pass / 18 falhas (todas pre-existing: 8 suites — pdf-text, pdf-text-full, r2-get-object, pente-fino-{extractor,comparison}, lip-agent-extractor, document-checklist-extractor, company-document-indexer — todas relacionadas a infra externa em ambiente sandbox).
 - **Próxima revisão**: 30 dias após go-live (ou após correção dos P0, o que vier primeiro).
 
 ---

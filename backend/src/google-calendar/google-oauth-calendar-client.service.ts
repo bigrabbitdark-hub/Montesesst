@@ -7,20 +7,54 @@ import {
   GoogleTokenSet,
 } from './google-calendar-client.interface';
 
-// Mesmo padrão de fallback-em-dev já usado em R2Service/EmailService —
-// ausência de credencial não derruba o boot, só falha na primeira
-// chamada real. redirect_uri é fixo (não hardcoded por ambiente): o
-// Google exige que bata exatamente com o cadastrado no Cloud Console
-// (ver "Pré-requisito externo" no topo do plano de implementação).
+// redirect_uri é montado a partir de APP_BASE_URL (também configurável
+// via docker-compose, default `https://montesesst.com.br`) — o Google
+// exige que bata exatamente com o cadastrado no Cloud Console (ver
+// "Pré-requisito externo" no topo do plano de implementação).
 const REDIRECT_URI = `${process.env.APP_BASE_URL || 'https://montesesst.com.br'}/api/google-calendar/callback`;
 
 @Injectable()
 export class GoogleOAuthCalendarClientService implements GoogleCalendarClient {
-  private readonly client = new OAuth2Client(
-    process.env.GOOGLE_CLIENT_ID || 'missing-google-client-id',
-    process.env.GOOGLE_CLIENT_SECRET || 'missing-google-client-secret',
-    REDIRECT_URI,
-  );
+  private readonly client: OAuth2Client;
+
+  constructor() {
+    const clientId = process.env.GOOGLE_CLIENT_ID;
+    const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+
+    // Falha explícita no boot se as credenciais OAuth do Google estiverem
+    // ausentes — antes deste fix o fallback `'missing-google-client-id'`
+    // mascarava a configuração incorreta: o `OAuth2Client` era instanciado
+    // com string-placeholder e a falha só aparecia na primeira chamada
+    // real ("invalid_client" do Google, sem contexto do motivo).
+    //
+    // Diferente de R2Service/EmailService (que usam fallback-em-dev com a
+    // mesma filosofia), este service NÃO pode tolerar placeholder: o erro
+    // do Google é opaco ("invalid_client") e não distingue "chave errada"
+    // de "chave ausente", então a única forma do operador receber um sinal
+    // útil é falhar na inicialização, antes que qualquer usuário tente
+    // "Conectar Google". Já existe `validateProductionEnv()` para os
+    // segredos sensíveis (F-21); este check complementa como rede-de-seg
+    // redundante, mas é a única proteção para as credenciais OAuth (que
+    // NÃO estão em `env.validator.ts` por decisão de projeto — ver §F-27
+    // do audit).
+    //
+    // Testes e2e do google-calendar setam process.env.GOOGLE_CLIENT_ID/
+    // SECRET no beforeAll (mesmo padrão já usado para GOOGLE_TOKEN_
+    // ENCRYPTION_KEY linhas 25 e 33 dos specs) — sem isso o provider
+    // registrado em google-calendar.module.ts:11 é instanciado pelo
+    // NestJS antes do .overrideProvider(GOOGLE_CALENDAR_CLIENT) ter
+    // efeito.
+    if (!clientId || !clientSecret) {
+      throw new Error(
+        'GoogleOAuthCalendarClientService: faltam GOOGLE_CLIENT_ID e/ou ' +
+          'GOOGLE_CLIENT_SECRET no ambiente. Sem elas, o OAuth2Client seria ' +
+          'instanciado com placeholder e a primeira tentativa real de ' +
+          '"Conectar Google" retornaria "invalid_client" sem contexto.',
+      );
+    }
+
+    this.client = new OAuth2Client(clientId, clientSecret, REDIRECT_URI);
+  }
 
   getAuthUrl(state: string): string {
     return this.client.generateAuthUrl({
@@ -58,9 +92,13 @@ export class GoogleOAuthCalendarClientService implements GoogleCalendarClient {
     // técnicos diferentes (setCredentials nele seria uma race condition real:
     // técnico A pode renovar o token de refresh do técnico B se as chamadas
     // se intercalarem).
+    //
+    // `!` aqui é seguro porque o constructor já validou GOOGLE_CLIENT_ID e
+    // GOOGLE_CLIENT_SECRET — se estivessem ausentes o NestJS já teria
+    // abortado a inicialização do módulo com a mensagem explícita de cima.
     const client = new OAuth2Client(
-      process.env.GOOGLE_CLIENT_ID || 'missing-google-client-id',
-      process.env.GOOGLE_CLIENT_SECRET || 'missing-google-client-secret',
+      process.env.GOOGLE_CLIENT_ID!,
+      process.env.GOOGLE_CLIENT_SECRET!,
       REDIRECT_URI,
     );
     client.setCredentials({ refresh_token: refreshToken });
