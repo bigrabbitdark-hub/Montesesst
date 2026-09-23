@@ -246,13 +246,13 @@ export default function AdminEmpresaDetailPage() {
               <ul className="mt-4 flex flex-col gap-4">
                 {detail.subscriptions.map((sub) => (
                   <li key={sub.id} className="rounded-md border border-brand-100 px-4 py-3 text-sm">
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
                       <div>
                         <span className="font-medium text-brand-900">{sub.plan_name}</span>
                         <span className="ml-2 text-brand-700">{formatCents(sub.price_cents)}</span>
                         <span className="ml-2 text-brand-700">({sub.status})</span>
                       </div>
-                      <div className="flex items-center gap-3">
+                      <div className="flex flex-wrap items-center gap-3">
                         {sub.status === 'authorized' && (
                           <button
                             onClick={() => handleUpdateStatus(sub.id, 'paused')}
@@ -336,24 +336,26 @@ export default function AdminEmpresaDetailPage() {
             {detail.documents.length === 0 ? (
               <p className="mt-4 text-sm text-brand-700">Nenhum documento ainda.</p>
             ) : (
-              <table className="mt-4 w-full text-left text-sm">
-                <thead>
-                  <tr className="border-b border-brand-100 text-brand-700">
-                    <th className="py-2">Categoria</th>
-                    <th className="py-2">Título</th>
-                    <th className="py-2">Vencimento</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {detail.documents.map((doc) => (
-                    <tr key={doc.id} className="border-b border-brand-100">
-                      <td className="py-2 text-brand-700">{doc.category}</td>
-                      <td className="py-2 text-brand-900">{doc.title}</td>
-                      <td className="py-2 text-brand-700">{formatDate(doc.expires_at)}</td>
+              <div className="overflow-x-auto">
+                <table className="mt-4 w-full text-left text-sm">
+                  <thead>
+                    <tr className="border-b border-brand-100 text-brand-700">
+                      <th className="py-2">Categoria</th>
+                      <th className="py-2">Título</th>
+                      <th className="py-2">Vencimento</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {detail.documents.map((doc) => (
+                      <tr key={doc.id} className="border-b border-brand-100">
+                        <td className="py-2 text-brand-700">{doc.category}</td>
+                        <td className="py-2 text-brand-900">{doc.title}</td>
+                        <td className="py-2 text-brand-700">{formatDate(doc.expires_at)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             )}
           </section>
 
@@ -362,26 +364,28 @@ export default function AdminEmpresaDetailPage() {
             {detail.epis.length === 0 ? (
               <p className="mt-4 text-sm text-brand-700">Nenhum EPI cadastrado ainda.</p>
             ) : (
-              <table className="mt-4 w-full text-left text-sm">
-                <thead>
-                  <tr className="border-b border-brand-100 text-brand-700">
-                    <th className="py-2">Categoria</th>
-                    <th className="py-2">Equipamento</th>
-                    <th className="py-2">CA</th>
-                    <th className="py-2">Validade do CA</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {detail.epis.map((epi) => (
-                    <tr key={epi.id} className="border-b border-brand-100">
-                      <td className="py-2 text-brand-700">{epi.category}</td>
-                      <td className="py-2 text-brand-900">{epi.description}</td>
-                      <td className="py-2 text-brand-700">{epi.ca_number}</td>
-                      <td className="py-2 text-brand-700">{formatDate(epi.ca_valid_until)}</td>
+              <div className="overflow-x-auto">
+                <table className="mt-4 w-full text-left text-sm">
+                  <thead>
+                    <tr className="border-b border-brand-100 text-brand-700">
+                      <th className="py-2">Categoria</th>
+                      <th className="py-2">Equipamento</th>
+                      <th className="py-2">CA</th>
+                      <th className="py-2">Validade do CA</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {detail.epis.map((epi) => (
+                      <tr key={epi.id} className="border-b border-brand-100">
+                        <td className="py-2 text-brand-700">{epi.category}</td>
+                        <td className="py-2 text-brand-900">{epi.description}</td>
+                        <td className="py-2 text-brand-700">{epi.ca_number}</td>
+                        <td className="py-2 text-brand-700">{formatDate(epi.ca_valid_until)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             )}
           </section>
 
@@ -390,26 +394,28 @@ export default function AdminEmpresaDetailPage() {
             {detail.inspections.length === 0 ? (
               <p className="mt-4 text-sm text-brand-700">Nenhuma inspeção ainda.</p>
             ) : (
-              <table className="mt-4 w-full text-left text-sm">
-                <thead>
-                  <tr className="border-b border-brand-100 text-brand-700">
-                    <th className="py-2">Visita</th>
-                    <th className="py-2">Status</th>
-                    <th className="py-2">Concluída em</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {detail.inspections.map((inspection) => (
-                    <tr key={inspection.id} className="border-b border-brand-100">
-                      <td className="py-2 text-brand-700">{formatDate(inspection.visited_at)}</td>
-                      <td className="py-2 text-brand-900">{inspection.status}</td>
-                      <td className="py-2 text-brand-700">
-                        {inspection.concluded_at ? formatDateTime(inspection.concluded_at) : '—'}
-                      </td>
+              <div className="overflow-x-auto">
+                <table className="mt-4 w-full text-left text-sm">
+                  <thead>
+                    <tr className="border-b border-brand-100 text-brand-700">
+                      <th className="py-2">Visita</th>
+                      <th className="py-2">Status</th>
+                      <th className="py-2">Concluída em</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {detail.inspections.map((inspection) => (
+                      <tr key={inspection.id} className="border-b border-brand-100">
+                        <td className="py-2 text-brand-700">{formatDate(inspection.visited_at)}</td>
+                        <td className="py-2 text-brand-900">{inspection.status}</td>
+                        <td className="py-2 text-brand-700">
+                          {inspection.concluded_at ? formatDateTime(inspection.concluded_at) : '—'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             )}
           </section>
 
@@ -418,30 +424,32 @@ export default function AdminEmpresaDetailPage() {
             {auditLog.length === 0 ? (
               <p className="mt-4 text-sm text-brand-700">Nenhum evento de auditoria encontrado.</p>
             ) : (
-              <table className="mt-4 w-full text-left text-sm">
-                <thead>
-                  <tr className="border-b border-brand-100 text-brand-700">
-                    <th className="py-2">Quando</th>
-                    <th className="py-2">Quem</th>
-                    <th className="py-2">Ação</th>
-                    <th className="py-2">Recurso</th>
-                    <th className="py-2">Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {auditLog.map((row) => (
-                    <tr key={row.id} className="border-b border-brand-100">
-                      <td className="py-2 text-brand-700">{formatDateTime(row.occurred_at)}</td>
-                      <td className="py-2 text-brand-700">
-                        {row.actor_full_name ?? '—'} {row.actor_role ? `(${row.actor_role})` : ''}
-                      </td>
-                      <td className="py-2 text-brand-900">{row.action}</td>
-                      <td className="py-2 text-brand-700">{row.resource_type}</td>
-                      <td className="py-2 text-brand-700">{row.status_code}</td>
+              <div className="overflow-x-auto">
+                <table className="mt-4 w-full text-left text-sm">
+                  <thead>
+                    <tr className="border-b border-brand-100 text-brand-700">
+                      <th className="py-2">Quando</th>
+                      <th className="py-2">Quem</th>
+                      <th className="py-2">Ação</th>
+                      <th className="py-2">Recurso</th>
+                      <th className="py-2">Status</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {auditLog.map((row) => (
+                      <tr key={row.id} className="border-b border-brand-100">
+                        <td className="py-2 text-brand-700">{formatDateTime(row.occurred_at)}</td>
+                        <td className="py-2 text-brand-700">
+                          {row.actor_full_name ?? '—'} {row.actor_role ? `(${row.actor_role})` : ''}
+                        </td>
+                        <td className="py-2 text-brand-900">{row.action}</td>
+                        <td className="py-2 text-brand-700">{row.resource_type}</td>
+                        <td className="py-2 text-brand-700">{row.status_code}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             )}
           </section>
         </>
