@@ -10,11 +10,13 @@ export function FileInput({
   file,
   onChange,
   accept,
+  disabled,
   label = 'Escolher arquivo',
 }: {
   file: File | null;
   onChange: (file: File | null) => void;
   accept?: string;
+  disabled?: boolean;
   label?: string;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -25,13 +27,15 @@ export function FileInput({
         ref={inputRef}
         type="file"
         accept={accept}
+        disabled={disabled}
         onChange={(e) => onChange(e.target.files?.[0] ?? null)}
         className="hidden"
       />
       <button
         type="button"
         onClick={() => inputRef.current?.click()}
-        className="rounded-md border border-brand-500 px-4 py-2 text-sm font-medium text-brand-500 hover:bg-brand-50"
+        disabled={disabled}
+        className="rounded-md border border-brand-500 px-4 py-2 text-sm font-medium text-brand-500 hover:bg-brand-50 disabled:cursor-not-allowed disabled:opacity-50"
       >
         {label}
       </button>

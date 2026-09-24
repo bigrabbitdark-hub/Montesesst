@@ -54,8 +54,18 @@ export function AssistantChat({ tenantId }: { tenantId?: string }) {
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
+    await runQuery();
+  }
+
+  // Lógica pura de submit, separada do FormEvent handler para que o botão
+  // "Tentar de novo" (quando o resultado anterior terminou em erro) possa
+  // re-submeter sem disparar evento de form nenhum — preserva `question`
+  // e `file` que já vivem em estado.
+  async function runQuery() {
+    if (!question.trim()) return;
     setStatus('loading');
     setResult(null);
+    setErrorMessage(GENERIC_ERROR_MESSAGE);
     try {
       let res: Response;
       if (file) {
@@ -135,20 +145,60 @@ export function AssistantChat({ tenantId }: { tenantId?: string }) {
           onChange={(e) => setQuestion(e.target.value)}
           placeholder="Pergunte sobre uma norma de SST — ex: preciso fornecer capacete pra que função?"
           rows={3}
-          className="rounded-md border border-brand-100 px-3 py-2 text-sm"
+          disabled={status === 'loading'}
+          className="rounded-md border border-brand-100 px-3 py-2 text-sm disabled:bg-brand-50"
         />
         <div className="flex flex-col gap-1 text-sm text-brand-900">
           <span>Anexar documento ou imagem (opcional — PDF, JPG ou PNG, até 5MB)</span>
-          <FileInput file={file} onChange={setFile} accept="application/pdf,image/jpeg,image/png" label="Escolher arquivo" />
+          <FileInput file={file} onChange={setFile} accept="application/pdf,image/jpeg,image/png" label="Escolher arquivo" disabled={status === 'loading'} />
         </div>
         <button
           type="submit"
           disabled={status === 'loading' || !question.trim()}
-          className="self-start rounded-md bg-brand-500 px-6 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50"
+          className="inline-flex items-center self-start rounded-md bg-brand-500 px-6 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50"
         >
+          {status === 'loading' && (
+            <svg
+              className="mr-2 inline h-4 w-4 animate-spin"
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+            >
+              <circle
+                className="opacity-25"
+                cx="12"
+                cy="12"
+                r="10"
+                stroke="currentColor"
+                strokeWidth="4"
+                fill="none"
+              />
+              <path
+                className="opacity-75"
+                fill="currentColor"
+                d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+              />
+            </svg>
+          )}
           {status === 'loading' ? 'Consultando...' : 'Perguntar'}
         </button>
-        {status === 'erro' && <p className="text-sm text-red-600">{errorMessage}</p>}
+        {status === 'erro' && (
+          <div
+            role="alert"
+            className="flex flex-col gap-2 rounded-md border border-red-200 bg-red-50 px-3 py-2"
+          >
+            <p className="text-sm text-red-700">{errorMessage}</p>
+            <button
+              type="button"
+              onClick={() => {
+                void runQuery();
+              }}
+              disabled={!question.trim()}
+              className="self-start rounded border border-red-300 bg-white px-3 py-1 text-xs font-medium text-red-700 hover:bg-red-100 disabled:opacity-50"
+            >
+              Tentar de novo
+            </button>
+          </div>
+        )}
       </form>
 
       {result && (
@@ -163,7 +213,12 @@ export function AssistantChat({ tenantId }: { tenantId?: string }) {
           ))}
           <p className="whitespace-pre-wrap text-sm text-brand-900">{result.answer ?? result.message}</p>
           {result.attachment_warning && (
-            <p className="mt-2 text-sm text-amber-700">{result.attachment_warning}</p>
+            <p
+              role="alert"
+              className="mt-3 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm font-medium text-amber-900"
+            >
+              {result.attachment_warning}
+            </p>
           )}
           {result.used_attachment && (
             <p className="mt-2 text-xs font-medium text-brand-700">
@@ -201,15 +256,17 @@ export function AssistantChat({ tenantId }: { tenantId?: string }) {
             </div>
           )}
           {(result.checklist_citations ?? []).length > 0 && (
-            <div className="mt-4 flex flex-col gap-1 rounded-md border border-amber-300 bg-amber-50 p-3">
+            <div className="mt-4 flex flex-col gap-2 rounded-md border border-amber-300 bg-amber-50 p-3">
               <h4 className="text-xs font-bold uppercase tracking-wide text-amber-800">
                 Checklist interno Montese — não é o texto oficial da norma
               </h4>
-              {(result.checklist_citations ?? []).map((c) => (
-                <p key={c.item_id} className="text-sm text-amber-900">
-                  {c.nr_code} — {c.document_name}
-                </p>
-              ))}
+              <ul className="flex flex-col gap-1 pl-4 list-disc">
+                {(result.checklist_citations ?? []).map((c) => (
+                  <li key={c.item_id} className="text-sm text-amber-900">
+                    {c.nr_code} — {c.document_name}
+                  </li>
+                ))}
+              </ul>
             </div>
           )}
         </div>
