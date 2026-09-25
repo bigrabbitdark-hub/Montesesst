@@ -19,8 +19,10 @@ import { DatabaseService } from '../src/common/database/database.service';
 // status esperado, mascarando qualquer regressão real.
 const ASSISTANT_RATE_LIMIT_KEY = 'ratelimit:NormativeAssistantController.query:::ffff:127.0.0.1';
 
+// Fase 10 — espelha FALLBACK_MESSAGE do normative-assistant.service.ts
+// pra assertions de teste (não usar string literal no expect).
 const FALLBACK_MESSAGE =
-  'Não encontrei fundamento suficiente nas fontes consultadas para afirmar isso. Isso não significa que a exigência não exista, só que não a localizei.';
+  'Não encontrei nada relevante pra essa pergunta.';
 
 describe('POST /assistant/normative-query (e2e)', () => {
   let app: INestApplication;

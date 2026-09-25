@@ -21,8 +21,10 @@ import { checkClaimSupport } from './claim-support';
 import { QueryOutcome, QueryTrace, hashQuestion, tokensAllowedForClaim } from './query-trace';
 import { AssistantQueryLogService } from './assistant-query-log.service';
 
+// Fase 10 — copy ajustada pra ser direta e não sugerir que o assistente
+// está fazendo afirmação categórica (pede verificação humana em vez disso).
 const FALLBACK_MESSAGE =
-  'Não encontrei fundamento suficiente nas fontes consultadas para afirmar isso. Isso não significa que a exigência não exista, só que não a localizei.';
+  'Não encontrei nada relevante pra essa pergunta.';
 const PDF_UNREADABLE_WARNING =
   'Não consegui ler texto deste PDF (pode ser um documento escaneado sem texto real) — a resposta abaixo não considera o conteúdo do anexo.';
 const DOCX_UNREADABLE_WARNING =
@@ -326,8 +328,14 @@ export class NormativeAssistantService {
     // veio validado (vínculo checado acima pra técnico/parceiro; pra
     // empresa é sempre o próprio tenant) — sem ele, fica vazio (pergunta
     // puramente normativa).
+    // Fase 10 — busca operacional SÓ pra role `empresa` (Restrição
+    // Global §1 / spec §1): tecnico/parceiro continuam com tenantId
+    // válido pra queries de documentos/NR/checklist, mas NÃO veem
+    // pendências operacionais. ATTENTION_TIPO_AI_SAFE abaixo (allowlist
+    // tipado em dashboard.service.ts) continua protegendo PII mesmo no
+    // caminho empresa.
     let operationalItems: OperationalItem[] = [];
-    if (tenantId) {
+    if (tenantId && user.role === 'empresa') {
       const summary = await this.db.withTenantContext(
         { userId: user.id, tenantId: user.tenantId ?? undefined, role: user.role },
         (client) => this.dashboard.getSummary(client, tenantId),
