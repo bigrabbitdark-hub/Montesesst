@@ -71,6 +71,9 @@ em `/termos` desde 2026-08-26.
 | ASO (Atestado de Saúde Ocupacional), resultado de exames | Fase 4/5, ainda sem tabela — ver `docs/reference/modelos-relatorios-sst.md` | Funcionário da empresa cliente | **⚠️ SIM — dado de saúde (Art. 5º, II)** | 🔜 Fase 4/5 |
 | Fotos/assinaturas em relatórios de visita técnica | Fase 5/6, ainda sem tabela | Funcionário, técnico | Pode ser (imagem de pessoa identificável) | 🔜 Fase 5/6 |
 | Ficha de EPI (uso, entrega, assinatura) | Fase 4/5 | Funcionário | Não diretamente, mas vinculado a dado de saúde ocupacional (risco/exposição) | 🔜 Fase 4/5 |
+| Texto do relato em campo (Copiloto de IA) | Enviado a provedor de IA externo via API pra gerar rascunho de checklist; não fica em tabela própria — só o rascunho gerado, se o técnico salvar, vira dado do sistema | Técnico que escreveu o relato — pode citar terceiros (funcionários, testemunhas) em texto livre | Pode ser (relato de campo pode descrever situação de saúde/acidente) | ✅ Fase 8 |
+| Pergunta do usuário + trechos normativos recuperados (Assistente) | Enviado a provedor de IA externo via API; não persistido em tabela própria — só o resultado aparece na tela | Usuário (empresa/técnico/parceiro) que fez a pergunta | Não diretamente, mas pode conter dado sensível se o usuário digitar algo assim numa pergunta livre | ✅ Fase 9 |
+| Itens operacionais da empresa citados na resposta do Assistente (título de documento, número de CA de EPI) | Mesmo dado já em `documents.title`/EPI, agora também trafega pra um provedor de IA externo via API pra gerar a resposta | Empresa cliente / funcionário indireto (via CA de EPI vinculado) | Não diretamente | ✅ Fase 10 |
 
 ## 4. Base legal por categoria
 
@@ -204,6 +207,37 @@ de base para qualquer alegação de segurança em auditoria futura:
   - Fontes: [Cloudflare DPA](https://www.cloudflare.com/cloudflare-customer-dpa/),
     [Cloudflare SCCs para clientes](https://www.cloudflare.com/cloudflare-customer-scc/).
 
+## 8-bis. Provedor de IA externo — compartilhamento com terceiro (Fases 8-10)
+
+Desde a Fase 8 (Copiloto) e ampliado nas Fases 9-10 (Assistente), o sistema
+envia texto — relato de campo do técnico, pergunta do usuário, trechos
+normativos, itens operacionais da empresa (título de documento, número de
+CA de EPI) — para um provedor de IA externo via API (hoje OpenRouter,
+atuando como *proxy* que roteia pra modelos de terceiros conforme
+configurado pelo fundador; migração para uma chave MiniMax direta está em
+avaliação, ver `docs/roadmap.md`). Isso é, na prática, compartilhamento de
+dado pessoal com um terceiro processador — mesma categoria de preocupação
+já registrada pra Cloudflare R2 na seção 8, mas ainda **sem o mesmo nível
+de confirmação factual**.
+
+⚠️ Pendente de confirmação antes da venda pro primeiro cliente pagante:
+- Localização de processamento do provedor de IA ativo (hoje OpenRouter;
+  se migrar, MiniMax) — não verificado, ao contrário do R2 (seção 8).
+- Se esse provedor oferece DPA/cláusula contratual de proteção de dado
+  equivalente ao que a Cloudflare oferece pro R2 (seção 8).
+- Se a base legal de operador (seção 2) cobre esse repasse a um
+  subprocessador de IA, ou se precisa de cláusula contratual própria/aviso
+  adicional ao titular.
+- Confirmar a política de retenção/treinamento do provedor de IA ativo —
+  se ele usa o conteúdo enviado pra treinar modelos por padrão, isso muda a
+  análise de risco. Vale reconfirmar isso a cada troca de provedor (esta
+  pendência não fica resolvida de vez, é reavaliada toda vez que o provedor
+  ativo mudar).
+
+Nenhuma mudança de comportamento recomendada agora (o Assistente e o
+Copiloto precisam funcionar) — fica registrado como pendência jurídica
+real, no mesmo padrão das seções 5 e 8.
+
 ## 9. Dependência com a Fase 2 (site institucional) — ✅ resolvida
 
 Dois artefatos legais precisavam existir no site institucional antes de
@@ -246,6 +280,9 @@ inventário completo das páginas publicadas.
       legal válida sob a LGPD (Art. 33) — Cloudflare oferece DPA/SCCs no
       modelo europeu, mas se isso basta pela LGPD brasileira é
       especificamente o que precisa de validação (seção 8)
+- [ ] Confirmar localização de processamento, DPA e política de
+      retenção/treinamento do provedor de IA externo ativo (Copiloto +
+      Assistente) — reavaliar a cada troca de provedor (seção 8-bis)
 
 **Antes de processar dado de saúde ocupacional (Fase 4/5):**
 - [ ] Validar com especialista em SST/jurídico o prazo real de retenção de

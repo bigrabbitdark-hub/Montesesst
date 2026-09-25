@@ -152,6 +152,35 @@ function evidenceHasNumberWithUnit(evidence: string, item: NumberWithUnit): bool
   return false;
 }
 
+// Fase A — Etapa 2: detector de fonte nominal na claim. Se a claim cita
+// uma agência normativa (MTE, Fundacentro, TST, MPT/SmartLab) por nome,
+// exigimos que a evidência cubra essa fonte (palavras-chave
+// correspondentes no texto citado). Caso contrário, a claim é bloqueada
+// por "source_authority" para evitar frases tipo "segundo o MTE" sem
+// lastro na evidência.
+const AGENCY_PATTERNS: Array<{ agency: string; evidence_keywords: string[] }> = [
+  { agency: 'MTE', evidence_keywords: ['mte', 'ministerio do trabalho', 'ministerio do trabalho e emprego'] },
+  { agency: 'Fundacentro', evidence_keywords: ['fundacentro', 'fundacao jorge duprat'] },
+  { agency: 'TST', evidence_keywords: ['tst', 'tribunal superior do trabalho'] },
+  { agency: 'MPT', evidence_keywords: ['mpt', 'ministerio publico do trabalho'] },
+];
+
+function claimCitesAgency(claim: string): string | null {
+  for (const { agency, evidence_keywords } of AGENCY_PATTERNS) {
+    const agencyRegex = new RegExp(`\\b${agency.replace(/\+/g, '\\+')}\\b`, 'i');
+    if (agencyRegex.test(claim)) {
+      return agency;
+    }
+  }
+  return null;
+}
+
+function evidenceCoversAgency(evidence: string, agency: string): boolean {
+  const entry = AGENCY_PATTERNS.find((a) => a.agency === agency);
+  if (!entry) return false;
+  return entry.evidence_keywords.some((kw) => evidence.includes(kw));
+}
+
 export function checkClaimSupport(claimText: string, evidenceTexts: string[]): ClaimSupportResult {
   // Sem texto de evidência (ex.: a claim só cita uma imagem anexada) não há
   // o que verificar — mesmo comportamento de "claim sem item/NR": passa.
@@ -168,6 +197,14 @@ export function checkClaimSupport(claimText: string, evidenceTexts: string[]): C
   }
   for (const item of extractItemRefs(claim)) {
     if (!evidenceHasItem(evidence, item)) blocking.push(`item ${item}`);
+  }
+
+  // Fase A — Etapa 2: bloqueio por autoridade de fonte. "Segundo o MTE…"
+  // sem evidência citando MTE não passa — protege contra confiança
+  // auto-declarada.
+  const agency = claimCitesAgency(claim);
+  if (agency && !evidenceCoversAgency(evidence, agency)) {
+    blocking.push(`fonte_nominal_${agency}_sem_evidencia`);
   }
 
   const logged: string[] = [];

@@ -421,18 +421,26 @@ async findOne(client: PoolClient, id: string): Promise<InspectionDetail> {
 }
 ```
 
+`InspectionsService` ganha `DocumentsService` injetado no construtor
+(mesmo padrão de injeção já usado no resto do projeto — nunca passado
+como parâmetro de método; ver `PreventionChecklistService`, que recebe
+`R2Service`/`PreventionCorrectiveActionsService` do mesmo jeito):
+
+```typescript
+constructor(private readonly documents: DocumentsService) {}
+```
+
 `InspectionsService.conclude` (extensão do método já existente):
 depois de gerar os `action_plans` (lógica atual, sem mudança), busca
 `tenants.name` (só o nome — CNPJ/endereço já vêm de `findOne`, que
-`conclude` já chama no fim), monta o PDF, e chama `DocumentsService.upload`:
+`conclude` já chama no fim), monta o PDF, e chama `this.documents.upload`:
 
 ```typescript
 async conclude(
   client: PoolClient,
   id: string,
-  documents: DocumentsService,
   userId: string,
-  userRole: string,
+  userRole: 'tecnico' | 'parceiro',
 ): Promise<InspectionDetail> {
   await this.assertDraft(client, id);
   // ... UPDATE status + geração de action_plans (lógica atual, sem mudança)
@@ -448,7 +456,7 @@ async conclude(
       tenantCnpj: detail.tenant_cnpj,
       companyUnitAddress: detail.company_unit_address,
     });
-    await documents.upload(client, {
+    await this.documents.upload(client, {
       tenantId: detail.tenant_id,
       category: 'relatorio_visita',
       title: `Relatório de Visita — ${detail.visited_at}`,
@@ -477,12 +485,10 @@ parâmetros novos. `InspectionsService` ganha um `Logger` próprio
 (`private readonly logger = new Logger(InspectionsService.name)`),
 mesmo padrão do resto do projeto.
 
-`InspectionsService` precisa de `DocumentsService` injetado no
-construtor (`backend/src/inspections/inspections.module.ts` ganha
-`DocumentsModule` nos imports, mesmo padrão de outro módulo que já
-consome `DocumentsService` entre módulos — conferir como
-`cipa.module.ts` importa o que precisa de `documents` pra seguir o
-mesmo padrão exato).
+`backend/src/inspections/inspections.module.ts` ganha `DocumentsModule`
+nos `imports` (`DocumentsModule` já exporta `DocumentsService` — ver
+§4.4 do código real; sem isso o Nest não resolve a dependência nova do
+construtor).
 
 ### 4.4 Categoria nova de documento
 

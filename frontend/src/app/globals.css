@@ -17,5 +17,12 @@
   --color-brand-700: #1f6e40;
   --color-brand-900: #123822;
 
+  /* Acento âmbar — usado em EPI/segurança (capacete, coletes) e destaques
+     pontuais (badge "novo", ribbon "mais popular"). Nunca substitui o verde
+     como cor primária da marca. */
+  --color-accent-400: #fbbf24;
+  --color-accent-500: #f59e0b;
+  --color-accent-700: #b45309;
+
   --font-sans: var(--font-poppins), system-ui, sans-serif;
 }

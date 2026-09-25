@@ -766,7 +766,8 @@
       }
     ],
     "avisos_esperados": [
-      "contexto"
+      "contexto",
+      "dado_insuficiente"
     ],
     "jurisdicao": "federal",
     "risco_resposta": "medio",
@@ -794,7 +795,8 @@
       }
     ],
     "avisos_esperados": [
-      "contexto"
+      "contexto",
+      "dado_insuficiente"
     ],
     "jurisdicao": "federal",
     "risco_resposta": "medio",
@@ -822,7 +824,8 @@
       }
     ],
     "avisos_esperados": [
-      "contexto"
+      "contexto",
+      "dado_insuficiente"
     ],
     "jurisdicao": "federal",
     "risco_resposta": "medio",
@@ -878,7 +881,8 @@
       }
     ],
     "avisos_esperados": [
-      "contexto"
+      "contexto",
+      "dado_insuficiente"
     ],
     "jurisdicao": "federal",
     "risco_resposta": "medio",

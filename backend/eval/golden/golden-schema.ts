@@ -25,7 +25,19 @@ export const COMPORTAMENTOS = [
 export type Comportamento = (typeof COMPORTAMENTOS)[number];
 
 // Mesmos valores de NoticeType (backend/src/normative/question-notices.ts).
-export const AVISOS = ['jurisdicao', 'profissional_habilitado', 'contexto'] as const;
+// Fase A — Etapa 2: adiciona vencimento_vencido, dado_insuficiente, geografia.
+// ATENÇÃO: ao adicionar uma chave aqui, qualquer golden de avisos_esperados
+// com valor antigo continua passando (a string não muda); o lint é que vai
+// sinalizar aviso não-listado em AVISOS. O subset aqui é a lista fechada de
+// valores aceitos no dataset golden — fora dela o lint rejeita.
+export const AVISOS = [
+  'jurisdicao',
+  'profissional_habilitado',
+  'contexto',
+  'vencimento_vencido',
+  'dado_insuficiente',
+  'geografia',
+] as const;
 export type AvisoTipo = (typeof AVISOS)[number];
 
 export const RISCOS = ['baixo', 'medio', 'alto'] as const;

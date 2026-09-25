@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { PaymentIssuerNote } from '@/components/PaymentIssuerNote';
 import { useEffect, useState } from 'react';
+import { MountainDivider } from '@/components/MountainDivider';
 
 interface Plan {
   id: string;
@@ -54,34 +55,38 @@ export default function PlanosTecnicoPage() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl px-4 py-16">
-      <h1 className="text-center text-3xl font-bold text-brand-900">Plano para técnico</h1>
-      <p className="mx-auto mt-4 max-w-xl text-center text-brand-700">
-        Tenha sua carteira de clientes organizada na plataforma.
-      </p>
+    <section className="bg-gradient-to-b from-brand-50 to-white px-4 pb-2 pt-16 sm:px-10 sm:pt-20">
+      <div className="mx-auto max-w-2xl text-center">
+        <h1 className="text-[28px] font-extrabold text-brand-900 sm:text-[32px]">Plano para técnico</h1>
+        <p className="mt-3.5 text-[15.5px] leading-relaxed text-brand-700">
+          Tenha sua carteira de clientes organizada na plataforma.
+        </p>
+      </div>
 
       {error && <p className="mt-6 text-center text-sm text-red-600">{error}</p>}
 
-      <div className="mt-10 grid gap-6 sm:grid-cols-1">
+      <div className="mx-auto mt-10 grid max-w-sm gap-6 pb-16 sm:grid-cols-1">
         {plans.map((plan) => (
-          <div key={plan.id} className="flex flex-col items-center rounded-lg border border-brand-100 p-8">
-            <h2 className="text-lg font-semibold text-brand-900">{plan.name}</h2>
-            <p className="mt-2 text-2xl font-bold text-brand-700">
-              {formatPrice(plan.price_cents)}
-              <span className="text-sm font-normal text-brand-700">/mês</span>
-            </p>
+          <div key={plan.id} className="flex flex-col items-center rounded-2xl border border-brand-100 bg-white p-7">
+            <h2 className="text-[17px] font-bold text-brand-900">{plan.name}</h2>
+
+            <div className="mt-6 flex items-baseline gap-1">
+              <span className="text-[32px] font-extrabold text-brand-900">{formatPrice(plan.price_cents)}</span>
+              <span className="text-[13px] text-brand-700">/mês</span>
+            </div>
+
             {loggedIn ? (
               <button
                 onClick={() => handleSubscribe(plan.id)}
                 disabled={subscribingPlanId === plan.id}
-                className="mt-6 rounded-md bg-brand-500 px-6 py-3 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50"
+                className="mt-7 rounded-[9px] bg-brand-500 px-6 py-3.5 text-sm font-semibold text-white transition-colors hover:bg-brand-700 disabled:opacity-50"
               >
                 {subscribingPlanId === plan.id ? 'Redirecionando...' : 'Assinar'}
               </button>
             ) : (
               <Link
                 href="/login"
-                className="mt-6 rounded-md border border-brand-500 px-6 py-3 text-center text-sm font-medium text-brand-700 hover:bg-brand-50"
+                className="mt-7 rounded-[9px] border-[1.5px] border-brand-500 px-6 py-3.5 text-center text-sm font-semibold text-brand-700 transition-colors hover:bg-brand-50"
               >
                 Entrar para assinar
               </Link>
@@ -91,12 +96,14 @@ export default function PlanosTecnicoPage() {
         ))}
       </div>
 
-      <p className="mt-10 text-center text-sm text-brand-700">
+      <p className="mx-auto max-w-2xl pb-16 text-center text-sm text-brand-700">
         Ainda não tem conta de técnico?{' '}
         <Link href="/tecnico/cadastro" className="font-medium text-brand-900 hover:underline">
           Cadastre-se
         </Link>
       </p>
-    </div>
+
+      <MountainDivider />
+    </section>
   );
 }

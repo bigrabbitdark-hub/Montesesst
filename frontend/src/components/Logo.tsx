@@ -1,12 +1,17 @@
 import Link from 'next/link';
+import Image from 'next/image';
 
-// Wordmark de texto temporário — arquivo-fonte do logo (vetor/alta
-// resolução) ainda não foi enviado (docs/vision.md seção 4). Trocar só
-// este componente quando o arquivo real chegar, sem mexer no resto do site.
 export function Logo() {
   return (
-    <Link href="/" className="text-xl font-bold text-brand-700">
-      Montese
+    <Link href="/" className="inline-flex items-center">
+      <Image
+        src="/brand/logo-horizontal.jpg"
+        alt="Montese SST"
+        width={220}
+        height={73}
+        priority
+        className="h-10 w-auto sm:h-11"
+      />
     </Link>
   );
 }

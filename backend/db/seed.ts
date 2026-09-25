@@ -1,5 +1,6 @@
 import { Client } from 'pg';
 import * as bcrypt from 'bcrypt';
+import { BCRYPT_COST } from '../src/common/auth/bcrypt-cost';
 
 // Dados de demonstração idempotentes (ON CONFLICT sempre por chave natural:
 // cnpj, email, user_id, ou tenant_id+cpf) — roda quantas vezes for preciso
@@ -30,7 +31,7 @@ async function main() {
     // especial, é o script "logado" como admin pelo tempo da transação.
     await client.query("SELECT set_config('app.role', 'admin', true)");
 
-    const passwordHash = await bcrypt.hash(SEED_PASSWORD, 10);
+    const passwordHash = await bcrypt.hash(SEED_PASSWORD, BCRYPT_COST);
 
     const tenantA = await upsertTenant(client, 'Empresa Demo A (seed)', '10000000000011');
     const tenantB = await upsertTenant(client, 'Empresa Demo B (seed)', '10000000000012');
@@ -64,6 +65,8 @@ async function main() {
     await upsertEmployee(client, tenantA, 'Funcionário Demo A1', '10000000001');
     await upsertEmployee(client, tenantA, 'Funcionário Demo A2', '10000000002');
     await upsertEmployee(client, tenantB, 'Funcionário Demo B1', '10000000003');
+
+    await seedOfficialSources(client);
 
     await client.query('COMMIT');
   } catch (err) {
@@ -158,6 +161,40 @@ async function upsertEmployee(client: Client, tenantId: string, fullName: string
      ON CONFLICT (tenant_id, cpf) DO UPDATE SET full_name = EXCLUDED.full_name`,
     [tenantId, fullName, cpf],
   );
+}
+
+// Fase A — Etapa 2: catálogo inicial de fontes oficiais (MTE, Fundacentro,
+// TST, MPT/SmartLab, CEVS-RS) para que o monitor cron (0050) tenha o que
+// monitorar. Estes são os endereços das páginas de abertura de cada
+// domínio oficial; ao primeiro download bem-sucedido o monitor cria um
+// normative_document registrado contra o source_id correspondente.
+//
+// Os códigos 'NR-XX' abaixo são apenas etiquetas lógicas para que a UI
+// possa linkar a fonte ao conteúdo citado — não implicam que o texto
+// específico foi baixado (ver `normative_documents.status` para o estado
+// real de cada documento: aguardando_validacao / vigente / rejeitado).
+//
+// A escolha de incluir CEVS-RS é por conveniência operacional (Montese
+// opera em SC/RS); outras secretarias estaduais devem ser adicionadas
+// por uma migration dedicada na sequência, não aqui.
+async function seedOfficialSources(client: Client): Promise<void> {
+  const sources: Array<{ entity: string; code: string; title: string; url: string }> = [
+    { entity: 'MTE', code: 'MTE-NR', title: 'Normas Regulamentadoras (MTE/SIT)', url: 'https://www.gov.br/trabalho-e-emprego/pt-br/assuntos/inspecao/seguranca-e-saude-no-trabalho/legislacao/seguranca-e-saude-no-trabalho' },
+    { entity: 'MTE', code: 'MTE-SST', title: 'Página de SST do MTE', url: 'https://www.gov.br/trabalho-e-emprego/pt-br/assuntos/inspecao/seguranca-e-saude-no-trabalho' },
+    { entity: 'MTE', code: 'MTE-LEGIS', title: 'Legislação SST — atos normativos', url: 'https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/ctpp/legislacao' },
+    { entity: 'Fundacentro', code: 'FUNDACENTRO-PUB', title: 'Publicações Fundacentro', url: 'https://www.gov.br/fundacentro/pt-br' },
+    { entity: 'TST', code: 'TST-NORMA', title: 'Normas TST — jurisprudência SST', url: 'https://www.tst.jus.br/jurisprudencia' },
+    { entity: 'MPT', code: 'MPT-SMARTLAB', title: 'MPT SmartLab — estudos técnicos', url: 'https://smartlab.mpt.mp.br' },
+    { entity: 'CEVS', code: 'CEVS-RS', title: 'Centro Estadual de Vigilância em Saúde do RS', url: 'https://cevs.rs.gov.br' },
+  ];
+  for (const s of sources) {
+    await client.query(
+      `INSERT INTO official_sources (entity, code, title, official_url, active)
+       VALUES ($1, $2, $3, $4, true)
+       ON CONFLICT (code) DO UPDATE SET title = EXCLUDED.title, official_url = EXCLUDED.official_url`,
+      [s.entity, s.code, s.title, s.url],
+    );
+  }
 }
 
 main().catch((err) => {

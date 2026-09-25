@@ -3,7 +3,7 @@ import type { ReactNode, SVGProps } from 'react';
 export type AdminIconName =
   | 'home' | 'wallet' | 'building' | 'user' | 'users' | 'book' | 'check' | 'shield'
   | 'search' | 'bell' | 'menu' | 'close' | 'logout' | 'chevron' | 'refresh' | 'server'
-  | 'dollar' | 'sparkle' | 'alert' | 'info';
+  | 'dollar' | 'sparkle' | 'alert' | 'info' | 'database' | 'list' | 'settings' | 'wrench';
 
 // Conjunto mínimo de ícones de traço (24x24) — sem biblioteca de ícones.
 const PATHS: Record<AdminIconName, ReactNode> = {
@@ -27,6 +27,10 @@ const PATHS: Record<AdminIconName, ReactNode> = {
   sparkle: (<><circle cx="12" cy="12" r="3" /><path d="M12 3v3M12 18v3M3 12h3M18 12h3M6 6l2 2M16 16l2 2M6 18l2-2M16 8l2-2" /></>),
   alert: (<><path d="M12 4 2.8 19h18.4L12 4z" /><path d="M12 10v4M12 17h.01" /></>),
   info: (<><circle cx="12" cy="12" r="9" /><path d="M12 11v5M12 8h.01" /></>),
+  database: (<><ellipse cx="12" cy="5.5" rx="8" ry="2.5" /><path d="M4 5.5v6c0 1.4 3.6 2.5 8 2.5s8-1.1 8-2.5v-6" /><path d="M4 11.5v6c0 1.4 3.6 2.5 8 2.5s8-1.1 8-2.5v-6" /></>),
+  list: (<><path d="M4 6h12M4 12h12M4 18h12" /><circle cx="19" cy="6" r="1" /><circle cx="19" cy="12" r="1" /><circle cx="19" cy="18" r="1" /></>),
+  settings: (<><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 0 1-4 0v-.1a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 0 1 0-4h.1a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3h.1a1.7 1.7 0 0 0 1-1.5V3a2 2 0 0 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8v.1a1.7 1.7 0 0 0 1.5 1H21a2 2 0 0 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z" /></>),
+  wrench: (<><path d="M14.7 6.3a4 4 0 0 0-5.4 5.4l-7 7a2 2 0 0 0 2.8 2.8l7-7a4 4 0 0 0 5.4-5.4l-2.5 2.5-2.8-2.8 2.5-2.5z" /></>),
 };
 
 export function AdminIcon({

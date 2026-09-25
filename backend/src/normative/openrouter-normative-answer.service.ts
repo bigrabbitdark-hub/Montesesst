@@ -24,6 +24,7 @@ export class OpenRouterNormativeAnswerService implements NormativeAnswerProvider
     companyChunks: CompanyChunk[],
     checklistItems: ChecklistItem[],
     attachment?: AttachmentInput,
+    systemPrompt?: string,
   ): Promise<NormativeClaim[]> {
     const apiKey = process.env.OPENROUTER_API_KEY;
     if (!apiKey) {
@@ -42,7 +43,7 @@ export class OpenRouterNormativeAnswerService implements NormativeAnswerProvider
           'X-Title': 'Montese SST - Assistente Normativo',
         },
         body: JSON.stringify(
-          buildRagChatCompletionBody(model, question, chunks, operationalItems, companyChunks, checklistItems, attachment),
+          buildRagChatCompletionBody(model, question, chunks, operationalItems, companyChunks, checklistItems, attachment, systemPrompt),
         ),
         signal: AbortSignal.timeout(45_000),
       });
@@ -97,12 +98,22 @@ export class OpenRouterNormativeAnswerService implements NormativeAnswerProvider
     return parsed.items.filter((item): item is NormativeClaim => {
       if (typeof item !== 'object' || item === null) return false;
       const candidate = item as Record<string, unknown>;
+      // Fase A — Etapa 2: validar enums dos campos opcionais kind/confidence/scope.
+      // Quando o modelo devolveu um valor inválido, o parser já vai aplicar o
+      // default — então aceitar aqui qualquer string é seguro. Só bloqueamos
+      // tipos errados (number, object, etc.).
+      const okKind = !('kind' in candidate) || typeof candidate.kind === 'string';
+      const okConfidence = !('confidence' in candidate) || typeof candidate.confidence === 'string';
+      const okScope = !('scope' in candidate) || typeof candidate.scope === 'string';
       return (
         typeof candidate.claim === 'string' &&
         Array.isArray(candidate.chunk_ids) &&
         Array.isArray(candidate.operational_ref_ids) &&
         Array.isArray(candidate.company_chunk_ids) &&
-        typeof candidate.uses_attachment === 'boolean'
+        typeof candidate.uses_attachment === 'boolean' &&
+        okKind &&
+        okConfidence &&
+        okScope
       );
     });
   }

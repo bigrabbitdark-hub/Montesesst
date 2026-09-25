@@ -3,6 +3,7 @@ import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import * as bcrypt from 'bcrypt';
 import { randomUUID } from 'crypto';
+import { BCRYPT_COST } from '../src/common/auth/bcrypt-cost';
 import { S3Client, HeadObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
 import { AppModule } from '../src/app.module';
 import { TestDb } from './db-test-helper';
@@ -83,7 +84,7 @@ describe('GET /documents/:id/download, DELETE /documents/:id (e2e)', () => {
 
   it('rejeita exclusão por quem não subiu o documento (mesmo tenant, outro usuário)', async () => {
     const otherPassword = 'senha-teste-123';
-    const passwordHash = await bcrypt.hash(otherPassword, 10);
+    const passwordHash = await bcrypt.hash(otherPassword, BCRYPT_COST);
     const otherEmail = `outro-usuario-${randomUUID()}@teste.montese.local`;
     await (db as any).client.query(
       `INSERT INTO users (tenant_id, role, email, password_hash, full_name, status)

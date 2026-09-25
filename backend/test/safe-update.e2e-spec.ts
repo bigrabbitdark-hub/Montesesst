@@ -5,6 +5,7 @@ import { randomUUID } from 'crypto';
 import { Client } from 'pg';
 import * as bcrypt from 'bcrypt';
 import { AppModule } from '../src/app.module';
+import { BCRYPT_COST } from '../src/common/auth/bcrypt-cost';
 
 const SUPERUSER_URL = process.env.TEST_SUPERUSER_DATABASE_URL as string;
 const TEST_PASSWORD = 'senha-teste-123';
@@ -52,7 +53,7 @@ describe('Proteção contra injeção de nome de coluna via update (e2e)', () =>
     // cria após confirmação) — inserido direto via superuser só pra
     // montar o fixture rápido, sem precisar rodar o fluxo de cadastro
     // completo aqui (esse fluxo já tem sua própria suíte de testes).
-    const passwordHash = await bcrypt.hash(TEST_PASSWORD, 10);
+    const passwordHash = await bcrypt.hash(TEST_PASSWORD, BCRYPT_COST);
     const email = `tecnico-injecao-${randomUUID()}@teste.montese.local`;
     const userResult = await db.query<{ id: string }>(
       `INSERT INTO users (tenant_id, role, email, password_hash, full_name, status)

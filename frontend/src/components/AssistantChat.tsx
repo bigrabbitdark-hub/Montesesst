@@ -23,7 +23,19 @@ interface ChecklistCitation {
 }
 
 interface Notice {
-  tipo: 'jurisdicao' | 'profissional_habilitado' | 'contexto';
+  // Fase A — Etapa 2: union ampliada com vencimento_vencido, dado_insuficiente
+  // e geografia. Mantém os 3 valores antigos (lint exige retro-compat) e
+  // aceita os 3 novos emitidos por `question-notices.ts` no backend.
+  // Para evitar drift com o backend, qualquer valor fora desse conjunto é
+  // sinalizado pelo typecheck — só adicionar chave aqui quando o backend
+  // emitir o tipo novo.
+  tipo:
+    | 'jurisdicao'
+    | 'profissional_habilitado'
+    | 'contexto'
+    | 'vencimento_vencido'
+    | 'dado_insuficiente'
+    | 'geografia';
   texto: string;
 }
 
@@ -45,11 +57,27 @@ function authHeaders() {
 const GENERIC_ERROR_MESSAGE = 'Não foi possível consultar agora. Tente de novo.';
 const MAX_ATTACHMENT_BYTES = 5 * 1024 * 1024;
 
+// Limite duro para uma única consulta ao assistente. Sem ele, um fetch
+// pendurado deixaria a UI em 'loading' indefinidamente (sem o spinner
+// resolver, sem o botão "Tentar de novo" ficar disponível). 60s é
+// folgado o suficiente para uma chamada LLM+RAG completa e curto o
+// suficiente para não fazer o usuário desistir.
+const QUERY_TIMEOUT_MS = 60_000;
+
 export function AssistantChat({ tenantId }: { tenantId?: string }) {
   const [question, setQuestion] = useState('');
+  // Anexo opcional da pergunta atual. Vive aqui (e não em ref) porque é
+  // fonte de verdade da UI: o `<FileInput>` lê daqui, o `runQuery` lê
+  // daqui para montar o FormData, e o reset pós-sucesso também escreve
+  // aqui (`setFile(null)`).
   const [file, setFile] = useState<File | null>(null);
   const [result, setResult] = useState<QueryResult | null>(null);
   const [status, setStatus] = useState<'idle' | 'loading' | 'erro'>('idle');
+  // Mensagem mostrada na região `role="alert"` quando `status === 'erro'`.
+  // É re-inicializada com o texto genérico no início de cada `runQuery` —
+  // o que significa que entre uma consulta e outra sempre exibimos o
+  // genérico até o backend responder com o motivo específico (413/400/429)
+  // ou o catch assumir com a mesma string.
   const [errorMessage, setErrorMessage] = useState(GENERIC_ERROR_MESSAGE);
 
   async function handleSubmit(event: FormEvent) {
@@ -66,6 +94,13 @@ export function AssistantChat({ tenantId }: { tenantId?: string }) {
     setStatus('loading');
     setResult(null);
     setErrorMessage(GENERIC_ERROR_MESSAGE);
+    // `AbortController` + `setTimeout` para garantir que um fetch
+    // pendurado não deixa a UI em 'loading' para sempre (o usuário
+    // ficaria sem spinner E sem botão "Tentar de novo"). 60s cobre uma
+    // chamada LLM+RAG completa com folga; o `clearTimeout` no `finally`
+    // libera o handle mesmo em caminho de sucesso.
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), QUERY_TIMEOUT_MS);
     try {
       let res: Response;
       if (file) {
@@ -85,12 +120,14 @@ export function AssistantChat({ tenantId }: { tenantId?: string }) {
           method: 'POST',
           headers: authHeaders(),
           body: formData,
+          signal: controller.signal,
         });
       } else {
         res = await fetch('/api/assistant/normative-query', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', ...authHeaders() },
           body: JSON.stringify(tenantId ? { question, tenant_id: tenantId } : { question }),
+          signal: controller.signal,
         });
       }
       if (res.ok) {
@@ -114,9 +151,25 @@ export function AssistantChat({ tenantId }: { tenantId?: string }) {
         setErrorMessage(GENERIC_ERROR_MESSAGE);
       }
       setStatus('erro');
-    } catch {
-      setErrorMessage(GENERIC_ERROR_MESSAGE);
+    } catch (err) {
+      // Erro de rede/timeout — o fetch foi abortado pelo AbortController
+      // ou a rede caiu antes da resposta chegar. Em qualquer dos casos
+      // não temos status HTTP para exibir uma mensagem específica, então
+      // usamos a genérica (consistente com a branch `else` acima), com
+      // uma exceção: quando o erro é um AbortError (timeout), avisamos
+      // o usuário de forma específica para que ele saiba que vale tentar
+      // de novo em vez de presumir que a pergunta está malformada.
+      if (err instanceof Error && err.name === 'AbortError') {
+        setErrorMessage('A consulta demorou demais e foi cancelada — tente novamente.');
+      } else {
+        setErrorMessage(GENERIC_ERROR_MESSAGE);
+      }
       setStatus('erro');
+    } finally {
+      // Sempre limpa o timeout — quer o fetch tenha sucesso, falhado
+      // ou sido abortado, o setTimeout não deve ficar pendente pra sempre
+      // segurando o AbortController vivo até o próximo tick de 60s.
+      clearTimeout(timeoutId);
     }
   }
 
@@ -138,6 +191,16 @@ export function AssistantChat({ tenantId }: { tenantId?: string }) {
 
   return (
     <div>
+      {/*
+        Região viva para leitores de tela: anuncia transições
+        loading → idle (sucesso) sem interromper o que o usuário está
+        ouvindo. A falha continua sendo anunciada pelo `role="alert"`
+        existente abaixo — cobri-la aqui geraria anúncio duplicado.
+      */}
+      <div aria-live="polite" aria-atomic="true" className="sr-only">
+        {status === 'loading' && 'Consultando o assistente, por favor aguarde.'}
+        {status === 'idle' && result && 'Resposta recebida do assistente.'}
+      </div>
       <form onSubmit={handleSubmit} className="flex flex-col gap-3">
         <textarea
           required
@@ -203,14 +266,32 @@ export function AssistantChat({ tenantId }: { tenantId?: string }) {
 
       {result && (
         <div className="mt-6 rounded-lg border border-brand-100 p-6">
-          {(result.notices ?? []).map((notice) => (
-            <p
-              key={notice.tipo}
-              className="mb-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800"
-            >
-              {notice.texto}
-            </p>
-          ))}
+          {(result.notices ?? []).map((notice) => {
+            // Fase A — Etapa 2: avisos novos (`vencimento_vencido`,
+            // `dado_insuficiente`, `geografia`) são alertas de bloqueio
+            // (a resposta fica incompleta até o usuário resolver). Os
+            // antigos (`jurisdicao`, `profissional_habilitado`,
+            // `contexto`) seguem em amber-claro como avisos de contexto.
+            // Cor mais forte aqui (red-50/red-200/red-900) sinaliza "isso
+            // precisa ser resolvido antes da resposta servir".
+            const isBlocking =
+              notice.tipo === 'vencimento_vencido' ||
+              notice.tipo === 'dado_insuficiente' ||
+              notice.tipo === 'geografia';
+            return (
+              <p
+                key={notice.tipo}
+                role={isBlocking ? 'alert' : undefined}
+                className={
+                  isBlocking
+                    ? 'mb-3 rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm font-medium text-red-900'
+                    : 'mb-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800'
+                }
+              >
+                {notice.texto}
+              </p>
+            );
+          })}
           <p className="whitespace-pre-wrap text-sm text-brand-900">{result.answer ?? result.message}</p>
           {result.attachment_warning && (
             <p

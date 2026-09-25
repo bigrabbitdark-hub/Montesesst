@@ -3,6 +3,7 @@ import { PoolClient } from 'pg';
 import * as bcrypt from 'bcrypt';
 import { mapPgError } from '../common/pg-error.util';
 import { buildSafeSetClause } from '../common/safe-update.util';
+import { BCRYPT_COST } from '../common/auth/bcrypt-cost';
 
 // Únicas colunas que update() pode alterar — nunca confiar nas chaves do
 // body pra montar o SET (ver common/safe-update.util.ts).
@@ -39,7 +40,7 @@ interface UpdateTechnicianData {
 export class TechniciansService {
   async create(client: PoolClient, data: CreateTechnicianData): Promise<Technician> {
     try {
-      const passwordHash = await bcrypt.hash(data.password, 10);
+      const passwordHash = await bcrypt.hash(data.password, BCRYPT_COST);
       const userResult = await client.query<{ id: string }>(
         `INSERT INTO users (role, email, password_hash, full_name, phone, status)
          VALUES ('tecnico', $1, $2, $3, $4, 'ativo') RETURNING id`,

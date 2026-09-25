@@ -4,6 +4,7 @@ import * as bcrypt from 'bcrypt';
 import { DatabaseService } from '../common/database/database.service';
 import { AuditService } from '../common/audit/audit.service';
 import { EmailService } from '../common/email/email.service';
+import { BCRYPT_COST } from '../common/auth/bcrypt-cost';
 import { escapeHtml } from '../common/html-escape.util';
 import { mapPgError } from '../common/pg-error.util';
 
@@ -41,7 +42,7 @@ export class RegistrationService {
   ) {}
 
   async register(input: RegisterInput): Promise<void> {
-    const passwordHash = await bcrypt.hash(input.password, 10);
+    const passwordHash = await bcrypt.hash(input.password, BCRYPT_COST);
 
     const { tenantId, userId } = await this.db.withoutTenantContext(async (client) => {
       try {
@@ -72,7 +73,7 @@ export class RegistrationService {
   }
 
   async registerTechnician(input: RegisterTechnicianInput): Promise<void> {
-    const passwordHash = await bcrypt.hash(input.password, 10);
+    const passwordHash = await bcrypt.hash(input.password, BCRYPT_COST);
 
     const userId = await this.db.withoutTenantContext(async (client) => {
       try {

@@ -69,6 +69,11 @@ export class AuthController {
   }
 
   @Public()
+  @RateLimit({
+    limit: envInt('AUTH_CONFIRM_RATE_LIMIT_MAX', 30),
+    windowSeconds: envInt('AUTH_CONFIRM_RATE_LIMIT_WINDOW_SECONDS', 3600),
+    keyBy: 'ip',
+  })
   @Get('confirm')
   async confirm(@Query('token') token: string, @Req() req: any, @Res() res: Response) {
     const status = await this.registrationService.confirm(token, req.ip);

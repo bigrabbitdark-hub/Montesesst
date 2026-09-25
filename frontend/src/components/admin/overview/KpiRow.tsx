@@ -6,7 +6,8 @@ import { AsyncBody } from '../Card';
 import { fillDailySeries, formatCents, formatCompact, formatUsd, plural } from '../format';
 import { AdminIcon } from '../icons';
 import type { FetchState } from '../useAdminFetch';
-import type { MiniMaxUsage, OpenRouterUsage, OverviewMetrics } from '../types';
+import type { FinanceiroResponse, MiniMaxUsage, OpenRouterUsage, OverviewMetrics } from '../types';
+import { HealthScoreKpi } from './HealthScoreKpi';
 
 type Tint = 'green' | 'blue' | 'violet';
 
@@ -52,14 +53,17 @@ export function KpiRow({
   overview,
   miniMax,
   openrouter,
+  financeiro,
 }: {
   overview: FetchState<OverviewMetrics>;
   miniMax: FetchState<MiniMaxUsage>;
   openrouter: FetchState<OpenRouterUsage>;
+  financeiro: FetchState<FinanceiroResponse>;
 }) {
   return (
-    <div className="grid gap-4 md:grid-cols-3">
-      <KpiCard icon={<AdminIcon name="dollar" className="h-6 w-6" />} tint="green" label="MRR (assinaturas ativas)">
+    // 4 cards: mobile 1 coluna, md 2x2, xl 4 em linha.
+    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <KpiCard icon={<AdminIcon name="dollar" className="h-6 w-6" />} tint="green" label="Receita Total">
         <AsyncBody state={overview} rows={2}>
           {(m) => (
             <>
@@ -104,6 +108,8 @@ export function KpiRow({
           }}
         </AsyncBody>
       </KpiCard>
+
+      <HealthScoreKpi financeiro={financeiro} miniMax={miniMax} openrouter={openrouter} />
     </div>
   );
 }

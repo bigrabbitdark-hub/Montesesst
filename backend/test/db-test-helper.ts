@@ -1,6 +1,7 @@
 import { Client } from 'pg';
 import * as bcrypt from 'bcrypt';
 import { randomUUID } from 'crypto';
+import { BCRYPT_COST } from '../src/common/auth/bcrypt-cost';
 
 // Testes de RLS precisam criar fixtures em mais de um tenant ao mesmo tempo —
 // a role da aplicação (montese_app) não consegue fazer isso porque ela
@@ -65,7 +66,7 @@ export class TestDb {
   }
 
   async createTenantWithUser(namePrefix: string): Promise<TestTenantFixture> {
-    const passwordHash = await bcrypt.hash(TEST_PASSWORD, 10);
+    const passwordHash = await bcrypt.hash(TEST_PASSWORD, BCRYPT_COST);
     const suffix = randomUUID().slice(0, 8);
 
     const tenantResult = await this.client.query<{ id: string }>(
@@ -99,7 +100,7 @@ export class TestDb {
   }
 
   async createUserWithRole(role: 'tecnico' | 'parceiro' | 'admin', namePrefix: string): Promise<TestUserFixture> {
-    const passwordHash = await bcrypt.hash(TEST_PASSWORD, 10);
+    const passwordHash = await bcrypt.hash(TEST_PASSWORD, BCRYPT_COST);
     const suffix = randomUUID().slice(0, 8);
     const email = `${stripDiacritics(namePrefix).toLowerCase().replace(/\s+/g, '-')}-${suffix}@teste.montese.local`;
 

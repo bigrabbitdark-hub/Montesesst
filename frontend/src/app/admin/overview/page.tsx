@@ -9,7 +9,6 @@ import { AiTokensCard } from '@/components/admin/overview/AiTokensCard';
 import { AlertsCard } from '@/components/admin/overview/AlertsCard';
 import { FinanceCard } from '@/components/admin/overview/FinanceCard';
 import type { Periodo } from '@/components/admin/overview/FinanceCard';
-import { HealthCard } from '@/components/admin/overview/HealthCard';
 import { KpiRow } from '@/components/admin/overview/KpiRow';
 import { RecentClientsCard } from '@/components/admin/overview/RecentClientsCard';
 import { RecentLogsCard } from '@/components/admin/overview/RecentLogsCard';
@@ -52,7 +51,7 @@ export default function AdminOverviewPage() {
         <div>
           <h2 className="text-2xl font-bold text-brand-900">Visão Geral</h2>
           <p className="mt-1 text-sm text-brand-700">
-            Acompanhe o desempenho, as finanças, os clientes e a saúde do sistema.
+            Acompanhe o desempenho, finanças, clientes e a saúde do sistema em tempo real.
           </p>
         </div>
         <div className="flex items-center gap-3 text-xs text-brand-700">
@@ -73,7 +72,7 @@ export default function AdminOverviewPage() {
       <div className="mt-6 flex flex-col gap-4 xl:grid xl:grid-cols-[minmax(0,1fr)_320px] xl:items-start">
         <div className="contents xl:flex xl:flex-col xl:gap-4">
           <div className="order-2 xl:order-none">
-            <KpiRow overview={overview} miniMax={miniMax} openrouter={openrouter} />
+            <KpiRow overview={overview} miniMax={miniMax} openrouter={openrouter} financeiro={financeiro} />
           </div>
           <div className="order-4 xl:order-none">
             <FinanceCard state={financeiro} dias={dias} onDias={setDias} />
@@ -98,9 +97,6 @@ export default function AdminOverviewPage() {
         <div className="contents xl:flex xl:flex-col xl:gap-4">
           <div className="order-1 xl:order-none">
             <AlertsCard />
-          </div>
-          <div className="order-3 xl:order-none">
-            <HealthCard />
           </div>
           <div className="order-7 xl:order-none">
             <UnderConstructionCard
