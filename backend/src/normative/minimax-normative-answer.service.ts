@@ -6,6 +6,7 @@ import {
   NormativeAnswerProvider,
   NormativeClaim,
   OperationalItem,
+  ReferenceItem,
 } from './normative-answer-provider.interface';
 import { buildRagChatCompletionBody, parseRagToolCall } from './normative-answer-shared';
 import { AiUsageLogService } from '../common/ai-usage/ai-usage-log.service';
@@ -48,6 +49,7 @@ export class MiniMaxNormativeAnswerService implements NormativeAnswerProvider {
     operationalItems: OperationalItem[],
     companyChunks: CompanyChunk[],
     checklistItems: ChecklistItem[],
+    referenceItems: ReferenceItem[],
     attachment?: AttachmentInput,
     systemPrompt?: string,
   ): Promise<NormativeClaim[]> {
@@ -64,6 +66,7 @@ export class MiniMaxNormativeAnswerService implements NormativeAnswerProvider {
       operationalItems,
       companyChunks,
       checklistItems,
+      referenceItems,
       attachment,
       systemPrompt,
     );
@@ -93,16 +96,17 @@ export class MiniMaxNormativeAnswerService implements NormativeAnswerProvider {
     }
     if (!Array.isArray(parsed.items)) return [];
 
-    // checklist_ref_ids é um campo novo num fluxo já em produção, e alguns LLMs
-    // omitem arrays vazios (mais provável em pergunta normativa pura, onde
-    // nenhum item de checklist entra no prompt). Uma claim sem o campo não pode
-    // gerar citação falsa, mas descartá-la mataria a resposta inteira (fallback
-    // pra qualquer pergunta, em silêncio) — então normalizamos SÓ esse campo
-    // para []; os demais seguem estritos.
+    // checklist_ref_ids/reference_ref_ids são campos novos num fluxo já em
+    // produção, e alguns LLMs omitem arrays vazios (mais provável em pergunta
+    // normativa pura, onde nenhum item desse tipo entra no prompt). Uma claim
+    // sem o campo não pode gerar citação falsa, mas descartá-la mataria a
+    // resposta inteira (fallback pra qualquer pergunta, em silêncio) — então
+    // normalizamos SÓ esses campos para []; os demais seguem estritos.
     for (const item of parsed.items) {
       if (typeof item === 'object' && item !== null) {
         const candidate = item as Record<string, unknown>;
         if (!Array.isArray(candidate.checklist_ref_ids)) candidate.checklist_ref_ids = [];
+        if (!Array.isArray(candidate.reference_ref_ids)) candidate.reference_ref_ids = [];
       }
     }
 
