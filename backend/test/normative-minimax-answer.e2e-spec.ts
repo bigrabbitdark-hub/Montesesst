@@ -100,7 +100,7 @@ describe('MiniMaxNormativeAnswerService', () => {
     delete process.env.MINIMAX_API_KEY;
     fetchSpy = jest.spyOn(global, 'fetch');
 
-    await expect(service.answer('pergunta', [], [], [], [])).rejects.toThrow(
+    await expect(service.answer('pergunta', [], [], [], [], [])).rejects.toThrow(
       'Assistente ainda não está disponível',
     );
     expect(fetchSpy).not.toHaveBeenCalled();
@@ -122,7 +122,7 @@ describe('MiniMaxNormativeAnswerService', () => {
       ]),
     );
 
-    const result = await service.answer('pergunta', [{ id: 'c1', content: 'trecho' }], [], [], []);
+    const result = await service.answer('pergunta', [{ id: 'c1', content: 'trecho' }], [], [], [], []);
 
     expect(result).toEqual([
       {
@@ -160,7 +160,7 @@ describe('MiniMaxNormativeAnswerService', () => {
         ),
     );
 
-    const result = await service.answer('pergunta sigilosa da empresa Acme', [{ id: 'c1', content: 'trecho' }], [], [], []);
+    const result = await service.answer('pergunta sigilosa da empresa Acme', [{ id: 'c1', content: 'trecho' }], [], [], [], []);
 
     expect(result).toEqual([]);
     expect(fetchSpy).toHaveBeenCalledTimes(2);
@@ -184,7 +184,7 @@ describe('MiniMaxNormativeAnswerService', () => {
     warnSpy = jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
     fetchSpy = jest.spyOn(global, 'fetch').mockImplementation(async () => fakeToolCallResponse([]));
 
-    const result = await service.answer('pergunta', [{ id: 'c1', content: 'trecho' }], [], [], []);
+    const result = await service.answer('pergunta', [{ id: 'c1', content: 'trecho' }], [], [], [], []);
 
     expect(result).toEqual([]);
     expect(warnSpy).not.toHaveBeenCalled();
@@ -219,7 +219,7 @@ describe('MiniMaxNormativeAnswerService', () => {
       ]),
     );
 
-    const result = await service.answer('pergunta', [{ id: 'c1', content: 'trecho' }], [], [], []);
+    const result = await service.answer('pergunta', [{ id: 'c1', content: 'trecho' }], [], [], [], []);
 
     expect(result).toEqual([
       {
@@ -242,7 +242,7 @@ describe('MiniMaxNormativeAnswerService', () => {
         () => fakeToolCallResponse([validClaim], { prompt_tokens: 500, completion_tokens: 900, total_tokens: 1400 }),
       );
 
-      const result = await service.answer('pergunta sigilosa da empresa Acme', [{ id: 'c1', content: 'trecho' }], [], [], []);
+      const result = await service.answer('pergunta sigilosa da empresa Acme', [{ id: 'c1', content: 'trecho' }], [], [], [], []);
 
       expect(result).toEqual([validClaim]);
       expect(fetchSpy).toHaveBeenCalledTimes(2);
@@ -264,7 +264,7 @@ describe('MiniMaxNormativeAnswerService', () => {
       warnSpy = jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
       fetchSpy = mockFetchSequence(() => fakeInvalidToolCallResponse(4096), () => fakeInvalidToolCallResponse(4096));
 
-      const result = await service.answer('pergunta', [{ id: 'c1', content: 'trecho' }], [], [], []);
+      const result = await service.answer('pergunta', [{ id: 'c1', content: 'trecho' }], [], [], [], []);
 
       expect(result).toEqual([]);
       expect(fetchSpy).toHaveBeenCalledTimes(2);
@@ -279,7 +279,7 @@ describe('MiniMaxNormativeAnswerService', () => {
       warnSpy = jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
       fetchSpy = mockFetchSequence(() => fakeToolCallResponse([validClaim]));
 
-      const result = await service.answer('pergunta', [{ id: 'c1', content: 'trecho' }], [], [], []);
+      const result = await service.answer('pergunta', [{ id: 'c1', content: 'trecho' }], [], [], [], []);
 
       expect(result).toEqual([validClaim]);
       expect(fetchSpy).toHaveBeenCalledTimes(1);
@@ -291,7 +291,7 @@ describe('MiniMaxNormativeAnswerService', () => {
       warnSpy = jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
       fetchSpy = mockFetchSequence(() => fakeToolCallResponse([]));
 
-      const result = await service.answer('pergunta', [{ id: 'c1', content: 'trecho' }], [], [], []);
+      const result = await service.answer('pergunta', [{ id: 'c1', content: 'trecho' }], [], [], [], []);
 
       expect(result).toEqual([]);
       expect(fetchSpy).toHaveBeenCalledTimes(1);
@@ -319,7 +319,7 @@ describe('MiniMaxNormativeAnswerService', () => {
           return fakeInvalidToolCallResponse(4096);
         });
 
-        const result = await service.answer('pergunta', [{ id: 'c1', content: 'trecho' }], [], [], []);
+        const result = await service.answer('pergunta', [{ id: 'c1', content: 'trecho' }], [], [], [], []);
 
         expect(result).toEqual([]);
         expect(fetchSpy).toHaveBeenCalledTimes(1);
@@ -342,7 +342,7 @@ describe('MiniMaxNormativeAnswerService', () => {
         () => fakeToolCallResponse([validClaim]),
       );
 
-      const result = await service.answer('pergunta', [{ id: 'c1', content: 'trecho' }], [], [], []);
+      const result = await service.answer('pergunta', [{ id: 'c1', content: 'trecho' }], [], [], [], []);
 
       expect(result).toEqual([validClaim]);
       expect(fetchSpy).toHaveBeenCalledTimes(2);
@@ -360,7 +360,7 @@ describe('MiniMaxNormativeAnswerService', () => {
         () => fakeToolCallResponse([validClaim]),
       );
 
-      const result = await service.answer('pergunta', [{ id: 'c1', content: 'trecho' }], [], [], []);
+      const result = await service.answer('pergunta', [{ id: 'c1', content: 'trecho' }], [], [], [], []);
 
       expect(result).toEqual([validClaim]);
       expect(fetchSpy).toHaveBeenCalledTimes(2);
@@ -375,7 +375,7 @@ describe('MiniMaxNormativeAnswerService', () => {
         throw new TypeError('fetch failed');
       });
 
-      await expect(service.answer('pergunta', [{ id: 'c1', content: 'trecho' }], [], [], [])).rejects.toBeInstanceOf(
+      await expect(service.answer('pergunta', [{ id: 'c1', content: 'trecho' }], [], [], [], [])).rejects.toBeInstanceOf(
         BadGatewayException,
       );
       expect(fetchSpy).toHaveBeenCalledTimes(1);
@@ -388,7 +388,7 @@ describe('MiniMaxNormativeAnswerService', () => {
       warnSpy = jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
       fetchSpy = mockFetchSequence(() => new Response('erro interno', { status: 500 }));
 
-      await expect(service.answer('pergunta', [{ id: 'c1', content: 'trecho' }], [], [], [])).rejects.toBeInstanceOf(
+      await expect(service.answer('pergunta', [{ id: 'c1', content: 'trecho' }], [], [], [], [])).rejects.toBeInstanceOf(
         BadGatewayException,
       );
       expect(fetchSpy).toHaveBeenCalledTimes(1);
