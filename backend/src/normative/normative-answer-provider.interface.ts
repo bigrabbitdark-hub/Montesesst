@@ -17,6 +17,16 @@ export interface ChecklistItem {
   content: string;
 }
 
+// Trecho de reference_document_chunks (documento de referência SST SEM
+// fonte oficial formal — cartilha/guia/apostila, curadoria não-normativa)
+// relevante pra esta pergunta — NUNCA o texto oficial da norma. Mesmo
+// tratamento de ChecklistItem acima: dado pronto pro prompt, nunca
+// apresentado como exigência de norma.
+export interface ReferenceItem {
+  id: string;
+  content: string;
+}
+
 // Anexo de uma pergunta específica do Assistente (Fase 20) — nunca
 // persistido, existe só durante o processamento desta chamada.
 export interface AttachmentInput {
@@ -58,6 +68,11 @@ export interface NormativeClaim {
   // sustentam esta afirmação — NUNCA usado como se fosse o texto oficial
   // da norma (ver ChecklistItem acima).
   checklist_ref_ids: string[];
+  // ids de trechos de reference_documents (material de referência SST sem
+  // fonte oficial — cartilha/guia/apostila) que sustentam esta afirmação —
+  // NUNCA usado como se fosse o texto oficial da norma (ver ReferenceItem
+  // acima).
+  reference_ref_ids: string[];
   // true se esta afirmação usa o documento/imagem anexado nesta
   // pergunta como evidência — obrigatório no schema (o modelo sempre
   // preenche), não opcional, pra o Verificador poder confiar no valor
@@ -86,6 +101,7 @@ export interface NormativeAnswerProvider {
     operationalItems: OperationalItem[],
     companyChunks: CompanyChunk[],
     checklistItems: ChecklistItem[],
+    referenceItems: ReferenceItem[],
     attachment?: AttachmentInput,
     // Fase A — Etapa 2: SYSTEM_PROMPT opcional. Default do provedor =
     // SYSTEM_PROMPT base. O serviço que detecta pergunta sobre EPI passa
