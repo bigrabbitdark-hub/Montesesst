@@ -1,0 +1,19 @@
+.env
+.env.bak*
+.env.*.bak
+node_modules/
+dist/
+.next/
+*.log
+.DS_Store
+
+# Core dump — pode conter segredo em claro (argv de processo), nunca no git
+core
+backend/core
+
+# Certificados TLS reais (Let's Encrypt) — nunca no git, chave privada
+nginx/letsencrypt/
+nginx/certbot-webroot/
+
+# Mockups/estado do companion visual de brainstorming (superpowers)
+.superpowers/

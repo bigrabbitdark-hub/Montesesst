@@ -2,6 +2,7 @@ import { Body, Controller, Headers, Logger, Post, Query, UnauthorizedException }
 import { Public } from '../common/decorators/public.decorator';
 import { DatabaseService } from '../common/database/database.service';
 import { MercadoPagoService } from './mercadopago.service';
+import { SubscriptionsService } from './subscriptions.service';
 import { verifyMercadoPagoSignature } from './mercadopago-signature.util';
 
 @Controller('payments')
@@ -11,6 +12,7 @@ export class WebhookController {
   constructor(
     private readonly mercadoPago: MercadoPagoService,
     private readonly db: DatabaseService,
+    private readonly subscriptions: SubscriptionsService,
   ) {}
 
   @Public()
@@ -115,6 +117,9 @@ export class WebhookController {
       this.logger.warn(
         `Webhook recebido para preapproval_id sem assinatura correspondente: ${preapproval.id} (status ${preapproval.status})`,
       );
+    } else if (preapproval.status === 'authorized') {
+      // ITEM 011: troca de plano — a assinatura anterior do mesmo sujeito é cancelada.
+      await this.subscriptions.supersedePreviousAuthorized(preapproval.id);
     }
 
     return { message: 'ok' };

@@ -3,6 +3,7 @@ import { PoolClient } from 'pg';
 import { DatabaseService } from '../../common/database/database.service';
 import { AUDIO_TRANSCRIPTION_SERVICE, AudioTranscriptionService } from './audio-transcription.interface';
 import { ATA_EXTRACTOR, AtaExtractor } from './ata-extractor.interface';
+import { redactPii } from '../../common/text/pii-redaction.util';
 
 export interface CipaMeetingAtaDraft {
   id: string;
@@ -113,7 +114,16 @@ export class AtaAiService {
         ),
       );
 
-      const draft = await this.extractor.extract(transcript);
+      // ITEM 003 (auditoria 2026-09-27): a transcrição PERSISTIDA acima fica
+      // com os nomes reais (é o registro literal da ata, com valor legal —
+      // diferente do chunk de PGR/PCMSO, que é só citação de conveniência
+      // do Assistente). Só a cópia enviada ao extrator externo (OpenRouter)
+      // é minimizada.
+      const namesResult = await this.db.withTenantContext(ctx, (client) =>
+        client.query<{ full_name: string }>('SELECT full_name FROM employees WHERE tenant_id = $1', [ctx.tenantId]),
+      );
+      const knownFullNames = namesResult.rows.map((row) => row.full_name);
+      const draft = await this.extractor.extract(redactPii(transcript, knownFullNames));
       await this.db.withTenantContext(ctx, (client) =>
         client.query(
           `UPDATE cipa_meeting_ata_drafts

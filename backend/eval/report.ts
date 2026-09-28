@@ -150,6 +150,18 @@ function noticesLine(results: RetrievalResult[]): string {
   return `  avisos por tipo: ${parts.join(' · ')}`;
 }
 
+// Linha de rubrica (camada de relatório — NUNCA é gate). Apenas FONTE e
+// TRANSPARÊNCIA têm proxy automático; as outras categorias aparecem com
+// `--` para sinalizar que dependem de revisão humana (spec
+// docs/specs/assistente-banco-testes-12-niveis.md §4).
+function rubricaLine(media: Record<string, number | null>): string {
+  const fmt = (key: string): string => {
+    const v = media[key];
+    return v === null || v === undefined ? '--' : v.toFixed(2);
+  };
+  return `  rubrica (proxy automático): FONTE ${fmt('FONTE')} · PRECISÃO ${fmt('PRECISAO')} · CONTEXTO ${fmt('CONTEXTO')} · TRANSPARÊNCIA ${fmt('TRANSPARENCIA')} · AÇÃO ${fmt('ACAO')}`;
+}
+
 export function formatRetrievalSummary(baseline: BaselineFile<RetrievalResult, RetrievalAggregate>): string {
   const { agregados } = baseline;
   const lines = [
@@ -159,6 +171,7 @@ export function formatRetrievalSummary(baseline: BaselineFile<RetrievalResult, R
     retrievalLine('  rascunho', agregados.rascunho),
     ...Object.entries(agregados.por_tipo).map(([tipo, a]) => retrievalLine(`  ${tipo}`, a)),
     noticesLine(baseline.resultados),
+    rubricaLine(agregados.geral.rubrica_media),
   ];
   return lines.join('\n');
 }
@@ -178,6 +191,7 @@ export function formatAnswerSummary(baseline: BaselineFile<AnswerResult, AnswerA
     // é marcada à parte, sem reprovar por ela; e a alucinação é só reportada.
     `  lacuna à parte (não reprova): o sistema ainda não pergunta de volta — perguntas pedir_contexto afetadas: ${baseline.resultados.filter((r) => r.nao_pergunta_de_volta).length}`,
     `  respostas que violaram proibido_regex: ${baseline.resultados.filter((r) => !r.proibido_ok).length}`,
+    rubricaLine(agregados.geral.rubrica_media),
   ];
   return lines.join('\n');
 }

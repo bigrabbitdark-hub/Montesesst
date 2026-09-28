@@ -3,6 +3,7 @@ import { PoolClient } from 'pg';
 import { mapPgError } from '../common/pg-error.util';
 import { buildSafeSetClause } from '../common/safe-update.util';
 import { R2Service } from '../common/r2/r2.service';
+import { IMAGE_MIME_TYPES, verifyFileContent } from '../common/files/file-content.util';
 
 export const EQUIPMENT_TYPES = [
   'extintor', 'hidrante', 'mangueira', 'alarme', 'detector',
@@ -269,6 +270,14 @@ export class FireSafetyEquipmentService {
   }
 
   async uploadFoto(client: PoolClient, id: string, file: Express.Multer.File): Promise<FireSafetyEquipment> {
+    // ITEM 004: este endpoint não validava tipo nenhum — qualquer arquivo era
+    // gravado no R2 com o Content-Type que o cliente mandasse.
+    if (!IMAGE_MIME_TYPES.includes(file.mimetype)) {
+      throw new BadRequestException('Tipo de arquivo não permitido (só JPG ou PNG)');
+    }
+    const contentProblem = await verifyFileContent(file.buffer, file.mimetype);
+    if (contentProblem) throw new BadRequestException(contentProblem);
+
     const equipment = await this.findOne(client, id);
     const fileKey = `tenants/${equipment.tenant_id}/fire-safety-equipment/${id}/${sanitizeFileName(file.originalname)}`;
     await this.r2.putObject(fileKey, file.buffer, file.mimetype);

@@ -29,13 +29,14 @@ export default function CadastroConfirmadoPage({
               Link inválido ou expirado
             </h1>
             <p className="mt-3.5 text-[15.5px] leading-relaxed text-brand-700">
-              O link de confirmação não é mais válido. Cadastre-se novamente pra receber um novo.
+              O link de confirmação não é mais válido (vale por 48 horas e só pode ser usado uma vez). Peça um novo
+              link para o e-mail do seu cadastro.
             </p>
             <Link
-              href="/cadastro"
+              href="/reenviar-confirmacao"
               className="mt-8 inline-block rounded-[9px] bg-brand-500 px-6 py-3.5 text-sm font-semibold text-white transition-colors hover:bg-brand-700"
             >
-              Voltar ao cadastro
+              Reenviar confirmação
             </Link>
           </>
         )}

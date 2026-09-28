@@ -29,3 +29,25 @@ export function logout(): void {
   localStorage.removeItem('montese_user');
   window.location.href = '/';
 }
+
+// Página inicial de cada papel (mesmo mapeamento do login). Usado para mandar
+// quem está logado com o papel errado de volta ao lugar dele.
+export function homeFor(role: SessionUser['role']): string {
+  if (role === 'empresa') return '/empresa/dashboard';
+  if (role === 'tecnico' || role === 'parceiro') return '/tecnico/empresas';
+  if (role === 'admin') return '/admin/overview';
+  return '/';
+}
+
+// Só UX: evita renderizar telas com um token que o backend vai recusar. A
+// autorização de verdade continua 100% no backend.
+export function isTokenExpired(token: string): boolean {
+  try {
+    const payload = token.split('.')[1];
+    const json = atob(payload.replace(/-/g, '+').replace(/_/g, '/'));
+    const { exp } = JSON.parse(json);
+    return typeof exp === 'number' && exp * 1000 <= Date.now();
+  } catch {
+    return true;
+  }
+}

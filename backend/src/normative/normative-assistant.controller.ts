@@ -22,6 +22,7 @@ import { NormativeAssistantService } from './normative-assistant.service';
 import { NormativeQueryDto } from './dto/normative-query.dto';
 import { DOCX_MIME_TYPE } from '../common/docx/docx-text.util';
 import { XLSX_MIME_TYPE } from '../common/xlsx/xlsx-text.util';
+import { verifyFileContent } from '../common/files/file-content.util';
 
 const ALLOWED_ATTACHMENT_MIME_TYPES = ['application/pdf', 'image/jpeg', 'image/png', DOCX_MIME_TYPE, XLSX_MIME_TYPE];
 
@@ -51,6 +52,11 @@ export class NormativeAssistantController {
       if (!ALLOWED_ATTACHMENT_MIME_TYPES.includes(file.mimetype)) {
         throw new BadRequestException('Tipo de arquivo não permitido (só PDF, JPG, PNG, DOCX ou XLSX)');
       }
+      // ITEM 004: o anexo é parseado no servidor (pdf-parse/mammoth/exceljs),
+      // então o conteúdo real é conferido antes — inclusive o teto de
+      // descompressão de DOCX/XLSX.
+      const contentProblem = await verifyFileContent(file.buffer, file.mimetype);
+      if (contentProblem) throw new BadRequestException(contentProblem);
 
       // Limite dedicado e mais apertado que ASSISTANT_RATE_LIMIT_MAX
       // (20/hora, cobre a rota inteira) — uma pergunta com anexo custa

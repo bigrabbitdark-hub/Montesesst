@@ -1,4 +1,6 @@
 .env
+.env.bak*
+.env.*.bak
 node_modules/
 dist/
 .next/
@@ -15,3 +17,15 @@ nginx/certbot-webroot/
 
 # Mockups/estado do companion visual de brainstorming (superpowers)
 .superpowers/
+# Ambiente local
+.claude/
+.vscode/
+
+# Dados locais
+data/
+
+# Arquivos de desenvolvimento/avaliação
+backend/eval/_dev/
+
+# Artefatos gerados pelo TypeScript
+*.tsbuildinfo

@@ -3,6 +3,7 @@ import { PoolClient } from 'pg';
 import { randomUUID } from 'crypto';
 import { buildSafeSetClause } from '../common/safe-update.util';
 import { R2Service } from '../common/r2/r2.service';
+import { verifyFileContent } from '../common/files/file-content.util';
 
 const ALLOWED_LOGO_MIME_TYPES: Record<string, string> = {
   'image/jpeg': 'jpg',
@@ -277,6 +278,9 @@ export class TenantsService {
     if (!ext) {
       throw new BadRequestException('Tipo de arquivo não permitido (só JPG ou PNG)');
     }
+    // ITEM 004: confere o conteúdo real contra o tipo declarado.
+    const contentProblem = await verifyFileContent(file.buffer, file.mimetype);
+    if (contentProblem) throw new BadRequestException(contentProblem);
 
     const existing = await client.query<{ logo_file_key: string | null }>(
       'SELECT logo_file_key FROM tenants WHERE id = $1',
@@ -339,8 +343,11 @@ export class TenantsService {
   }
 
   async getLogoRedirectUrl(client: PoolClient, tenantId: string): Promise<string> {
+    // ITEM 009: rota pública, sem contexto de tenant — lê pela função
+    // SECURITY DEFINER (migration 0056) em vez de `tenants` direto, que passa a
+    // ter RLS (0057). Mesmo comportamento: devolve só a chave do logo de um id.
     const result = await client.query<{ logo_file_key: string | null }>(
-      'SELECT logo_file_key FROM tenants WHERE id = $1',
+      'SELECT tenant_logo_file_key($1) AS logo_file_key',
       [tenantId],
     );
     const key = result.rows[0]?.logo_file_key;

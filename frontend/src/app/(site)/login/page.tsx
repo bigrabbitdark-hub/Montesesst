@@ -1,6 +1,7 @@
 'use client';
 
 import { FormEvent, useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
 export default function LoginPage() {
@@ -81,6 +82,12 @@ export default function LoginPage() {
             >
               {loading ? 'Entrando...' : 'Entrar'}
             </button>
+            <Link href="/esqueci-senha" className="text-center text-sm text-brand-700 underline underline-offset-2 hover:text-brand-900">
+              Esqueci minha senha
+            </Link>
+            <Link href="/reenviar-confirmacao" className="text-center text-sm text-brand-700 underline underline-offset-2 hover:text-brand-900">
+              Não recebi o e-mail de confirmação
+            </Link>
           </form>
         </div>
       </div>

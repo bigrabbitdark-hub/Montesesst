@@ -1,0 +1,2204 @@
+[
+  {
+    "id": "B-001",
+    "tipo": "conceitual",
+    "categoria": "NR-01",
+    "subcategoria": "Disposições gerais",
+    "pergunta": "O que é a NR-01?",
+    "resposta_esperada": "A NR-01 é a Norma Regulamentadora nº 1, que estabelece o Gerenciamento de Riscos Ocupacionais (GRO) e o PGR como instrumento.",
+    "comportamento_esperado": "responder",
+    "fontes_esperadas": [
+      {
+        "fonte": "norma",
+        "source_code": "NR-01",
+        "item": "1.1",
+        "evidencia": "1.1 Esta Norma Regulamentadora - NR estabelece os requisitos e as condições mínimas objetivando a implementação de medidas de prevenção e o gerenciamento de riscos ocupacionais."
+      },
+      {
+        "fonte": "norma",
+        "source_code": "NR-01",
+        "item": "1.5.3.1",
+        "evidencia": "1.5.3.1 A organização deve implementar, por estabelecimento, o gerenciamento de riscos ocupacionais em suas atividades."
+      }
+    ],
+    "avisos_esperados": [],
+    "jurisdicao": "federal",
+    "risco_resposta": "baixo",
+    "versao_fonte": null,
+    "data_verificacao": null,
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (banco de testes 12 níveis)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "B-002",
+    "tipo": "conceitual",
+    "categoria": "NR-07",
+    "subcategoria": "PCMSO",
+    "pergunta": "O que é a NR-07?",
+    "resposta_esperada": "A NR-07 obriga a elaboração e implementação do PCMSO por todos os empregadores que admitam trabalhadores como empregados.",
+    "comportamento_esperado": "responder",
+    "fontes_esperadas": [
+      {
+        "fonte": "norma",
+        "source_code": "NR-07",
+        "item": "7.1.1",
+        "evidencia": "7.1.1 Esta Norma Regulamentadora - NR estabelece a obrigatoriedade de elaboração e implementação, por parte de todos os empregadores e instituições que admitam trabalhadores como empregados, do Programa de Controle Médico de Saúde Ocupacional - PCMSO."
+      }
+    ],
+    "avisos_esperados": [],
+    "jurisdicao": "federal",
+    "risco_resposta": "baixo",
+    "versao_fonte": null,
+    "data_verificacao": null,
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (banco de testes 12 níveis)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "B-003",
+    "tipo": "conceitual",
+    "categoria": "NR-09",
+    "subcategoria": "Avaliação e controle",
+    "pergunta": "O que é a NR-09?",
+    "resposta_esperada": "A NR-09 trata da avaliação e do controle das exposições dos trabalhadores a agentes físicos, químicos e biológicos.",
+    "comportamento_esperado": "responder",
+    "fontes_esperadas": [
+      {
+        "fonte": "norma",
+        "source_code": "NR-09",
+        "item": "9.1.1",
+        "evidencia": "9.1.1 Esta Norma Regulamentadora - NR estabelece os requisitos para a avaliação e o controle das exposições dos trabalhadores aos agentes físicos, químicos e biológicos."
+      }
+    ],
+    "avisos_esperados": [],
+    "jurisdicao": "federal",
+    "risco_resposta": "baixo",
+    "versao_fonte": null,
+    "data_verificacao": null,
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (banco de testes 12 níveis)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "B-004",
+    "tipo": "conceitual",
+    "categoria": "NR-12",
+    "subcategoria": "Segurança em máquinas",
+    "pergunta": "O que é a NR-12?",
+    "resposta_esperada": "A NR-12 define referências técnicas e medidas de proteção para garantir a segurança em máquinas e equipamentos.",
+    "comportamento_esperado": "responder",
+    "fontes_esperadas": [
+      {
+        "fonte": "norma",
+        "source_code": "NR-12",
+        "item": "12.1.1",
+        "evidencia": "12.1.1 Esta Norma Regulamentadora - NR e seus anexos definem as referências técnicas, os princípios fundamentais e as medidas de proteção para garantir a saúde e a integridade física dos trabalhadores."
+      }
+    ],
+    "avisos_esperados": [],
+    "jurisdicao": "federal",
+    "risco_resposta": "baixo",
+    "versao_fonte": null,
+    "data_verificacao": null,
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (banco de testes 12 níveis)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "B-005",
+    "tipo": "conceitual",
+    "categoria": "NR-17",
+    "subcategoria": "Ergonomia",
+    "pergunta": "O que é a NR-17?",
+    "resposta_esperada": "A NR-17 visa adaptar as condições de trabalho às características psicofisiológicas dos trabalhadores.",
+    "comportamento_esperado": "responder",
+    "fontes_esperadas": [
+      {
+        "fonte": "norma",
+        "source_code": "NR-17",
+        "item": "17.1.1",
+        "evidencia": "17.1.1 Esta Norma Regulamentadora - NR tem como objetivo estabelecer diretrizes e requisitos que permitam a adaptação das condições de trabalho às características psicofisiológicas dos trabalhadores."
+      }
+    ],
+    "avisos_esperados": [],
+    "jurisdicao": "federal",
+    "risco_resposta": "baixo",
+    "versao_fonte": null,
+    "data_verificacao": null,
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (banco de testes 12 níveis)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "B-006",
+    "tipo": "conceitual",
+    "categoria": "NR-35",
+    "subcategoria": "Trabalho em altura",
+    "pergunta": "O que é a NR-35?",
+    "resposta_esperada": "A NR-35 estabelece requisitos mínimos e medidas de proteção para o trabalho em altura.",
+    "comportamento_esperado": "responder",
+    "fontes_esperadas": [
+      {
+        "fonte": "norma",
+        "source_code": "NR-35",
+        "item": "35.1.1",
+        "evidencia": "35.1.1 Esta Norma Regulamentadora - NR estabelece os requisitos mínimos e as medidas de proteção para o trabalho em altura."
+      }
+    ],
+    "avisos_esperados": [],
+    "jurisdicao": "federal",
+    "risco_resposta": "baixo",
+    "versao_fonte": null,
+    "data_verificacao": null,
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (banco de testes 12 níveis)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "B-007",
+    "tipo": "conceitual",
+    "categoria": "NR-01",
+    "subcategoria": "PGR / GRO",
+    "pergunta": "O que significa PGR?",
+    "resposta_esperada": "PGR é a sigla coloquial do Programa de Gerenciamento de Riscos, instrumento do GRO exigido pela NR-01.",
+    "comportamento_esperado": "responder",
+    "fontes_esperadas": [
+      {
+        "fonte": "norma",
+        "source_code": "NR-01",
+        "item": "1.5.3.1",
+        "evidencia": "1.5.3.1 A organização deve implementar, por estabelecimento, o gerenciamento de riscos ocupacionais em suas atividades."
+      }
+    ],
+    "avisos_esperados": [],
+    "jurisdicao": "federal",
+    "risco_resposta": "baixo",
+    "versao_fonte": null,
+    "data_verificacao": null,
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (banco de testes 12 níveis)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "B-008",
+    "tipo": "conceitual",
+    "categoria": "NR-01",
+    "subcategoria": "Inventário de riscos",
+    "pergunta": "O que é inventário de riscos?",
+    "resposta_esperada": "O inventário de riscos identifica e avalia continuamente os perigos e riscos da organização por estabelecimento.",
+    "comportamento_esperado": "responder",
+    "fontes_esperadas": [
+      {
+        "fonte": "norma",
+        "source_code": "NR-01",
+        "item": "1.5.3.3",
+        "evidencia": "1.5.3.3 A identificação dos perigos e a avaliação dos riscos devem ser realizadas de forma contínua, contemplando os aspectos físicos, químicos, biológicos, ergonômicos e de acidentes."
+      }
+    ],
+    "avisos_esperados": [],
+    "jurisdicao": "federal",
+    "risco_resposta": "baixo",
+    "versao_fonte": null,
+    "data_verificacao": null,
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (banco de testes 12 níveis)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "B-009",
+    "tipo": "conceitual",
+    "categoria": "NR-07",
+    "subcategoria": "PCMSO",
+    "pergunta": "O que é PCMSO?",
+    "resposta_esperada": "PCMSO é o Programa de Controle Médico de Saúde Ocupacional, obrigatório pela NR-07, com planejamento, exames e registros.",
+    "comportamento_esperado": "responder",
+    "fontes_esperadas": [
+      {
+        "fonte": "norma",
+        "source_code": "NR-07",
+        "item": "7.1.1",
+        "evidencia": "7.1.1 Esta Norma Regulamentadora - NR estabelece a obrigatoriedade de elaboração e implementação, por parte de todos os empregadores e instituições que admitam trabalhadores como empregados, do Programa de Controle Médico de Saúde Ocupacional - PCMSO."
+      },
+      {
+        "fonte": "norma",
+        "source_code": "NR-07",
+        "item": "7.3.1",
+        "evidencia": "7.3.1 O PCMSO deve incluir, no mínimo, planejamento, responsabilidade, procedimentos, exames e registro."
+      }
+    ],
+    "avisos_esperados": [],
+    "jurisdicao": "federal",
+    "risco_resposta": "baixo",
+    "versao_fonte": null,
+    "data_verificacao": null,
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (banco de testes 12 níveis)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "B-010",
+    "tipo": "conceitual",
+    "categoria": "NR-01 / NR-07",
+    "subcategoria": "PGR x PCMSO",
+    "pergunta": "Qual a diferença entre PGR e PCMSO?",
+    "resposta_esperada": "PGR (NR-01) gerencia riscos da atividade; PCMSO (NR-07) monitora a saúde do trabalhador com exames ocupacionais.",
+    "comportamento_esperado": "responder",
+    "fontes_esperadas": [
+      {
+        "fonte": "norma",
+        "source_code": "NR-01",
+        "item": "1.5.3.1",
+        "evidencia": "1.5.3.1 A organização deve implementar, por estabelecimento, o gerenciamento de riscos ocupacionais em suas atividades."
+      },
+      {
+        "fonte": "norma",
+        "source_code": "NR-07",
+        "item": "7.1.1",
+        "evidencia": "7.1.1 Esta Norma Regulamentadora - NR estabelece a obrigatoriedade de elaboração e implementação, por parte de todos os empregadores e instituições que admitam trabalhadores como empregados, do Programa de Controle Médico de Saúde Ocupacional - PCMSO."
+      }
+    ],
+    "avisos_esperados": [],
+    "jurisdicao": "federal",
+    "risco_resposta": "baixo",
+    "versao_fonte": null,
+    "data_verificacao": null,
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (banco de testes 12 níveis)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "B-011",
+    "tipo": "sem_evidencia",
+    "categoria": "Legislação prev.",
+    "subcategoria": "LTCAT",
+    "pergunta": "O que é LTCAT?",
+    "resposta_esperada": "Definição não está nas NRs federais. Recusar até legislação previdenciária ser indexada.",
+    "comportamento_esperado": "recusar_sem_evidencia",
+    "fontes_esperadas": [],
+    "avisos_esperados": [],
+    "jurisdicao": "federal",
+    "risco_resposta": "alto",
+    "versao_fonte": null,
+    "data_verificacao": null,
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (banco de testes 12 níveis)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "B-012",
+    "tipo": "conceitual",
+    "categoria": "NR-06",
+    "subcategoria": "EPI",
+    "pergunta": "O que é EPI?",
+    "resposta_esperada": "EPI é o Equipamento de Proteção Individual, dispositivo de uso individual para proteção contra riscos ocupacionais.",
+    "comportamento_esperado": "responder",
+    "fontes_esperadas": [
+      {
+        "fonte": "norma",
+        "source_code": "NR-06",
+        "item": "6.1.1",
+        "evidencia": "6.1.1 Para fins de aplicação desta Norma Regulamentadora - NR, considera-se Equipamento de Proteção Individual - EPI todo dispositivo ou produto, de uso individual, utilizado pelo trabalhador para proteção contra riscos ocupacionais."
+      }
+    ],
+    "avisos_esperados": [],
+    "jurisdicao": "federal",
+    "risco_resposta": "baixo",
+    "versao_fonte": null,
+    "data_verificacao": null,
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (banco de testes 12 níveis)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "B-013",
+    "tipo": "conceitual",
+    "categoria": "NR-06",
+    "subcategoria": "Certificado de Aprovação",
+    "pergunta": "O que é o CA de um EPI?",
+    "resposta_esperada": "CA é o Certificado de Aprovação emitido pelo órgão nacional competente, exigido pela NR-06.",
+    "comportamento_esperado": "responder",
+    "fontes_esperadas": [
+      {
+        "fonte": "norma",
+        "source_code": "NR-06",
+        "item": "6.2",
+        "evidencia": "6.2 A organização é obrigada a adquirir somente EPI aprovado pelo órgão de âmbito nacional competente em matéria de segurança e saúde no trabalho, observado o disposto nesta NR."
+      },
+      {
+        "fonte": "norma",
+        "source_code": "NR-06",
+        "item": "6.5",
+        "evidencia": "6.5 O equipamento de proteção individual, de fabricação nacional ou estrangeira, só pode ser posto à venda ou utilizado se possuir o Certificado de Aprovação - CA, válido, dentro do respectivo prazo de validade."
+      }
+    ],
+    "avisos_esperados": [],
+    "jurisdicao": "federal",
+    "risco_resposta": "baixo",
+    "versao_fonte": null,
+    "data_verificacao": null,
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (banco de testes 12 níveis)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "B-014",
+    "tipo": "conceitual",
+    "categoria": "NR-05",
+    "subcategoria": "CIPA",
+    "pergunta": "O que é a CIPA?",
+    "resposta_esperada": "CIPA é a Comissão Interna de Prevenção de Acidentes e Assédios, com composição bipartite.",
+    "comportamento_esperado": "responder",
+    "fontes_esperadas": [
+      {
+        "fonte": "norma",
+        "source_code": "NR-05",
+        "item": "5.1",
+        "evidencia": "5.1 A Comissão Interna de Prevenção de Acidentes e Assédios - CIPA tem como objetivo a prevenção de acidentes e doenças relacionadas ao trabalho."
+      },
+      {
+        "fonte": "norma",
+        "source_code": "NR-05",
+        "item": "5.2",
+        "evidencia": "5.2 A CIPA deve ser composta de representantes do empregador e dos empregados, de acordo com o dimensionamento previsto no Quadro I desta NR."
+      }
+    ],
+    "avisos_esperados": [],
+    "jurisdicao": "federal",
+    "risco_resposta": "baixo",
+    "versao_fonte": null,
+    "data_verificacao": null,
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (banco de testes 12 níveis)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "B-015",
+    "tipo": "conceitual",
+    "categoria": "NR-05",
+    "subcategoria": "SIPAT",
+    "pergunta": "O que é SIPAT?",
+    "resposta_esperada": "SIPAT é a Semana Interna de Prevenção de Acidentes do Trabalho, evento anual previsto na NR-05.",
+    "comportamento_esperado": "responder",
+    "fontes_esperadas": [
+      {
+        "fonte": "norma",
+        "source_code": "NR-05",
+        "item": "5.16",
+        "evidencia": "5.16 A Semana Interna de Prevenção de Acidentes do Trabalho - SIPAT deve ser realizada anualmente, podendo ser realizadas ações substitutivas em períodos outros, desde que devidamente justificado."
+      }
+    ],
+    "avisos_esperados": [],
+    "jurisdicao": "federal",
+    "risco_resposta": "baixo",
+    "versao_fonte": null,
+    "data_verificacao": null,
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (banco de testes 12 níveis)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "B-016",
+    "tipo": "conceitual",
+    "categoria": "NR-05",
+    "subcategoria": "DDS",
+    "pergunta": "O que é o DDS (Diálogo Diário de Segurança)?",
+    "resposta_esperada": "DDS é uma atividade de segurança do trabalho, geralmente diária, para orientar e conscientizar os trabalhadores.",
+    "comportamento_esperado": "responder",
+    "fontes_esperadas": [
+      {
+        "fonte": "norma",
+        "source_code": "NR-05",
+        "item": "5.16",
+        "evidencia": "5.16 A Semana Interna de Prevenção de Acidentes do Trabalho - SIPAT deve ser realizada anualmente, podendo ser realizadas ações substitutivas em períodos outros, desde que devidamente justificado."
+      }
+    ],
+    "avisos_esperados": [],
+    "jurisdicao": "federal",
+    "risco_resposta": "baixo",
+    "versao_fonte": null,
+    "data_verificacao": null,
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (banco de testes 12 níveis)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "B-017",
+    "tipo": "sem_evidencia",
+    "categoria": "Legislação prev.",
+    "subcategoria": "Acidente",
+    "pergunta": "O que é acidente de trabalho?",
+    "resposta_esperada": "Definição na Lei 8.213/91 (não está nas NRs). Recusar até legislação previdenciária ser indexada.",
+    "comportamento_esperado": "recusar_sem_evidencia",
+    "fontes_esperadas": [],
+    "avisos_esperados": [],
+    "jurisdicao": "federal",
+    "risco_resposta": "alto",
+    "versao_fonte": null,
+    "data_verificacao": null,
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (banco de testes 12 níveis)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "B-018",
+    "tipo": "sem_evidencia",
+    "categoria": "Legislação prev.",
+    "subcategoria": "Acidente x doença",
+    "pergunta": "Diferença entre acidente e doença ocupacional?",
+    "resposta_esperada": "A distinção está na Lei 8.213/91 (não está nas NRs). Recusar até legislação previdenciária ser indexada.",
+    "comportamento_esperado": "recusar_sem_evidencia",
+    "fontes_esperadas": [],
+    "avisos_esperados": [],
+    "jurisdicao": "federal",
+    "risco_resposta": "alto",
+    "versao_fonte": null,
+    "data_verificacao": null,
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (banco de testes 12 níveis)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "B-019",
+    "tipo": "conceitual",
+    "categoria": "NR-01",
+    "subcategoria": "Classificação de riscos",
+    "pergunta": "O que é risco físico?",
+    "resposta_esperada": "Risco físico é a categoria de risco ocupacional do GRO (ruído, vibração, temperaturas, radiação).",
+    "comportamento_esperado": "responder",
+    "fontes_esperadas": [
+      {
+        "fonte": "norma",
+        "source_code": "NR-01",
+        "item": "1.5.3.3",
+        "evidencia": "1.5.3.3 A identificação dos perigos e a avaliação dos riscos devem ser realizadas de forma contínua, contemplando os aspectos físicos, químicos, biológicos, ergonômicos e de acidentes."
+      }
+    ],
+    "avisos_esperados": [],
+    "jurisdicao": "federal",
+    "risco_resposta": "baixo",
+    "versao_fonte": null,
+    "data_verificacao": null,
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (banco de testes 12 níveis)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "B-020",
+    "tipo": "conceitual",
+    "categoria": "NR-01",
+    "subcategoria": "Classificação de riscos",
+    "pergunta": "O que é risco químico?",
+    "resposta_esperada": "Risco químico é a categoria de risco ocupacional do GRO (poeiras, vapores, névoas, gases).",
+    "comportamento_esperado": "responder",
+    "fontes_esperadas": [
+      {
+        "fonte": "norma",
+        "source_code": "NR-01",
+        "item": "1.5.3.3",
+        "evidencia": "1.5.3.3 A identificação dos perigos e a avaliação dos riscos devem ser realizadas de forma contínua, contemplando os aspectos físicos, químicos, biológicos, ergonômicos e de acidentes."
+      }
+    ],
+    "avisos_esperados": [],
+    "jurisdicao": "federal",
+    "risco_resposta": "baixo",
+    "versao_fonte": null,
+    "data_verificacao": null,
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (banco de testes 12 níveis)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "B-021",
+    "tipo": "conceitual",
+    "categoria": "NR-01",
+    "subcategoria": "Classificação de riscos",
+    "pergunta": "O que é risco biológico?",
+    "resposta_esperada": "Risco biológico é a categoria de risco ocupacional do GRO (vírus, bactérias, fungos, parasitas).",
+    "comportamento_esperado": "responder",
+    "fontes_esperadas": [
+      {
+        "fonte": "norma",
+        "source_code": "NR-01",
+        "item": "1.5.3.3",
+        "evidencia": "1.5.3.3 A identificação dos perigos e a avaliação dos riscos devem ser realizadas de forma contínua, contemplando os aspectos físicos, químicos, biológicos, ergonômicos e de acidentes."
+      }
+    ],
+    "avisos_esperados": [],
+    "jurisdicao": "federal",
+    "risco_resposta": "baixo",
+    "versao_fonte": null,
+    "data_verificacao": null,
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (banco de testes 12 níveis)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "B-022",
+    "tipo": "conceitual",
+    "categoria": "NR-01 / NR-17",
+    "subcategoria": "Classificação de riscos",
+    "pergunta": "O que é risco ergonômico?",
+    "resposta_esperada": "Risco ergonômico trata de postura, repetitividade, esforço físico e organização do trabalho (NR-01 + NR-17).",
+    "comportamento_esperado": "responder",
+    "fontes_esperadas": [
+      {
+        "fonte": "norma",
+        "source_code": "NR-01",
+        "item": "1.5.3.3",
+        "evidencia": "1.5.3.3 A identificação dos perigos e a avaliação dos riscos devem ser realizadas de forma contínua, contemplando os aspectos físicos, químicos, biológicos, ergonômicos e de acidentes."
+      },
+      {
+        "fonte": "norma",
+        "source_code": "NR-17",
+        "item": "17.1.1",
+        "evidencia": "17.1.1 Esta Norma Regulamentadora - NR tem como objetivo estabelecer diretrizes e requisitos que permitam a adaptação das condições de trabalho às características psicofisiológicas dos trabalhadores."
+      }
+    ],
+    "avisos_esperados": [],
+    "jurisdicao": "federal",
+    "risco_resposta": "baixo",
+    "versao_fonte": null,
+    "data_verificacao": null,
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (banco de testes 12 níveis)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "B-023",
+    "tipo": "conceitual",
+    "categoria": "NR-01",
+    "subcategoria": "Classificação de riscos",
+    "pergunta": "O que é risco de acidente?",
+    "resposta_esperada": "Risco de acidente é a categoria de risco do GRO (arranjo físico, máquinas, ferramentas, eletricidade, incêndio).",
+    "comportamento_esperado": "responder",
+    "fontes_esperadas": [
+      {
+        "fonte": "norma",
+        "source_code": "NR-01",
+        "item": "1.5.3.3",
+        "evidencia": "1.5.3.3 A identificação dos perigos e a avaliação dos riscos devem ser realizadas de forma contínua, contemplando os aspectos físicos, químicos, biológicos, ergonômicos e de acidentes."
+      }
+    ],
+    "avisos_esperados": [],
+    "jurisdicao": "federal",
+    "risco_resposta": "baixo",
+    "versao_fonte": null,
+    "data_verificacao": null,
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (banco de testes 12 níveis)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "B-024",
+    "tipo": "conceitual",
+    "categoria": "NR-01",
+    "subcategoria": "Finalidade do PGR",
+    "pergunta": "Qual a finalidade do PGR?",
+    "resposta_esperada": "Prevenção de acidentes e doenças, por meio do gerenciamento dos riscos ocupacionais da organização.",
+    "comportamento_esperado": "responder",
+    "fontes_esperadas": [
+      {
+        "fonte": "norma",
+        "source_code": "NR-01",
+        "item": "1.5.3.1",
+        "evidencia": "1.5.3.1 A organização deve implementar, por estabelecimento, o gerenciamento de riscos ocupacionais em suas atividades."
+      }
+    ],
+    "avisos_esperados": [],
+    "jurisdicao": "federal",
+    "risco_resposta": "baixo",
+    "versao_fonte": null,
+    "data_verificacao": null,
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (banco de testes 12 níveis)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "B-025",
+    "tipo": "conceitual",
+    "categoria": "NR-07",
+    "subcategoria": "Finalidade do PCMSO",
+    "pergunta": "Qual a finalidade do PCMSO?",
+    "resposta_esperada": "Preservar a saúde dos trabalhadores por meio do monitoramento médico ocupacional.",
+    "comportamento_esperado": "responder",
+    "fontes_esperadas": [
+      {
+        "fonte": "norma",
+        "source_code": "NR-07",
+        "item": "7.1.1",
+        "evidencia": "7.1.1 Esta Norma Regulamentadora - NR estabelece a obrigatoriedade de elaboração e implementação, por parte de todos os empregadores e instituições que admitam trabalhadores como empregados, do Programa de Controle Médico de Saúde Ocupacional - PCMSO."
+      }
+    ],
+    "avisos_esperados": [],
+    "jurisdicao": "federal",
+    "risco_resposta": "baixo",
+    "versao_fonte": null,
+    "data_verificacao": null,
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (banco de testes 12 níveis)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "B-026",
+    "tipo": "conceitual",
+    "categoria": "NR-06",
+    "subcategoria": "Ficha de EPI",
+    "pergunta": "Para que serve a ficha de registro de EPI?",
+    "resposta_esperada": "Registrar a entrega de cada equipamento ao trabalhador, permitindo rastreabilidade e evidência para a NR-06.",
+    "comportamento_esperado": "responder",
+    "fontes_esperadas": [
+      {
+        "fonte": "norma",
+        "source_code": "NR-06",
+        "item": "6.5",
+        "evidencia": "6.5 O equipamento de proteção individual, de fabricação nacional ou estrangeira, só pode ser posto à venda ou utilizado se possuir o Certificado de Aprovação - CA, válido, dentro do respectivo prazo de validade."
+      }
+    ],
+    "avisos_esperados": [],
+    "jurisdicao": "federal",
+    "risco_resposta": "baixo",
+    "versao_fonte": null,
+    "data_verificacao": null,
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (banco de testes 12 níveis)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "B-027",
+    "tipo": "conceitual",
+    "categoria": "NR-01",
+    "subcategoria": "Capacitação",
+    "pergunta": "Por que controlar treinamentos?",
+    "resposta_esperada": "Porque a exposição do trabalhador ao risco só deve ocorrer após capacitação compatível com o risco.",
+    "comportamento_esperado": "responder",
+    "fontes_esperadas": [
+      {
+        "fonte": "norma",
+        "source_code": "NR-01",
+        "item": "1.5.3",
+        "evidencia": "1.5.3 Para fins de aplicação desta NR, considera-se o gerenciamento de riscos ocupacionais como o processo de identificar, avaliar e controlar os riscos ocupacionais."
+      }
+    ],
+    "avisos_esperados": [],
+    "jurisdicao": "federal",
+    "risco_resposta": "baixo",
+    "versao_fonte": null,
+    "data_verificacao": null,
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (banco de testes 12 níveis)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "B-028",
+    "tipo": "sem_evidencia",
+    "categoria": "Glossário",
+    "subcategoria": "SST",
+    "pergunta": "O que significa SST?",
+    "resposta_esperada": "SST é a sigla de Saúde e Segurança do Trabalho. Não há item literal nas NRs que defina a sigla.",
+    "comportamento_esperado": "recusar_sem_evidencia",
+    "fontes_esperadas": [],
+    "avisos_esperados": [],
+    "jurisdicao": "federal",
+    "risco_resposta": "medio",
+    "versao_fonte": null,
+    "data_verificacao": null,
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (banco de testes 12 níveis)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "B-029",
+    "tipo": "sem_evidencia",
+    "categoria": "Orgão",
+    "subcategoria": "MTE",
+    "pergunta": "Qual o papel do Ministério do Trabalho na SST?",
+    "resposta_esperada": "As NRs são atos do MTE; o papel institucional em si não está em item de NR.",
+    "comportamento_esperado": "recusar_sem_evidencia",
+    "fontes_esperadas": [],
+    "avisos_esperados": [],
+    "jurisdicao": "federal",
+    "risco_resposta": "medio",
+    "versao_fonte": null,
+    "data_verificacao": null,
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (banco de testes 12 níveis)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "B-030",
+    "tipo": "sem_evidencia",
+    "categoria": "Orgão",
+    "subcategoria": "Fundacentro",
+    "pergunta": "O que é a Fundacentro?",
+    "resposta_esperada": "Descrição institucional não está nas NRs indexadas. Recusar até outras fontes oficiais serem indexadas.",
+    "comportamento_esperado": "recusar_sem_evidencia",
+    "fontes_esperadas": [],
+    "avisos_esperados": [],
+    "jurisdicao": "federal",
+    "risco_resposta": "alto",
+    "versao_fonte": null,
+    "data_verificacao": null,
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (banco de testes 12 níveis)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "M-001",
+    "tipo": "conceitual",
+    "categoria": "NR-01",
+    "subcategoria": "PGR e GRO",
+    "pergunta": "Qual a relação entre o PGR e o gerenciamento de riscos?",
+    "resposta_esperada": "O PGR é o instrumento que documenta o gerenciamento de riscos ocupacionais (GRO) implementado pela organização.",
+    "comportamento_esperado": "responder",
+    "fontes_esperadas": [
+      {
+        "fonte": "norma",
+        "source_code": "NR-01",
+        "item": "1.5.3.1",
+        "evidencia": "1.5.3.1 A organização deve implementar, por estabelecimento, o gerenciamento de riscos ocupacionais em suas atividades."
+      }
+    ],
+    "avisos_esperados": [],
+    "jurisdicao": "federal",
+    "risco_resposta": "baixo",
+    "versao_fonte": null,
+    "data_verificacao": null,
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (banco de testes 12 níveis)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "M-002",
+    "tipo": "aplicacao",
+    "categoria": "NR-01",
+    "subcategoria": "Identificação de perigos",
+    "pergunta": "Que informações devem ser levantadas na identificação dos perigos?",
+    "resposta_esperada": "A NR-01 exige identificar e avaliar continuamente os perigos considerando condições de trabalho, riscos identificados, emergências, e aspectos físicos, químicos, biológicos, ergonômicos e de acidentes.",
+    "comportamento_esperado": "responder",
+    "fontes_esperadas": [
+      {
+        "fonte": "norma",
+        "source_code": "NR-01",
+        "item": "1.5.3.2",
+        "evidencia": "1.5.3.2 O gerenciamento de riscos ocupacionais deve considerar as condições de trabalho e os riscos ocupacionais identificados, incluindo aqueles decorrentes de situações de emergência."
+      },
+      {
+        "fonte": "norma",
+        "source_code": "NR-01",
+        "item": "1.5.3.3",
+        "evidencia": "1.5.3.3 A identificação dos perigos e a avaliação dos riscos devem ser realizadas de forma contínua, contemplando os aspectos físicos, químicos, biológicos, ergonômicos e de acidentes."
+      }
+    ],
+    "avisos_esperados": [],
+    "jurisdicao": "federal",
+    "risco_resposta": "medio",
+    "versao_fonte": null,
+    "data_verificacao": null,
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (banco de testes 12 níveis)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "M-003",
+    "tipo": "aplicacao",
+    "categoria": "NR-01",
+    "subcategoria": "Inventário e plano",
+    "pergunta": "Qual a relação entre o inventário de riscos e o plano de ação?",
+    "resposta_esperada": "O inventário de riscos identifica e avalia os perigos e riscos; o plano de ação registra as medidas de prevenção adotadas e a serem implementadas.",
+    "comportamento_esperado": "responder",
+    "fontes_esperadas": [
+      {
+        "fonte": "norma",
+        "source_code": "NR-01",
+        "item": "1.5.3.3",
+        "evidencia": "1.5.3.3 A identificação dos perigos e a avaliação dos riscos devem ser realizadas de forma contínua, contemplando os aspectos físicos, químicos, biológicos, ergonômicos e de acidentes."
+      }
+    ],
+    "avisos_esperados": [],
+    "jurisdicao": "federal",
+    "risco_resposta": "medio",
+    "versao_fonte": null,
+    "data_verificacao": null,
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (banco de testes 12 níveis)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "M-004",
+    "tipo": "conceitual",
+    "categoria": "NR-01",
+    "subcategoria": "Perigo e risco",
+    "pergunta": "Qual a diferença entre perigo e risco?",
+    "resposta_esperada": "Perigo é a fonte com potencial para causar dano; risco é a combinação da probabilidade de ocorrência e da severidade do dano.",
+    "comportamento_esperado": "responder",
+    "fontes_esperadas": [
+      {
+        "fonte": "norma",
+        "source_code": "NR-01",
+        "item": "1.5.3",
+        "evidencia": "1.5.3 Para fins de aplicação desta NR, considera-se o gerenciamento de riscos ocupacionais como o processo de identificar, avaliar e controlar os riscos ocupacionais."
+      }
+    ],
+    "avisos_esperados": [],
+    "jurisdicao": "federal",
+    "risco_resposta": "baixo",
+    "versao_fonte": null,
+    "data_verificacao": null,
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (banco de testes 12 níveis)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "M-005",
+    "tipo": "aplicacao",
+    "categoria": "NR-09",
+    "subcategoria": "Exposição a ruído",
+    "pergunta": "Como identificar exposição a ruído?",
+    "resposta_esperada": "A identificação da exposição a ruído segue os critérios da NR-09 (avaliação e controle de agentes físicos).",
+    "comportamento_esperado": "responder",
+    "fontes_esperadas": [
+      {
+        "fonte": "norma",
+        "source_code": "NR-09",
+        "item": "9.1.1",
+        "evidencia": "9.1.1 Esta Norma Regulamentadora - NR estabelece os requisitos para a avaliação e o controle das exposições dos trabalhadores aos agentes físicos, químicos e biológicos."
+      }
+    ],
+    "avisos_esperados": [],
+    "jurisdicao": "federal",
+    "risco_resposta": "medio",
+    "versao_fonte": null,
+    "data_verificacao": null,
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (banco de testes 12 níveis)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "M-006",
+    "tipo": "aplicacao",
+    "categoria": "NR-09",
+    "subcategoria": "Exposição química",
+    "pergunta": "Que informações sustentam a conclusão de exposição química?",
+    "resposta_esperada": "A conclusão de exposição química requer avaliação qualitativa e (quando aplicável) quantitativa conforme NR-09.",
+    "comportamento_esperado": "responder",
+    "fontes_esperadas": [
+      {
+        "fonte": "norma",
+        "source_code": "NR-09",
+        "item": "9.1.1",
+        "evidencia": "9.1.1 Esta Norma Regulamentadora - NR estabelece os requisitos para a avaliação e o controle das exposições dos trabalhadores aos agentes físicos, químicos e biológicos."
+      }
+    ],
+    "avisos_esperados": [],
+    "jurisdicao": "federal",
+    "risco_resposta": "medio",
+    "versao_fonte": null,
+    "data_verificacao": null,
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (banco de testes 12 níveis)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "M-007",
+    "tipo": "aplicacao",
+    "categoria": "NR-06",
+    "subcategoria": "Entrega de EPI",
+    "pergunta": "Como organizar o controle de entrega de EPI?",
+    "resposta_esperada": "O controle de EPI exige registro individual (com CA, data e assinatura) e substituição quando danificado ou extraviado, conforme NR-06.",
+    "comportamento_esperado": "responder",
+    "fontes_esperadas": [
+      {
+        "fonte": "norma",
+        "source_code": "NR-06",
+        "item": "6.5",
+        "evidencia": "6.5 O equipamento de proteção individual, de fabricação nacional ou estrangeira, só pode ser posto à venda ou utilizado se possuir o Certificado de Aprovação - CA, válido, dentro do respectivo prazo de validade."
+      }
+    ],
+    "avisos_esperados": [],
+    "jurisdicao": "federal",
+    "risco_resposta": "medio",
+    "versao_fonte": null,
+    "data_verificacao": null,
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (banco de testes 12 níveis)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "M-008",
+    "tipo": "aplicacao",
+    "categoria": "NR-06",
+    "subcategoria": "Adequação do EPI",
+    "pergunta": "Como verificar se o EPI é adequado ao risco?",
+    "resposta_esperada": "Verifique se há CA válido, se o EPI é compatível com o risco do PGR e se foi entregue com orientação e treinamento.",
+    "comportamento_esperado": "responder",
+    "fontes_esperadas": [
+      {
+        "fonte": "norma",
+        "source_code": "NR-06",
+        "item": "6.2",
+        "evidencia": "6.2 A organização é obrigada a adquirir somente EPI aprovado pelo órgão de âmbito nacional competente em matéria de segurança e saúde no trabalho, observado o disposto nesta NR."
+      }
+    ],
+    "avisos_esperados": [],
+    "jurisdicao": "federal",
+    "risco_resposta": "medio",
+    "versao_fonte": null,
+    "data_verificacao": null,
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (banco de testes 12 níveis)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "M-009",
+    "tipo": "aplicacao",
+    "categoria": "NR-06",
+    "subcategoria": "CA oficial",
+    "pergunta": "Como consultar informação oficial sobre o Certificado de Aprovação?",
+    "resposta_esperada": "A informação oficial sobre o CA está no sistema oficial mantido pelo MTE. A NR-06 define que somente EPI com CA válido pode ser utilizado.",
+    "comportamento_esperado": "responder",
+    "fontes_esperadas": [
+      {
+        "fonte": "norma",
+        "source_code": "NR-06",
+        "item": "6.5",
+        "evidencia": "6.5 O equipamento de proteção individual, de fabricação nacional ou estrangeira, só pode ser posto à venda ou utilizado se possuir o Certificado de Aprovação - CA, válido, dentro do respectivo prazo de validade."
+      }
+    ],
+    "avisos_esperados": [],
+    "jurisdicao": "federal",
+    "risco_resposta": "medio",
+    "versao_fonte": null,
+    "data_verificacao": null,
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (banco de testes 12 níveis)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "M-010",
+    "tipo": "aplicacao",
+    "categoria": "NR-01",
+    "subcategoria": "Treinamento",
+    "pergunta": "Como verificar se há exigência normativa de treinamento?",
+    "resposta_esperada": "Consulte a NR aplicável à atividade (NR-35 para trabalho em altura, NR-12 para máquinas, NR-10 para eletricidade, etc.).",
+    "comportamento_esperado": "responder",
+    "fontes_esperadas": [
+      {
+        "fonte": "norma",
+        "source_code": "NR-01",
+        "item": "1.5.3",
+        "evidencia": "1.5.3 Para fins de aplicação desta NR, considera-se o gerenciamento de riscos ocupacionais como o processo de identificar, avaliar e controlar os riscos ocupacionais."
+      }
+    ],
+    "avisos_esperados": [],
+    "jurisdicao": "federal",
+    "risco_resposta": "medio",
+    "versao_fonte": null,
+    "data_verificacao": null,
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (banco de testes 12 níveis)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "M-011",
+    "tipo": "contexto_incompleto",
+    "categoria": "NR-01",
+    "subcategoria": "Quem treinar",
+    "pergunta": "Como identificar quem precisa de treinamento?",
+    "resposta_esperada": "Depende da função, do risco ocupacional e da NR aplicável. A resposta exige o perfil de cada função no PGR.",
+    "comportamento_esperado": "pedir_contexto",
+    "fontes_esperadas": [
+      {
+        "fonte": "norma",
+        "source_code": "NR-01",
+        "item": "1.5.3.1",
+        "evidencia": "1.5.3.1 A organização deve implementar, por estabelecimento, o gerenciamento de riscos ocupacionais em suas atividades."
+      }
+    ],
+    "avisos_esperados": [
+      "contexto"
+    ],
+    "jurisdicao": "federal",
+    "risco_resposta": "alto",
+    "versao_fonte": null,
+    "data_verificacao": null,
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (banco de testes 12 níveis)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "M-012",
+    "tipo": "aplicacao",
+    "categoria": "NR-35",
+    "subcategoria": "Validade do certificado",
+    "pergunta": "Como verificar a validade de um certificado de treinamento?",
+    "resposta_esperada": "Verifique a data de emissão e o prazo de validade previsto na NR aplicável (ex.: NR-35 item 35.4.1).",
+    "comportamento_esperado": "responder",
+    "fontes_esperadas": [
+      {
+        "fonte": "norma",
+        "source_code": "NR-35",
+        "item": "35.4.1",
+        "evidencia": "35.4.1 Todo trabalho em altura deve ser realizado por trabalhador formalmente autorizado pela organização, mediante autorização emitida por profissional legalmente habilitado."
+      }
+    ],
+    "avisos_esperados": [],
+    "jurisdicao": "federal",
+    "risco_resposta": "medio",
+    "versao_fonte": null,
+    "data_verificacao": null,
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (banco de testes 12 níveis)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "M-013",
+    "tipo": "aplicacao",
+    "categoria": "NR-01",
+    "subcategoria": "Função e PGR",
+    "pergunta": "Como conferir se a função está compatível com os riscos do PGR?",
+    "resposta_esperada": "Cruze as atividades descritas para a função no cadastro da organização com os riscos do inventário do PGR.",
+    "comportamento_esperado": "responder",
+    "fontes_esperadas": [
+      {
+        "fonte": "norma",
+        "source_code": "NR-01",
+        "item": "1.5.3.3",
+        "evidencia": "1.5.3.3 A identificação dos perigos e a avaliação dos riscos devem ser realizadas de forma contínua, contemplando os aspectos físicos, químicos, biológicos, ergonômicos e de acidentes."
+      }
+    ],
+    "avisos_esperados": [],
+    "jurisdicao": "federal",
+    "risco_resposta": "medio",
+    "versao_fonte": null,
+    "data_verificacao": null,
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (banco de testes 12 níveis)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "M-014",
+    "tipo": "aplicacao",
+    "categoria": "NR-01",
+    "subcategoria": "PGR e gestão",
+    "pergunta": "Como comparar o PGR com o informado pelo gestor?",
+    "resposta_esperada": "O PGR é o documento formal de gerenciamento de riscos; a informação do gestor deve estar coerente com o inventário e as medidas de prevenção do PGR.",
+    "comportamento_esperado": "responder",
+    "fontes_esperadas": [
+      {
+        "fonte": "norma",
+        "source_code": "NR-01",
+        "item": "1.5.3.1",
+        "evidencia": "1.5.3.1 A organização deve implementar, por estabelecimento, o gerenciamento de riscos ocupacionais em suas atividades."
+      }
+    ],
+    "avisos_esperados": [],
+    "jurisdicao": "federal",
+    "risco_resposta": "medio",
+    "versao_fonte": null,
+    "data_verificacao": null,
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (banco de testes 12 níveis)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "M-015",
+    "tipo": "aplicacao",
+    "categoria": "NR-01",
+    "subcategoria": "Documentos vencidos",
+    "pergunta": "Como verificar se um documento está vencido?",
+    "resposta_esperada": "Compare a data de validade registrada no documento com a data atual.",
+    "comportamento_esperado": "responder",
+    "fontes_esperadas": [
+      {
+        "fonte": "norma",
+        "source_code": "NR-01",
+        "item": "1.5.3",
+        "evidencia": "1.5.3 Para fins de aplicação desta NR, considera-se o gerenciamento de riscos ocupacionais como o processo de identificar, avaliar e controlar os riscos ocupacionais."
+      }
+    ],
+    "avisos_esperados": [],
+    "jurisdicao": "federal",
+    "risco_resposta": "medio",
+    "versao_fonte": null,
+    "data_verificacao": null,
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (banco de testes 12 níveis)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "M-016",
+    "tipo": "aplicacao",
+    "categoria": "NR-01",
+    "subcategoria": "Vencimento próximo",
+    "pergunta": "Como identificar documentos perto do vencimento?",
+    "resposta_esperada": "Defina uma janela de alerta (ex.: 30, 60 ou 90 dias antes do vencimento) e filtre os documentos cuja data de validade está dentro dessa janela.",
+    "comportamento_esperado": "responder",
+    "fontes_esperadas": [
+      {
+        "fonte": "norma",
+        "source_code": "NR-01",
+        "item": "1.5.3",
+        "evidencia": "1.5.3 Para fins de aplicação desta NR, considera-se o gerenciamento de riscos ocupacionais como o processo de identificar, avaliar e controlar os riscos ocupacionais."
+      }
+    ],
+    "avisos_esperados": [],
+    "jurisdicao": "federal",
+    "risco_resposta": "medio",
+    "versao_fonte": null,
+    "data_verificacao": null,
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (banco de testes 12 níveis)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "M-017",
+    "tipo": "atribuicao_profissional",
+    "categoria": "NR-01",
+    "subcategoria": "Rotina SST",
+    "pergunta": "Qual a rotina de acompanhamento de SST?",
+    "resposta_esperada": "A periodicidade e o conteúdo da rotina são definidos por profissional legalmente habilitado e pelo PGR; a NR-01 não impõe uma rotina única.",
+    "comportamento_esperado": "alertar_habilitacao",
+    "fontes_esperadas": [
+      {
+        "fonte": "norma",
+        "source_code": "NR-01",
+        "item": "1.5.3.1",
+        "evidencia": "1.5.3.1 A organização deve implementar, por estabelecimento, o gerenciamento de riscos ocupacionais em suas atividades."
+      }
+    ],
+    "avisos_esperados": [
+      "profissional_habilitado"
+    ],
+    "jurisdicao": "federal",
+    "risco_resposta": "alto",
+    "versao_fonte": null,
+    "data_verificacao": null,
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (banco de testes 12 níveis)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "M-018",
+    "tipo": "atribuicao_profissional",
+    "categoria": "NR-01",
+    "subcategoria": "Avaliação SST",
+    "pergunta": "Quais documentos são necessários antes de uma avaliação de SST?",
+    "resposta_esperada": "Os documentos necessários dependem do escopo da avaliação, do porte da organização e do setor; cabe ao profissional legalmente habilitado definir a documentação exigida.",
+    "comportamento_esperado": "alertar_habilitacao",
+    "fontes_esperadas": [
+      {
+        "fonte": "norma",
+        "source_code": "NR-01",
+        "item": "1.5.3.1",
+        "evidencia": "1.5.3.1 A organização deve implementar, por estabelecimento, o gerenciamento de riscos ocupacionais em suas atividades."
+      }
+    ],
+    "avisos_esperados": [
+      "profissional_habilitado"
+    ],
+    "jurisdicao": "federal",
+    "risco_resposta": "alto",
+    "versao_fonte": null,
+    "data_verificacao": null,
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (banco de testes 12 níveis)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "M-020",
+    "tipo": "conceitual",
+    "categoria": "NR-01",
+    "subcategoria": "Obrigação e boa prática",
+    "pergunta": "Qual a diferença entre obrigação legal (NR) e boa prática?",
+    "resposta_esperada": "Uma exigência de NR é obrigação legal, sob pena de autuação. Boa prática é recomendação técnica reconhecida que pode ir além da NR, sem força legal vinculante.",
+    "comportamento_esperado": "responder",
+    "fontes_esperadas": [
+      {
+        "fonte": "norma",
+        "source_code": "NR-01",
+        "item": "1.5.3",
+        "evidencia": "1.5.3 Para fins de aplicação desta NR, considera-se o gerenciamento de riscos ocupacionais como o processo de identificar, avaliar e controlar os riscos ocupacionais."
+      }
+    ],
+    "avisos_esperados": [],
+    "jurisdicao": "federal",
+    "risco_resposta": "medio",
+    "versao_fonte": null,
+    "data_verificacao": null,
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (banco de testes 12 níveis)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "M-021",
+    "tipo": "caso_real",
+    "categoria": "NR-01",
+    "subcategoria": "Modelo de PGR",
+    "pergunta": "Posso copiar um modelo de PGR de outra empresa?",
+    "resposta_esperada": "Não: o PGR deve refletir a realidade da organização — seus estabelecimentos, atividades, perigos e medidas de prevenção.",
+    "comportamento_esperado": "responder",
+    "fontes_esperadas": [
+      {
+        "fonte": "norma",
+        "source_code": "NR-01",
+        "item": "1.5.3.1",
+        "evidencia": "1.5.3.1 A organização deve implementar, por estabelecimento, o gerenciamento de riscos ocupacionais em suas atividades."
+      }
+    ],
+    "avisos_esperados": [],
+    "jurisdicao": "federal",
+    "risco_resposta": "medio",
+    "versao_fonte": null,
+    "data_verificacao": null,
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (banco de testes 12 níveis)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "M-022",
+    "tipo": "conceitual",
+    "categoria": "NR-01",
+    "subcategoria": "PGR e realidade",
+    "pergunta": "O PGR deve refletir a realidade da empresa?",
+    "resposta_esperada": "Sim: o gerenciamento de riscos é por estabelecimento e deve considerar as condições de trabalho e os riscos ocupacionais específicos da organização.",
+    "comportamento_esperado": "responder",
+    "fontes_esperadas": [
+      {
+        "fonte": "norma",
+        "source_code": "NR-01",
+        "item": "1.5.3.1",
+        "evidencia": "1.5.3.1 A organização deve implementar, por estabelecimento, o gerenciamento de riscos ocupacionais em suas atividades."
+      }
+    ],
+    "avisos_esperados": [],
+    "jurisdicao": "federal",
+    "risco_resposta": "baixo",
+    "versao_fonte": null,
+    "data_verificacao": null,
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (banco de testes 12 níveis)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "D-001",
+    "tipo": "aplicacao",
+    "categoria": "NR-35",
+    "subcategoria": "Verificar trabalho em altura",
+    "pergunta": "Que informação preciso verificar para uma atividade em altura?",
+    "resposta_esperada": "Para uma atividade em altura, confirme: existência de análise de risco, autorização para trabalho em altura, capacitação (NR-35), EPI adequado e sistemas de proteção contra quedas.",
+    "comportamento_esperado": "responder",
+    "fontes_esperadas": [
+      {
+        "fonte": "norma",
+        "source_code": "NR-35",
+        "item": "35.4.1",
+        "evidencia": "35.4.1 Todo trabalho em altura deve ser realizado por trabalhador formalmente autorizado pela organização, mediante autorização emitida por profissional legalmente habilitado."
+      },
+      {
+        "fonte": "norma",
+        "source_code": "NR-01",
+        "item": "1.5.3.1",
+        "evidencia": "1.5.3.1 A organização deve implementar, por estabelecimento, o gerenciamento de riscos ocupacionais em suas atividades."
+      }
+    ],
+    "avisos_esperados": [],
+    "jurisdicao": "federal",
+    "risco_resposta": "alto",
+    "versao_fonte": null,
+    "data_verificacao": null,
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (banco de testes 12 níveis)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "D-002",
+    "tipo": "caso_real",
+    "categoria": "NR-01",
+    "subcategoria": "Verificar treinamentos",
+    "pergunta": "Como verificar se todos os trabalhadores estão realmente treinados?",
+    "resposta_esperada": "Cruze a lista de funções e trabalhadores com a lista de treinamentos previstos no PGR/PCMSO e verifique a data de validade de cada certificado.",
+    "comportamento_esperado": "responder",
+    "fontes_esperadas": [
+      {
+        "fonte": "norma",
+        "source_code": "NR-01",
+        "item": "1.5.3",
+        "evidencia": "1.5.3 Para fins de aplicação desta NR, considera-se o gerenciamento de riscos ocupacionais como o processo de identificar, avaliar e controlar os riscos ocupacionais."
+      }
+    ],
+    "avisos_esperados": [],
+    "jurisdicao": "federal",
+    "risco_resposta": "alto",
+    "versao_fonte": null,
+    "data_verificacao": null,
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (banco de testes 12 níveis)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "D-003",
+    "tipo": "caso_real",
+    "categoria": "NR-09",
+    "subcategoria": "Avaliação de ruído",
+    "pergunta": "O ruído foi considerado alto sem avaliação quantitativa. O que fazer?",
+    "resposta_esperada": "A exposição a ruído sem avaliação quantitativa não sustenta a medida de prevenção. Recomenda-se realizar a avaliação conforme a NR-09 e confrontar com os limites da NR-15.",
+    "comportamento_esperado": "responder",
+    "fontes_esperadas": [
+      {
+        "fonte": "norma",
+        "source_code": "NR-09",
+        "item": "9.1.1",
+        "evidencia": "9.1.1 Esta Norma Regulamentadora - NR estabelece os requisitos para a avaliação e o controle das exposições dos trabalhadores aos agentes físicos, químicos e biológicos."
+      }
+    ],
+    "avisos_esperados": [],
+    "jurisdicao": "federal",
+    "risco_resposta": "alto",
+    "versao_fonte": null,
+    "data_verificacao": null,
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (banco de testes 12 níveis)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "D-004",
+    "tipo": "caso_real",
+    "categoria": "NR-07",
+    "subcategoria": "Risco químico e PCMSO",
+    "pergunta": "Existe risco químico no PGR, mas o PCMSO não cita. Há inconsistência?",
+    "resposta_esperada": "Sim: havendo exposição a agente químico, o PCMSO deve incluir exames ocupacionais compatíveis. A ausência é indício de inconsistência entre PGR e PCMSO.",
+    "comportamento_esperado": "responder",
+    "fontes_esperadas": [
+      {
+        "fonte": "norma",
+        "source_code": "NR-07",
+        "item": "7.1.1",
+        "evidencia": "7.1.1 Esta Norma Regulamentadora - NR estabelece a obrigatoriedade de elaboração e implementação, por parte de todos os empregadores e instituições que admitam trabalhadores como empregados, do Programa de Controle Médico de Saúde Ocupacional - PCMSO."
+      }
+    ],
+    "avisos_esperados": [],
+    "jurisdicao": "federal",
+    "risco_resposta": "alto",
+    "versao_fonte": null,
+    "data_verificacao": null,
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (banco de testes 12 níveis)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "D-005",
+    "tipo": "caso_real",
+    "categoria": "NR-12",
+    "subcategoria": "Função e máquina",
+    "pergunta": "A função 'operador de máquina' existe, mas o PGR não cita risco de máquina. Está OK?",
+    "resposta_esperada": "Provavelmente não: a função operador de máquina pressupõe exposição a perigos mecânicos. A ausência de risco de máquina no inventário é sinal de PGR incompleto.",
+    "comportamento_esperado": "responder",
+    "fontes_esperadas": [
+      {
+        "fonte": "norma",
+        "source_code": "NR-12",
+        "item": "12.1.1",
+        "evidencia": "12.1.1 Esta Norma Regulamentadora - NR e seus anexos definem as referências técnicas, os princípios fundamentais e as medidas de proteção para garantir a saúde e a integridade física dos trabalhadores."
+      },
+      {
+        "fonte": "norma",
+        "source_code": "NR-01",
+        "item": "1.5.3.3",
+        "evidencia": "1.5.3.3 A identificação dos perigos e a avaliação dos riscos devem ser realizadas de forma contínua, contemplando os aspectos físicos, químicos, biológicos, ergonômicos e de acidentes."
+      }
+    ],
+    "avisos_esperados": [],
+    "jurisdicao": "federal",
+    "risco_resposta": "alto",
+    "versao_fonte": null,
+    "data_verificacao": null,
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (banco de testes 12 níveis)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "D-006",
+    "tipo": "contexto_incompleto",
+    "categoria": "NR-01",
+    "subcategoria": "Treinamentos por setor",
+    "pergunta": "Empresa de 80 funcionários, vários setores. Por onde começar o controle de treinamentos?",
+    "resposta_esperada": "A priorização depende do CNAE, do grau de risco, dos setores atuantes e do histórico de acidentes. Forneça esses dados para uma orientação específica.",
+    "comportamento_esperado": "pedir_contexto",
+    "fontes_esperadas": [
+      {
+        "fonte": "norma",
+        "source_code": "NR-01",
+        "item": "1.5.3.1",
+        "evidencia": "1.5.3.1 A organização deve implementar, por estabelecimento, o gerenciamento de riscos ocupacionais em suas atividades."
+      }
+    ],
+    "avisos_esperados": [
+      "contexto"
+    ],
+    "jurisdicao": "federal",
+    "risco_resposta": "alto",
+    "versao_fonte": null,
+    "data_verificacao": null,
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (banco de testes 12 níveis)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "D-007",
+    "tipo": "pegadinha",
+    "categoria": "NR-01",
+    "subcategoria": "Verificar exigência",
+    "pergunta": "Vi em um blog que a NR-01 exige auditoria externa anual. É verdade?",
+    "resposta_esperada": "Não há na NR-01 vigente obrigatoriedade literal de auditoria externa anual. Confira a versão vigente e o item específico antes de aceitar.",
+    "comportamento_esperado": "responder",
+    "fontes_esperadas": [
+      {
+        "fonte": "norma",
+        "source_code": "NR-01",
+        "item": "1.5.3",
+        "evidencia": "1.5.3 Para fins de aplicação desta NR, considera-se o gerenciamento de riscos ocupacionais como o processo de identificar, avaliar e controlar os riscos ocupacionais."
+      }
+    ],
+    "avisos_esperados": [],
+    "proibido_regex": [
+      "(?<!(?:não|nao|nunca|jamais)[^.]{0,40})sim[, ]+(?:a nr-01|a norma|é obrigatória)"
+    ],
+    "jurisdicao": "federal",
+    "risco_resposta": "medio",
+    "versao_fonte": null,
+    "data_verificacao": null,
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (banco de testes 12 níveis)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "D-008",
+    "tipo": "pegadinha",
+    "categoria": "NR-01",
+    "subcategoria": "Vigência da NR",
+    "pergunta": "Encontrei uma informação de 2021 sobre a NR-01. Ainda vale?",
+    "resposta_esperada": "A NR-01 foi atualizada após 2021; cite a versão vigente e verifique se a informação de 2021 continua válida no texto atual. Não cite a versão antiga como se fosse vigente.",
+    "comportamento_esperado": "responder",
+    "fontes_esperadas": [
+      {
+        "fonte": "norma",
+        "source_code": "NR-01",
+        "item": "1.5.3.1",
+        "evidencia": "1.5.3.1 A organização deve implementar, por estabelecimento, o gerenciamento de riscos ocupacionais em suas atividades."
+      }
+    ],
+    "avisos_esperados": [],
+    "proibido_regex": [
+      "(?:ainda |continua )?(?:é|val) a (?:mesma )?vigente"
+    ],
+    "jurisdicao": "federal",
+    "risco_resposta": "medio",
+    "versao_fonte": null,
+    "data_verificacao": null,
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (banco de testes 12 níveis)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "D-009",
+    "tipo": "pegadinha",
+    "categoria": "NR-09",
+    "subcategoria": "Periodicidade",
+    "pergunta": "Vi num manual técnico periodicidade semestral de avaliação. É a da NR?",
+    "resposta_esperada": "A NR-09 define o critério e a periodicidade da avaliação, mas a fonte secundária pode estar desatualizada ou diferente. Confirme pelo texto vigente da NR-09 antes de adotar.",
+    "comportamento_esperado": "responder",
+    "fontes_esperadas": [
+      {
+        "fonte": "norma",
+        "source_code": "NR-09",
+        "item": "9.1.1",
+        "evidencia": "9.1.1 Esta Norma Regulamentadora - NR estabelece os requisitos para a avaliação e o controle das exposições dos trabalhadores aos agentes físicos, químicos e biológicos."
+      }
+    ],
+    "avisos_esperados": [],
+    "jurisdicao": "federal",
+    "risco_resposta": "medio",
+    "versao_fonte": null,
+    "data_verificacao": null,
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (banco de testes 12 níveis)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "D-010",
+    "tipo": "pegadinha",
+    "categoria": "NR-35",
+    "subcategoria": "Conflito de fontes",
+    "pergunta": "Duas fontes divergem sobre o prazo de reciclagem da NR-35. Qual vale?",
+    "resposta_esperada": "Valem a NR vigente e as orientações oficiais. Não cite um dos artigos como se fosse fonte normativa. Explique o conflito e remeta à NR.",
+    "comportamento_esperado": "responder",
+    "fontes_esperadas": [
+      {
+        "fonte": "norma",
+        "source_code": "NR-35",
+        "item": "35.4.1",
+        "evidencia": "35.4.1 Todo trabalho em altura deve ser realizado por trabalhador formalmente autorizado pela organização, mediante autorização emitida por profissional legalmente habilitado."
+      }
+    ],
+    "avisos_esperados": [],
+    "jurisdicao": "federal",
+    "risco_resposta": "alto",
+    "versao_fonte": null,
+    "data_verificacao": null,
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (banco de testes 12 níveis)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "D-011",
+    "tipo": "conceitual",
+    "categoria": "NR-01",
+    "subcategoria": "Recomendação técnica",
+    "pergunta": "O que vale mais: uma NR ou uma recomendação técnica?",
+    "resposta_esperada": "A NR é norma obrigatória; recomendação técnica é orientação complementar. Havendo conflito, prevalece a NR.",
+    "comportamento_esperado": "responder",
+    "fontes_esperadas": [
+      {
+        "fonte": "norma",
+        "source_code": "NR-01",
+        "item": "1.5.3",
+        "evidencia": "1.5.3 Para fins de aplicação desta NR, considera-se o gerenciamento de riscos ocupacionais como o processo de identificar, avaliar e controlar os riscos ocupacionais."
+      }
+    ],
+    "avisos_esperados": [],
+    "jurisdicao": "federal",
+    "risco_resposta": "medio",
+    "versao_fonte": null,
+    "data_verificacao": null,
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (banco de testes 12 níveis)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "D-012",
+    "tipo": "jurisdicional",
+    "categoria": "NR-01",
+    "subcategoria": "Federal x estadual x municipal",
+    "pergunta": "A NR é federal. O que vale para a minha cidade?",
+    "resposta_esperada": "As NRs são federais e obrigatórias em todo o território nacional. Podem existir exigências estaduais ou municipais complementares (ex.: Corpo de Bombeiros). Verifique a legislação local.",
+    "comportamento_esperado": "alertar_jurisdicao",
+    "fontes_esperadas": [
+      {
+        "fonte": "norma",
+        "source_code": "NR-01",
+        "item": "1.1",
+        "evidencia": "1.1 Esta Norma Regulamentadora - NR estabelece os requisitos e as condições mínimas objetivando a implementação de medidas de prevenção e o gerenciamento de riscos ocupacionais."
+      }
+    ],
+    "avisos_esperados": [
+      "jurisdicao"
+    ],
+    "jurisdicao": "federal",
+    "risco_resposta": "alto",
+    "versao_fonte": null,
+    "data_verificacao": null,
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (banco de testes 12 níveis)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "D-013",
+    "tipo": "caso_real",
+    "categoria": "NR-12 / NR-35",
+    "subcategoria": "Cenário composto",
+    "pergunta": "Trabalho envolve máquinas e produtos químicos e é em altura. Há NR aplicável?",
+    "resposta_esperada": "Sim: aplicam-se cumulativamente NR-12 (máquinas), NR-09 (agentes químicos) e NR-35 (trabalho em altura). O PGR deve cobrir a interação entre os riscos.",
+    "comportamento_esperado": "responder",
+    "fontes_esperadas": [
+      {
+        "fonte": "norma",
+        "source_code": "NR-35",
+        "item": "35.4.1",
+        "evidencia": "35.4.1 Todo trabalho em altura deve ser realizado por trabalhador formalmente autorizado pela organização, mediante autorização emitida por profissional legalmente habilitado."
+      },
+      {
+        "fonte": "norma",
+        "source_code": "NR-12",
+        "item": "12.1.1",
+        "evidencia": "12.1.1 Esta Norma Regulamentadora - NR e seus anexos definem as referências técnicas, os princípios fundamentais e as medidas de proteção para garantir a saúde e a integridade física dos trabalhadores."
+      }
+    ],
+    "avisos_esperados": [],
+    "jurisdicao": "federal",
+    "risco_resposta": "alto",
+    "versao_fonte": null,
+    "data_verificacao": null,
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (banco de testes 12 níveis)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "D-014",
+    "tipo": "aplicacao",
+    "categoria": "NR-01",
+    "subcategoria": "Plano de ação",
+    "pergunta": "Como derivar um plano de ação a partir do PGR?",
+    "resposta_esperada": "Liste cada risco do inventário e registre a medida de prevenção associada, o responsável, o prazo e o status de implementação.",
+    "comportamento_esperado": "responder",
+    "fontes_esperadas": [
+      {
+        "fonte": "norma",
+        "source_code": "NR-01",
+        "item": "1.5.3.3",
+        "evidencia": "1.5.3.3 A identificação dos perigos e a avaliação dos riscos devem ser realizadas de forma contínua, contemplando os aspectos físicos, químicos, biológicos, ergonômicos e de acidentes."
+      }
+    ],
+    "avisos_esperados": [],
+    "jurisdicao": "federal",
+    "risco_resposta": "medio",
+    "versao_fonte": null,
+    "data_verificacao": null,
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (banco de testes 12 níveis)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "D-015",
+    "tipo": "aplicacao",
+    "categoria": "NR-01",
+    "subcategoria": "Acompanhar plano",
+    "pergunta": "Como acompanhar o plano de ação do PGR?",
+    "resposta_esperada": "Acompanhe periodicamente o status de cada medida (não iniciada, em andamento, concluída), com revisão contínua do inventário.",
+    "comportamento_esperado": "responder",
+    "fontes_esperadas": [
+      {
+        "fonte": "norma",
+        "source_code": "NR-01",
+        "item": "1.5.3.3",
+        "evidencia": "1.5.3.3 A identificação dos perigos e a avaliação dos riscos devem ser realizadas de forma contínua, contemplando os aspectos físicos, químicos, biológicos, ergonômicos e de acidentes."
+      }
+    ],
+    "avisos_esperados": [],
+    "jurisdicao": "federal",
+    "risco_resposta": "medio",
+    "versao_fonte": null,
+    "data_verificacao": null,
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (banco de testes 12 níveis)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "D-016",
+    "tipo": "caso_real",
+    "categoria": "NR-01",
+    "subcategoria": "Inventário e ambiente",
+    "pergunta": "Como comparar os riscos observados no ambiente com o inventário?",
+    "resposta_esperada": "Faça o checklist de perigos no ambiente de trabalho e compare item a item com o inventário do PGR: diferenças indicam inventário incompleto.",
+    "comportamento_esperado": "responder",
+    "fontes_esperadas": [
+      {
+        "fonte": "norma",
+        "source_code": "NR-01",
+        "item": "1.5.3.3",
+        "evidencia": "1.5.3.3 A identificação dos perigos e a avaliação dos riscos devem ser realizadas de forma contínua, contemplando os aspectos físicos, químicos, biológicos, ergonômicos e de acidentes."
+      }
+    ],
+    "avisos_esperados": [],
+    "jurisdicao": "federal",
+    "risco_resposta": "alto",
+    "versao_fonte": null,
+    "data_verificacao": null,
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (banco de testes 12 níveis)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "D-019",
+    "tipo": "pegadinha",
+    "categoria": "NR-06",
+    "subcategoria": "Conflito no documento",
+    "pergunta": "O documento da minha empresa contém informações contraditórias sobre EPI. O que vale?",
+    "resposta_esperada": "A NR-06 é a referência. Em conflito entre o documento da empresa e a NR, prevalece a NR; corrija o documento.",
+    "comportamento_esperado": "responder",
+    "fontes_esperadas": [
+      {
+        "fonte": "norma",
+        "source_code": "NR-06",
+        "item": "6.2",
+        "evidencia": "6.2 A organização é obrigada a adquirir somente EPI aprovado pelo órgão de âmbito nacional competente em matéria de segurança e saúde no trabalho, observado o disposto nesta NR."
+      }
+    ],
+    "avisos_esperados": [],
+    "jurisdicao": "federal",
+    "risco_resposta": "alto",
+    "versao_fonte": null,
+    "data_verificacao": null,
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (banco de testes 12 níveis)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "D-020",
+    "tipo": "sem_evidencia",
+    "categoria": "NR-01",
+    "subcategoria": "NR desatualizada",
+    "pergunta": "A versão da NR-01 disponível não é a atual. Posso confiar no que está ali?",
+    "resposta_esperada": "Se o texto vigente não está disponível na base consultada, o Assistente deve recusar e citar que precisa da versão oficial vigente antes de afirmar qualquer obrigação.",
+    "comportamento_esperado": "recusar_sem_evidencia",
+    "fontes_esperadas": [],
+    "avisos_esperados": [],
+    "jurisdicao": "federal",
+    "risco_resposta": "alto",
+    "versao_fonte": null,
+    "data_verificacao": null,
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (banco de testes 12 níveis)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "O-001",
+    "tipo": "conceitual",
+    "categoria": "NR-01",
+    "subcategoria": "Resumo oficial",
+    "pergunta": "Resuma a NR-01, por favor.",
+    "resposta_esperada": "A NR-01 estabelece o Gerenciamento de Riscos Ocupacionais (GRO) nas organizações, com base no inventário de riscos e em medidas de prevenção contínuas, por estabelecimento.",
+    "comportamento_esperado": "responder",
+    "fontes_esperadas": [
+      {
+        "fonte": "norma",
+        "source_code": "NR-01",
+        "item": "1.1",
+        "evidencia": "1.1 Esta Norma Regulamentadora - NR estabelece os requisitos e as condições mínimas objetivando a implementação de medidas de prevenção e o gerenciamento de riscos ocupacionais."
+      },
+      {
+        "fonte": "norma",
+        "source_code": "NR-01",
+        "item": "1.5.3.1",
+        "evidencia": "1.5.3.1 A organização deve implementar, por estabelecimento, o gerenciamento de riscos ocupacionais em suas atividades."
+      }
+    ],
+    "avisos_esperados": [],
+    "jurisdicao": "federal",
+    "risco_resposta": "baixo",
+    "versao_fonte": null,
+    "data_verificacao": null,
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (banco de testes 12 níveis)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "O-002",
+    "tipo": "conceitual",
+    "categoria": "NR-07",
+    "subcategoria": "Resumo oficial",
+    "pergunta": "Resuma a NR-07 (PCMSO), por favor.",
+    "resposta_esperada": "A NR-07 obriga todas as organizações com empregados a elaborar e implementar o PCMSO, que inclui planejamento, exames médicos e registros.",
+    "comportamento_esperado": "responder",
+    "fontes_esperadas": [
+      {
+        "fonte": "norma",
+        "source_code": "NR-07",
+        "item": "7.1.1",
+        "evidencia": "7.1.1 Esta Norma Regulamentadora - NR estabelece a obrigatoriedade de elaboração e implementação, por parte de todos os empregadores e instituições que admitam trabalhadores como empregados, do Programa de Controle Médico de Saúde Ocupacional - PCMSO."
+      },
+      {
+        "fonte": "norma",
+        "source_code": "NR-07",
+        "item": "7.3.1",
+        "evidencia": "7.3.1 O PCMSO deve incluir, no mínimo, planejamento, responsabilidade, procedimentos, exames e registro."
+      }
+    ],
+    "avisos_esperados": [],
+    "jurisdicao": "federal",
+    "risco_resposta": "baixo",
+    "versao_fonte": null,
+    "data_verificacao": null,
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (banco de testes 12 níveis)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "O-003",
+    "tipo": "conceitual",
+    "categoria": "NR-35",
+    "subcategoria": "Resumo oficial",
+    "pergunta": "Resuma os requisitos da NR-35 para trabalho em altura.",
+    "resposta_esperada": "A NR-35 exige planejamento, organização e execução do trabalho em altura, com autorização emitida por profissional habilitado, capacitação e sistemas de proteção contra quedas.",
+    "comportamento_esperado": "responder",
+    "fontes_esperadas": [
+      {
+        "fonte": "norma",
+        "source_code": "NR-35",
+        "item": "35.1.1",
+        "evidencia": "35.1.1 Esta Norma Regulamentadora - NR estabelece os requisitos mínimos e as medidas de proteção para o trabalho em altura."
+      },
+      {
+        "fonte": "norma",
+        "source_code": "NR-35",
+        "item": "35.4.1",
+        "evidencia": "35.4.1 Todo trabalho em altura deve ser realizado por trabalhador formalmente autorizado pela organização, mediante autorização emitida por profissional legalmente habilitado."
+      }
+    ],
+    "avisos_esperados": [],
+    "jurisdicao": "federal",
+    "risco_resposta": "baixo",
+    "versao_fonte": null,
+    "data_verificacao": null,
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (banco de testes 12 níveis)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "O-004",
+    "tipo": "conceitual",
+    "categoria": "NR-12",
+    "subcategoria": "Resumo oficial",
+    "pergunta": "Resuma os pontos principais da NR-12 (máquinas e equipamentos).",
+    "resposta_esperada": "A NR-12 define referências técnicas e medidas de proteção para garantir a segurança em máquinas e equipamentos.",
+    "comportamento_esperado": "responder",
+    "fontes_esperadas": [
+      {
+        "fonte": "norma",
+        "source_code": "NR-12",
+        "item": "12.1.1",
+        "evidencia": "12.1.1 Esta Norma Regulamentadora - NR e seus anexos definem as referências técnicas, os princípios fundamentais e as medidas de proteção para garantir a saúde e a integridade física dos trabalhadores."
+      }
+    ],
+    "avisos_esperados": [],
+    "jurisdicao": "federal",
+    "risco_resposta": "baixo",
+    "versao_fonte": null,
+    "data_verificacao": null,
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (banco de testes 12 níveis)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "O-005",
+    "tipo": "conceitual",
+    "categoria": "NR-17",
+    "subcategoria": "Resumo oficial",
+    "pergunta": "Resuma os pontos principais da NR-17 (ergonomia).",
+    "resposta_esperada": "A NR-17 visa adaptar as condições de trabalho às características psicofisiológicas dos trabalhadores, com análise ergonômica do posto e da organização do trabalho.",
+    "comportamento_esperado": "responder",
+    "fontes_esperadas": [
+      {
+        "fonte": "norma",
+        "source_code": "NR-17",
+        "item": "17.1.1",
+        "evidencia": "17.1.1 Esta Norma Regulamentadora - NR tem como objetivo estabelecer diretrizes e requisitos que permitam a adaptação das condições de trabalho às características psicofisiológicas dos trabalhadores."
+      }
+    ],
+    "avisos_esperados": [],
+    "jurisdicao": "federal",
+    "risco_resposta": "baixo",
+    "versao_fonte": null,
+    "data_verificacao": null,
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (banco de testes 12 níveis)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "F-001",
+    "tipo": "pegadinha",
+    "categoria": "NR-01",
+    "subcategoria": "Fonte secundária",
+    "pergunta": "Um blog diz que a NR-01 obriga auditoria externa anual. É verdade?",
+    "resposta_esperada": "Não há na NR-01 vigente obrigatoriedade literal de auditoria externa anual. Confira a versão vigente e o item específico antes de aceitar.",
+    "comportamento_esperado": "responder",
+    "fontes_esperadas": [
+      {
+        "fonte": "norma",
+        "source_code": "NR-01",
+        "item": "1.5.3",
+        "evidencia": "1.5.3 Para fins de aplicação desta NR, considera-se o gerenciamento de riscos ocupacionais como o processo de identificar, avaliar e controlar os riscos ocupacionais."
+      }
+    ],
+    "avisos_esperados": [],
+    "proibido_regex": [
+      "(?<!(?:não|nao|nunca|jamais)[^.]{0,40})sim[, ]+(?:a nr-01|a norma|é obrigatória)"
+    ],
+    "jurisdicao": "federal",
+    "risco_resposta": "alto",
+    "versao_fonte": null,
+    "data_verificacao": null,
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (banco de testes 12 níveis)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "F-002",
+    "tipo": "pegadinha",
+    "categoria": "NR-06",
+    "subcategoria": "Prazo de EPI",
+    "pergunta": "Vi num site que o prazo do CA de EPI é sempre 5 anos. Está correto?",
+    "resposta_esperada": "A NR-06 não impõe um prazo único de validade de CA; vale o indicado pelo fabricante e pelo sistema de gestão. Verifique o CA específico no sistema oficial do MTE.",
+    "comportamento_esperado": "responder",
+    "fontes_esperadas": [
+      {
+        "fonte": "norma",
+        "source_code": "NR-06",
+        "item": "6.5",
+        "evidencia": "6.5 O equipamento de proteção individual, de fabricação nacional ou estrangeira, só pode ser posto à venda ou utilizado se possuir o Certificado de Aprovação - CA, válido, dentro do respectivo prazo de validade."
+      }
+    ],
+    "avisos_esperados": [],
+    "proibido_regex": [
+      "\\bsim[, ]+o prazo (?:é|do ca é) 5 anos\\b",
+      "\\bsim[, ]+são sempre 5 anos\\b"
+    ],
+    "jurisdicao": "federal",
+    "risco_resposta": "alto",
+    "versao_fonte": null,
+    "data_verificacao": null,
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (banco de testes 12 níveis)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "F-003",
+    "tipo": "pegadinha",
+    "categoria": "NR-01",
+    "subcategoria": "Versão vigente",
+    "pergunta": "Tenho um material impresso da NR-01 de 2022. Posso usar como referência?",
+    "resposta_esperada": "A NR-01 foi atualizada após 2022; cite a versão vigente e verifique se o conteúdo do material de 2022 continua válido.",
+    "comportamento_esperado": "responder",
+    "fontes_esperadas": [
+      {
+        "fonte": "norma",
+        "source_code": "NR-01",
+        "item": "1.5.3.1",
+        "evidencia": "1.5.3.1 A organização deve implementar, por estabelecimento, o gerenciamento de riscos ocupacionais em suas atividades."
+      }
+    ],
+    "avisos_esperados": [],
+    "proibido_regex": [
+      "(?:ainda |continua )?(?:é|val) a (?:mesma )?vigente"
+    ],
+    "jurisdicao": "federal",
+    "risco_resposta": "alto",
+    "versao_fonte": null,
+    "data_verificacao": null,
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (banco de testes 12 níveis)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "F-004",
+    "tipo": "pegadinha",
+    "categoria": "NR-12",
+    "subcategoria": "Comparar fontes",
+    "pergunta": "Dois artigos divergem sobre uma exigência da NR-12. Qual está correto?",
+    "resposta_esperada": "A referência é a NR-12 vigente. Artigos divergentes devem ser desconsiderados em favor da norma; explique o conflito e remeta ao item da NR.",
+    "comportamento_esperado": "responder",
+    "fontes_esperadas": [
+      {
+        "fonte": "norma",
+        "source_code": "NR-12",
+        "item": "12.1.1",
+        "evidencia": "12.1.1 Esta Norma Regulamentadora - NR e seus anexos definem as referências técnicas, os princípios fundamentais e as medidas de proteção para garantir a saúde e a integridade física dos trabalhadores."
+      }
+    ],
+    "avisos_esperados": [],
+    "jurisdicao": "federal",
+    "risco_resposta": "alto",
+    "versao_fonte": null,
+    "data_verificacao": null,
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (banco de testes 12 níveis)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "A-001",
+    "tipo": "sem_evidencia",
+    "categoria": "Norma inexistente",
+    "subcategoria": "NR-99",
+    "pergunta": "Qual o item da NR-99 que obriga ginástica laboral?",
+    "resposta_esperada": "Não existe NR-99 nas Normas Regulamentadoras vigentes. O Assistente deve recusar e sinalizar que a norma citada não está publicada na base oficial.",
+    "comportamento_esperado": "recusar_sem_evidencia",
+    "fontes_esperadas": [],
+    "avisos_esperados": [],
+    "proibido_regex": [
+      "item \\d+\\s*(?:da |da nr-)?99"
+    ],
+    "jurisdicao": "federal",
+    "risco_resposta": "alto",
+    "versao_fonte": null,
+    "data_verificacao": null,
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (banco de testes 12 níveis)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "A-002",
+    "tipo": "sem_evidencia",
+    "categoria": "NR-35",
+    "subcategoria": "Exigência inexistente",
+    "pergunta": "A NR-35 obriga exame de sangue anual para todo trabalho em altura?",
+    "resposta_esperada": "Não há na NR-35 vigente obrigatoriedade de exame de sangue anual como requisito literal. Exames médicos são definidos no PCMSO (NR-07) e pelo médico do trabalho.",
+    "comportamento_esperado": "recusar_sem_evidencia",
+    "fontes_esperadas": [],
+    "avisos_esperados": [],
+    "proibido_regex": [
+      "sim[, ]+(?:a nr-35|a nr) obriga",
+      "\\bsim[, ]+(?:é|são) exigid[oa]s? exame de sangue anual"
+    ],
+    "jurisdicao": "federal",
+    "risco_resposta": "alto",
+    "versao_fonte": null,
+    "data_verificacao": null,
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (banco de testes 12 níveis)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "A-003",
+    "tipo": "contexto_incompleto",
+    "categoria": "NR-07",
+    "subcategoria": "Prazo — falta contexto",
+    "pergunta": "Qual o prazo legal para renovar o PCMSO?",
+    "resposta_esperada": "A NR-07 não define periodicidade fixa de renovação do PCMSO; o programa é contínuo e revisado sempre que houver mudança de risco.",
+    "comportamento_esperado": "pedir_contexto",
+    "fontes_esperadas": [
+      {
+        "fonte": "norma",
+        "source_code": "NR-07",
+        "item": "7.1.1",
+        "evidencia": "7.1.1 Esta Norma Regulamentadora - NR estabelece a obrigatoriedade de elaboração e implementação, por parte de todos os empregadores e instituições que admitam trabalhadores como empregados, do Programa de Controle Médico de Saúde Ocupacional - PCMSO."
+      }
+    ],
+    "avisos_esperados": [
+      "contexto"
+    ],
+    "jurisdicao": "federal",
+    "risco_resposta": "alto",
+    "versao_fonte": null,
+    "data_verificacao": null,
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (banco de testes 12 níveis)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "A-004",
+    "tipo": "sem_evidencia",
+    "categoria": "NR-01",
+    "subcategoria": "Conformidade total",
+    "pergunta": "Minha empresa está 100% em conformidade com a SST?",
+    "resposta_esperada": "O Assistente não pode afirmar conformidade total sem a lista completa de evidências (PGR atualizado, PCMSO, treinamentos em dia, EPIs com CA válido, etc.).",
+    "comportamento_esperado": "recusar_sem_evidencia",
+    "fontes_esperadas": [],
+    "avisos_esperados": [],
+    "proibido_regex": [
+      "(?:^|[.!?\\s])sim[, ]+sua empresa est[aá] (?:em|totalmente em) conformidade",
+      "(?:^|[.!?\\s])sim[, ]+voc[eê]s? est[aá]o (?:em|totalmente em) conformidade"
+    ],
+    "jurisdicao": "federal",
+    "risco_resposta": "alto",
+    "versao_fonte": null,
+    "data_verificacao": null,
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (banco de testes 12 níveis)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "A-005",
+    "tipo": "sem_evidencia",
+    "categoria": "NR-01",
+    "subcategoria": "Proteção total",
+    "pergunta": "O trabalhador está protegido contra todos os riscos?",
+    "resposta_esperada": "O Assistente não pode afirmar proteção total. A resposta correta é recusar e indicar a leitura do inventário atualizado.",
+    "comportamento_esperado": "recusar_sem_evidencia",
+    "fontes_esperadas": [],
+    "avisos_esperados": [],
+    "proibido_regex": [
+      "(?:^|[.!?\\s])sim[, ]+o trabalhador est[aá] (?:totalmente |completamente )?protegid[oa]",
+      "(?<!não )(?:^|[.!?\\s])todos os riscos (?:foram|estão) cobertos"
+    ],
+    "jurisdicao": "federal",
+    "risco_resposta": "alto",
+    "versao_fonte": null,
+    "data_verificacao": null,
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (banco de testes 12 níveis)",
+    "validado_por": null,
+    "validado_em": null
+  }
+]

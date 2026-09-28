@@ -1,8 +1,9 @@
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { PoolClient } from 'pg';
 import { mapPgError } from '../common/pg-error.util';
 import { buildSafeSetClause } from '../common/safe-update.util';
 import { R2Service } from '../common/r2/r2.service';
+import { IMAGE_MIME_TYPES, verifyFileContent } from '../common/files/file-content.util';
 import { PreventionCorrectiveActionsService } from '../prevention-corrective-actions/prevention-corrective-actions.service';
 import { PREVENTION_CHECKLIST_ITEMS } from './prevention-checklist-items.const';
 
@@ -167,6 +168,13 @@ export class PreventionChecklistService {
     itemId: string,
     file: Express.Multer.File,
   ): Promise<PreventionChecklistItem> {
+    // ITEM 004: este endpoint não validava tipo nenhum (ver fire-safety-equipment).
+    if (!IMAGE_MIME_TYPES.includes(file.mimetype)) {
+      throw new BadRequestException('Tipo de arquivo não permitido (só JPG ou PNG)');
+    }
+    const contentProblem = await verifyFileContent(file.buffer, file.mimetype);
+    if (contentProblem) throw new BadRequestException(contentProblem);
+
     const { tenant_id: tenantId } = await this.assertDraft(client, checklistId);
 
     const itemCheck = await client.query('SELECT id FROM prevention_checklist_items WHERE id = $1 AND checklist_id = $2', [

@@ -1,7 +1,8 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PoolClient } from 'pg';
 import { MercadoPagoService } from './mercadopago.service';
 import { mapPgError } from '../common/pg-error.util';
+import { DatabaseService } from '../common/database/database.service';
 
 interface PlanRow {
   id: string;
@@ -46,7 +47,50 @@ export interface PaymentEventRow {
 
 @Injectable()
 export class SubscriptionsService {
-  constructor(private readonly mercadoPago: MercadoPagoService) {}
+  private readonly logger = new Logger(SubscriptionsService.name);
+
+  constructor(
+    private readonly mercadoPago: MercadoPagoService,
+    private readonly db: DatabaseService,
+  ) {}
+
+  // ITEM 011: chamado pelo webhook quando uma assinatura vira 'authorized'.
+  // Cancela, no Mercado Pago e no banco, as OUTRAS assinaturas 'authorized' do
+  // mesmo sujeito — trocar de plano deixa de gerar duas cobranças recorrentes.
+  // A antiga só sai depois da nova estar confirmada (nunca antes, para não deixar
+  // o cliente sem plano se o pagamento novo falhar). Idempotente: numa segunda
+  // entrega do mesmo webhook não sobra nada para cancelar.
+  async supersedePreviousAuthorized(newPreapprovalId: string): Promise<string[]> {
+    const others = await this.db.withoutTenantContext((client) =>
+      client.query<{ preapproval_id: string }>('SELECT preapproval_id FROM payments_superseded_preapprovals($1)', [
+        newPreapprovalId,
+      ]),
+    );
+
+    const cancelled: string[] = [];
+    for (const { preapproval_id: oldId } of others.rows) {
+      try {
+        const confirmed = await this.mercadoPago.updatePreapprovalStatus(oldId, 'cancelled');
+        // Grava o status CONFIRMADO pelo Mercado Pago, não o pedido.
+        await this.db.withoutTenantContext((client) =>
+          client.query('SELECT * FROM payments_update_subscription_status($1, $2)', [oldId, confirmed.status]),
+        );
+        cancelled.push(oldId);
+      } catch (err) {
+        const status = (err as { status?: number }).status;
+        // Erro permanente (4xx — ex.: já estava cancelada lá): retry nunca resolve;
+        // registra e segue. Fica 'authorized' localmente até uma reconciliação
+        // (ITEM 030). Transiente (5xx/rede): relança, o Mercado Pago reenvia o
+        // webhook e esta operação é idempotente.
+        if (typeof status === 'number' && status >= 400 && status < 500) {
+          this.logger.error(`Não foi possível cancelar a assinatura anterior ${oldId} (${status}): ${(err as Error).message}`);
+          continue;
+        }
+        throw err;
+      }
+    }
+    return cancelled;
+  }
 
   async create(
     withTenantContext: WithTenantContext,

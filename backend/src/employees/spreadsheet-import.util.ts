@@ -1,5 +1,6 @@
 import ExcelJS from 'exceljs';
 import { MAX_IMPORT_ROWS, splitCsvLine } from './csv-import.util';
+import { verifyFileContent } from '../common/files/file-content.util';
 
 export interface SpreadsheetParseResult {
   headers: string[];
@@ -114,6 +115,16 @@ export async function parseSpreadsheet(
         headers: [],
         rows: [],
         formatError: `Arquivo .xlsx muito grande (máximo ${XLSX_MAX_BYTES / (1024 * 1024)}MB)`,
+      };
+    }
+    // O teto acima é do tamanho COMPRIMIDO; um zip bomb passa por ele. Aqui o
+    // conteúdo é conferido de verdade (incluindo o teto de descompressão)
+    // antes do exceljs montar o workbook na memória.
+    if (await verifyFileContent(buffer, XLSX_MIME_TYPE)) {
+      return {
+        headers: [],
+        rows: [],
+        formatError: 'Não foi possível ler o arquivo .xlsx — verifique se não está corrompido',
       };
     }
     try {

@@ -21,6 +21,7 @@ import { Roles } from '../common/decorators/roles.decorator';
 import { RateLimit } from '../common/rate-limit/rate-limit.decorator';
 import { envInt } from '../common/env';
 import { extractPdfText } from '../common/pdf/pdf-text.util';
+import { verifyFileContent } from '../common/files/file-content.util';
 import { DocumentsService } from './documents.service';
 import { CreateDocumentDto } from './dto/create-document.dto';
 import { DOCUMENT_CLASSIFIER_PROVIDER, DocumentClassifierProvider } from './document-classifier-provider.interface';
@@ -89,7 +90,16 @@ export class DocumentsController {
     // computados é que abrimos a 2ª transação (persistChunks), dedicada só
     // a INSERTs — curta e rápida.
     if (this.indexer.shouldIndex(document.category, document.mime_type)) {
-      const embeddedChunks = await this.indexer.extractAndEmbed(document, file.buffer);
+      // ITEM 003 (auditoria 2026-09-27): busca os nomes já cadastrados do
+      // tenant pra minimizar PII antes do texto do documento sair pro
+      // provedor externo de embedding — consulta rápida, transação própria
+      // (mesmo raciocínio de manter extractAndEmbed sem PoolClient).
+      const knownFullNames: string[] = await req.withTenantContext((client: any) =>
+        client
+          .query('SELECT full_name FROM employees WHERE tenant_id = $1', [tenantId])
+          .then((res: any) => res.rows.map((row: { full_name: string }) => row.full_name)),
+      );
+      const embeddedChunks = await this.indexer.extractAndEmbed(document, file.buffer, knownFullNames);
       // persistChunks nunca lança exceção (mesma garantia de sempre), mas
       // a própria chamada a withTenantContext pode lançar por motivos fora
       // do controle do serviço (ex.: pool esgotado, falha no BEGIN) —
@@ -133,7 +143,9 @@ export class DocumentsController {
         continue;
       }
 
-      if (file.mimetype !== 'application/pdf') {
+      // ITEM 004: além do Content-Type declarado, o conteúdo precisa ser um
+      // PDF de verdade antes de ir pro parser (pdf-parse).
+      if (file.mimetype !== 'application/pdf' || (await verifyFileContent(file.buffer, file.mimetype))) {
         results.push({
           filename: file.originalname,
           suggested_category: null,

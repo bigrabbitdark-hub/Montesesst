@@ -6,6 +6,7 @@ import { toVectorLiteral } from '../common/vector/vector.util';
 import { extractPdfTextFull } from '../common/pdf/pdf-text.util';
 import { extractDocxText, DOCX_MIME_TYPE } from '../common/docx/docx-text.util';
 import { extractXlsxRows, XLSX_MIME_TYPE } from '../common/xlsx/xlsx-text.util';
+import { redactPii } from '../common/text/pii-redaction.util';
 import { Document } from './documents.service';
 
 const INDEXABLE_CATEGORIES = ['pgr', 'pcmso', 'ltcat', 'lip'];
@@ -56,10 +57,25 @@ export class CompanyDocumentIndexerService {
   // do documento (já commitado antes desta chamada, ver DocumentsController)
   // nunca pode ser derrubado por uma falha de indexação (spec §2,
   // "non-blocking").
-  async extractAndEmbed(document: Document, fileBuffer: Buffer): Promise<EmbeddedDocumentChunk[]> {
+  // ITEM 003 (auditoria 2026-09-27): `knownFullNames` é a lista de nomes de
+  // funcionários já cadastrados no tenant (buscada pelo chamador, que tem o
+  // PoolClient — este método deliberadamente não tem um, ver comentário
+  // acima) — cada pedaço é minimizado (CPF + nomes conhecidos) ANTES de
+  // embutido (chamada externa ao provedor de embedding) e antes de
+  // devolvido pro chamador persistir, porque o mesmo `content` também é
+  // reenviado depois no prompt do Assistente (normative-answer-shared.ts) —
+  // uma única redação aqui cobre os dois pontos de saída pro provedor
+  // externo de IA. Documento indexado ANTES desta mudança permanece sem
+  // redação (não há reindexação retroativa nesta correção).
+  async extractAndEmbed(
+    document: Document,
+    fileBuffer: Buffer,
+    knownFullNames: string[] = [],
+  ): Promise<EmbeddedDocumentChunk[]> {
     try {
-      const chunks = await this.extractChunks(document.mime_type, fileBuffer);
-      if (chunks.length === 0) return [];
+      const rawChunks = await this.extractChunks(document.mime_type, fileBuffer);
+      if (rawChunks.length === 0) return [];
+      const chunks = rawChunks.map((chunk) => redactPii(chunk, knownFullNames));
 
       let truncatedChunks = chunks;
       if (chunks.length > MAX_CHUNKS_PER_DOCUMENT) {

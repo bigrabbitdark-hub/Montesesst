@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
@@ -132,24 +132,54 @@ export default function EmpresaDashboardPage() {
   const [tenant, setTenant] = useState<TenantData | null>(null);
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [expandedCard, setExpandedCard] = useState<string | null>(null);
+  const [loadState, setLoadState] = useState<'carregando' | 'ok' | 'erro' | 'sem-assinatura'>('carregando');
 
-  useEffect(() => {
+  // ITEM 016: antes, qualquer falha (sessão vencida, assinatura inativa, erro do
+  // servidor, rede) virava `.catch(() => {})` e a página ficava vazia, sem dizer
+  // por quê. Agora cada caso tem seu estado.
+  const load = useCallback(async () => {
     const token = localStorage.getItem('montese_token');
     if (!token) {
       router.push('/login');
       return;
     }
     setReady(true);
+    setLoadState('carregando');
     const headers = { Authorization: `Bearer ${token}` };
-    fetch('/api/tenants/me', { headers })
-      .then((res) => (res.ok ? res.json() : null))
-      .then(setTenant)
-      .catch(() => {});
-    fetch('/api/dashboard/summary', { headers })
-      .then((res) => (res.ok ? res.json() : null))
-      .then(setSummary)
-      .catch(() => {});
+    try {
+      const [tenantRes, summaryRes] = await Promise.all([
+        fetch('/api/tenants/me', { headers }),
+        fetch('/api/dashboard/summary', { headers }),
+      ]);
+      if (tenantRes.status === 401 || summaryRes.status === 401) {
+        localStorage.removeItem('montese_token');
+        localStorage.removeItem('montese_user');
+        router.push('/login');
+        return;
+      }
+      if (summaryRes.status === 403) {
+        const body = await summaryRes.json().catch(() => null);
+        if (body?.code === 'SUBSCRIPTION_INACTIVE') {
+          setLoadState('sem-assinatura');
+          return;
+        }
+      }
+      // Sem o nome da empresa o painel ainda é útil; sem o resumo, não.
+      if (tenantRes.ok) setTenant(await tenantRes.json());
+      if (!summaryRes.ok) {
+        setLoadState('erro');
+        return;
+      }
+      setSummary(await summaryRes.json());
+      setLoadState('ok');
+    } catch {
+      setLoadState('erro');
+    }
   }, [router]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
 
   if (!ready) {
     return <div className="mx-auto max-w-2xl px-4 py-16 text-center text-brand-700">Carregando...</div>;
@@ -164,6 +194,32 @@ export default function EmpresaDashboardPage() {
       <h1 className="text-2xl font-bold text-brand-900">
         Como está a segurança da {tenant?.trade_name || tenant?.name || 'sua empresa'} hoje?
       </h1>
+
+      {loadState === 'carregando' && !summary && (
+        <p role="status" className="mt-4 text-sm text-brand-700">
+          Carregando o painel...
+        </p>
+      )}
+
+      {loadState === 'erro' && (
+        <div role="alert" className="mt-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">
+          <p className="font-semibold">Não foi possível carregar o painel agora.</p>
+          <p className="mt-1">Isso pode ser uma instabilidade momentânea. Seus dados não foram alterados.</p>
+          <button
+            type="button"
+            onClick={load}
+            className="mt-2 rounded-md border border-red-300 bg-white px-3 py-1.5 font-semibold text-red-900 hover:bg-red-100"
+          >
+            Tentar novamente
+          </button>
+        </div>
+      )}
+
+      {loadState === 'sem-assinatura' && (
+        <p className="mt-4 text-sm text-brand-700">
+          O painel volta a aparecer quando o plano for reativado — veja o aviso acima.
+        </p>
+      )}
 
       {status && summary && (
         <div className={`mt-4 flex items-center justify-between rounded-md border px-4 py-3 text-sm ${status.className}`}>

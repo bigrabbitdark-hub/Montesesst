@@ -82,6 +82,66 @@ describe('CompanyDocumentIndexerService', () => {
       expect(fakeEmbed).not.toHaveBeenCalled();
     });
 
+    // ITEM 003 (auditoria 2026-09-27): prova que a minimização de PII chega
+    // de fato ao provedor externo (o que sai em embed()) e ao conteúdo que o
+    // chamador persiste — não só que a função de redação isolada funciona.
+    describe('minimização de PII (ITEM 003)', () => {
+      const CPF = '123.456.789-01';
+      const NOME = 'Maria Aparecida Souza';
+
+      it('XLSX: nem o CPF nem o nome cadastrado chegam a embed() nem ao conteúdo devolvido', async () => {
+        const xlsxDoc = { ...baseDoc, mime_type: XLSX_MIME_TYPE };
+        const ExcelJS = require('exceljs');
+        const workbook = new ExcelJS.Workbook();
+        const sheet = workbook.addWorksheet('PCMSO');
+        sheet.addRow(['Colaborador', 'CPF', 'Exame']);
+        sheet.addRow([NOME, CPF, 'Audiometria — apto']);
+        const xlsxBuffer = Buffer.from(await workbook.xlsx.writeBuffer());
+
+        const embeddedChunks = await service.extractAndEmbed(xlsxDoc, xlsxBuffer, [NOME]);
+
+        expect(embeddedChunks.length).toBeGreaterThan(0);
+        const sentToProvider = fakeEmbed.mock.calls.map((call) => call[0] as string).join('\n');
+        const persisted = embeddedChunks.map((c) => c.content).join('\n');
+        for (const text of [sentToProvider, persisted]) {
+          expect(text).not.toContain('123.456.789-01');
+          expect(text).not.toContain(NOME);
+          expect(text).toContain('[CPF removido]');
+          expect(text).toContain('[nome removido]');
+          // O conteúdo técnico não pode ser destruído junto.
+          expect(text).toContain('Audiometria — apto');
+        }
+      });
+
+      it('PDF: nem o CPF nem o nome cadastrado chegam a embed() nem ao conteúdo devolvido', async () => {
+        const pdf = await buildTestPdf(`Exame admissional de ${NOME}, CPF ${CPF}, resultado apto para a função.`);
+
+        const embeddedChunks = await service.extractAndEmbed(baseDoc, pdf, [NOME]);
+
+        expect(embeddedChunks.length).toBeGreaterThan(0);
+        const sentToProvider = fakeEmbed.mock.calls.map((call) => call[0] as string).join('\n');
+        const persisted = embeddedChunks.map((c) => c.content).join('\n');
+        for (const raw of [sentToProvider, persisted]) {
+          // A extração de PDF quebra linha no meio da frase; normaliza só pra comparar.
+          const text = raw.replace(/\s+/g, ' ');
+          expect(text).not.toContain('123.456.789-01');
+          expect(text).not.toContain(NOME);
+          expect(text).toContain('resultado apto para a função');
+        }
+      });
+
+      it('sem lista de nomes (chamada antiga, 2 argumentos), o CPF ainda é redigido', async () => {
+        const pdf = await buildTestPdf(`Funcionário com CPF ${CPF} afastado.`);
+
+        const embeddedChunks = await service.extractAndEmbed(baseDoc, pdf);
+
+        const sentToProvider = fakeEmbed.mock.calls.map((call) => call[0] as string).join('\n');
+        expect(embeddedChunks.length).toBeGreaterThan(0);
+        expect(sentToProvider).not.toContain('123.456.789-01');
+        expect(sentToProvider).toContain('[CPF removido]');
+      });
+    });
+
     it('não lança exceção quando o embedding falha (ex.: API fora do ar)', async () => {
       const pdf = await buildTestPdf('Texto real de teste.');
       fakeEmbed.mockRejectedValueOnce(new Error('API fora do ar'));

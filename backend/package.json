@@ -16,8 +16,10 @@
     "eval:retrieval": "tsx eval/run-eval.ts retrieval",
     "eval:answer": "tsx eval/run-eval.ts answer",
     "eval:usage": "tsx eval/usage-report.ts",
+    "eval:_dev:validate": "tsx eval/_dev/validate-dataset.ts",
     "test:e2e": "jest --config ./test/jest-e2e.json --runInBand",
-    "test:unit": "jest --config ./test/jest-unit.json"
+    "test:unit": "jest --config ./test/jest-unit.json",
+    "test:isolation": "jest --config ./test/jest-unit.json tenant-context-callsites && jest --config ./test/jest-e2e.json --runInBand tenant-isolation-sweep"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1116.0",

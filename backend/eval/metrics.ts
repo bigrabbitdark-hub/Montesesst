@@ -5,6 +5,42 @@
 import { AVISOS, AvisoTipo, Comportamento, FonteEsperada, GoldenQuestion, Status, Tipo } from './golden/golden-schema';
 import { chunkContainsItemHeading } from './golden/quote';
 
+// Rubrica 0–5 complementar ao gate binário (spec
+// docs/specs/assistente-banco-testes-12-niveis.md §4). Apenas FONTE e
+// TRANSPARÊNCIA têm proxy automático a partir das métricas existentes;
+// PRECISÃO/CONTEXTO/AÇÃO são `null` até revisão humana (ou LLM-juiz,
+// que esta camada rejeitou explicitamente).
+export interface Rubrica {
+  // 0–5: 5 = oficial + item/trecho; 4 = oficial sem item; 1 = fonte
+  // inadequada ou recusa sem evidência; 0 = nenhuma fonte. A recusa
+  // correta (`recusar_sem_evidencia` com `falso_relevante !== true`) é
+  // 1 (não há fonte, e o esperado era não haver).
+  FONTE: number | null;
+  // 0–5 declarado fora do escopo do proxy: 0–5 sempre `null` aqui.
+  PRECISAO: null;
+  CONTEXTO: null;
+  // 0–4 (proxy): 4 = avisos_ok && proibido_ok; 3 = avisos_ok; 2 =
+  // proibido_ok; 0 = nenhum. O 5 fica reservado para a revisão humana.
+  TRANSPARENCIA: number | null;
+  ACAO: null;
+}
+
+// Categorias que entram no agregado e no relatório. A inclusão das três
+// com `null` aqui é para o relatório saber listar todas (sem ter que
+// adivinhar a estrutura).
+export const RUBRICA_CATEGORIAS = [
+  'FONTE',
+  'PRECISAO',
+  'CONTEXTO',
+  'TRANSPARENCIA',
+  'ACAO',
+] as const;
+export type RubricaCategoria = (typeof RUBRICA_CATEGORIAS)[number];
+
+export function emptyRubrica(): Rubrica {
+  return { FONTE: null, PRECISAO: null, CONTEXTO: null, TRANSPARENCIA: null, ACAO: null };
+}
+
 export interface RetrievedChunkObs {
   chunk_id: string;
   source_code: string | null;
@@ -64,7 +100,57 @@ export interface RetrievalResult {
   avisos_esperados: AvisoTipo[];
   avisos_detectados: AvisoTipo[];
   avisos_ok: boolean;
+  // Rubrica 0–5 (proxy automático). Categorias sem proxy ficam `null`.
+  // NUNCA é critério de gate — é camada de relatório (spec
+  // docs/specs/assistente-banco-testes-12-niveis.md §4).
+  rubrica: Rubrica;
   passou: boolean;
+}
+
+// Proxy automático de FONTE para Camada A. 5 se o item certo apareceu
+// acima do limiar; 4 se só a NR; 1 se a recusa foi correta (esperava
+// recusar e nada no top-k passou o limiar); 1 se a recusa falhou
+// (esperava recusar mas havia fonte acima do limiar); 0 nos demais
+// casos. Não tenta inferir qualidade da fonte textual — só acerto do
+// índice buscado.
+export function fonteProxyRetrieval(
+  acertoItem: boolean | null,
+  acertoNr: boolean | null,
+  comportamento: Comportamento,
+  falsoRelevante: boolean | null,
+): number {
+  if (acertoItem === true) return 5;
+  if (acertoNr === true) return 4;
+  if (comportamento === 'recusar_sem_evidencia') {
+    // Recusa esperada — proxy 1 seja ela correta (falsoRelevante !==
+    // true) ou não. O que importa é a categoria ter sido julgada
+    // honestamente; a distinção certo/errado fica em `passou`.
+    return 1;
+  }
+  return 0;
+}
+
+// Proxy de TRANSPARÊNCIA (Camada A). A Camada A não tem `proibido_ok`
+// (só a Camada B mede o que a resposta efetivamente diz). 3 quando
+// `avisos_ok` (avisos esperados batem com detectados); 0 quando não.
+export function transparenciaProxyRetrieval(avisosOk: boolean): number {
+  return avisosOk ? 3 : 0;
+}
+
+export function computeRubricaRetrieval(
+  acertoItem: boolean | null,
+  acertoNr: boolean | null,
+  comportamento: Comportamento,
+  falsoRelevante: boolean | null,
+  avisosOk: boolean,
+): Rubrica {
+  return {
+    FONTE: fonteProxyRetrieval(acertoItem, acertoNr, comportamento, falsoRelevante),
+    PRECISAO: null,
+    CONTEXTO: null,
+    TRANSPARENCIA: transparenciaProxyRetrieval(avisosOk),
+    ACAO: null,
+  };
 }
 
 export function evaluateRetrieval(q: GoldenQuestion, obs: RetrievalObservation): RetrievalResult {
@@ -93,6 +179,7 @@ export function evaluateRetrieval(q: GoldenQuestion, obs: RetrievalObservation):
     avisos_esperados: q.avisos_esperados,
     avisos_detectados: obs.notices,
     avisos_ok: avisosOk,
+    rubrica: computeRubricaRetrieval(acertoItem, acertoNr, q.comportamento_esperado, falsoRelevante, avisosOk),
     passou: (!temFontes || acertoItem === true) && avisosOk && falsoRelevante !== true,
   };
 }
@@ -107,6 +194,23 @@ export interface RetrievalAggregate {
   recusa_total: number;
   falso_relevante: number;
   avisos_ok: number;
+  // Média da rubrica por categoria (proxy automático). Apenas FONTE e
+  // TRANSPARÊNCIA têm proxy; as outras ficam `null`. `null` na média de
+  // uma categoria = nenhum resultado proxy-calculado para ela (ou a
+  // categoria não tem proxy). É o agregado de relatório da rubrica;
+  // nunca gate (spec assistente-banco-testes-12-niveis.md §4).
+  rubrica_media: Record<RubricaCategoria, number | null>;
+}
+
+function meanRubrica(results: RetrievalResult[]): Record<RubricaCategoria, number | null> {
+  const out = {} as Record<RubricaCategoria, number | null>;
+  for (const cat of RUBRICA_CATEGORIAS) {
+    const sample = results
+      .map((r) => r.rubrica[cat as keyof Rubrica])
+      .filter((v): v is number => typeof v === 'number');
+    out[cat] = sample.length === 0 ? null : sample.reduce((a, b) => a + b, 0) / sample.length;
+  }
+  return out;
 }
 
 export function aggregateRetrieval(results: RetrievalResult[]): RetrievalAggregate {
@@ -122,6 +226,7 @@ export function aggregateRetrieval(results: RetrievalResult[]): RetrievalAggrega
     recusa_total: recusas.length,
     falso_relevante: recusas.filter((r) => r.falso_relevante === true).length,
     avisos_ok: results.filter((r) => r.avisos_ok).length,
+    rubrica_media: meanRubrica(results),
   };
 }
 
@@ -195,7 +300,49 @@ export interface AnswerResult {
   // O sistema ainda não pergunta de volta: em pedir_contexto isto é uma
   // lacuna informativa, não motivo de reprovação.
   nao_pergunta_de_volta: boolean;
+  // Rubrica 0–5 (proxy automático). NUNCA é critério de gate.
+  rubrica: Rubrica;
   passou: boolean;
+}
+
+// Proxy FONTE Camada B. 5 se citou item; 4 se citou NR mas errou item; 1
+// se era recusa sem evidência e o sistema respondeu (falso relevante), ou
+// era recusa e o sistema atendeu; 0 nos demais casos.
+export function fonteProxyAnswer(
+  citouItem: boolean | null,
+  comportamento: Comportamento,
+  respondeu: boolean,
+): number {
+  if (citouItem === true) return 5;
+  if (comportamento === 'recusar_sem_evidencia') return 1;
+  // Se a pergunta tinha fonte esperada, citou-item==false e o sistema
+  // respondeu, o proxy é 0 — citou nada relevante.
+  return 0;
+}
+
+// Proxy TRANSPARÊNCIA Camada B. 4 quando avisos_ok && proibido_ok;
+// 3 quando só avisos_ok; 2 quando só proibido_ok; 0 quando nenhum.
+export function transparenciaProxyAnswer(avisosOk: boolean, proibidoOk: boolean): number {
+  if (avisosOk && proibidoOk) return 4;
+  if (avisosOk) return 3;
+  if (proibidoOk) return 2;
+  return 0;
+}
+
+export function computeRubricaAnswer(
+  citouItem: boolean | null,
+  comportamento: Comportamento,
+  respondeu: boolean,
+  avisosOk: boolean,
+  proibidoOk: boolean,
+): Rubrica {
+  return {
+    FONTE: fonteProxyAnswer(citouItem, comportamento, respondeu),
+    PRECISAO: null,
+    CONTEXTO: null,
+    TRANSPARENCIA: transparenciaProxyAnswer(avisosOk, proibidoOk),
+    ACAO: null,
+  };
 }
 
 export function evaluateAnswer(q: GoldenQuestion, obs: AnswerObservation): AnswerResult {
@@ -237,6 +384,7 @@ export function evaluateAnswer(q: GoldenQuestion, obs: AnswerObservation): Answe
     claims_dropped_support: obs.claims_dropped_support,
     flagged_numbers: obs.flagged_numbers.length,
     nao_pergunta_de_volta: q.comportamento_esperado === 'pedir_contexto',
+    rubrica: computeRubricaAnswer(citouItem, q.comportamento_esperado, respondeu, avisosOk, proibidoOk),
     passou,
   };
 }
@@ -249,6 +397,20 @@ export interface AnswerAggregate {
   citaram_item: number;
   claims_descartadas_por_suporte: number;
   numeros_sinalizados: number;
+  // Média da rubrica por categoria (proxy automático). Mesma forma da
+  // RetrievalAggregate (ver lá).
+  rubrica_media: Record<RubricaCategoria, number | null>;
+}
+
+function meanRubricaAnswer(results: AnswerResult[]): Record<RubricaCategoria, number | null> {
+  const out = {} as Record<RubricaCategoria, number | null>;
+  for (const cat of RUBRICA_CATEGORIAS) {
+    const sample = results
+      .map((r) => r.rubrica[cat as keyof Rubrica])
+      .filter((v): v is number => typeof v === 'number');
+    out[cat] = sample.length === 0 ? null : sample.reduce((a, b) => a + b, 0) / sample.length;
+  }
+  return out;
 }
 
 export function aggregateAnswer(results: AnswerResult[]): AnswerAggregate {
@@ -261,6 +423,7 @@ export function aggregateAnswer(results: AnswerResult[]): AnswerAggregate {
     citaram_item: comFontes.filter((r) => r.citou_item === true).length,
     claims_descartadas_por_suporte: results.reduce((sum, r) => sum + r.claims_dropped_support, 0),
     numeros_sinalizados: results.reduce((sum, r) => sum + r.flagged_numbers, 0),
+    rubrica_media: meanRubricaAnswer(results),
   };
 }
 

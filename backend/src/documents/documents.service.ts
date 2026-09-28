@@ -5,6 +5,7 @@ import { R2Service } from '../common/r2/r2.service';
 import { mapPgError } from '../common/pg-error.util';
 import { DOCX_MIME_TYPE } from '../common/docx/docx-text.util';
 import { XLSX_MIME_TYPE } from '../common/xlsx/xlsx-text.util';
+import { verifyFileContent } from '../common/files/file-content.util';
 
 const ALLOWED_MIME_TYPES = ['application/pdf', 'image/jpeg', 'image/png', DOCX_MIME_TYPE, XLSX_MIME_TYPE];
 const ALLOWED_CATEGORIES = [
@@ -86,6 +87,10 @@ export class DocumentsService {
     if (!ALLOWED_MIME_TYPES.includes(data.file.mimetype)) {
       throw new BadRequestException('Tipo de arquivo não permitido (só PDF, JPG, PNG, DOCX ou XLSX)');
     }
+    // ITEM 004: o Content-Type acima é declarado pelo cliente; aqui o
+    // conteúdo real é conferido contra ele, antes de qualquer toque no R2.
+    const contentProblem = await verifyFileContent(data.file.buffer, data.file.mimetype);
+    if (contentProblem) throw new BadRequestException(contentProblem);
     if (!ALLOWED_CATEGORIES.includes(data.category)) {
       throw new BadRequestException('Categoria inválida');
     }

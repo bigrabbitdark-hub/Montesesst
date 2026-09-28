@@ -135,6 +135,17 @@ describe('aggregateRetrieval (unit)', () => {
       recusa_total: 1,
       falso_relevante: 1,
       avisos_ok: 3,
+      // Proxy automático da rubrica (spec
+      // docs/specs/assistente-banco-testes-12-niveis.md §4). Apenas
+      // FONTE e TRANSPARÊNCIA têm proxy aqui; as outras categorias
+      // ficam `null` até revisão humana.
+      rubrica_media: expect.objectContaining({
+        FONTE: expect.any(Number),
+        PRECISAO: null,
+        CONTEXTO: null,
+        TRANSPARENCIA: expect.any(Number),
+        ACAO: null,
+      }),
     });
   });
 });
@@ -258,6 +269,15 @@ describe('aggregateAnswer (unit)', () => {
       citaram_item: 1,
       claims_descartadas_por_suporte: 2,
       numeros_sinalizados: 2,
+      // Proxy automático da rubrica (spec
+      // docs/specs/assistente-banco-testes-12-niveis.md §4).
+      rubrica_media: expect.objectContaining({
+        FONTE: expect.any(Number),
+        PRECISAO: null,
+        CONTEXTO: null,
+        TRANSPARENCIA: expect.any(Number),
+        ACAO: null,
+      }),
     });
   });
 });
@@ -478,6 +498,7 @@ describe('aggregateNotices — precisão e recall por tipo de aviso (unit)', () 
       avisos_esperados: esperados,
       avisos_detectados: detectados,
       avisos_ok: false,
+      rubrica: { FONTE: 0, PRECISAO: null, CONTEXTO: null, TRANSPARENCIA: 0, ACAO: null },
       passou: false,
     };
   }
@@ -506,12 +527,22 @@ describe('aggregateNotices — precisão e recall por tipo de aviso (unit)', () 
       jurisdicao: { tp: 3, fp: 1, fn: 0, precisao: 0.75, recall: 1 },
       contexto: { tp: 1, fp: 0, fn: 1, precisao: 1, recall: 0.5 },
       profissional_habilitado: { tp: 1, fp: 3, fn: 1, precisao: 0.25, recall: 0.5 },
+      vencimento_vencido: { tp: 0, fp: 0, fn: 0, precisao: null, recall: null },
+      dado_insuficiente: { tp: 0, fp: 0, fn: 0, precisao: null, recall: null },
+      geografia: { tp: 0, fp: 0, fn: 0, precisao: null, recall: null },
     });
   });
 
   it('lista vazia: tudo zerado e precisão/recall null (nunca NaN)', () => {
     const zerado = { tp: 0, fp: 0, fn: 0, precisao: null, recall: null };
-    expect(aggregateNotices([])).toEqual({ jurisdicao: zerado, contexto: zerado, profissional_habilitado: zerado });
+    expect(aggregateNotices([])).toEqual({
+      jurisdicao: zerado,
+      contexto: zerado,
+      profissional_habilitado: zerado,
+      vencimento_vencido: zerado,
+      dado_insuficiente: zerado,
+      geografia: zerado,
+    });
   });
 
   it('tipo que nunca foi detectado nem esperado fica null/null, sem atrapalhar os demais', () => {

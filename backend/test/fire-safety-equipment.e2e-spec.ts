@@ -4,6 +4,7 @@ import request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { TestDb } from './db-test-helper';
 
+import { TINY_JPEG } from './file-fixtures';
 function daysFromToday(days: number): string {
   const date = new Date();
   date.setDate(date.getDate() + days);
@@ -193,7 +194,7 @@ describe('Equipamentos contra incêndio (e2e)', () => {
     const res = await request(app.getHttpServer())
       .post(`/fire-safety-equipment/${id}/foto`)
       .set('Authorization', `Bearer ${token}`)
-      .attach('file', Buffer.from('fake-image-bytes'), { filename: 'extintor.jpg', contentType: 'image/jpeg' });
+      .attach('file', TINY_JPEG, { filename: 'extintor.jpg', contentType: 'image/jpeg' });
 
     expect(res.status).toBe(201);
     expect(res.body.foto_r2_key).toContain(id);
@@ -214,7 +215,7 @@ describe('Equipamentos contra incêndio (e2e)', () => {
     const uploadRes = await request(app.getHttpServer())
       .post(`/fire-safety-equipment/${id}/foto`)
       .set('Authorization', `Bearer ${token}`)
-      .attach('file', Buffer.from('fake-image-bytes'), { filename: 'extintor.jpg', contentType: 'image/jpeg' });
+      .attach('file', TINY_JPEG, { filename: 'extintor.jpg', contentType: 'image/jpeg' });
     expect(uploadRes.status).toBe(201);
 
     const afterUpload = await request(app.getHttpServer())

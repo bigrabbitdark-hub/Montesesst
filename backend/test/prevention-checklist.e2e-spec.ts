@@ -4,6 +4,7 @@ import request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { TestDb } from './db-test-helper';
 
+import { TINY_JPEG } from './file-fixtures';
 describe('Checklist de prevenção (e2e)', () => {
   let app: INestApplication;
   let db: TestDb;
@@ -98,7 +99,7 @@ describe('Checklist de prevenção (e2e)', () => {
     const photoUpload = await request(app.getHttpServer())
       .post(`/prevention-checklists/${checklistId}/items/${ncItem.id}/foto`)
       .set('Authorization', `Bearer ${technicianToken}`)
-      .attach('file', Buffer.from('fake-image-bytes'), { filename: 'extintor.jpg', contentType: 'image/jpeg' });
+      .attach('file', TINY_JPEG, { filename: 'extintor.jpg', contentType: 'image/jpeg' });
     expect(photoUpload.status).toBe(201);
     expect(photoUpload.body.foto_r2_key).toContain(checklistId);
 

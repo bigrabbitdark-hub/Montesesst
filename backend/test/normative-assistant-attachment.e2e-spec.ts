@@ -10,6 +10,7 @@ import { NORMATIVE_ANSWER_PROVIDER } from '../src/normative/normative-answer-pro
 import { RedisService } from '../src/common/redis/redis.service';
 import { TestDb } from './db-test-helper';
 
+import { tinyPngVariant } from './file-fixtures';
 function buildTestPdf(text: string | null): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     const doc = new PDFDocument();
@@ -103,7 +104,7 @@ describe('POST /assistant/normative-query — anexo de documento/imagem (e2e)', 
   });
 
   it('imagem: passa como attachment image (base64) pro provedor de resposta', async () => {
-    const fakeImage = Buffer.from('fake-png-bytes-for-test');
+    const fakeImage = tinyPngVariant('for-test');
     fakeAnswer.mockResolvedValue([
       {
         claim: 'A imagem mostra um capacete.',
@@ -180,7 +181,7 @@ describe('POST /assistant/normative-query — anexo de documento/imagem (e2e)', 
 
   it('pergunta com anexo usa uma chave de rate limit dedicada, separada da rota geral', async () => {
     const redis = app.get(RedisService);
-    const fakeImage = Buffer.from('fake-png-bytes-key-test');
+    const fakeImage = tinyPngVariant('key-test');
     fakeAnswer.mockResolvedValue([]);
 
     // Limpa qualquer chave já existente com este prefixo antes — evita

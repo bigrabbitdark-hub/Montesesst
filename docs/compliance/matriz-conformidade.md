@@ -210,7 +210,11 @@ decompostas.
   esse documento agora, não é mais "sem pressa".
 - **Placeholders nos Termos de Uso e na Política de Privacidade** — CNPJ
   (`69.203.754/0001-45`) e endereço comercial preenchidos em 2026-09-21
-  (fonte: `frontend/src/lib/company.ts`). Pendentes, dependem do
+  (fonte: `frontend/src/lib/company.ts`); **verificado em 2026-09-28**: o CNPJ
+  aparece nos rodapés do site, do painel empresa/técnico e do admin e nas telas
+  de pagamento, e o fundador o reafirmou para uso em segurança/privacidade
+  (identificação do controlador em `lgpd-compliance.md` §2 e em
+  `processo-incidentes.md` §5). Pendentes, dependem do
   fundador: **razão social** (`[RAZÃO SOCIAL — PREENCHER]`) e **foro**
   (`[CIDADE/ESTADO — PREENCHER]`, cláusula 10 dos Termos — escolha
   jurídica; não decorre do endereço da sede).

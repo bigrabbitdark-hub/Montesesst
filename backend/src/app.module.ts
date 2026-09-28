@@ -46,6 +46,8 @@ import { R2Module } from './common/r2/r2.module';
 import { EmbeddingModule } from './common/embedding/embedding.module';
 import { AiUsageModule } from './common/ai-usage/ai-usage.module';
 import { RateLimitGuard } from './common/rate-limit/rate-limit.guard';
+import { SubscriptionStatusGuard } from './common/guards/subscription-status.guard';
+import { JsonLoggerService } from './common/logging/json-logger.service';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 
 @Module({
@@ -91,10 +93,17 @@ import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
     GoogleCalendarModule,
   ],
   providers: [
+    // RateLimitGuard (F-22) injeta JsonLoggerService; sem registrá-lo aqui o
+    // AppModule não compila (main.ts só o usa como logger do Nest, o que não
+    // o torna um provider injetável).
+    JsonLoggerService,
     // Ordem importa: RateLimitGuard barra abuso antes de qualquer auth;
-    // JwtAuthGuard popula request.user antes do RolesGuard checar @Roles().
+    // JwtAuthGuard popula request.user antes do RolesGuard checar @Roles() e
+    // antes do SubscriptionStatusGuard checar status de assinatura (ITEM 002,
+    // auditoria 2026-09-27) — precisa de request.user.tenantId/role já populados.
     { provide: APP_GUARD, useClass: RateLimitGuard },
     { provide: APP_GUARD, useClass: JwtAuthGuard },
+    { provide: APP_GUARD, useClass: SubscriptionStatusGuard },
     { provide: APP_GUARD, useClass: RolesGuard },
     { provide: APP_INTERCEPTOR, useClass: TenantContextInterceptor },
     { provide: APP_INTERCEPTOR, useClass: AuditInterceptor },

@@ -5,6 +5,7 @@ import { S3Client, HeadObjectCommand } from '@aws-sdk/client-s3';
 import { AppModule } from '../src/app.module';
 import { TestDb } from './db-test-helper';
 
+import { TINY_PNG, tinyPngVariant } from './file-fixtures';
 describe('POST/DELETE /tenants/me/logo, GET /tenants/:id/logo (e2e)', () => {
   let app: INestApplication;
   let db: TestDb;
@@ -57,7 +58,7 @@ describe('POST/DELETE /tenants/me/logo, GET /tenants/:id/logo (e2e)', () => {
   });
 
   it('faz upload real de PNG, GET /tenants/me passa a devolver has_logo true', async () => {
-    const fakePng = Buffer.from('fake png bytes');
+    const fakePng = TINY_PNG;
     const uploadRes = await request(app.getHttpServer())
       .post('/tenants/me/logo')
       .set('Authorization', `Bearer ${token}`)
@@ -107,7 +108,7 @@ describe('POST/DELETE /tenants/me/logo, GET /tenants/:id/logo (e2e)', () => {
     // Confirma que o objeto ANTIGO existe de verdade no R2 antes de trocar.
     await expect(s3.send(new HeadObjectCommand({ Bucket: process.env.R2_BUCKET, Key: beforeKey }))).resolves.toBeDefined();
 
-    const secondPng = Buffer.from('outra imagem fake');
+    const secondPng = tinyPngVariant('outra imagem');
     const res = await request(app.getHttpServer())
       .post('/tenants/me/logo')
       .set('Authorization', `Bearer ${token}`)

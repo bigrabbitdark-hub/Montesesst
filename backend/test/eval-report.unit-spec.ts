@@ -195,6 +195,7 @@ function retrievalResult(overrides: Partial<RetrievalResult> = {}): RetrievalRes
     avisos_esperados: [],
     avisos_detectados: [],
     avisos_ok: true,
+    rubrica: { FONTE: 5, PRECISAO: null, CONTEXTO: null, TRANSPARENCIA: 3, ACAO: null },
     passou: true,
     ...overrides,
   };
@@ -320,6 +321,7 @@ describe('report (unit)', () => {
       claims_dropped_support: 1,
       flagged_numbers: 2,
       nao_pergunta_de_volta: false,
+      rubrica: { FONTE: 5, PRECISAO: null, CONTEXTO: null, TRANSPARENCIA: 4, ACAO: null },
       passou: true,
     };
     const meta = { ...META, layer: 'answer' as const, llm_calls: 1, llm_tokens_delta: 4321 };
@@ -343,6 +345,7 @@ describe('report (unit)', () => {
         claims_dropped_support: 0,
         flagged_numbers: 0,
         nao_pergunta_de_volta: false,
+        rubrica: { FONTE: 5, PRECISAO: null, CONTEXTO: null, TRANSPARENCIA: 4, ACAO: null },
         passou: true,
         ...overrides,
       };

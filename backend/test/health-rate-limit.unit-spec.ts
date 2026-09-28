@@ -40,7 +40,7 @@ describe('HealthController.check — rate-limit (F-16)', () => {
   const readMetadata = <T>(
     reflector: Reflector,
     key: string,
-    Controller: { prototype: { check: Function } },
+    Controller: Function,
   ): T | undefined =>
     reflector.getAllAndOverride<T>(key, [
       Controller.prototype.check,
