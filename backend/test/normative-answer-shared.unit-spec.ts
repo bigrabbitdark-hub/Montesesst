@@ -8,7 +8,7 @@ describe('buildRagChatCompletionBody — suporte a anexo (unit)', () => {
   });
 
   it('com anexo pdf_text, o texto extraído entra como seção própria no content da mensagem', () => {
-    const body = buildRagChatCompletionBody('modelo-teste', 'pergunta', [], [], [], [], {
+    const body = buildRagChatCompletionBody('modelo-teste', 'pergunta', [], [], [], [], [], {
       kind: 'pdf_text',
       content: 'texto do pdf anexado',
     });
@@ -18,7 +18,7 @@ describe('buildRagChatCompletionBody — suporte a anexo (unit)', () => {
   });
 
   it('com anexo image, o content da mensagem vira um array com bloco de texto e bloco image_url', () => {
-    const body = buildRagChatCompletionBody('modelo-teste', 'pergunta', [], [], [], [], {
+    const body = buildRagChatCompletionBody('modelo-teste', 'pergunta', [], [], [], [], [], {
       kind: 'image',
       content: 'ZmFrZS1iYXNlNjQ=',
       mimeType: 'image/png',
@@ -90,5 +90,42 @@ describe('SYSTEM_PROMPT — checklist interno como fonte de curadoria, não text
     expect(SYSTEM_PROMPT).toContain('checklist_ref_ids');
     expect(SYSTEM_PROMPT).toContain('NUNCA o texto oficial da norma');
     expect(SYSTEM_PROMPT).toContain('curadoria da Montese');
+  });
+});
+
+describe('buildRagChatCompletionBody — material de referência sem fonte oficial (unit)', () => {
+  it('com itens de referência, entram como seção própria e claramente rotulada como não-oficial; sem itens, a seção é omitida', () => {
+    const comItens = buildRagChatCompletionBody(
+      'modelo-teste',
+      'pergunta',
+      [],
+      [],
+      [],
+      [],
+      [{ id: 'ref1', content: 'Use protetor auricular em ambientes acima de 85dB.' }],
+    );
+    expect(typeof comItens.messages[1].content).toBe('string');
+    expect(comItens.messages[1].content).toContain('[ref1] Use protetor auricular');
+    expect(comItens.messages[1].content).toContain('Material de referência sem fonte oficial');
+    expect(comItens.messages[1].content).toContain('NÃO é texto oficial de norma');
+
+    const semItens = buildRagChatCompletionBody('modelo-teste', 'pergunta', [], [], [], [], []);
+    expect(semItens.messages[1].content).not.toContain('Material de referência sem fonte oficial');
+  });
+});
+
+describe('TOOL_SCHEMA — reference_ref_ids (unit)', () => {
+  it('exige reference_ref_ids em cada item, como array de string', () => {
+    const itemSchema = (TOOL_SCHEMA.function.parameters.properties.items as any).items;
+    expect(itemSchema.required).toContain('reference_ref_ids');
+    expect(itemSchema.properties.reference_ref_ids).toEqual({ type: 'array', items: { type: 'string' } });
+  });
+});
+
+describe('SYSTEM_PROMPT — material de referência como complementar, não oficial (unit)', () => {
+  it('descreve reference_ref_ids e deixa explícito que não é texto oficial de norma', () => {
+    expect(SYSTEM_PROMPT).toContain('reference_ref_ids');
+    expect(SYSTEM_PROMPT).toContain('material de referência');
+    expect(SYSTEM_PROMPT).toContain('NÃO é texto oficial de norma');
   });
 });
