@@ -12,6 +12,7 @@ describe('parsePkcs12', () => {
     expect(parsed.certificatePem).toContain('BEGIN CERTIFICATE');
     expect(parsed.privateKeyPem).toContain('BEGIN');
     expect(parsed.subjectCn).toContain('EMPRESA TESTE LTDA');
+    expect(parsed.subjectDocument).toBe('00000000000191');
     expect(parsed.notBefore.getTime()).toBeLessThan(Date.now());
     expect(parsed.notAfter.getTime()).toBeGreaterThan(Date.now());
     expect(parsed.thumbprintSha256).toMatch(/^[0-9a-f]{64}$/);
