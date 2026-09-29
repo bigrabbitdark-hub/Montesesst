@@ -349,6 +349,26 @@ aceitação** da Fase 10.
 | `jurisdicional` | 0 | 0% |
 | **Total** | **76** | **100%** |
 
+> **Nota da auditoria do Assistente (2026-09-28, item 019):** o
+> `perguntas-niveis.json` efetivamente entregue (83 perguntas, commit
+> `8267d16`) diverge desta tabela sem registro de por quê: `conceitual` 34
+> (não 30), `aplicacao` 16 (não 18), `caso_real` 7 — metade do planejado
+> (não 14), `sem_evidencia` 11 — 5,5x mais (não 2), `pegadinha` 9 (não 8),
+> `atribuicao_profissional` 2 (não 1), `jurisdicional` 1 (não 0). Mais
+> grave: rodar `npm run eval:lint -- --file eval/golden/perguntas-niveis.json
+> --write` contra produção (mesma auditoria) mostrou **69 de 85 citações
+> (81%) com `evidencia_nao_encontrada`** — inclusive citações que esta
+> própria seção 3.1 já registrava com ⚠️ (incerteza) ou como item
+> específico nunca conferido contra o texto real (ex.: "NR-01 item 1.5.3.2
+> + 1.5.3.3" em B008, linha ~101 — falha no lint 13 vezes em perguntas
+> diferentes do dataset final). Interpretação mais provável: o dataset
+> final foi montado a partir desta tabela de planejamento sem rodar o
+> lint de citação antes de fechar os itens `✅`, e sem revisitar os itens
+> `⚠️`/`❌` para de fato aplicar `recusar_sem_evidencia` como a própria
+> seção já recomendava. Ver item 012 do plano de correção em
+> `docs/audits/auditoria-assistente-montese-sst-2026-09-28.md` para a
+> lista completa de citações que falharam.
+
 (O dataset atual, `perguntas.json`, já tem ~60 perguntas
 predominantemente `conceitual`/`aplicacao`; o novo puxa mais para
 `caso_real`/`pegadinha`/`sem_evidencia`, que são os tipos que o banco de
