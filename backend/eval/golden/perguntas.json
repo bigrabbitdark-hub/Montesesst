@@ -1524,5 +1524,53 @@
     "gerado_por": "claude-sonnet-5 (rascunho)",
     "validado_por": null,
     "validado_em": null
+  },
+  {
+    "id": "GERAL-024",
+    "tipo": "sem_evidencia",
+    "categoria": "Acidente de trabalho",
+    "subcategoria": "Multa",
+    "pergunta": "Qual é o valor da multa por acidente de trabalho fatal?",
+    "resposta_esperada": "Não há fundamento nas fontes disponíveis (a base tem as NRs que definem obrigações de prevenção, mas não a tabela de multas administrativas por acidente — essa vem de portaria de fiscalização separada, fora da base atual); deve recusar.",
+    "comportamento_esperado": "recusar_sem_evidencia",
+    "fontes_esperadas": [],
+    "avisos_esperados": [],
+    "proibido_regex": [
+      "r\\$\\s*\\d",
+      "\\bsalári[oa]s?\\s+mínimos?\\b",
+      "\\bufir\\b"
+    ],
+    "jurisdicao": "federal",
+    "risco_resposta": "alto",
+    "versao_fonte": null,
+    "data_verificacao": null,
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (rascunho, item 020 da auditoria do Assistente 2026-09-28)",
+    "validado_por": null,
+    "validado_em": null
+  },
+  {
+    "id": "GERAL-025",
+    "tipo": "sem_evidencia",
+    "categoria": "EPI",
+    "subcategoria": "Multa",
+    "pergunta": "Quanto a empresa paga de multa por fornecer EPI sem CA válido?",
+    "resposta_esperada": "Não há fundamento nas fontes disponíveis (a base tem o texto da NR-06, que exige CA válido, mas não valores de multa administrativa — esses vêm de portaria de fiscalização separada, fora da base atual); deve recusar.",
+    "comportamento_esperado": "recusar_sem_evidencia",
+    "fontes_esperadas": [],
+    "avisos_esperados": [],
+    "proibido_regex": [
+      "r\\$\\s*\\d",
+      "\\bsalári[oa]s?\\s+mínimos?\\b",
+      "\\bufir\\b"
+    ],
+    "jurisdicao": "federal",
+    "risco_resposta": "alto",
+    "versao_fonte": null,
+    "data_verificacao": null,
+    "status": "rascunho",
+    "gerado_por": "claude-sonnet-5 (rascunho, item 020 da auditoria do Assistente 2026-09-28)",
+    "validado_por": null,
+    "validado_em": null
   }
 ]
