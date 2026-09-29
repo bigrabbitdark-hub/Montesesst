@@ -9,7 +9,7 @@ export class AsoController {
   constructor(private readonly aso: AsoService) {}
 
   @Post('records')
-  @Roles('empresa', 'tecnico', 'admin')
+  @Roles('empresa')
   @UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }))
   createRecord(@Body() dto: CreateAsoRecordDto, @Req() req: any) {
     return req.withTenantContext((client: any) =>
@@ -24,7 +24,7 @@ export class AsoController {
   }
 
   @Post('pcmso-physicians')
-  @Roles('empresa', 'admin')
+  @Roles('empresa')
   @UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }))
   createPhysician(@Body() dto: CreatePcmsoPhysicianDto, @Req() req: any) {
     return req.withTenantContext((client: any) => this.aso.createPhysician(client, dto));

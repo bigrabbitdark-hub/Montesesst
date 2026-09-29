@@ -1,6 +1,7 @@
 import { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
+import { randomUUID } from 'crypto';
 import { AppModule } from '../src/app.module';
 import { TestDb } from './db-test-helper';
 
@@ -38,5 +39,30 @@ describe('aso_records RLS (e2e)', () => {
 
     expect(res.status).toBe(200);
     expect(res.body).toHaveLength(0);
+  });
+
+  it('tecnico recebe 403 ao tentar criar ASO (tenant_id sempre NULL para tecnico/admin)', async () => {
+    const tecnico = await db.createUserWithRole('tecnico', 'aso-role-tecnico');
+
+    const login = await request(app.getHttpServer())
+      .post('/auth/login')
+      .send({ email: tecnico.email, password: tecnico.password });
+    const token = login.body.access_token;
+
+    const res = await request(app.getHttpServer())
+      .post('/aso/records')
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        employeeId: randomUUID(),
+        examType: 'periodico',
+        examDate: '2026-09-01',
+        result: 'apto',
+        resultDisclosureAuthorized: true,
+        doctorName: 'Dra. Fulana',
+        doctorCrm: '54321',
+        doctorCrmUf: 'SP',
+      });
+
+    expect(res.status).toBe(403);
   });
 });
