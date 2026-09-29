@@ -22,6 +22,7 @@ import { SystemStatusModule } from './system-status/system-status.module';
 import { AdminDashboardModule } from './admin-dashboard/admin-dashboard.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { NormativeModule } from './normative/normative.module';
+import { ReferenceDocumentsModule } from './reference-documents/reference-documents.module';
 import { SstChecklistModule } from './sst-checklist/sst-checklist.module';
 import { VisitsModule } from './visits/visits.module';
 import { CipaModule } from './cipa/cipa.module';
@@ -79,6 +80,7 @@ import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
     AdminDashboardModule,
     DashboardModule,
     NormativeModule,
+    ReferenceDocumentsModule,
     SstChecklistModule,
     VisitsModule,
     CipaModule,
