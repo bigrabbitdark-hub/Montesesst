@@ -8,6 +8,7 @@ const validEnv = (): NodeJS.ProcessEnv => ({
   NODE_ENV: 'production',
   JWT_SECRET: 'a'.repeat(48),
   GOOGLE_TOKEN_ENCRYPTION_KEY: 'ab'.repeat(32),
+  ESOCIAL_CERT_ENCRYPTION_KEY: 'cd'.repeat(32),
   MERCADOPAGO_WEBHOOK_SECRET: 'w'.repeat(24),
   RESEND_API_KEY: 're_abcdefghijklmnop',
   MINIMAX_API_KEY: 'm'.repeat(40),
@@ -30,6 +31,7 @@ describe('collectEnvErrors', () => {
   it.each([
     'JWT_SECRET',
     'GOOGLE_TOKEN_ENCRYPTION_KEY',
+    'ESOCIAL_CERT_ENCRYPTION_KEY',
     'MERCADOPAGO_WEBHOOK_SECRET',
     'RESEND_API_KEY',
     'MINIMAX_API_KEY',
@@ -94,7 +96,7 @@ describe('collectEnvErrors', () => {
 
   it('acumula todos os erros de uma vez (o operador corrige tudo numa só tentativa)', () => {
     const errors = collectEnvErrors({ NODE_ENV: 'production' });
-    expect(errors).toHaveLength(14);
+    expect(errors).toHaveLength(15);
   });
 
   it('PUBLIC_APP_URL: recusa http://, barra no final e o texto "undefined" (o link do e-mail sairia quebrado ou sem TLS)', () => {

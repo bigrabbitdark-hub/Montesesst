@@ -26,6 +26,7 @@
 const REQUIRED = [
   ['JWT_SECRET', (v: string) => v.length >= 32, 'mínimo 32 caracteres (256 bits)'],
   ['GOOGLE_TOKEN_ENCRYPTION_KEY', (v: string) => /^[0-9a-f]{64}$/i.test(v), '64 caracteres hex (32 bytes)'],
+  ['ESOCIAL_CERT_ENCRYPTION_KEY', (v: string) => /^[0-9a-f]{64}$/i.test(v), '64 caracteres hex (32 bytes)'],
   ['MERCADOPAGO_WEBHOOK_SECRET', (v: string) => v.length >= 16, 'mínimo 16 caracteres'],
   ['RESEND_API_KEY', (v: string) => v.startsWith('re_'), 'deve começar com re_'],
   ['MINIMAX_API_KEY', (v: string) => v.length >= 20, 'mínimo 20 caracteres'],
