@@ -43,13 +43,20 @@ describe('POST /assistant/normative-query — material de referência sem fonte 
       .send({ email: tenant.email, password: tenant.password });
     tokenEmpresa = loginEmpresa.body.access_token;
 
+    // Admin criado pelo próprio teste (mesmo padrão da Task 10,
+    // reference-documents-approval.e2e-spec.ts) — o fixture não deve
+    // depender de um usuário role='admin' pré-existente no banco (o banco
+    // de ensaio roda só com o schema das migrations, sem seed).
+    const admin = await db.createUserWithRole('admin', 'Admin Referencia Assistente Teste');
+
     const doc = await client.query(
       `INSERT INTO reference_documents
          (title, category, origin_note, status, content_hash, file_key, file_name, mime_type, raw_text, uploaded_by_user_id, indexed_at)
        VALUES ('Cartilha EPI Teste', 'EPI', 'Fixture de teste — suíte e2e', 'vigente', 'hash-teste-referencia-e2e',
                'reference/teste/cartilha.pdf', 'cartilha.pdf', 'application/pdf', 'Texto completo da cartilha de teste.',
-               (SELECT id FROM users WHERE role = 'admin' LIMIT 1), now())
+               $1, now())
        RETURNING id`,
+      [admin.userId],
     );
     documentId = doc.rows[0].id;
 
