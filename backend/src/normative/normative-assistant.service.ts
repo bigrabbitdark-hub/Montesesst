@@ -7,6 +7,7 @@ import {
   NORMATIVE_ANSWER_PROVIDER,
   NormativeAnswerProvider,
   OperationalItem,
+  ReferenceItem,
 } from './normative-answer-provider.interface';
 import { toVectorLiteral } from '../common/vector/vector.util';
 import { envFloat } from '../common/env';
@@ -57,6 +58,12 @@ export interface ChecklistItemCitation {
   document_name: string;
 }
 
+export interface ReferenceDocumentCitation {
+  document_id: string;
+  title: string;
+  category: string;
+}
+
 export interface NormativeQueryResult {
   answer: string | null;
   message?: string;
@@ -67,6 +74,11 @@ export interface NormativeQueryResult {
   // sempre presente (array, nunca omitido), mesmo padrão de `citations`/
   // `company_citations`.
   checklist_citations: ChecklistItemCitation[];
+  // Documentos de referência SST sem fonte oficial (cartilha/guia) usados
+  // nesta resposta — sempre presente (array, nunca omitido), mesmo padrão
+  // de citations/company_citations/checklist_citations. NUNCA apresentado
+  // como norma vigente.
+  reference_citations: ReferenceDocumentCitation[];
   // Avisos determinísticos por pergunta (question-notices.ts) — sempre
   // presente, possivelmente vazio; nunca bloqueia a resposta.
   notices: NormativeNotice[];
@@ -116,11 +128,21 @@ export interface RetrievedChecklistItem {
   similarity: number;
 }
 
+export interface RetrievedReferenceChunk {
+  chunk_id: string;
+  content: string;
+  document_id: string;
+  document_title: string;
+  category: string;
+  similarity: number;
+}
+
 // Resultado da busca de referência (normas oficiais + checklist interno), com os
 // candidatos do topo ANTES do corte pelo limiar de similaridade.
 export interface ReferenceSearch {
   normativeRows: RetrievedChunk[];
   checklistRows: RetrievedChecklistItem[];
+  referenceRows: RetrievedReferenceChunk[];
 }
 
 export interface ReferenceRetrieval extends ReferenceSearch {
@@ -200,6 +222,7 @@ export class NormativeAssistantService {
       chunkLimit: 0,
       normative: [] as QueryTrace['normative'],
       checklist: [] as QueryTrace['checklist'],
+      reference: [] as QueryTrace['reference'],
       company: [] as QueryTrace['company'],
       operationalCount: 0,
       claimsTotal: 0,
@@ -220,6 +243,7 @@ export class NormativeAssistantService {
         chunk_limit: traceState.chunkLimit,
         normative: traceState.normative,
         checklist: traceState.checklist,
+        reference: traceState.reference,
         company: traceState.company,
         operational_count: traceState.operationalCount,
         claims_total: traceState.claimsTotal,
@@ -302,9 +326,10 @@ export class NormativeAssistantService {
     const threshold = this.ragThreshold();
     const chunkLimit = attachmentInput ? CHUNK_LIMIT_WITH_ATTACHMENT : CHUNK_LIMIT_DEFAULT;
 
-    const { normativeRows, checklistRows } = await this.searchReference(questionEmbedding, chunkLimit);
+    const { normativeRows, checklistRows, referenceRows } = await this.searchReference(questionEmbedding, chunkLimit);
     const relevant = normativeRows.filter((r) => r.similarity >= threshold);
     const relevantChecklist = checklistRows.filter((r) => r.similarity >= threshold);
+    const relevantReference = referenceRows.filter((r) => r.similarity >= threshold);
     traceState.threshold = threshold;
     traceState.chunkLimit = chunkLimit;
     traceState.normative = normativeRows.map((r) => ({
@@ -317,6 +342,12 @@ export class NormativeAssistantService {
     traceState.checklist = checklistRows.map((r) => ({
       item_id: r.item_id,
       nr_code: r.nr_code,
+      similarity: r.similarity,
+      passed_threshold: r.similarity >= threshold,
+    }));
+    traceState.reference = referenceRows.map((r) => ({
+      chunk_id: r.chunk_id,
+      document_id: r.document_id,
       similarity: r.similarity,
       passed_threshold: r.similarity >= threshold,
     }));
@@ -411,6 +442,7 @@ export class NormativeAssistantService {
       operationalItems.length === 0 &&
       companyChunks.length === 0 &&
       relevantChecklist.length === 0 &&
+      relevantReference.length === 0 &&
       !attachmentInput
     ) {
       return finish(
@@ -420,6 +452,7 @@ export class NormativeAssistantService {
           citations: [],
           company_citations: [],
           checklist_citations: [],
+          reference_citations: [],
           notices,
           attachment_warning: attachmentWarning,
         },
@@ -433,6 +466,7 @@ export class NormativeAssistantService {
       operationalItems,
       companyChunks.map((c): CompanyChunk => ({ id: c.chunk_id, content: c.content })),
       relevantChecklist.map((c): ChecklistItem => ({ id: c.item_id, content: c.content })),
+      relevantReference.map((r): ReferenceItem => ({ id: r.chunk_id, content: r.content })),
       attachmentInput,
     );
     traceState.claimsTotal = claims.length;
@@ -441,6 +475,7 @@ export class NormativeAssistantService {
     const validOperationalIds = new Set(operationalItems.map((o) => o.id));
     const validCompanyChunkIds = new Set(companyChunks.map((c) => c.chunk_id));
     const validChecklistIds = new Set(relevantChecklist.map((c) => c.item_id));
+    const validReferenceIds = new Set(relevantReference.map((r) => r.chunk_id));
     // `attachmentInput` (calculado no topo deste método) é a única fonte
     // de verdade sobre se um anexo de verdade foi processado com sucesso
     // nesta chamada — undefined tanto quando não veio nenhum arquivo
@@ -483,6 +518,12 @@ export class NormativeAssistantService {
     const checklistEvidence = new Map<string, string>(
       relevantChecklist.map((c): [string, string] => [c.item_id, c.content]),
     );
+    // Mesmo padrão de companyEvidence acima: prefixado com o título do
+    // documento, pra o Verificador v2 (claim-support.ts) também conseguir
+    // checar fonte nominal citada dentro de material de referência.
+    const referenceEvidence = new Map<string, string>(
+      relevantReference.map((r): [string, string] => [r.chunk_id, `${r.document_title}\n${r.content}`]),
+    );
     const attachmentText =
       attachmentInput && attachmentInput.kind !== 'image' ? attachmentInput.content : undefined;
 
@@ -492,13 +533,15 @@ export class NormativeAssistantService {
         claim.operational_ref_ids.length > 0 ||
         claim.company_chunk_ids.length > 0 ||
         claim.checklist_ref_ids.length > 0 ||
+        claim.reference_ref_ids.length > 0 ||
         (attachmentIsReal && claim.uses_attachment === true);
       const idsAreValid =
         hasSource &&
         claim.chunk_ids.every((id) => validChunkIds.has(id)) &&
         claim.operational_ref_ids.every((id) => validOperationalIds.has(id)) &&
         claim.company_chunk_ids.every((id) => validCompanyChunkIds.has(id)) &&
-        claim.checklist_ref_ids.every((id) => validChecklistIds.has(id));
+        claim.checklist_ref_ids.every((id) => validChecklistIds.has(id)) &&
+        claim.reference_ref_ids.every((id) => validReferenceIds.has(id));
       if (!idsAreValid) {
         traceState.claimsDroppedIds += 1;
         return false;
@@ -509,6 +552,7 @@ export class NormativeAssistantService {
         ...claim.operational_ref_ids.map((id) => operationalEvidence.get(id) as string),
         ...claim.company_chunk_ids.map((id) => companyEvidence.get(id) as string),
         ...claim.checklist_ref_ids.map((id) => checklistEvidence.get(id) as string),
+        ...claim.reference_ref_ids.map((id) => referenceEvidence.get(id) as string),
       ];
       if (attachmentText && attachmentIsReal && claim.uses_attachment === true) {
         evidenceTexts.push(attachmentText);
@@ -522,6 +566,7 @@ export class NormativeAssistantService {
         ...claim.operational_ref_ids,
         ...claim.company_chunk_ids,
         ...claim.checklist_ref_ids,
+        ...claim.reference_ref_ids,
       ];
       // Regra de privacidade do trace: os tokens só são guardados quando a claim cita
       // EXCLUSIVAMENTE trechos normativos oficiais (ver tokensAllowedForClaim).
@@ -530,6 +575,7 @@ export class NormativeAssistantService {
         operational_ref_ids: claim.operational_ref_ids,
         company_chunk_ids: claim.company_chunk_ids,
         checklist_ref_ids: claim.checklist_ref_ids,
+        reference_ref_ids: claim.reference_ref_ids,
         uses_attachment: attachmentIsReal && claim.uses_attachment === true,
       });
       if (support.logged.length > 0) {
@@ -558,6 +604,7 @@ export class NormativeAssistantService {
           citations: [],
           company_citations: [],
           checklist_citations: [],
+          reference_citations: [],
           notices,
           attachment_warning: attachmentWarning,
         },
@@ -603,6 +650,18 @@ export class NormativeAssistantService {
       }
     }
 
+    const usedReferenceIds = new Set(survivingClaims.flatMap((c) => c.reference_ref_ids));
+    const referenceCitationsByDocument = new Map<string, ReferenceDocumentCitation>();
+    for (const chunk of relevantReference) {
+      if (usedReferenceIds.has(chunk.chunk_id)) {
+        referenceCitationsByDocument.set(chunk.document_id, {
+          document_id: chunk.document_id,
+          title: chunk.document_title,
+          category: chunk.category,
+        });
+      }
+    }
+
     const usedAttachment = attachmentIsReal && survivingClaims.some((c) => c.uses_attachment);
 
     const result: NormativeQueryResult = {
@@ -610,6 +669,7 @@ export class NormativeAssistantService {
       citations: Array.from(citationsByDocument.values()),
       company_citations: Array.from(companyCitationsByDocument.values()),
       checklist_citations: Array.from(checklistCitationsById.values()),
+      reference_citations: Array.from(referenceCitationsByDocument.values()),
       notices,
       used_attachment: usedAttachment ? true : undefined,
       attachment_warning: attachmentWarning,
@@ -668,6 +728,22 @@ export class NormativeAssistantService {
         [toVectorLiteral(questionEmbedding), chunkLimit],
       ),
     );
-    return { normativeRows, checklistRows };
+    // Busca em reference_document_chunks (material SST sem fonte oficial —
+    // cartilha/guia, ver docs/specs/documentos-referencia-sst.md) — mesmo
+    // padrão de official_sources/sst_checklist_items acima: sempre
+    // executada, sem tenant, transação curta e separada.
+    const { rows: referenceRows } = await this.db.withoutTenantContext((client) =>
+      client.query<RetrievedReferenceChunk>(
+        `SELECT c.id AS chunk_id, c.content, d.id AS document_id, d.title AS document_title, d.category,
+                1 - (c.embedding <=> $1::vector) AS similarity
+         FROM reference_document_chunks c
+         JOIN reference_documents d ON d.id = c.document_id
+         WHERE d.status = 'vigente' AND d.indexed_at IS NOT NULL
+         ORDER BY c.embedding <=> $1::vector
+         LIMIT $2`,
+        [toVectorLiteral(questionEmbedding), chunkLimit],
+      ),
+    );
+    return { normativeRows, checklistRows, referenceRows };
   }
 }
