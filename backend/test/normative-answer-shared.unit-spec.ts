@@ -77,18 +77,27 @@ describe('buildRagChatCompletionBody — orçamento de tokens (unit)', () => {
   });
 });
 
-describe('SYSTEM_PROMPT — regra de jurisdição e habilitação profissional (unit)', () => {
-  it('manda não responder como se a regra federal fosse universal quando depender de lei estadual/municipal ou de habilitação', () => {
-    expect(SYSTEM_PROMPT).toContain('legislação estadual ou municipal');
-    expect(SYSTEM_PROMPT).toContain('habilitação legal');
-    expect(SYSTEM_PROMPT).toContain('declare explicitamente o que eles não cobrem');
+// Achado da auditoria do Assistente (2026-09-28, item 017): este describe
+// checava texto de jurisdição E de habilitação profissional dentro do
+// SYSTEM_PROMPT. A regra de jurisdição continua no prompt (GEOGRAFIA/
+// ESCOPO), só foi reescrita; a de habilitação profissional NÃO está mais
+// no texto enviado ao modelo — migrou inteiramente para o detector
+// determinístico `profissional_habilitado` em question-notices.ts (já
+// coberto por seus próprios testes, ex. "profissional habilitado: quem
+// pode assinar e ART"). Checar "habilitação legal" aqui testava uma
+// versão antiga da arquitetura, não um requisito que ainda vale.
+describe('SYSTEM_PROMPT — regra de jurisdição (unit)', () => {
+  it('manda não responder como se a regra federal fosse universal quando depender de lei estadual/municipal', () => {
+    expect(SYSTEM_PROMPT).toContain('NÃO há chunks suficientes');
+    expect(SYSTEM_PROMPT).toContain('estaduais (Corpo de Bombeiros, secretarias estaduais do trabalho, CIPA estadual)');
+    expect(SYSTEM_PROMPT).toContain('municipais (alvarás, posturas, códigos de obras)');
   });
 });
 
 describe('SYSTEM_PROMPT — checklist interno como fonte de curadoria, não texto oficial (unit)', () => {
-  it('descreve checklist_ref_ids e deixa explícito que o checklist é curadoria da Montese, nunca o texto oficial da norma', () => {
+  it('descreve checklist_ref_ids e deixa explícito que o checklist é curadoria Montese, nunca o texto oficial da norma', () => {
     expect(SYSTEM_PROMPT).toContain('checklist_ref_ids');
-    expect(SYSTEM_PROMPT).toContain('NUNCA o texto oficial da norma');
-    expect(SYSTEM_PROMPT).toContain('curadoria da Montese');
+    expect(SYSTEM_PROMPT).toContain('NUNCA texto oficial da norma');
+    expect(SYSTEM_PROMPT).toContain('curadoria Montese');
   });
 });
