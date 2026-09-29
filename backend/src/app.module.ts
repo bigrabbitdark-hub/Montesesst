@@ -34,6 +34,7 @@ import { PreventionCorrectiveActionsModule } from './prevention-corrective-actio
 import { PreventionChecklistModule } from './prevention-checklist/prevention-checklist.module';
 import { EmergencyDrillModule } from './emergency-drill/emergency-drill.module';
 import { GoogleCalendarModule } from './google-calendar/google-calendar.module';
+import { AsoModule } from './aso/aso.module';
 import { JwtAuthGuard } from './auth/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 import { TenantContextInterceptor } from './common/interceptors/tenant-context.interceptor';
@@ -91,6 +92,7 @@ import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
     PreventionChecklistModule,
     EmergencyDrillModule,
     GoogleCalendarModule,
+    AsoModule,
   ],
   providers: [
     // RateLimitGuard (F-22) injeta JsonLoggerService; sem registrá-lo aqui o

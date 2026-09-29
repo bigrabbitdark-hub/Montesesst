@@ -115,6 +115,25 @@ export class TestDb {
     return { userId, email, password: TEST_PASSWORD };
   }
 
+  // Insere um aso_records mínimo direto via superuser (bypassa RLS/HTTP) —
+  // usado por specs de RLS que precisam de uma linha em outro tenant sem
+  // passar pela API (ex.: esocial-events-rls.e2e-spec.ts, Task 4).
+  async insertMinimalAsoRecord(tenant: {
+    tenantId: string;
+    employeeId: string;
+    userId: string;
+  }): Promise<string> {
+    const result = await this.client.query<{ id: string }>(
+      `INSERT INTO aso_records (
+        tenant_id, employee_id, exam_type, exam_date, result,
+        result_disclosure_authorized, doctor_name, doctor_crm, doctor_crm_uf, created_by_user_id
+      ) VALUES ($1, $2, 'periodico', CURRENT_DATE, 'apto', false, 'Dr. Teste', '12345', 'SP', $3)
+      RETURNING id`,
+      [tenant.tenantId, tenant.employeeId, tenant.userId],
+    );
+    return result.rows[0].id;
+  }
+
   // Apaga só o que este helper criou. Tenants em CASCADE levam junto users e
   // employees vinculados a eles; users soltos (tecnico/parceiro/admin) são
   // apagados à parte.
