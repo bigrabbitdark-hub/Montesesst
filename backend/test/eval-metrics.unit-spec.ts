@@ -206,11 +206,54 @@ describe('evaluateAnswer — Camada B (unit)', () => {
     expect(result.passou).toBe(false);
   });
 
-  it('recusar_sem_evidencia passa só se a resposta é nula', () => {
+  it('recusar_sem_evidencia passa quando recusa, ou quando inventa do nada é reprovado', () => {
     const q = question({ comportamento_esperado: 'recusar_sem_evidencia', fontes_esperadas: [], tipo: 'sem_evidencia' });
     const base = { notices: [], retrieved: [], kept_claims_chunk_ids: [], claims_dropped_support: 0, flagged_numbers: [] };
     expect(evaluateAnswer(q, { ...base, answer: null }).passou).toBe(true);
+    // "Inventou uma resposta." sem nenhum chunk_id real sobrevivente — não há
+    // grounding nenhum, é uma alucinação de verdade. Continua reprovado.
     expect(evaluateAnswer(q, { ...base, answer: 'Inventou uma resposta.' }).passou).toBe(false);
+  });
+
+  // ITEM 016 da auditoria do Assistente (2026-09-28): a pergunta A-002 ("A
+  // NR-35 obriga exame de sangue anual?") tem comportamento_esperado
+  // recusar_sem_evidencia, mas a resposta real do MiniMax negou a premissa
+  // falsa citando NR-35/NR-07 de verdade ("não estabelece... a avaliação é
+  // feita conforme NR-07") — uma correção segura e fundamentada, não uma
+  // invenção. A regra antiga (`passou = !respondeu`) reprovava os dois casos
+  // (invenção real e correção segura) do mesmo jeito, escondendo a diferença
+  // mais importante que uma auditoria de alucinação quer enxergar.
+  it('recusar_sem_evidencia: responder negando a premissa com evidência real (chunk_id que sobreviveu ao Verificador) passa e é marcado como correção de premissa falsa', () => {
+    const q = question({ comportamento_esperado: 'recusar_sem_evidencia', fontes_esperadas: [], tipo: 'sem_evidencia' });
+    const result = evaluateAnswer(q, {
+      answer: 'A NR-35 não estabelece essa obrigação nos trechos fornecidos; a avaliação de saúde segue a NR-07.',
+      notices: [],
+      retrieved,
+      kept_claims_chunk_ids: [['c-item']],
+      claims_dropped_support: 0,
+      flagged_numbers: [],
+    });
+    expect(result.passou).toBe(true);
+    expect(result.corrigiu_premissa_falsa).toBe(true);
+  });
+
+  it('recusar_sem_evidencia: responder afirmando a premissa proibida continua reprovado mesmo citando algo', () => {
+    const q = question({
+      comportamento_esperado: 'recusar_sem_evidencia',
+      fontes_esperadas: [],
+      tipo: 'sem_evidencia',
+      proibido_regex: ['exame de sangue anual é obrigat'],
+    });
+    const result = evaluateAnswer(q, {
+      answer: 'Sim, o exame de sangue anual é obrigatório conforme a NR-35.',
+      notices: [],
+      retrieved,
+      kept_claims_chunk_ids: [['c-item']],
+      claims_dropped_support: 0,
+      flagged_numbers: [],
+    });
+    expect(result.passou).toBe(false);
+    expect(result.corrigiu_premissa_falsa).toBe(false);
   });
 
   it('pedir_contexto passa quando o aviso esperado disparou e marca a lacuna de não perguntar de volta', () => {

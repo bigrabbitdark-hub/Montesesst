@@ -191,6 +191,11 @@ export function formatAnswerSummary(baseline: BaselineFile<AnswerResult, AnswerA
     // é marcada à parte, sem reprovar por ela; e a alucinação é só reportada.
     `  lacuna à parte (não reprova): o sistema ainda não pergunta de volta — perguntas pedir_contexto afetadas: ${baseline.resultados.filter((r) => r.nao_pergunta_de_volta).length}`,
     `  respostas que violaram proibido_regex: ${baseline.resultados.filter((r) => !r.proibido_ok).length}`,
+    // ITEM 016 (auditoria do Assistente, 2026-09-28): quantas perguntas
+    // recusar_sem_evidencia passaram por CORRIGIR a premissa falsa com
+    // evidência real, em vez de recusar de forma limpa — distinção visível
+    // aqui, nunca escondida atrás de um "passou" genérico.
+    `  recusar_sem_evidencia: corrigiram a premissa falsa em vez de recusar: ${baseline.resultados.filter((r) => r.corrigiu_premissa_falsa).length}`,
     rubricaLine(agregados.geral.rubrica_media),
   ];
   return lines.join('\n');

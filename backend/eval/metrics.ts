@@ -300,6 +300,14 @@ export interface AnswerResult {
   // O sistema ainda não pergunta de volta: em pedir_contexto isto é uma
   // lacuna informativa, não motivo de reprovação.
   nao_pergunta_de_volta: boolean;
+  // ITEM 016 (auditoria do Assistente, 2026-09-28): só relevante quando
+  // comportamento_esperado === 'recusar_sem_evidencia'. true quando o
+  // sistema respondeu, mas a resposta nega a premissa falsa citando
+  // evidência real (pelo menos 1 chunk_id sobrevivente ao Verificador) sem
+  // violar proibido_regex — distinto de "inventou do nada" (sem nenhum id
+  // real) e de "afirmou a premissa proibida" (proibido_regex bateu). Nunca
+  // true quando `respondeu` é false (aí é recusa limpa, não correção).
+  corrigiu_premissa_falsa: boolean;
   // Rubrica 0–5 (proxy automático). NUNCA é critério de gate.
   rubrica: Rubrica;
   passou: boolean;
@@ -360,13 +368,22 @@ export function evaluateAnswer(q: GoldenQuestion, obs: AnswerObservation): Answe
     citouItem = obs.kept_claims_chunk_ids.some((ids) => ids.some((id) => esperados.has(id)));
   }
 
+  // ITEM 016: pelo menos 1 chunk_id sobrevivente ao Verificador — sinal de
+  // que o que a resposta afirma foi checado contra evidência real (o
+  // id-check em normative-assistant.service.ts já rejeita ids inventados
+  // antes de chegar aqui). "Inventou uma resposta." sem nenhum id real
+  // sobrevivente não tem esse grounding.
+  const citaAlgoReal = obs.kept_claims_chunk_ids.some((ids) => ids.length > 0);
+  let corrigiuPremissaFalsa = false;
+
   let passou: boolean;
   switch (q.comportamento_esperado) {
     case 'responder':
       passou = respondeu && citouItem === true && proibidoOk;
       break;
     case 'recusar_sem_evidencia':
-      passou = !respondeu;
+      corrigiuPremissaFalsa = respondeu && citaAlgoReal && proibidoOk;
+      passou = !respondeu || corrigiuPremissaFalsa;
       break;
     default:
       passou = avisosOk && proibidoOk;
@@ -381,6 +398,7 @@ export function evaluateAnswer(q: GoldenQuestion, obs: AnswerObservation): Answe
     citou_item: citouItem,
     avisos_ok: avisosOk,
     proibido_ok: proibidoOk,
+    corrigiu_premissa_falsa: corrigiuPremissaFalsa,
     claims_dropped_support: obs.claims_dropped_support,
     flagged_numbers: obs.flagged_numbers.length,
     nao_pergunta_de_volta: q.comportamento_esperado === 'pedir_contexto',
