@@ -23,6 +23,13 @@ export interface TraceChecklistItem {
   passed_threshold: boolean;
 }
 
+export interface TraceReferenceChunk {
+  chunk_id: string;
+  document_id: string;
+  similarity: number;
+  passed_threshold: boolean;
+}
+
 // Fontes da empresa entram só como similaridade — sem ids.
 export interface TraceSimilarity {
   similarity: number;
@@ -38,6 +45,7 @@ export interface QueryTrace {
   // Todos os candidatos do topo, INCLUSIVE os cortados pelo limiar.
   normative: TraceNormativeChunk[];
   checklist: TraceChecklistItem[];
+  reference: TraceReferenceChunk[];
   company: TraceSimilarity[];
   operational_count: number;
   claims_total: number;
@@ -75,6 +83,7 @@ export interface ClaimSourceKinds {
   operational_ref_ids: string[];
   company_chunk_ids: string[];
   checklist_ref_ids: string[];
+  reference_ref_ids: string[];
   uses_attachment: boolean;
 }
 
@@ -89,6 +98,7 @@ export function tokensAllowedForClaim(kinds: ClaimSourceKinds): boolean {
     kinds.operational_ref_ids.length === 0 &&
     kinds.company_chunk_ids.length === 0 &&
     kinds.checklist_ref_ids.length === 0 &&
+    kinds.reference_ref_ids.length === 0 &&
     !kinds.uses_attachment
   );
 }

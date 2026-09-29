@@ -32,7 +32,7 @@ describe('hashQuestion (unit)', () => {
 });
 
 describe('tokensAllowedForClaim (unit)', () => {
-  const none = { chunk_ids: [], operational_ref_ids: [], company_chunk_ids: [], checklist_ref_ids: [], uses_attachment: false };
+  const none = { chunk_ids: [], operational_ref_ids: [], company_chunk_ids: [], checklist_ref_ids: [], reference_ref_ids: [], uses_attachment: false };
 
   it('permite quando a claim cita só trechos normativos oficiais', () => {
     expect(tokensAllowedForClaim({ ...none, chunk_ids: ['c1', 'c2'] })).toBe(true);
@@ -42,10 +42,11 @@ describe('tokensAllowedForClaim (unit)', () => {
     expect(tokensAllowedForClaim(none)).toBe(false);
   });
 
-  it('não permite se a claim também cita documento da empresa, item operacional, checklist ou anexo', () => {
+  it('não permite se a claim também cita documento da empresa, item operacional, checklist, referência ou anexo', () => {
     expect(tokensAllowedForClaim({ ...none, chunk_ids: ['c1'], company_chunk_ids: ['d1'] })).toBe(false);
     expect(tokensAllowedForClaim({ ...none, chunk_ids: ['c1'], operational_ref_ids: ['op-0'] })).toBe(false);
     expect(tokensAllowedForClaim({ ...none, chunk_ids: ['c1'], checklist_ref_ids: ['k1'] })).toBe(false);
+    expect(tokensAllowedForClaim({ ...none, chunk_ids: ['c1'], reference_ref_ids: ['r1'] })).toBe(false);
     expect(tokensAllowedForClaim({ ...none, chunk_ids: ['c1'], uses_attachment: true })).toBe(false);
   });
 });

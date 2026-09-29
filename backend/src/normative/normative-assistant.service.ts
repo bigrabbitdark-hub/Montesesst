@@ -200,6 +200,7 @@ export class NormativeAssistantService {
       chunkLimit: 0,
       normative: [] as QueryTrace['normative'],
       checklist: [] as QueryTrace['checklist'],
+      reference: [] as QueryTrace['reference'],
       company: [] as QueryTrace['company'],
       operationalCount: 0,
       claimsTotal: 0,
@@ -220,6 +221,7 @@ export class NormativeAssistantService {
         chunk_limit: traceState.chunkLimit,
         normative: traceState.normative,
         checklist: traceState.checklist,
+        reference: traceState.reference,
         company: traceState.company,
         operational_count: traceState.operationalCount,
         claims_total: traceState.claimsTotal,
@@ -433,6 +435,7 @@ export class NormativeAssistantService {
       operationalItems,
       companyChunks.map((c): CompanyChunk => ({ id: c.chunk_id, content: c.content })),
       relevantChecklist.map((c): ChecklistItem => ({ id: c.item_id, content: c.content })),
+      [],
       attachmentInput,
     );
     traceState.claimsTotal = claims.length;
@@ -530,6 +533,7 @@ export class NormativeAssistantService {
         operational_ref_ids: claim.operational_ref_ids,
         company_chunk_ids: claim.company_chunk_ids,
         checklist_ref_ids: claim.checklist_ref_ids,
+        reference_ref_ids: [],
         uses_attachment: attachmentIsReal && claim.uses_attachment === true,
       });
       if (support.logged.length > 0) {
