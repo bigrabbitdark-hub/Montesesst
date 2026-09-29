@@ -24,5 +24,38 @@
   --color-accent-500: #f59e0b;
   --color-accent-700: #b45309;
 
+  /* Dashboard "Início" (Fase 1, 2026-09-29) — paleta oficial nova, nomes
+     próprios pra não colidir com brand-* / accent-* enquanto o resto do app
+     não migra. Valores exatos da especificação do dashboard v2. */
+  --color-dash-page: #eef3fa;
+  --color-dash-sidebar: #0a1640;
+  --color-dash-card: #ffffff;
+  --color-dash-primary: #0b1b4d;
+  --color-dash-muted: #475569;
+  --color-dash-border-soft: #e5eaf3;
+  --color-dash-border-input: #cbd5e1;
+  --color-dash-blue-action: #1d5cff;
+  --color-dash-blue-link: #1d4ed8;
+  --color-dash-brand-green: #1e7d32;
+  --color-dash-brand-green-dark: #0f4d28;
+  --color-dash-brand-green-light: #66bb6a;
+  --color-dash-hero-bg: #0a1230;
+
+  --color-dash-status-ok: #16a34a;
+  --color-dash-status-ok-bg: #dcfce7;
+  --color-dash-status-ok-text: #166534;
+  --color-dash-status-warn: #f59e0b;
+  --color-dash-status-warn-bg: #fef3c7;
+  --color-dash-status-warn-text: #92400e;
+  --color-dash-status-crit: #dc2626;
+  --color-dash-status-crit-bg: #fee2e2;
+  --color-dash-status-crit-text: #991b1b;
+  --color-dash-status-info: #1d4ed8;
+  --color-dash-status-info-bg: #dbeafe;
+  --color-dash-status-info-text: #1e40af;
+  --color-dash-status-epi: #7c3aed;
+  --color-dash-status-epi-text: #6d28d9;
+
   --font-sans: var(--font-poppins), system-ui, sans-serif;
+  --font-body: var(--font-inter), system-ui, sans-serif;
 }
