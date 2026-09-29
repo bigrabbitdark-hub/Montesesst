@@ -9,6 +9,19 @@ import {
 } from './normative-answer-provider.interface';
 import { buildRagChatCompletionBody, parseRagToolCall } from './normative-answer-shared';
 
+// Timeout total por tentativa (mesmo valor de sempre deste provedor —
+// nunca medido em produção real porque o fallback está inativo, ver
+// normative.module.ts).
+const PROVIDER_TIMEOUT_MS = 45_000;
+// Achado da auditoria do Assistente (2026-09-28, item 015): o MiniMax
+// (provedor ativo) repete a chamada uma vez quando o tool call vem
+// ausente/inválido, e só se a 1ª tentativa foi rápida — sem isso, este
+// fallback regrediria em silêncio se um dia fosse reativado (troca de
+// `useClass` em normative.module.ts). Mesma proporção do MiniMax (60% do
+// timeout total: 45s/75s lá, aqui 27s/45s) — proporcional, não medido,
+// porque este provedor não tem tráfego real hoje para calibrar de verdade.
+const RETRY_MAX_ELAPSED_MS = 27_000;
+
 @Injectable()
 export class OpenRouterNormativeAnswerService implements NormativeAnswerProvider {
   private readonly logger = new Logger(OpenRouterNormativeAnswerService.name);
@@ -32,46 +45,29 @@ export class OpenRouterNormativeAnswerService implements NormativeAnswerProvider
     }
 
     const model = this.modelName;
-    let response: Response;
-    try {
-      response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${apiKey}`,
-          'HTTP-Referer': 'https://montesesst.com.br',
-          'X-Title': 'Montese SST - Assistente Normativo',
-        },
-        body: JSON.stringify(
-          buildRagChatCompletionBody(model, question, chunks, operationalItems, companyChunks, checklistItems, attachment, systemPrompt),
-        ),
-        signal: AbortSignal.timeout(45_000),
-      });
-    } catch (err) {
-      this.logger.error('Falha de rede ao chamar o OpenRouter (assistente)', (err as Error).stack);
-      throw new BadGatewayException('Não foi possível responder agora');
+    const requestBody = buildRagChatCompletionBody(
+      model,
+      question,
+      chunks,
+      operationalItems,
+      companyChunks,
+      checklistItems,
+      attachment,
+      systemPrompt,
+    );
+
+    // Mesma lógica do MiniMax (ver minimax-normative-answer.service.ts): só
+    // repete saída inválida do modelo, nunca erro de rede/HTTP (esses
+    // lançam direto em requestOnce).
+    const started = this.now();
+    let { body, parsed } = await this.requestOnce(apiKey, requestBody);
+    if (!parsed && this.now() - started < RETRY_MAX_ELAPSED_MS) {
+      this.logger.warn(
+        `Assistente: 1ª tentativa sem tool call parseável (finish_reason=${body?.choices?.[0]?.finish_reason}, completion_tokens=${body?.usage?.completion_tokens}) — repetindo uma vez`,
+      );
+      ({ body, parsed } = await this.requestOnce(apiKey, requestBody));
     }
 
-    if (!response.ok) {
-      let errorBody = '';
-      try {
-        errorBody = await response.text();
-      } catch {
-        // best-effort — segue mesmo se não conseguir ler o corpo do erro
-      }
-      this.logger.error(`OpenRouter retornou status ${response.status} (assistente): ${errorBody}`);
-      throw new BadGatewayException('Não foi possível responder agora');
-    }
-
-    let body: any;
-    try {
-      body = await response.json();
-    } catch (err) {
-      this.logger.error('Resposta do OpenRouter não é JSON válido (assistente)', (err as Error).stack);
-      throw new BadGatewayException('Não foi possível responder agora');
-    }
-
-    const parsed = parseRagToolCall(body);
     if (!parsed) {
       // Tool call ausente ou inválido/truncado — só metadados no log (nunca a
       // pergunta nem parte da resposta do modelo: dado de empresa/LGPD).
@@ -116,5 +112,52 @@ export class OpenRouterNormativeAnswerService implements NormativeAnswerProvider
         okScope
       );
     });
+  }
+
+  // Existe só para o teste controlar o relógio (jest.spyOn(service, 'now')),
+  // mesmo padrão de minimax-normative-answer.service.ts.
+  private now(): number {
+    return Date.now();
+  }
+
+  private async requestOnce(apiKey: string, requestBody: unknown): Promise<{ body: any; parsed: { items?: unknown } | null }> {
+    let response: Response;
+    try {
+      response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${apiKey}`,
+          'HTTP-Referer': 'https://montesesst.com.br',
+          'X-Title': 'Montese SST - Assistente Normativo',
+        },
+        body: JSON.stringify(requestBody),
+        signal: AbortSignal.timeout(PROVIDER_TIMEOUT_MS),
+      });
+    } catch (err) {
+      this.logger.error('Falha de rede ao chamar o OpenRouter (assistente)', (err as Error).stack);
+      throw new BadGatewayException('Não foi possível responder agora');
+    }
+
+    if (!response.ok) {
+      let errorBody = '';
+      try {
+        errorBody = await response.text();
+      } catch {
+        // best-effort — segue mesmo se não conseguir ler o corpo do erro
+      }
+      this.logger.error(`OpenRouter retornou status ${response.status} (assistente): ${errorBody}`);
+      throw new BadGatewayException('Não foi possível responder agora');
+    }
+
+    let body: any;
+    try {
+      body = await response.json();
+    } catch (err) {
+      this.logger.error('Resposta do OpenRouter não é JSON válido (assistente)', (err as Error).stack);
+      throw new BadGatewayException('Não foi possível responder agora');
+    }
+
+    return { body, parsed: parseRagToolCall(body) };
   }
 }
