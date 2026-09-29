@@ -119,7 +119,7 @@ export default function AdminAuditoriaPage() {
       <h2 className="text-xl font-bold text-brand-900">Auditoria</h2>
       <p className="mt-1 text-sm text-brand-700">
         Registro de ações realizadas no sistema — quem fez o quê, quando, e o resultado (coluna
-        "Status"). Passe o mouse sobre o número do status pra ver o que significa em termos simples.
+        &quot;Status&quot;). Passe o mouse sobre o número do status pra ver o que significa em termos simples.
       </p>
 
       <form onSubmit={handleFilterSubmit} className="mt-6 flex items-end gap-3">
