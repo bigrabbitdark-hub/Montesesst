@@ -216,7 +216,7 @@ Verificação (VERIFICADO):
   Mercado Pago; o monitor de crédito do OpenRouter também é novo. Conferir o log depois do primeiro disparo.
 - Observação: o 503 "não configurado" sai no log como `error` (ExceptionFilter); considerar rebaixar para `warn`.
 
-### Etapa 4 — `0057` (RLS em `tenants`) 🔒 — só depois da Etapa 3 verificada
+### Etapa 4 — `0057` (RLS em `tenants`) 🔒 — ✅ EXECUTADA em 2026-09-30 20:47 UTC
 
 1. Aplicar `0057`.
 2. Verificar de imediato: logo público, login de empresa, `GET/PATCH /tenants/me`,
@@ -228,6 +228,19 @@ Verificação (VERIFICADO):
    ALTER TABLE tenants DISABLE ROW LEVEL SECURITY;
    DELETE FROM _migrations WHERE name = '0057_tenants_rls.sql';
    ```
+
+**Resultado da Etapa 4 (VERIFICADO):** `0057` aplicada pelo superusuário, em transação, com `INSERT INTO _migrations`
+(62 migrations). `tenants`: RLS ativa **e forçada** (`true/true`), política `tenants_isolation`. Com rollback automático armado
+(não foi necessário). Verificação imediata no backend real, 16/16 (fixtures temporárias, removidas): login, `tenants/me`,
+`summary`, `overview`, logo público 404 (sem logo) e com id inválido, Google desativado (200/503/302), **admin lista todas
+as empresas (vê além da própria) e lê detalhe**, **empresa não acessa rota de admin (403)**, **técnico vinculado lê o
+overview e volta a 403 ao desvincular**, técnico não vinculado 403. SQL com dados reais como `montese_app`: sem contexto
+→ 0 linhas; contexto da empresa → 1; papel admin → 31. Log do backend: 0 ocorrências de "row-level security/permission
+denied"; só os 503 esperados do meu teste. Consumidores de `tenants` (crons `weekly-digest` e `visit-reminder` usam
+contexto admin): 30 suítes no clone com a 0057, **130/132** — as 2 falhas são upload real ao R2 (`documents-partner`,
+"No value provided for input HTTP label: Bucket", esperado no container de teste).
+**Não provado com dado real:** o logo público de empresa COM logo (nenhuma empresa real tem logo hoje); a função foi provada
+no clone (SQL, contexto vazio devolve a chave). Conferir quando a primeira empresa enviar um logo.
 
 ## 5. Rollback geral
 
