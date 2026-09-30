@@ -242,6 +242,12 @@ contexto admin): 30 suítes no clone com a 0057, **130/132** — as 2 falhas sã
 **Não provado com dado real:** o logo público de empresa COM logo (nenhuma empresa real tem logo hoje); a função foi provada
 no clone (SQL, contexto vazio devolve a chave). Conferir quando a primeira empresa enviar um logo.
 
+**Limpeza (2026-09-30 20:52 UTC):** banco `montese_rehearsal_0930` (cópia de dados reais) apagado com `DROP DATABASE`
+(0 conexões, alvo conferido pelo nome). `montese` (62 migrations, `/health` ok com commit `0b2fe824`) e
+`montese_e2e_rehearsal` (de sessões anteriores) não foram tocados. Backups preservados
+(`montese-20260930-030002.dump` e `montese-20260930-184517.dump`, este com cópia no R2). Nenhum arquivo temporário de
+ambiente ficou no disco.
+
 ## 5. Rollback geral
 
 | Situação | Ação |
