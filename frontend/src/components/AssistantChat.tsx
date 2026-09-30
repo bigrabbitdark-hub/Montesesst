@@ -59,10 +59,24 @@ const MAX_ATTACHMENT_BYTES = 5 * 1024 * 1024;
 
 // Limite duro para uma única consulta ao assistente. Sem ele, um fetch
 // pendurado deixaria a UI em 'loading' indefinidamente (sem o spinner
-// resolver, sem o botão "Tentar de novo" ficar disponível). 60s é
-// folgado o suficiente para uma chamada LLM+RAG completa e curto o
-// suficiente para não fazer o usuário desistir.
-const QUERY_TIMEOUT_MS = 60_000;
+// resolver, sem o botão "Tentar de novo" ficar disponível).
+//
+// Achado real (2026-09-29, ao revisar o frontend do Assistente — nenhuma
+// das duas auditorias do dia anterior tinha olhado pra este arquivo): 60s
+// era mais curto que o pior caso legítimo do próprio backend. O provedor
+// ativo (MiniMax-M3, minimax-normative-answer.service.ts) tem timeout de
+// 75s POR TENTATIVA e repete uma vez quando a saída vem sem tool call
+// parseável — no pior caso real (1ª tentativa ~44s, ainda abaixo do corte
+// de RETRY_MAX_ELAPSED_MS de 45s, seguida de uma 2ª tentativa que também
+// leva até 75s), o backend pode legitimamente levar até ~120s pra
+// responder. O nginx aguenta isso de sobra (proxy_read_timeout 300s) — só
+// o frontend abortava antes da hora, mostrando "demorou demais" pro
+// usuário numa pergunta que o backend ainda ia responder corretamente.
+// 100s cobre o caso realista (p95 de uma tentativa 40-57s + uma eventual
+// repetição de latência parecida) sem chegar no teórico de 120s, que já é
+// raro o bastante (retry só acontece quando a saída do modelo vem
+// malformada, ~4-8% das perguntas segundo medição do próprio projeto).
+const QUERY_TIMEOUT_MS = 100_000;
 
 export function AssistantChat({ tenantId }: { tenantId?: string }) {
   const [question, setQuestion] = useState('');

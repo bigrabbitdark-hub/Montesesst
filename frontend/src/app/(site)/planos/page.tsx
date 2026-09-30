@@ -46,6 +46,11 @@ export default function PlanosPage() {
   const [loggedIn, setLoggedIn] = useState(false);
   const [subscribingPlanId, setSubscribingPlanId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // ITEM 031 (auditoria 2026-09-27): antes de trocar pra um plano com limite de funcionários
+  // menor do que o número atual de ativos, a empresa vê um aviso — nenhum funcionário é
+  // desativado automaticamente (decisão do fundador), mas ela precisa saber disso ANTES de
+  // ir pro checkout do Mercado Pago, não descobrir depois.
+  const [pendingPlan, setPendingPlan] = useState<{ id: string; warning: string } | null>(null);
 
   useEffect(() => {
     setLoggedIn(!!localStorage.getItem('montese_token'));
@@ -55,8 +60,9 @@ export default function PlanosPage() {
       .catch(() => setPlans([]));
   }, []);
 
-  async function handleSubscribe(planId: string) {
+  async function doSubscribe(planId: string) {
     setError(null);
+    setPendingPlan(null);
     setSubscribingPlanId(planId);
     try {
       const token = localStorage.getItem('montese_token');
@@ -73,6 +79,31 @@ export default function PlanosPage() {
       }
       const data = await res.json();
       window.location.href = data.initPoint;
+    } catch {
+      setError('Não foi possível conectar ao servidor.');
+      setSubscribingPlanId(null);
+    }
+  }
+
+  async function handleSubscribe(planId: string) {
+    setError(null);
+    setSubscribingPlanId(planId);
+    try {
+      const token = localStorage.getItem('montese_token');
+      const checkRes = await fetch(`/api/subscriptions/downgrade-check?plan_id=${planId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (checkRes.ok) {
+        const { warning } = await checkRes.json();
+        if (warning) {
+          setPendingPlan({ id: planId, warning });
+          setSubscribingPlanId(null);
+          return;
+        }
+      }
+      // Checagem indisponível (ex.: usuário não é 'empresa') ou sem aviso: segue direto —
+      // esta checagem é só um aviso a mais, nunca um bloqueio.
+      await doSubscribe(planId);
     } catch {
       setError('Não foi possível conectar ao servidor.');
       setSubscribingPlanId(null);
@@ -314,6 +345,38 @@ export default function PlanosPage() {
         </div>
 
         <MountainDivider />
+
+        {pendingPlan && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="aviso-limite-titulo"
+              className="max-w-md rounded-2xl border border-brand-100 bg-white p-6 shadow-xl"
+            >
+              <h2 id="aviso-limite-titulo" className="text-[17px] font-bold text-brand-900">
+                Antes de continuar
+              </h2>
+              <p role="alert" className="mt-3 text-[14px] leading-relaxed text-brand-700">
+                {pendingPlan.warning}
+              </p>
+              <div className="mt-6 flex flex-col gap-2.5 sm:flex-row-reverse">
+                <button
+                  onClick={() => doSubscribe(pendingPlan.id)}
+                  className="rounded-[9px] bg-brand-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-700"
+                >
+                  Continuar mesmo assim
+                </button>
+                <button
+                  onClick={() => setPendingPlan(null)}
+                  className="rounded-[9px] border-[1.5px] border-brand-500 px-4 py-2.5 text-sm font-semibold text-brand-700 hover:bg-brand-50"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </section>
     </div>
   );

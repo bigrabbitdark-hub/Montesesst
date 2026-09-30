@@ -36,14 +36,22 @@ export function AssistantSummaryPanel({ tenantId }: { tenantId?: string }) {
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
 
   useEffect(() => {
+    // Achado real (2026-09-29): sem AbortController, trocar de tenantId
+    // rápido (ex.: técnico navegando entre empresas) podia deixar uma
+    // resposta ATRASADA da requisição antiga sobrescrever `summary` com o
+    // resumo do tenant errado, depois que a requisição nova (mais rápida)
+    // já tinha atualizado a tela corretamente — mesma classe de corrida
+    // que o AssistantChat.tsx vizinho já evita com AbortController.
+    const controller = new AbortController();
     const url = tenantId ? `/api/dashboard/summary?tenant_id=${tenantId}` : '/api/dashboard/summary';
-    fetch(url, { headers: authHeaders() })
+    fetch(url, { headers: authHeaders(), signal: controller.signal })
       .then((res) => (res.ok ? res.json() : null))
       .then(setSummary)
       // Painel é só um complemento informativo — se a busca falhar (rede,
-      // 403 pra um caso não previsto), o formulário de pergunta abaixo
-      // continua funcionando normalmente sem o resumo.
+      // 403 pra um caso não previsto, ou o abort abaixo), o formulário de
+      // pergunta continua funcionando normalmente sem o resumo.
       .catch(() => {});
+    return () => controller.abort();
   }, [tenantId]);
 
   if (!summary) return null;
