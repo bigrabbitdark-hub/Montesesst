@@ -31,15 +31,15 @@ export function HomeHeroCTA() {
     <div className="flex flex-wrap gap-3.5">
       <Link
         href="/cadastro"
-        className="rounded-[9px] bg-brand-500 px-7 py-4 text-[15px] font-semibold text-white transition-colors hover:bg-brand-700"
+        className="rounded-xl bg-brand-500 px-7 py-4 text-[15px] font-semibold text-white shadow-lg shadow-black/20 ring-1 ring-white/15 transition-colors hover:bg-brand-400"
       >
         Comece grátis
       </Link>
       <Link
-        href="/contato"
-        className="rounded-[9px] border-[1.5px] border-white/50 px-7 py-4 text-[15px] font-semibold text-white transition-colors hover:bg-white/10"
+        href="/quem-somos"
+        className="rounded-xl border-[1.5px] border-white/60 px-7 py-4 text-[15px] font-semibold text-white transition-colors hover:bg-white/10"
       >
-        Fale com a gente
+        Conheça a Montese
       </Link>
     </div>
   );

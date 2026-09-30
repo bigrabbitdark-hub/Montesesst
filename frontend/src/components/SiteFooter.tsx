@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { company } from '@/lib/company';
+import { SocialLinks } from './SocialLinks';
 
 export function SiteFooter() {
   return (
@@ -21,22 +22,8 @@ export function SiteFooter() {
           <p className="mt-4 max-w-xs text-sm text-brand-100">
             Conectamos pessoas, processos e segurança para chegar mais alto.
           </p>
-          <div className="mt-5 flex gap-2.5">
-            <SocialIcon label="Facebook" href="#">
-              <path d="M13.5 21v-8h2.7l.4-3.2h-3.1V7.7c0-.9.3-1.6 1.6-1.6h1.7V3.2C16.5 3.1 15.4 3 14.2 3 11.6 3 9.9 4.6 9.9 7.4v2.4H7.2V13h2.7v8h3.6z" />
-            </SocialIcon>
-            <SocialIcon label="Instagram" href="#" strokeIcon>
-              <rect x="3" y="3" width="18" height="18" rx="5" />
-              <circle cx="12" cy="12" r="4" />
-              <circle cx="17.2" cy="6.8" r="1" />
-            </SocialIcon>
-            <SocialIcon label="LinkedIn" href="#">
-              <path d="M4.98 3.5a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5zM3 9h4v12H3zM9 9h3.8v1.7h.1c.5-1 1.9-2 3.8-2 4.1 0 4.9 2.7 4.9 6.2V21h-4v-5.6c0-1.3 0-3-1.8-3s-2.1 1.4-2.1 2.9V21H9z" />
-            </SocialIcon>
-            <SocialIcon label="YouTube" href="#" strokeIcon>
-              <rect x="2.5" y="5.5" width="19" height="13" rx="4" />
-              <path d="M10.5 9.5l5 2.5-5 2.5z" fill="currentColor" stroke="none" />
-            </SocialIcon>
+          <div className="mt-5">
+            <SocialLinks />
           </div>
         </div>
 
@@ -47,6 +34,7 @@ export function SiteFooter() {
         </FooterColumn>
 
         <FooterColumn title="Empresa">
+          <FooterLink href="/quem-somos">Quem somos</FooterLink>
           <FooterLink href="/contato">Contato</FooterLink>
           <FooterLink href="/cadastro">Cadastre sua empresa</FooterLink>
         </FooterColumn>
@@ -94,36 +82,5 @@ function FooterLink({ href, children }: { href: string; children: React.ReactNod
     <Link href={href} className="text-sm text-brand-100 hover:text-white">
       {children}
     </Link>
-  );
-}
-
-function SocialIcon({
-  label,
-  href,
-  strokeIcon,
-  children,
-}: {
-  label: string;
-  href: string;
-  strokeIcon?: boolean;
-  children: React.ReactNode;
-}) {
-  return (
-    <a
-      href={href}
-      aria-label={label}
-      className="flex h-9 w-9 items-center justify-center rounded-[10px] border border-white/15 bg-white/5 text-brand-100 transition-colors hover:border-brand-500 hover:bg-brand-500 hover:text-white"
-    >
-      <svg
-        width="16"
-        height="16"
-        viewBox="0 0 24 24"
-        fill={strokeIcon ? 'none' : 'currentColor'}
-        stroke={strokeIcon ? 'currentColor' : 'none'}
-        strokeWidth={strokeIcon ? 2 : undefined}
-      >
-        {children}
-      </svg>
-    </a>
   );
 }

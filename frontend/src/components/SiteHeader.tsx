@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { Logo } from './Logo';
 
 const NAV_LINKS = [
+  { href: '/quem-somos', label: 'Quem Somos' },
   { href: '/planos', label: 'Planos' },
   { href: '/tecnico/cadastro', label: 'Para Técnicos' },
   { href: '/cursos', label: 'Universidade SST', badge: 'EM BREVE' },
@@ -17,9 +18,9 @@ export function SiteHeader() {
 
   return (
     <header className="sticky top-0 z-40 border-b border-brand-100 bg-white/95 backdrop-blur">
-      <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 sm:px-10">
+      <div className="mx-auto flex max-w-6xl items-center justify-between gap-6 px-4 py-3 sm:px-10">
         <Logo />
-        <nav className="hidden items-center gap-8 md:flex">
+        <nav className="hidden items-center gap-5 md:flex lg:gap-7">
           {NAV_LINKS.map((link) => (
             <Link
               key={link.href}
@@ -41,7 +42,7 @@ export function SiteHeader() {
           </Link>
           <Link
             href="/cadastro"
-            className="rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-brand-700 sm:px-5"
+            className="rounded-xl bg-brand-500 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-brand-700 sm:px-5"
           >
             Comece grátis
           </Link>

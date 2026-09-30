@@ -2,20 +2,26 @@
 @plugin "@tailwindcss/typography";
 
 /*
- * Aproximação da paleta verde descrita em docs/vision.md seção 4 — os
- * valores hexadecimais exatos dependem do arquivo-fonte de identidade
- * visual, ainda não enviado (docs/specs/fase-2-site-institucional.md
- * seção 9). Trocar aqui quando o arquivo chegar — é o único lugar que
- * precisa mudar. Tailwind v4 gera as classes utilitárias (bg-brand-500,
- * text-brand-700 etc.) automaticamente a partir destas variáveis --color-*.
+ * Paleta verde da marca (redesign institucional, 2026-09-30):
+ *   #0A5C36 verde principal  -> brand-700
+ *   #157347 verde médio      -> brand-500 (fundo de botão: 5.9:1 com texto branco)
+ *   #4CAF50 verde claro      -> brand-400 (pins, detalhes; não usar como texto)
+ *   #DFF5E5 verde suave      -> brand-100
+ * brand-900 é um verde profundo derivado, para superfícies escuras e texto;
+ * brand-300 é o tom claro legível sobre fundo escuro. Tailwind v4 gera as
+ * classes (bg-brand-500, text-brand-700 etc.) a partir destas variáveis.
+ * Grafite #263238 e cinza #6B7280 são os neutros do site institucional.
  */
 @theme {
   --color-brand-50: #f0f9f4;
-  --color-brand-100: #dbf0e3;
+  --color-brand-100: #dff5e5;
   --color-brand-300: #7fcf9d;
-  --color-brand-500: #2f9e5c;
-  --color-brand-700: #1f6e40;
-  --color-brand-900: #123822;
+  --color-brand-400: #4caf50;
+  --color-brand-500: #157347;
+  --color-brand-700: #0a5c36;
+  --color-brand-900: #07321f;
+  --color-ink: #263238;
+  --color-muted: #6b7280;
 
   /* Acento âmbar — usado em EPI/segurança (capacete, coletes) e destaques
      pontuais (badge "novo", ribbon "mais popular"). Nunca substitui o verde
@@ -58,4 +64,49 @@
 
   --font-sans: var(--font-poppins), system-ui, sans-serif;
   --font-body: var(--font-inter), system-ui, sans-serif;
+}
+
+/* Site institucional: elementos do navegador com a identidade da marca. */
+::selection {
+  background: var(--color-brand-300);
+  color: var(--color-brand-900);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-brand-500);
+  outline-offset: 2px;
+}
+
+/* Movimento: fluxo contínuo nas linhas do ecossistema e uma entrada única no hero. */
+@keyframes flow {
+  to {
+    stroke-dashoffset: -24;
+  }
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.flow-line {
+  stroke-dasharray: 6 6;
+  animation: flow 1.8s linear infinite;
+}
+
+.rise {
+  animation: rise 0.9s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .flow-line,
+  .rise {
+    animation: none;
+  }
 }
