@@ -11,6 +11,18 @@ export interface AlertItem {
   href: string;
 }
 
+// ITEM 013: estado do saldo do OpenRouter, lido do CACHE gravado pelo
+// OpenRouterCreditMonitorCronService (nunca uma chamada de rede aqui — ver comentário em
+// AdminDashboardService.getAlertas). `null` = o cron ainda nunca rodou (ex.: logo após o
+// deploy desta funcionalidade) — tratado como "sem informação", não como falha.
+export interface OpenRouterCreditInput {
+  checked_at: string;
+  check_succeeded: boolean;
+  is_unlimited: boolean;
+  limit_remaining_usd: number | null;
+  error_message: string | null;
+}
+
 export interface AlertInput {
   services: { postgres: boolean; redis: boolean; site: boolean };
   disk_used_percent: number;
@@ -19,6 +31,11 @@ export interface AlertInput {
   payments_pending_stale: number;
   documentos_vencendo: number;
   epis_vencendo: number;
+  openrouter: OpenRouterCreditInput | null;
+  // ITEM 014: gasto de HOJE (America/Sao_Paulo) somando MiniMax (estimado, sem API de
+  // saldo — ver minimax-cost.util.ts) e OpenRouter (usage_daily REAL, já vem do próprio
+  // openrouter_credit_status — ver ITEM 013).
+  ai_cost_today_usd: number;
 }
 
 export interface AlertResult {
@@ -41,13 +58,27 @@ export const REJECTED_WINDOW_DAYS = 7;
 // `free -h` (MemAvailable) na VPS — ver Tarefa 14 do plano.
 export const RAM_ALERT_ENABLED = true;
 
+// ITEM 013/014 — valores padrão; sobrescrevíveis via `options` (lidos de env no chamador,
+// nunca aqui dentro — esta função continua pura). US$ porque é a moeda nativa das duas
+// APIs (OpenRouter e a estimativa de MiniMax, ver minimax-cost.util.ts).
+export const OPENROUTER_LOW_CREDIT_USD_DEFAULT = 5;
+export const AI_DAILY_COST_CAP_USD_DEFAULT = 20;
+
 const ORDEM: Record<AlertSeverity, number> = { critico: 0, atencao: 1, info: 2 };
+
+// "US$ 3,45" — pt-BR (vírgula decimal), consistente com o resto da Visão Geral do admin
+// (valores em centavos formatados como moeda brasileira nas outras telas).
+function fmtUsd(value: number): string {
+  return `US$ ${value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
 
 export function computeAlerts(
   input: AlertInput,
-  options: { ramEnabled?: boolean } = {},
+  options: { ramEnabled?: boolean; openrouterLowCreditUsd?: number; aiDailyCostCapUsd?: number } = {},
 ): AlertResult {
   const ramEnabled = options.ramEnabled ?? RAM_ALERT_ENABLED;
+  const openrouterLowCreditUsd = options.openrouterLowCreditUsd ?? OPENROUTER_LOW_CREDIT_USD_DEFAULT;
+  const aiDailyCostCapUsd = options.aiDailyCostCapUsd ?? AI_DAILY_COST_CAP_USD_DEFAULT;
   const itens: AlertItem[] = [];
 
   if (!input.services.postgres) {
@@ -145,6 +176,50 @@ export function computeAlerts(
       titulo: n === 1 ? '1 EPI com CA vencendo em 30 dias' : `${n} EPIs com CA vencendo em 30 dias`,
       detalhe: 'Somando todas as empresas.',
       href: '/admin/empresas',
+    });
+  }
+
+  // ITEM 013 — crédito do OpenRouter. `openrouter === null` (cron nunca rodou) e chave
+  // sem teto (`is_unlimited`) nunca geram alerta — não há o que avisar.
+  const or = input.openrouter;
+  if (or && or.check_succeeded && !or.is_unlimited && or.limit_remaining_usd !== null) {
+    if (or.limit_remaining_usd <= 0) {
+      itens.push({
+        id: 'openrouter_credit_zero',
+        severidade: 'critico',
+        titulo: 'Sem crédito no OpenRouter',
+        detalhe:
+          'Embeddings de documentos, o copiloto de checklist e o provedor alternativo de resposta normativa devem estar falhando agora.',
+        href: '/admin/overview',
+      });
+    } else if (or.limit_remaining_usd < openrouterLowCreditUsd) {
+      itens.push({
+        id: 'openrouter_credit_low',
+        severidade: 'atencao',
+        titulo: `Crédito baixo no OpenRouter (${fmtUsd(or.limit_remaining_usd)} restantes)`,
+        detalhe: 'Adicione crédito antes que zere e interrompa embeddings e outros recursos.',
+        href: '/admin/overview',
+      });
+    }
+  } else if (or && !or.check_succeeded) {
+    itens.push({
+      id: 'openrouter_check_failed',
+      severidade: 'atencao',
+      titulo: 'Não foi possível consultar o crédito do OpenRouter',
+      detalhe: or.error_message ? `Última tentativa: ${or.error_message}` : 'Verifique o log do backend.',
+      href: '/admin/overview',
+    });
+  }
+
+  // ITEM 014 — teto de custo diário de IA (MiniMax estimado + OpenRouter real). Decisão do
+  // fundador (2026-09-28): só alertar, nunca bloquear nenhuma chamada por causa disto.
+  if (input.ai_cost_today_usd > aiDailyCostCapUsd) {
+    itens.push({
+      id: 'ai_daily_cost_high',
+      severidade: 'atencao',
+      titulo: `Gasto de IA hoje: ${fmtUsd(input.ai_cost_today_usd)}`,
+      detalhe: `Acima do teto configurado de ${fmtUsd(aiDailyCostCapUsd)}/dia. Nenhuma IA foi bloqueada — é só um aviso.`,
+      href: '/admin/overview',
     });
   }
 

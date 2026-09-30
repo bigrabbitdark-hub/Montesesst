@@ -1,5 +1,6 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { DatabaseService } from '../database/database.service';
+import { estimateMinimaxCostUsd } from './minimax-cost.util';
 
 export interface TokenUsage {
   prompt_tokens: number;
@@ -40,16 +41,34 @@ export class AiUsageLogService {
   // derrubar a resposta real da IA que já foi obtida com sucesso.
   async log(capability: string, usage: TokenUsage): Promise<void> {
     try {
+      // ITEM 014: custo ESTIMADO (nunca fatura real — a MiniMax não expõe saldo/uso, ver
+      // minimax-cost.util.ts) gravado junto, para o alerta de teto de custo diário.
+      const estimatedCostUsd = estimateMinimaxCostUsd(usage.prompt_tokens, usage.completion_tokens);
       await this.db.withoutTenantContext((client) =>
         client.query(
-          `INSERT INTO minimax_usage_log (capability, prompt_tokens, completion_tokens, total_tokens)
-           VALUES ($1, $2, $3, $4)`,
-          [capability, usage.prompt_tokens, usage.completion_tokens, usage.total_tokens],
+          `INSERT INTO minimax_usage_log (capability, prompt_tokens, completion_tokens, total_tokens, estimated_cost_usd)
+           VALUES ($1, $2, $3, $4, $5)`,
+          [capability, usage.prompt_tokens, usage.completion_tokens, usage.total_tokens, estimatedCostUsd],
         ),
       );
     } catch (err) {
       this.logger.error(`Falha ao registrar uso da MiniMax (capability=${capability})`, (err as Error).stack);
     }
+  }
+
+  // ITEM 014: soma do custo ESTIMADO da MiniMax hoje (America/Sao_Paulo, mesmo fuso já
+  // usado em AdminDashboardService.getFinanceiro) — consumida pelo alerta de teto de
+  // custo diário. Linhas antigas sem estimated_cost_usd (gravadas antes desta migration)
+  // contam como 0, não como erro.
+  async getTodayEstimatedCostUsd(): Promise<number> {
+    return this.db.withoutTenantContext(async (client) => {
+      const result = await client.query<{ total: string | null }>(
+        `SELECT COALESCE(sum(estimated_cost_usd), 0) AS total
+         FROM minimax_usage_log
+         WHERE (created_at AT TIME ZONE 'America/Sao_Paulo')::date = (now() AT TIME ZONE 'America/Sao_Paulo')::date`,
+      );
+      return Number(result.rows[0].total ?? 0);
+    });
   }
 
   async getSummary(): Promise<UsageSummary> {
