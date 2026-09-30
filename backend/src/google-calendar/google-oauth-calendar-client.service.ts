@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
 import { OAuth2Client } from 'google-auth-library';
 import {
   CreateGoogleEventInput,
@@ -15,49 +15,54 @@ const REDIRECT_URI = `${process.env.APP_BASE_URL || 'https://montesesst.com.br'}
 
 @Injectable()
 export class GoogleOAuthCalendarClientService implements GoogleCalendarClient {
-  private readonly client: OAuth2Client;
+  private readonly logger = new Logger(GoogleOAuthCalendarClientService.name);
+  private readonly client: OAuth2Client | null;
 
+  // Três estados (decisão do proprietário, 2026-09-30, que relaxa o fail-fast do F-27):
+  //  - as DUAS ausentes  -> integração DESATIVADA: o backend sobe normalmente e toda chamada
+  //    devolve 503 "integração não configurada" (sinal claro, nunca "invalid_client" opaco).
+  //    A integração nunca esteve configurada em produção; derrubar o backend inteiro por ela
+  //    causou um incidente no release de 2026-09-30.
+  //  - as DUAS presentes -> integração ativa.
+  //  - SÓ UMA presente   -> erro de configuração: continua falhando no boot (o caso que o F-27
+  //    quis pegar: credencial pela metade, que só apareceria como "invalid_client" do Google).
   constructor() {
     const clientId = process.env.GOOGLE_CLIENT_ID;
     const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
 
-    // Falha explícita no boot se as credenciais OAuth do Google estiverem
-    // ausentes — antes deste fix o fallback `'missing-google-client-id'`
-    // mascarava a configuração incorreta: o `OAuth2Client` era instanciado
-    // com string-placeholder e a falha só aparecia na primeira chamada
-    // real ("invalid_client" do Google, sem contexto do motivo).
-    //
-    // Diferente de R2Service/EmailService (que usam fallback-em-dev com a
-    // mesma filosofia), este service NÃO pode tolerar placeholder: o erro
-    // do Google é opaco ("invalid_client") e não distingue "chave errada"
-    // de "chave ausente", então a única forma do operador receber um sinal
-    // útil é falhar na inicialização, antes que qualquer usuário tente
-    // "Conectar Google". Já existe `validateProductionEnv()` para os
-    // segredos sensíveis (F-21); este check complementa como rede-de-seg
-    // redundante, mas é a única proteção para as credenciais OAuth (que
-    // NÃO estão em `env.validator.ts` por decisão de projeto — ver §F-27
-    // do audit).
-    //
-    // Testes e2e do google-calendar setam process.env.GOOGLE_CLIENT_ID/
-    // SECRET no beforeAll (mesmo padrão já usado para GOOGLE_TOKEN_
-    // ENCRYPTION_KEY linhas 25 e 33 dos specs) — sem isso o provider
-    // registrado em google-calendar.module.ts:11 é instanciado pelo
-    // NestJS antes do .overrideProvider(GOOGLE_CALENDAR_CLIENT) ter
-    // efeito.
+    if (!clientId && !clientSecret) {
+      this.client = null;
+      this.logger.warn(
+        'GOOGLE_CLIENT_ID e GOOGLE_CLIENT_SECRET ausentes: integração com o Google Calendar DESATIVADA neste ambiente.',
+      );
+      return;
+    }
     if (!clientId || !clientSecret) {
       throw new Error(
-        'GoogleOAuthCalendarClientService: faltam GOOGLE_CLIENT_ID e/ou ' +
-          'GOOGLE_CLIENT_SECRET no ambiente. Sem elas, o OAuth2Client seria ' +
-          'instanciado com placeholder e a primeira tentativa real de ' +
-          '"Conectar Google" retornaria "invalid_client" sem contexto.',
+        'GoogleOAuthCalendarClientService: configuração incompleta — GOOGLE_CLIENT_ID e GOOGLE_CLIENT_SECRET ' +
+          'devem estar ambas definidas ou ambas ausentes (só uma delas causaria "invalid_client" sem contexto).',
       );
     }
 
     this.client = new OAuth2Client(clientId, clientSecret, REDIRECT_URI);
   }
 
+  isConfigured(): boolean {
+    return this.client !== null;
+  }
+
+  private requireClient(): OAuth2Client {
+    if (!this.client) {
+      throw new ServiceUnavailableException({
+        code: 'GOOGLE_NOT_CONFIGURED',
+        message: 'A integração com o Google Calendar não está configurada neste ambiente.',
+      });
+    }
+    return this.client;
+  }
+
   getAuthUrl(state: string): string {
-    return this.client.generateAuthUrl({
+    return this.requireClient().generateAuthUrl({
       access_type: 'offline',
       prompt: 'consent',
       scope: ['https://www.googleapis.com/auth/calendar.events'],
@@ -66,7 +71,7 @@ export class GoogleOAuthCalendarClientService implements GoogleCalendarClient {
   }
 
   async exchangeCode(code: string): Promise<GoogleTokenSet> {
-    const { tokens } = await this.client.getToken(code);
+    const { tokens } = await this.requireClient().getToken(code);
     if (!tokens.refresh_token || !tokens.access_token || !tokens.expiry_date) {
       throw new Error('Google não devolveu refresh_token/access_token/expiry_date');
     }
@@ -78,6 +83,7 @@ export class GoogleOAuthCalendarClientService implements GoogleCalendarClient {
   }
 
   async getUserEmail(accessToken: string): Promise<string> {
+    this.requireClient();
     const res = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
       headers: { Authorization: `Bearer ${accessToken}` },
     });
@@ -93,9 +99,8 @@ export class GoogleOAuthCalendarClientService implements GoogleCalendarClient {
     // técnico A pode renovar o token de refresh do técnico B se as chamadas
     // se intercalarem).
     //
-    // `!` aqui é seguro porque o constructor já validou GOOGLE_CLIENT_ID e
-    // GOOGLE_CLIENT_SECRET — se estivessem ausentes o NestJS já teria
-    // abortado a inicialização do módulo com a mensagem explícita de cima.
+    // requireClient() garante que as credenciais existem (senão 503); daí o `!`.
+    this.requireClient();
     const client = new OAuth2Client(
       process.env.GOOGLE_CLIENT_ID!,
       process.env.GOOGLE_CLIENT_SECRET!,
@@ -110,6 +115,7 @@ export class GoogleOAuthCalendarClientService implements GoogleCalendarClient {
   }
 
   async insertEvent(accessToken: string, event: CreateGoogleEventInput): Promise<CreateGoogleEventResult> {
+    this.requireClient();
     const body: Record<string, unknown> = {
       summary: event.summary,
       description: event.description,

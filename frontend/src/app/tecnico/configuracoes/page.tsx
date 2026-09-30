@@ -5,6 +5,8 @@ import { useRouter, useSearchParams } from 'next/navigation';
 
 interface GoogleStatus {
   connected: boolean;
+  // false = o ambiente não tem credenciais OAuth do Google (integração desativada).
+  available?: boolean;
   google_email?: string;
 }
 
@@ -65,7 +67,14 @@ function TecnicoConfiguracoesContent() {
     if (res.ok) {
       const { url } = await res.json();
       window.location.href = url;
+      return;
     }
+    // Antes, qualquer falha aqui não mostrava nada ao técnico.
+    setError(
+      res.status === 503
+        ? 'A integração com o Google Calendar ainda não está disponível neste ambiente.'
+        : 'Não foi possível iniciar a conexão com o Google. Tente novamente.',
+    );
   }
 
   async function handleDesconectar() {
@@ -122,6 +131,11 @@ function TecnicoConfiguracoesContent() {
               {disconnecting ? 'Desconectando...' : 'Desconectar'}
             </button>
           </div>
+        ) : status?.available === false ? (
+          <p role="status" className="mt-4 rounded-md bg-brand-50 p-3 text-sm text-brand-900">
+            A integração com o Google Calendar ainda não está disponível. Suas reuniões e visitas continuam funcionando
+            normalmente, apenas sem criar o evento na sua agenda.
+          </p>
         ) : (
           <button
             onClick={handleConectar}

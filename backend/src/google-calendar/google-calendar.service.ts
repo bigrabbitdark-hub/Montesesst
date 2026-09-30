@@ -11,6 +11,8 @@ import {
 
 export interface GoogleAccountStatus {
   connected: boolean;
+  // false quando o ambiente não tem credenciais OAuth do Google: a UI esconde o botão "Conectar".
+  available: boolean;
   google_email?: string;
 }
 
@@ -85,8 +87,9 @@ export class GoogleCalendarService {
       'SELECT google_email FROM technician_google_accounts WHERE technician_user_id = $1',
       [technicianUserId],
     );
-    if (result.rowCount === 0) return { connected: false };
-    return { connected: true, google_email: result.rows[0].google_email };
+    const available = this.google.isConfigured();
+    if (result.rowCount === 0) return { connected: false, available };
+    return { connected: true, available, google_email: result.rows[0].google_email };
   }
 
   async disconnect(client: PoolClient, technicianUserId: string): Promise<void> {

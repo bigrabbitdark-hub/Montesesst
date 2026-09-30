@@ -20,6 +20,8 @@ export interface CreateGoogleEventResult {
 }
 
 export interface GoogleCalendarClient {
+  /** false quando as credenciais OAuth do Google não foram configuradas neste ambiente. */
+  isConfigured(): boolean;
   getAuthUrl(state: string): string;
   exchangeCode(code: string): Promise<GoogleTokenSet>;
   getUserEmail(accessToken: string): Promise<string>;

@@ -14,6 +14,7 @@ describe('Google Calendar — status/conexão/desconexão (e2e)', () => {
   const fakeExchangeCode = jest.fn();
   const fakeGetUserEmail = jest.fn();
   const fakeGoogleClient = {
+    isConfigured: () => true,
     getAuthUrl: jest.fn((state: string) => `https://accounts.google.com/o/oauth2/fake?state=${state}`),
     exchangeCode: fakeExchangeCode,
     getUserEmail: fakeGetUserEmail,
@@ -66,7 +67,7 @@ describe('Google Calendar — status/conexão/desconexão (e2e)', () => {
       .set('Authorization', `Bearer ${technicianToken}`);
 
     expect(res.status).toBe(200);
-    expect(res.body).toEqual({ connected: false });
+    expect(res.body).toEqual({ connected: false, available: true });
   });
 
   it('gera uma URL de autorização', async () => {
@@ -100,7 +101,7 @@ describe('Google Calendar — status/conexão/desconexão (e2e)', () => {
     const statusRes = await request(app.getHttpServer())
       .get('/google-calendar/status')
       .set('Authorization', `Bearer ${technicianToken}`);
-    expect(statusRes.body).toEqual({ connected: true, google_email: 'tecnico@gmail.com' });
+    expect(statusRes.body).toEqual({ connected: true, available: true, google_email: 'tecnico@gmail.com' });
   });
 
   it('desconectar remove a conta', async () => {
@@ -112,7 +113,7 @@ describe('Google Calendar — status/conexão/desconexão (e2e)', () => {
     const statusRes = await request(app.getHttpServer())
       .get('/google-calendar/status')
       .set('Authorization', `Bearer ${technicianToken}`);
-    expect(statusRes.body).toEqual({ connected: false });
+    expect(statusRes.body).toEqual({ connected: false, available: true });
   });
 
   it('callback com state inválido não conecta nada', async () => {
@@ -124,6 +125,6 @@ describe('Google Calendar — status/conexão/desconexão (e2e)', () => {
     const statusRes = await request(app.getHttpServer())
       .get('/google-calendar/status')
       .set('Authorization', `Bearer ${technicianToken}`);
-    expect(statusRes.body).toEqual({ connected: false });
+    expect(statusRes.body).toEqual({ connected: false, available: true });
   });
 });

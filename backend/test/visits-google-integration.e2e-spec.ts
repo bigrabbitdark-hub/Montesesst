@@ -15,6 +15,7 @@ describe('Confirmar visita cria evento no Google Calendar (e2e)', () => {
 
   const fakeInsertEvent = jest.fn();
   const fakeGoogleClient = {
+    isConfigured: () => true,
     getAuthUrl: jest.fn((state: string) => `https://accounts.google.com/fake?state=${state}`),
     exchangeCode: jest.fn().mockResolvedValue({
       refreshToken: 'refresh-fake',
