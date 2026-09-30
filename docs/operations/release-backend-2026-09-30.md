@@ -313,3 +313,14 @@ navegador pelo domínio verdadeiro com empresa de teste (removida depois; 0 empr
 lateral cobre) e as contagens "ações concluídas" e "inspeções pendentes".
 Aprendizado de teste: o backend só aceita CORS de origens da lista permitida; testes de navegador devem usar o domínio
 real (`--host-resolver-rules`), não `https://localhost` (que dá 500 "Origin não permitida", comportamento correto).
+
+## 10. Redesign do site institucional (2026-09-30 22:31 UTC, frontend) — ✅ FEITO
+
+Home redesenhada e nova página `/quem-somos` (commit `9bccbfb`); paleta `brand-*` atualizada globalmente; rodapé com
+ícones das 5 redes (desativados até receber as URLs em `frontend/src/lib/social.ts`); equipe com 3 vagas em
+`frontend/src/lib/team.ts`. Deploy só do frontend, sem override, construído de árvore sem alterações no frontend;
+rollback: `docker tag montese-frontend:pre-redesign-institucional montese-frontend:latest` + `docker compose up -d --no-deps frontend`.
+Verificação (VERIFICADO): typecheck, 52 testes e `next build` passaram; container na imagem nova
+(`sha256:1594ba24…`); pelo nginx, 200 em `/`, `/quem-somos`, `/planos`, `/login`, `/cadastro`, `/dashboard-v2` e `/noticias`;
+backend, Postgres e Redis não foram tocados. NÃO VERIFICADO: navegação logada em empresa/técnico/admin após a troca
+da paleta; contraste medido; o `/health` do backend (porta 4000 não publicada no host).
