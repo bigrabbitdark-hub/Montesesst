@@ -20,7 +20,7 @@ interface TenantBranding {
 const GROUPS: NavGroup[] = [
   {
     label: 'Visão Geral',
-    links: [{ href: '/empresa/dashboard', label: 'Início', emoji: '🏠' }],
+    links: [{ href: '/dashboard-v2', label: 'Início', emoji: '🏠' }],
   },
   {
     label: 'Segurança',

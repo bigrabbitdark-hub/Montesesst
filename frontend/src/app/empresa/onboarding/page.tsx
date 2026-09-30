@@ -146,7 +146,7 @@ export default function OnboardingPage() {
               Voltar
             </button>
             <button
-              onClick={() => router.push('/empresa/dashboard')}
+              onClick={() => router.push('/dashboard-v2')}
               disabled={!matrizComplete}
               className="rounded-md bg-brand-500 px-6 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50"
             >

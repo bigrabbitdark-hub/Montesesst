@@ -13,6 +13,7 @@ import { VencimentosCard } from '@/components/dashboard/VencimentosCard';
 import { ProximosEventosCard } from '@/components/dashboard/ProximosEventosCard';
 import { EmBreveCard } from '@/components/dashboard/EmBreveCard';
 import { ApoioTecnicoCard } from '@/components/dashboard/ApoioTecnicoCard';
+import { SubscriptionNotice } from '@/components/SubscriptionNotice';
 import { Skeleton } from '@/components/ui/Skeleton';
 import type { ApiOverview, ApiSummary } from '@/lib/dashboard/api-types';
 import { hojeISO, nivelScore, paraItensLista, paraVencimentos, seloDoStatus } from '@/lib/dashboard/real';
@@ -106,6 +107,9 @@ export default function DashboardV2Page() {
           onMenuClick={() => setMenuAberto((v) => !v)}
         />
         <main className="flex-1 px-4 py-6 sm:px-8">
+          <div className="-mx-4 -mt-4 mb-2 sm:-mx-4">
+            <SubscriptionNotice />
+          </div>
           <DashboardBanner titulo="Painel de Controle SST" subtitulo={`${empresaNome} · CNPJ ${tenant?.cnpj ?? '—'}`} />
 
           {estado === 'carregando' && (

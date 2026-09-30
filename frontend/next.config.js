@@ -9,6 +9,11 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
+  // O dashboard antigo da empresa foi substituído pelo /dashboard-v2. `permanent: false` (307)
+  // para o navegador não cachear o destino: reverter é só remover esta regra.
+  async redirects() {
+    return [{ source: '/empresa/dashboard', destination: '/dashboard-v2', permanent: false }];
+  },
 };
 
 module.exports = nextConfig;

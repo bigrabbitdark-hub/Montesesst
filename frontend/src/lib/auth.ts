@@ -33,7 +33,7 @@ export function logout(): void {
 // Página inicial de cada papel (mesmo mapeamento do login). Usado para mandar
 // quem está logado com o papel errado de volta ao lugar dele.
 export function homeFor(role: SessionUser['role']): string {
-  if (role === 'empresa') return '/empresa/dashboard';
+  if (role === 'empresa') return '/dashboard-v2';
   if (role === 'tecnico' || role === 'parceiro') return '/tecnico/empresas';
   if (role === 'admin') return '/admin/overview';
   return '/';
