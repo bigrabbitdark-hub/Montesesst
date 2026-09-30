@@ -31,7 +31,7 @@ export function HomeHeroCTA() {
     <div className="flex flex-wrap gap-3.5">
       <Link
         href="/cadastro"
-        className="rounded-xl bg-brand-500 px-7 py-4 text-[15px] font-semibold text-white shadow-lg shadow-black/20 ring-1 ring-white/15 transition-colors hover:bg-brand-400"
+        className="rounded-xl bg-brand-500 px-7 py-4 text-[15px] font-semibold text-white shadow-lg shadow-black/20 ring-1 ring-white/15 transition-colors hover:bg-brand-700"
       >
         Comece grátis
       </Link>

@@ -31,7 +31,7 @@ export function SocialLinks() {
               target="_blank"
               rel="noopener noreferrer"
               aria-label={item.label}
-              className={`${BASE} transition-colors hover:border-brand-400 hover:bg-brand-400 hover:text-white`}
+              className={`${BASE} transition-colors hover:border-brand-500 hover:bg-brand-500 hover:text-white`}
             >
               {ICONS[item.network]}
             </a>

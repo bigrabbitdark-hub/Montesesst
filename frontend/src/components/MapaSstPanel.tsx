@@ -362,7 +362,7 @@ export function MapaSstPanel() {
                         setRenameValue(p.name);
                         setRenameError('');
                       }}
-                      className="text-xs text-brand-400 hover:text-brand-700"
+                      className="text-xs text-brand-500 hover:text-brand-700"
                       aria-label="Renomear cargo"
                     >
                       ✏️

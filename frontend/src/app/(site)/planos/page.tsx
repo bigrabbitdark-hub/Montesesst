@@ -230,7 +230,7 @@ export default function PlanosPage() {
                 )}
 
                 {plan.employee_limit && (
-                  <p className="mt-4 text-[11.5px] text-brand-400">Até {plan.employee_limit} funcionários</p>
+                  <p className={`mt-4 text-[11.5px] ${isEnterprise ? 'text-brand-300' : 'text-brand-500'}`}>Até {plan.employee_limit} funcionários</p>
                 )}
 
                 <div className="flex-1" />
