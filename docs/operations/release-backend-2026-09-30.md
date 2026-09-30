@@ -294,3 +294,22 @@ Ficaram **fora de commit** de propósito: `frontend/src/components/PenteFinoPane
 teste está vermelho). A imagem do backend deve ser construída com `ops/build-with-commit.sh`, que avisa se
 a árvore tem mudanças não commitadas — como o `PenteFinoPanel` é só frontend, não afeta o backend.
 Varredura: nenhum arquivo `.env*` real entrou (só `.env.example`).
+
+**Atualização posterior — Auditoria Montese frontend (2026-09-30 20:51 UTC, VERIFICADO):** a pendência acima foi resolvida. O teste do painel passou (3/3), a suíte frontend passou (50/50), o typecheck e `npm run build` passaram. O commit local `c5e1177` (`feat(frontend): add auditoria montese`) contém somente os dez arquivos frontend da feature; **não houve push**. A imagem `montese-frontend:latest` (`sha256:9bfc3c362d1366d0bc5fb7c53dfbefb455f01b80cef498ecd755518ee5b03109`) foi construída e aplicada com `docker compose up -d --no-deps frontend`; container ativo desde 20:51:12 UTC. O smoke test HTTPS pelo nginx local retornou `200` em `/empresa/assistente` e `/empresa/pente-fino`. O backend permaneceu na imagem `sha256:949c5832d61989ffcef5a2c7cf94f6d0b0556c057fee2e374334e3630eb1c197`, health `ok`, commit `0b2fe824212ca218ddac745240f671c7e5d5766d`, que já contém `audit_findings`. Nenhum backend, migration, banco ou Redis foi alterado neste deploy. O e2e com fixtures de banco não foi executado: `TEST_SUPERUSER_DATABASE_URL` não está configurada, e não se apontou o teste para o banco `montese` da aplicação.
+
+## 9. Troca do dashboard da empresa (2026-09-30 21:02 UTC, frontend) — ✅ FEITA
+
+`/empresa/dashboard` agora redireciona (307, `permanent:false`, reversível) para `/dashboard-v2`; `homeFor('empresa')`,
+o item "Início" do menu antigo e o fim do onboarding apontam direto para o destino. A página antiga foi removida
+(histórico no git, commit anterior a `b74820d`). O painel novo ganhou o que o layout antigo entregava e ele não tinha:
+**aviso de assinatura inativa** (com o link "Reativar meu plano") e o **botão do WhatsApp**.
+Deploy só do frontend, construído de árvore limpa (commit `b74820d`); rollback: `docker tag
+montese-frontend:pre-dashboard-swap montese-frontend:latest` + `docker compose up -d --no-deps frontend`
+(ou remover a regra `redirects()` do `next.config.js`).
+Verificação (VERIFICADO): nginx `/empresa/dashboard` 307 → `/dashboard-v2`, 200 nas demais páginas; login real num
+navegador pelo domínio verdadeiro com empresa de teste (removida depois; 0 empresas novas): cai no onboarding (existente),
+`/empresa/dashboard` redireciona, o painel mostra selo, "Sem dados" no Score, "Em breve" (NR/eSocial), WhatsApp,
+0 erros de JS, 0 respostas 5xx. **O que o painel antigo tinha e o novo não tem:** os blocos "Acesso rápido" (o menu
+lateral cobre) e as contagens "ações concluídas" e "inspeções pendentes".
+Aprendizado de teste: o backend só aceita CORS de origens da lista permitida; testes de navegador devem usar o domínio
+real (`--host-resolver-rules`), não `https://localhost` (que dá 500 "Origin não permitida", comportamento correto).
