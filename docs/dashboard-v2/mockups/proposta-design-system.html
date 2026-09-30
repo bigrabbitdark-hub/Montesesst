@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><title>Proposta — Dashboard Montese SST</title>
+<style>
+:root{--sidebar-bg:#0F172A;--sidebar-hover:#1E293B;--primary:#10B981;--primary-dark:#059669;--primary-light:#D1FAE5;
+--success:#22C55E;--warning:#F59E0B;--danger:#EF4444;--info:#3B82F6;--high:#F97316;
+--bg:#F8FAFC;--card:#fff;--border:#E2E8F0;--t1:#0F172A;--t2:#475569;--t3:#94A3B8;
+--shadow:0 4px 12px rgba(15,23,42,.08)}
+*{box-sizing:border-box;margin:0}
+body{font-family:Inter,"Segoe UI",Roboto,Arial,sans-serif;background:var(--bg);color:var(--t1);font-size:14px;display:flex;min-height:100vh}
+aside{width:280px;background:var(--sidebar-bg);padding:20px 16px;display:flex;flex-direction:column;gap:4px;flex:none}
+.logo{background:#fff;border-radius:12px;height:72px;display:flex;align-items:center;justify-content:center;margin-bottom:16px}
+.logo img{height:46px}
+aside a{display:flex;align-items:center;gap:12px;height:42px;padding:0 14px;border-radius:12px;color:#CBD5E1;font-weight:500;font-size:15px;text-decoration:none}
+aside a.on{background:var(--primary);color:#fff}
+aside a i{width:18px;height:18px;border:2px solid currentColor;border-radius:5px;opacity:.85}
+.side-ia{margin-top:auto;background:var(--sidebar-hover);border-radius:18px;padding:16px;color:#E2E8F0;font-size:13px;line-height:1.45}
+.side-ia b{color:var(--primary);display:block;margin-bottom:4px}
+.main{flex:1;min-width:0}
+header{height:72px;background:#fff;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 32px}
+.search{width:380px;height:42px;border:1px solid var(--border);border-radius:12px;background:var(--bg);display:flex;align-items:center;padding:0 16px;color:var(--t3)}
+.hr{display:flex;align-items:center;gap:16px}
+.pill{background:var(--primary-light);color:var(--primary-dark);font-weight:600;padding:9px 16px;border-radius:12px;font-size:14px}
+.bell{position:relative;width:42px;height:42px;border:1px solid var(--border);border-radius:12px;display:flex;align-items:center;justify-content:center}
+.bell s{position:absolute;top:8px;right:9px;width:9px;height:9px;background:var(--danger);border-radius:50%;border:2px solid #fff}
+.avatar{width:42px;height:42px;border-radius:50%;background:var(--sidebar-bg);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700}
+.who small{display:block;color:var(--t2);font-size:12px}
+.wrap{padding:24px 32px}
+h1{font-size:32px;font-weight:700;letter-spacing:-.5px}
+.sub{color:var(--t2);margin:4px 0 20px;display:flex;gap:12px;align-items:center}
+.ok{display:inline-flex;align-items:center;gap:8px;background:#FEF3C7;color:#92400E;font-weight:600;padding:6px 14px;border-radius:99px}
+.ok:before{content:"";width:8px;height:8px;border-radius:50%;background:var(--warning)}
+.grid{display:grid;gap:20px}
+.r1{grid-template-columns:repeat(4,1fr)}
+.r2,.r3{grid-template-columns:repeat(3,1fr);margin-top:20px}
+.card{background:var(--card);border-radius:18px;padding:24px;box-shadow:var(--shadow)}
+.card h3{font-size:16px;font-weight:600;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center}
+.card h3 span{font-size:12px;color:var(--t3);font-weight:500}
+.kpi .l{color:var(--t2);font-weight:500}
+.kpi .v{font-size:40px;font-weight:700;margin:6px 0 4px;letter-spacing:-1px}
+.kpi .d{font-size:13px;color:var(--primary-dark);font-weight:600}
+.kpi .d.n{color:var(--t2);font-weight:500}
+.score{display:flex;align-items:center;gap:18px}
+.score .lbl{font-size:20px;font-weight:700;color:var(--primary-dark)}
+.score .l{color:var(--t2);font-weight:500;margin-bottom:6px}
+.nr{display:grid;grid-template-columns:52px 1fr 40px;align-items:center;gap:10px;margin:9px 0;font-size:13px}
+.nr b{font-weight:600}.nr em{font-style:normal;color:var(--t2);text-align:right}
+.bar{height:10px;background:#EEF2F7;border-radius:6px;overflow:hidden}.bar i{display:block;height:100%;border-radius:6px}
+.cx{display:flex;gap:12px;padding:11px 0;border-bottom:1px solid var(--border)}
+.cx:last-child{border:0}
+.cx .k{font-weight:600;white-space:nowrap}
+.cx p{color:var(--t2);font-size:13px;margin-top:2px}
+.tag{font-size:11px;font-weight:700;padding:3px 9px;border-radius:99px;color:#fff;white-space:nowrap;align-self:flex-start}
+.pa{padding:11px 0;border-bottom:1px solid var(--border)}
+.pa:last-child{border:0}
+.pa b{display:block;font-weight:600;font-size:14px}
+.pa p{color:var(--t2);font-size:12.5px;margin-top:3px;display:flex;justify-content:space-between}
+.es{display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border)}
+.es:last-child{border:0}
+.es b{font-weight:600}.es span{color:var(--t2)}
+.es u{text-decoration:none;font-weight:700}
+.al{display:flex;gap:12px;align-items:center;padding:12px 14px;border-radius:12px;margin-bottom:10px;font-weight:500;font-size:14px}
+.al:before{content:"";width:8px;height:8px;border-radius:50%;flex:none}
+.w{background:#FEF3C7;color:#92400E}.w:before{background:var(--warning)}
+.d2{background:#FEE2E2;color:#991B1B}.d2:before{background:var(--danger)}
+.i{background:#DBEAFE;color:#1E40AF}.i:before{background:var(--info)}
+.ia{margin-top:8px;background:var(--sidebar-bg);color:#E2E8F0;border-radius:12px;padding:14px;font-size:13px;line-height:1.5}
+.ia b{color:var(--primary)}
+.ia div{margin-top:10px;display:flex;gap:8px}
+.ia span{background:var(--sidebar-hover);padding:5px 11px;border-radius:8px;font-size:12px;font-weight:600}
+.ia span.p{background:var(--primary);color:#fff}
+.mock{padding:0 32px 16px;font-size:11px;color:var(--t3);text-align:right}
+</style></head><body>
+<aside>
+ <div class="logo"><img src="../../../frontend/public/dashboard-v2/logo-montese-horizontal.png" alt="Montese SST"></div>
+ <a class="on"><i></i>Dashboard</a><a><i></i>Empresas</a><a><i></i>Funcionários</a><a><i></i>Documentos</a>
+ <a><i></i>Auditoria IA</a><a><i></i>eSocial</a><a><i></i>Relatórios</a><a><i></i>Financeiro</a>
+ <a><i></i>Universidade</a><a><i></i>Configurações</a>
+ <div class="side-ia"><b>IA SST ativa</b>Última análise hoje, 08:45. 12 recomendações disponíveis.</div>
+</aside>
+<div class="main">
+<header>
+ <div class="search">Pesquisar no sistema…</div>
+ <div class="hr"><div class="pill">✦ IA SST</div><div class="bell">🔔<s></s></div><div class="avatar">MS</div><div class="who"><b>Usuário</b><small>Empresa</small></div></div>
+</header>
+<div class="wrap">
+ <h1>Painel de Controle SST</h1>
+ <div class="sub">Metalúrgica Santos LTDA · CNPJ 12.345.678/0001-99 <span class="ok">Conforme, com ressalvas — 1 divergência crítica</span> · Atualizado 30/09/2026 09:00</div>
+
+ <div class="grid r1">
+  <div class="card kpi"><div class="l">Empresas</div><div class="v">1</div><div class="d n">3 filiais</div></div>
+  <div class="card kpi"><div class="l">Funcionários</div><div class="v">128</div><div class="d n">3 setores</div></div>
+  <div class="card kpi"><div class="l">Documentos</div><div class="v">42</div><div class="d n">3 vencimentos próximos</div></div>
+  <div class="card"><div class="score">
+    <svg width="96" height="96" viewBox="0 0 96 96"><circle cx="48" cy="48" r="40" fill="none" stroke="#EEF2F7" stroke-width="11"/>
+    <circle cx="48" cy="48" r="40" fill="none" stroke="#22C55E" stroke-width="11" stroke-linecap="round" stroke-dasharray="231.2 251.3" transform="rotate(-90 48 48)"/>
+    <text x="48" y="55" text-anchor="middle" font-size="24" font-weight="700" fill="#0F172A" font-family="Inter,Arial">92%</text></svg>
+    <div><div class="l">Score SST</div><div class="lbl">Excelente</div></div></div></div>
+ </div>
+
+ <div class="grid r2">
+  <div class="card"><h3>Conformidade por NR <span>meta 90%</span></h3>
+   <div id="nr"></div></div>
+  <div class="card"><h3>Auditoria Inteligente <span>score 89 · 7 não conformidades</span></h3>
+   <div class="cx"><div><div class="k">PGR × LTCAT</div><p>Ruído divergente entre documentos</p></div><span class="tag" style="background:#EF4444;margin-left:auto">Crítica</span></div>
+   <div class="cx"><div><div class="k">PGR × PCMSO</div><p>Risco químico sem exame correspondente</p></div><span class="tag" style="background:#F97316;margin-left:auto">Alta</span></div>
+   <div class="cx"><div><div class="k">PGR × S2240</div><p>Riscos não enviados ao eSocial</p></div><span class="tag" style="background:#F59E0B;margin-left:auto">Média</span></div>
+   <div class="cx"><div><div class="k">PPP × LTCAT</div><p>Sem inconsistências</p></div><span class="tag" style="background:#10B981;margin-left:auto">Baixa</span></div>
+  </div>
+  <div class="card"><h3>Pendências <span>plano de ação</span></h3>
+   <div class="pa"><b>Revisar avaliação quantitativa de ruído</b><p><span>Engenharia SST · até 15/10/2026</span><span class="tag" style="background:#EF4444">Crítica</span></p></div>
+   <div class="pa"><b>Atualizar PCMSO para risco químico</b><p><span>Médico do Trabalho · até 30/10/2026</span><span class="tag" style="background:#F97316">Alta</span></p></div>
+   <div class="pa"><b>Reenviar evento S-2240</b><p><span>RH · até 05/10/2026</span><span class="tag" style="background:#F59E0B">Média</span></p></div>
+  </div>
+ </div>
+
+ <div class="grid r3">
+  <div class="card"><h3>eSocial <span>conformidade 83%</span></h3>
+   <div class="es"><b>S-2210 · Acidentes</b><span>12 enviados · <u style="color:#059669">0 pendentes</u></span></div>
+   <div class="es"><b>S-2220 · Saúde</b><span>126 enviados · <u style="color:#F59E0B">2 pendentes</u></span></div>
+   <div class="es"><b>S-2240 · Riscos</b><span>128 enviados · <u style="color:#EF4444">1 pendente</u></span></div></div>
+  <div class="card"><h3>Vencimentos <span>próximos 60 dias</span></h3>
+   <div class="al w">LTCAT vence em 56 dias — 25/11/2026</div>
+   <div class="es"><b>PGR</b><span>15/02/2027</span></div>
+   <div class="es"><b>PCMSO</b><span>10/01/2027</span></div>
+   <div class="es"><b>PPP</b><span>20/03/2027</span></div></div>
+  <div class="card"><h3>Eventos recentes</h3>
+   <div class="al d2">1 evento S-2240 pendente</div>
+   <div class="al i">Inspeção programada para amanhã</div>
+   <div class="ia"><b>IA SST:</b> Foram encontradas 7 inconsistências. Recomenda-se revisar o LTCAT e atualizar o envio do S-2240.
+    <div><span class="p">Gerar PDF</span><span>Abrir Auditoria</span></div></div></div>
+ </div>
+</div>
+<div class="mock">Maquete de proposta — dados fictícios (dashboard.sample.json)</div></div>
+<script>
+const nr=[["NR-01",95],["NR-06",88],["NR-07",90],["NR-09",82],["NR-10",91],["NR-12",76],["NR-17",87],["NR-35",93]];
+document.getElementById("nr").innerHTML=nr.map(([n,v])=>{const c=v>=90?"#22C55E":v>=80?"#F59E0B":v>=60?"#F97316":"#EF4444";
+return `<div class="nr"><b>${n}</b><div class="bar"><i style="width:${v}%;background:${c}"></i></div><em>${v}%</em></div>`}).join("");
+</script></body></html>

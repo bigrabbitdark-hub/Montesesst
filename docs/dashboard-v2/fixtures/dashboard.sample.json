@@ -1,0 +1,89 @@
+{
+  "tenant": {
+    "id": "montese-demo-001",
+    "empresa": "Metalúrgica Santos LTDA",
+    "cnpj": "12.345.678/0001-99",
+    "segmento": "Metalurgia",
+    "plano": "Professional",
+    "status": "Ativa"
+  },
+  "dashboard": {
+    "dataAtualizacao": "2026-09-30T09:00:00-03:00",
+    "scoreSST": 92,
+    "nivelConformidade": "Excelente",
+    "empresas": 1,
+    "filiais": 3,
+    "funcionarios": 128,
+    "documentos": 42,
+    "pendencias": 4,
+    "vencimentosProximos": 3
+  },
+  "documentos": {
+    "pgr": { "status": "Conforme", "conformidade": 95, "validade": "2027-02-15", "responsavel": "Eng. Segurança" },
+    "pcmso": { "status": "Conforme", "conformidade": 90, "validade": "2027-01-10", "responsavel": "Médico do Trabalho" },
+    "ltcat": { "status": "Atenção", "conformidade": 87, "validade": "2026-11-25", "responsavel": "Eng. Segurança" },
+    "ppp": { "status": "Conforme", "conformidade": 93, "validade": "2027-03-20", "responsavel": "RH" },
+    "inventarioRiscos": { "status": "Conforme", "conformidade": 91 },
+    "planoAcao": { "status": "Atenção", "conformidade": 85 }
+  },
+  "esocial": {
+    "status": "Atenção",
+    "conformidade": 83,
+    "s2210": { "pendentes": 0, "enviados": 12 },
+    "s2220": { "pendentes": 2, "enviados": 126 },
+    "s2240": { "pendentes": 1, "enviados": 128 }
+  },
+  "auditoriaInteligente": {
+    "score": 89,
+    "divergencias": 14,
+    "naoConformidades": 7,
+    "criticas": 3,
+    "cruzamentos": [
+      { "origem": "PGR", "destino": "LTCAT", "status": "Divergência", "criticidade": "Crítica", "descricao": "Ruído divergente entre documentos" },
+      { "origem": "PGR", "destino": "PCMSO", "status": "Divergência", "criticidade": "Alta", "descricao": "Risco químico sem exame correspondente" },
+      { "origem": "PPP", "destino": "LTCAT", "status": "Conforme", "criticidade": "Baixa", "descricao": "Sem inconsistências" },
+      { "origem": "PGR", "destino": "S2240", "status": "Divergência", "criticidade": "Média", "descricao": "Riscos não enviados ao eSocial" }
+    ]
+  },
+  "riscoPorNR": [
+    { "nr": "NR-01", "conformidade": 95 },
+    { "nr": "NR-06", "conformidade": 88 },
+    { "nr": "NR-07", "conformidade": 90 },
+    { "nr": "NR-09", "conformidade": 82 },
+    { "nr": "NR-10", "conformidade": 91 },
+    { "nr": "NR-12", "conformidade": 76 },
+    { "nr": "NR-17", "conformidade": 87 },
+    { "nr": "NR-35", "conformidade": 93 }
+  ],
+  "setores": [
+    { "nome": "Produção", "funcionarios": 68, "score": 88, "riscos": ["Ruído", "Fumos Metálicos", "Calor"] },
+    { "nome": "Manutenção", "funcionarios": 22, "score": 91, "riscos": ["Eletricidade", "Altura"] },
+    { "nome": "Administrativo", "funcionarios": 38, "score": 98, "riscos": ["Ergonômico"] }
+  ],
+  "planosAcao": [
+    { "id": "PA-001", "titulo": "Revisar avaliação quantitativa de ruído", "prioridade": "Crítica", "responsavel": "Engenharia SST", "prazo": "2026-10-15", "status": "Em andamento" },
+    { "id": "PA-002", "titulo": "Atualizar PCMSO para risco químico", "prioridade": "Alta", "responsavel": "Médico do Trabalho", "prazo": "2026-10-30", "status": "Pendente" },
+    { "id": "PA-003", "titulo": "Reenviar evento S-2240", "prioridade": "Média", "responsavel": "RH", "prazo": "2026-10-05", "status": "Pendente" }
+  ],
+  "indicadores": {
+    "diasSemAcidente": 248,
+    "treinamentosVigentes": 96,
+    "treinamentosVencidos": 4,
+    "episControlados": 523,
+    "episVencendo": 18,
+    "inspecoesMes": 12,
+    "inspecoesPendentes": 2
+  },
+  "iaSST": {
+    "status": "Ativa",
+    "alertas": 7,
+    "recomendacoes": 12,
+    "ultimaAnalise": "2026-09-30T08:45:00-03:00",
+    "mensagem": "Foram encontradas 7 inconsistências. Recomenda-se revisar o LTCAT e atualizar o envio do S-2240."
+  },
+  "notificacoes": [
+    { "tipo": "warning", "titulo": "LTCAT vence em 56 dias" },
+    { "tipo": "danger", "titulo": "1 evento S-2240 pendente" },
+    { "tipo": "info", "titulo": "Inspeção programada para amanhã" }
+  ]
+}
