@@ -216,6 +216,20 @@ describe('POST /pente-fino/run (e2e)', () => {
         status: 'risco_sem_exame',
       }),
     ]);
+    expect(res.body.audit_findings).toEqual([
+      expect.objectContaining({
+        type: 'function_exam_gap',
+        status: 'to_confirm',
+        evidence: [
+          expect.objectContaining({
+            document_id: pgrDocId,
+            title: 'PGR Teste',
+            source_excerpt: 'trecho pgr',
+            page: null,
+          }),
+        ],
+      }),
+    ]);
     expect(res.body.warnings).toEqual([]);
 
     // extracted_at sai do MAX(created_at) das linhas de extração daquele

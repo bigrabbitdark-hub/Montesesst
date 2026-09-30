@@ -33,6 +33,7 @@ export interface LipAgentFinding {
   measured_value_raw: string | null;
   insalubre: boolean | null;
   conclusion_excerpt: string | null;
+  source_excerpt: string;
   exam_status: 'exame_ausente' | 'ok' | 'informativo';
 }
 
@@ -57,7 +58,7 @@ export interface LipAgentFinding {
 // pcmsoExamDescriptions. Esse segundo sinal cobre exatamente esse caso,
 // varrendo o texto bruto do documento independente de função.
 export function buildLipAgentFindings(
-  lipAgents: { agentNameRaw: string; agentCategory: string; measuredValueRaw: string | null; insalubre: boolean | null; conclusionExcerpt: string | null }[],
+  lipAgents: { agentNameRaw: string; agentCategory: string; measuredValueRaw: string | null; insalubre: boolean | null; conclusionExcerpt: string | null; sourceExcerpt: string }[],
   pcmsoExamDescriptions: string[],
   hasAudiometriaNoTextoBruto = false,
 ): LipAgentFinding[] {
@@ -76,6 +77,7 @@ export function buildLipAgentFindings(
       measured_value_raw: agent.measuredValueRaw,
       insalubre: agent.insalubre,
       conclusion_excerpt: agent.conclusionExcerpt,
+      source_excerpt: agent.sourceExcerpt,
       exam_status,
     };
   });
@@ -86,6 +88,24 @@ export interface AgentCoverageFinding {
   presence: 'ambos' | 'so_lip' | 'so_ltcat';
   agent_names_lip: string[];
   agent_names_ltcat: string[];
+}
+
+export interface AuditEvidence {
+  document_id: string;
+  title: string;
+  source_excerpt: string;
+  page: null;
+}
+
+export interface AuditFinding {
+  id: string;
+  type: 'function_exam_gap' | 'agent_coverage_gap' | 'quantitative_divergence';
+  status: 'inconsistency' | 'insufficient_evidence' | 'to_confirm';
+  confidence: 'high' | 'medium' | 'low';
+  summary: string;
+  evidence: AuditEvidence[];
+  limitations: string[];
+  recommended_verification: string;
 }
 
 // Função pura — sem I/O. Cruza LIP e LTCAT só por COBERTURA (a categoria
@@ -138,7 +158,144 @@ export interface PenteFinoReport {
   functions: FunctionReportItem[];
   lip_agents: LipAgentFinding[];
   agent_coverage: AgentCoverageFinding[];
+  audit_findings: AuditFinding[];
   warnings: string[];
+}
+
+interface ParsedMeasurement {
+  value: number;
+  unit: string;
+}
+
+function parseMeasurement(value: string | null): ParsedMeasurement | null {
+  if (!value) return null;
+  const match = value.trim().match(/^([+-]?\d+(?:[.,]\d+)?)\s*([^\d.,+\-].*)$/);
+  if (!match) return null;
+  const numericValue = Number(match[1].replace(',', '.'));
+  const unit = normalizePositionText(match[2]).replace(/[\s()]/g, '');
+  if (!Number.isFinite(numericValue) || !unit) return null;
+  return { value: numericValue, unit };
+}
+
+function auditEvidence(document: PenteFinoDocumentRef, sourceExcerpt: string): AuditEvidence {
+  return {
+    document_id: document.id,
+    title: document.title,
+    source_excerpt: sourceExcerpt,
+    page: null,
+  };
+}
+
+export function buildMeasurementDivergenceFindings(
+  lipRows: LipAgentRow[],
+  ltcatRows: LipAgentRow[],
+  lipDocument: PenteFinoDocumentRef,
+  ltcatDocument: PenteFinoDocumentRef,
+): AuditFinding[] {
+  const lipByAgent = new Map<string, LipAgentRow[]>();
+  const ltcatByAgent = new Map<string, LipAgentRow[]>();
+  for (const row of lipRows) {
+    const key = normalizePositionText(row.agentNameRaw);
+    if (!key) continue;
+    lipByAgent.set(key, [...(lipByAgent.get(key) ?? []), row]);
+  }
+  for (const row of ltcatRows) {
+    const key = normalizePositionText(row.agentNameRaw);
+    if (!key) continue;
+    ltcatByAgent.set(key, [...(ltcatByAgent.get(key) ?? []), row]);
+  }
+
+  const findings: AuditFinding[] = [];
+  for (const [agentKey, lipMatches] of lipByAgent) {
+    const ltcatMatches = ltcatByAgent.get(agentKey) ?? [];
+    if (lipMatches.length !== 1 || ltcatMatches.length !== 1) continue;
+    const lip = lipMatches[0];
+    const ltcat = ltcatMatches[0];
+    if (!lip.sourceExcerpt || !ltcat.sourceExcerpt) continue;
+    const lipMeasurement = parseMeasurement(lip.measuredValueRaw);
+    const ltcatMeasurement = parseMeasurement(ltcat.measuredValueRaw);
+    if (!lipMeasurement || !ltcatMeasurement || lipMeasurement.unit !== ltcatMeasurement.unit) continue;
+    if (lipMeasurement.value === ltcatMeasurement.value) continue;
+
+    findings.push({
+      id: `quantitative_divergence:${agentKey.replace(/\s+/g, '-')}`,
+      type: 'quantitative_divergence',
+      status: 'inconsistency',
+      confidence: 'high',
+      summary: `${lip.agentNameRaw}: ${lip.measuredValueRaw} no LIP e ${ltcat.measuredValueRaw} no LTCAT; esclarecer a diferença entre os valores declarados.`,
+      evidence: [auditEvidence(lipDocument, lip.sourceExcerpt), auditEvidence(ltcatDocument, ltcat.sourceExcerpt)],
+      limitations: ['A diferença não determina, por si só, erro técnico ou não conformidade.', 'Método, período, população e condições de medição não são comparados por esta extração.'],
+      recommended_verification: 'Conferir os relatórios de medição, métodos, períodos, população avaliada e memoriais de cálculo dos dois documentos.',
+    });
+  }
+  return findings;
+}
+
+function buildAuditFindings(
+  functions: FunctionReportItem[],
+  agentCoverage: AgentCoverageFinding[],
+  pgrDocument: PenteFinoDocumentRef | null,
+  pcmsoDocument: PenteFinoDocumentRef | null,
+  lipDocument: PenteFinoDocumentRef | null,
+  ltcatDocument: PenteFinoDocumentRef | null,
+  lipRows: LipAgentRow[],
+  ltcatRows: LipAgentRow[],
+): AuditFinding[] {
+  const findings: AuditFinding[] = [];
+  for (const item of functions) {
+    if (item.status === 'ok') continue;
+    const isRiskWithoutExam = item.status === 'risco_sem_exame';
+    const sourceDocument = isRiskWithoutExam ? pgrDocument : pcmsoDocument;
+    const sourceRows = isRiskWithoutExam ? item.risks : item.exams;
+    if (!sourceDocument || sourceRows.length === 0) continue;
+    findings.push({
+      id: `function_exam_gap:${item.position_id ?? normalizePositionText(item.function_text_raw)}`,
+      type: 'function_exam_gap',
+      status: 'to_confirm',
+      confidence: item.status === 'nome_sem_correspondencia' ? 'low' : 'medium',
+      summary:
+        item.status === 'risco_sem_exame'
+          ? `Há risco extraído para ${item.position_name ?? item.function_text_raw} sem exame correspondente vinculado na extração do PCMSO.`
+          : item.status === 'exame_sem_risco'
+            ? `Há exame extraído para ${item.position_name ?? item.function_text_raw} sem risco correspondente vinculado na extração do PGR.`
+            : `A função “${item.function_text_raw}” não foi vinculada a um cargo cadastrado; o cruzamento entre PGR e PCMSO precisa de confirmação.`,
+      evidence: sourceRows
+        .filter((row) => row.source_excerpt)
+        .map((row) => auditEvidence(sourceDocument, row.source_excerpt)),
+      limitations: ['O vínculo ausente na extração não comprova que o risco ou exame inexiste no documento completo.'],
+      recommended_verification: 'Conferir os documentos-fonte e validar o vínculo da função, do risco e dos exames com o responsável técnico.',
+    });
+  }
+
+  for (const coverage of agentCoverage) {
+    if (coverage.presence === 'ambos') continue;
+    const lipSide = coverage.presence === 'so_lip';
+    const sourceDocument = lipSide ? lipDocument : ltcatDocument;
+    const sourceRows = lipSide ? lipRows : ltcatRows;
+    if (!sourceDocument) continue;
+    const expectedNames = lipSide ? coverage.agent_names_lip : coverage.agent_names_ltcat;
+    const expectedNamesNormalized = new Set(expectedNames.map(normalizePositionText));
+    const evidence = sourceRows
+      .filter((row) => row.agentCategory === coverage.agent_category && expectedNamesNormalized.has(row.agentNameRaw))
+      .filter((row) => row.sourceExcerpt)
+      .map((row) => auditEvidence(sourceDocument, row.sourceExcerpt));
+    if (evidence.length === 0) continue;
+    findings.push({
+      id: `agent_coverage_gap:${coverage.agent_category}:${lipSide ? 'lip' : 'ltcat'}`,
+      type: 'agent_coverage_gap',
+      status: 'to_confirm',
+      confidence: 'medium',
+      summary: `A categoria ${coverage.agent_category} foi extraída somente do ${lipSide ? 'LIP' : 'LTCAT'}; verificar a diferença de cobertura documental.`,
+      evidence,
+      limitations: [`A categoria não foi encontrada na extração do outro documento; isso não comprova que esteja ausente do documento completo.`],
+      recommended_verification: 'Conferir os dois documentos e validar se a diferença decorre de escopo, período, população ou método distintos.',
+    });
+  }
+
+  if (lipDocument && ltcatDocument) {
+    findings.push(...buildMeasurementDivergenceFindings(lipRows, ltcatRows, lipDocument, ltcatDocument));
+  }
+  return findings;
 }
 
 interface ExtractionResult {
@@ -330,17 +487,28 @@ export class PenteFinoComparisonService {
     // warning geral, spec da Fase 27 §2).
     const agentCoverageFindings =
       lip && ltcat ? buildAgentCoverageFindings(lipAgentRows, ltcatAgentRows) : [];
+    const functionFindings = sortFunctionsByPriority(
+      buildFunctionReport(pgrExtraction?.rows ?? [], pcmsoExtraction?.rows ?? [], positions),
+    );
 
     return {
       pgr_document: pgrRef ? { ...pgrRef, extracted_at: pgrExtraction?.extractedAt ?? null } : null,
       pcmso_document: pcmsoRef ? { ...pcmsoRef, extracted_at: pcmsoExtraction?.extractedAt ?? null } : null,
       ltcat_document: ltcatRef,
       lip_document: lipRef,
-      functions: sortFunctionsByPriority(
-        buildFunctionReport(pgrExtraction?.rows ?? [], pcmsoExtraction?.rows ?? [], positions),
-      ),
+      functions: functionFindings,
       lip_agents: lipAgentFindings,
       agent_coverage: agentCoverageFindings,
+      audit_findings: buildAuditFindings(
+        functionFindings,
+        agentCoverageFindings,
+        pgrRef,
+        pcmsoRef,
+        lipRef,
+        ltcatRef,
+        lipAgentRows,
+        ltcatAgentRows,
+      ),
       warnings,
     };
   }
@@ -535,8 +703,10 @@ export class PenteFinoComparisonService {
         measured_value_raw: string | null;
         insalubre: boolean | null;
         conclusion_excerpt: string | null;
+        source_excerpt: string;
       }>(
         `SELECT agent_name_raw, agent_category, measured_value_raw, insalubre, conclusion_excerpt
+          , source_excerpt
          FROM lip_agent_findings WHERE document_id = $1
          ORDER BY created_at, agent_name_raw`,
         [document.id],
@@ -555,7 +725,7 @@ export class PenteFinoComparisonService {
         measuredValueRaw: r.measured_value_raw,
         insalubre: r.conclusion_excerpt !== null ? deriveInsalubre(r.conclusion_excerpt) : null,
         conclusionExcerpt: r.conclusion_excerpt,
-        sourceExcerpt: '', // não usado no relatório, só necessário no formato de LipAgentRow
+        sourceExcerpt: r.source_excerpt,
       }));
     }
     const rows = await this.lipAgentExtractor.extractAgents(document);

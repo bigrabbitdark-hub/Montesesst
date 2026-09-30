@@ -152,6 +152,7 @@ describe('POST /pente-fino/run — agentes do LIP × audiometria (e2e)', () => {
         measured_value_raw: '92 dB(A)',
         insalubre: true,
         conclusion_excerpt: 'caracteriza insalubridade em grau médio',
+        source_excerpt: 'Ruído contínuo medido em 92 dB(A)',
         exam_status: 'exame_ausente',
       },
     ]);

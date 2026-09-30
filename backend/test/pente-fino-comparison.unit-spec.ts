@@ -6,13 +6,15 @@ import {
   buildFunctionReport,
   buildLipAgentFindings,
   buildAgentCoverageFindings,
+  buildMeasurementDivergenceFindings,
+  PenteFinoDocumentRef,
   sortFunctionsByPriority,
   StoredRow,
 } from '../src/pente-fino/pente-fino-comparison.service';
 import { PenteFinoExtractorService } from '../src/pente-fino/pente-fino-extractor.service';
 import { FUNCTION_EXTRACTION_PROVIDER } from '../src/pente-fino/function-extraction-provider.interface';
 import { DocumentChecklistExtractorService, DocumentChecklistRow } from '../src/pente-fino/document-checklist-extractor.service';
-import { LipAgentExtractorService } from '../src/pente-fino/lip-agent-extractor.service';
+import { LipAgentExtractorService, LipAgentRow } from '../src/pente-fino/lip-agent-extractor.service';
 import { R2Service } from '../src/common/r2/r2.service';
 import { DatabaseService } from '../src/common/database/database.service';
 
@@ -87,13 +89,14 @@ describe('buildFunctionReport', () => {
 });
 
 describe('buildLipAgentFindings', () => {
-  function agent(overrides: Partial<{ agentNameRaw: string; agentCategory: string; measuredValueRaw: string | null; insalubre: boolean | null; conclusionExcerpt: string | null }> = {}) {
+  function agent(overrides: Partial<{ agentNameRaw: string; agentCategory: string; measuredValueRaw: string | null; insalubre: boolean | null; conclusionExcerpt: string | null; sourceExcerpt: string }> = {}) {
     return {
       agentNameRaw: 'Ruído contínuo',
       agentCategory: 'ruido',
       measuredValueRaw: '92 dB(A)',
       insalubre: true,
       conclusionExcerpt: 'caracteriza insalubridade em grau médio',
+      sourceExcerpt: 'Ruído contínuo avaliado em 92 dB(A).',
       ...overrides,
     };
   }
@@ -140,6 +143,7 @@ describe('buildLipAgentFindings', () => {
       measured_value_raw: null,
       insalubre: null,
       conclusion_excerpt: null,
+      source_excerpt: 'Ruído contínuo avaliado em 92 dB(A).',
       exam_status: 'informativo',
     });
   });
@@ -220,6 +224,106 @@ describe('buildAgentCoverageFindings', () => {
   });
 });
 
+describe('buildMeasurementDivergenceFindings', () => {
+  const lipDocument: PenteFinoDocumentRef = {
+    id: 'doc-lip',
+    title: 'LIP',
+    extracted_at: null,
+    elaboration_date: null,
+    elaboration_date_source_excerpt: null,
+    professional_name: null,
+    professional_registro: null,
+    professional_papel: null,
+    professional_source_excerpt: null,
+  };
+  const ltcatDocument: PenteFinoDocumentRef = { ...lipDocument, id: 'doc-ltcat', title: 'LTCAT' };
+
+  function measurement(overrides: Partial<LipAgentRow> = {}): LipAgentRow {
+    return {
+      agentNameRaw: 'Ruído contínuo',
+      agentCategory: 'ruido',
+      measuredValueRaw: '91,62 dB(A)',
+      insalubre: null,
+      conclusionExcerpt: null,
+      sourceExcerpt: 'Ruído contínuo medido em 91,62 dB(A).',
+      ...overrides,
+    };
+  }
+
+  it('identifica valores divergentes do mesmo agente e unidade com evidência dos dois laudos', () => {
+    const findings = buildMeasurementDivergenceFindings(
+      [measurement()],
+      [measurement({ agentNameRaw: 'RUIDO CONTINUO', measuredValueRaw: '95.52 dB (A)', sourceExcerpt: 'Ruído contínuo medido em 95,52 dB(A).' })],
+      lipDocument,
+      ltcatDocument,
+    );
+
+    expect(findings).toEqual([
+      expect.objectContaining({
+        type: 'quantitative_divergence',
+        status: 'inconsistency',
+        confidence: 'high',
+        evidence: [
+          expect.objectContaining({ document_id: 'doc-lip', title: 'LIP', source_excerpt: 'Ruído contínuo medido em 91,62 dB(A).', page: null }),
+          expect.objectContaining({ document_id: 'doc-ltcat', title: 'LTCAT', source_excerpt: 'Ruído contínuo medido em 95,52 dB(A).', page: null }),
+        ],
+        recommended_verification: expect.any(String),
+      }),
+    ]);
+  });
+
+  it('não sinaliza diferença causada apenas por separador decimal ou espaços na unidade', () => {
+    const findings = buildMeasurementDivergenceFindings(
+      [measurement({ measuredValueRaw: '91,62 dB(A)' })],
+      [measurement({ measuredValueRaw: '91.62 dB (A)' })],
+      lipDocument,
+      ltcatDocument,
+    );
+
+    expect(findings).toEqual([]);
+  });
+
+  it('não compara nomes de agente diferentes mesmo quando a categoria coincide', () => {
+    const findings = buildMeasurementDivergenceFindings(
+      [measurement({ agentNameRaw: 'Ruído contínuo' })],
+      [measurement({ agentNameRaw: 'Ruído de impacto', measuredValueRaw: '95,52 dB(A)' })],
+      lipDocument,
+      ltcatDocument,
+    );
+
+    expect(findings).toEqual([]);
+  });
+
+  it('não compara valores com unidades diferentes ou não identificadas', () => {
+    const differentUnits = buildMeasurementDivergenceFindings(
+      [measurement({ measuredValueRaw: '91,62 dB(A)' })],
+      [measurement({ measuredValueRaw: '95,52 Pa' })],
+      lipDocument,
+      ltcatDocument,
+    );
+    const missingUnit = buildMeasurementDivergenceFindings(
+      [measurement({ measuredValueRaw: '91,62' })],
+      [measurement({ measuredValueRaw: '95,52' })],
+      lipDocument,
+      ltcatDocument,
+    );
+
+    expect(differentUnits).toEqual([]);
+    expect(missingUnit).toEqual([]);
+  });
+
+  it('não compara valores ambíguos ou não numéricos', () => {
+    const findings = buildMeasurementDivergenceFindings(
+      [measurement({ measuredValueRaw: 'dose variável dB(A)' })],
+      [measurement({ measuredValueRaw: '95,52 dB(A)' })],
+      lipDocument,
+      ltcatDocument,
+    );
+
+    expect(findings).toEqual([]);
+  });
+});
+
 // Cobre o Finding crítico da revisão final da Fase 28: uma linha já
 // persistida em lip_agent_findings ANTES da correção de deriveInsalubre
 // pode ter insalubre gravado errado (ex.: conclusão com quebra de linha
@@ -242,6 +346,7 @@ describe('PenteFinoComparisonService — ensureLipAgents re-deriva insalubre do 
     measured_value_raw: string | null;
     insalubre: boolean | null;
     conclusion_excerpt: string | null;
+    source_excerpt: string;
   }): Promise<PenteFinoComparisonService> {
     const fakeClient = {
       query: jest.fn(async (sql: string) => {
@@ -297,12 +402,14 @@ describe('PenteFinoComparisonService — ensureLipAgents re-deriva insalubre do 
       measured_value_raw: '92 dB(A)',
       insalubre: true, // gravado incorretamente antes da correção (bug de quebra de linha)
       conclusion_excerpt: 'não\ncaracteriza insalubridade',
+      source_excerpt: 'Ruído contínuo medido em 92 dB(A).',
     });
 
     const report = await service.run('tenant-1', empresaUser);
 
     expect(report.lip_agents).toHaveLength(1);
     expect(report.lip_agents[0].insalubre).toBe(false);
+    expect(report.lip_agents[0].source_excerpt).toBe('Ruído contínuo medido em 92 dB(A).');
   });
 });
 
