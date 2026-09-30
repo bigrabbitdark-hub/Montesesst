@@ -200,6 +200,22 @@ montese-backend:candidate-20260930b montese-backend:latest` + `docker compose up
 faltam credenciais) — **reverte parte do F-27**, exige decisão e testes; (C) valores falsos no `.env` — **não
 recomendado** (é exatamente o mascaramento que o F-27 quis evitar).
 
+**Etapa 3 — SEGUNDA TENTATIVA: ✅ CONCLUÍDA em 2026-09-30 20:44 UTC (backend no ar com `GIT_COMMIT=0b2fe824…`)**
+
+Deploy: `docker tag candidate-20260930b latest` + `docker compose up -d --no-deps backend` (sem override; com rollback
+automático se `/health` não respondesse em 60 s — não foi necessário). Reinício: **~19 s** (20:44:08 → 20:44:27).
+Verificação (VERIFICADO):
+- `/health` → `commit 0b2fe824212ca218ddac745240f671c7e5d5766d`; boot com 0 erros e 2 avisos (Google Calendar desativado,
+  esperado); nginx: `/api/health` 200, `/api/plans` 200, rotas protegidas 401, logo com id inválido 404, `/dashboard-v2` 200.
+- Teste ponta a ponta contra o backend real (fixtures temporárias, removidas ao final; 0 empresas/usuários novos no banco),
+  11/11: login; `GET /tenants/me`; `GET /dashboard/summary` com `auditoria.pgr_pcmso`; `GET /dashboard/overview` só com
+  contagens e ignorando `tenant_id` da query; logo público de empresa sem logo → 404; Google `status` → `available:false`;
+  `auth-url` → 503 `GOOGLE_NOT_CONFIGURED`; `callback` → redireciona para erro; técnico não vinculado → 403 no overview.
+- Rollback disponível: `docker tag montese-backend:pre-20260930 montese-backend:latest` + `up -d --no-deps backend`.
+- **A acompanhar:** o cron de reconciliação de assinaturas roda `0 */6 * * *` (primeiro disparo às 00:00 UTC) e consulta o
+  Mercado Pago; o monitor de crédito do OpenRouter também é novo. Conferir o log depois do primeiro disparo.
+- Observação: o 503 "não configurado" sai no log como `error` (ExceptionFilter); considerar rebaixar para `warn`.
+
 ### Etapa 4 — `0057` (RLS em `tenants`) 🔒 — só depois da Etapa 3 verificada
 
 1. Aplicar `0057`.
