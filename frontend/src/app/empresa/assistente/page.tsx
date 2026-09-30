@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AssistantChat } from '@/components/AssistantChat';
 import { AssistantSummaryPanel } from '@/components/AssistantSummaryPanel';
+import { PenteFinoPanel } from '@/components/PenteFinoPanel';
 
 export default function EmpresaAssistentePage() {
   const router = useRouter();
@@ -28,6 +29,9 @@ export default function EmpresaAssistentePage() {
       <p className="mt-2 text-brand-700">Pergunte sobre normas de SST — o Assistente responde só com o que encontra nas fontes consultadas e avisa quando não encontra fundamento.</p>
       <div className="mt-8">
         <AssistantSummaryPanel />
+        <section className="mt-8 border-y border-brand-100 py-6" aria-label="Auditoria Montese">
+          <PenteFinoPanel presentation="assistant" />
+        </section>
         <AssistantChat />
       </div>
     </div>

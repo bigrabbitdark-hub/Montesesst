@@ -40,6 +40,24 @@ interface AgentCoverageFinding {
   agent_names_ltcat: string[];
 }
 
+interface AuditEvidence {
+  document_id: string;
+  title: string;
+  source_excerpt: string;
+  page: number | null;
+}
+
+interface AuditFinding {
+  id: string;
+  type: 'function_exam_gap' | 'agent_coverage_gap' | 'quantitative_divergence';
+  status: 'inconsistency' | 'insufficient_evidence' | 'to_confirm';
+  confidence: 'high' | 'medium' | 'low';
+  summary: string;
+  evidence: AuditEvidence[];
+  limitations: string[];
+  recommended_verification: string;
+}
+
 interface PenteFinoReport {
   pgr_document: PenteFinoDocumentRef | null;
   pcmso_document: PenteFinoDocumentRef | null;
@@ -48,6 +66,7 @@ interface PenteFinoReport {
   functions: FunctionReportItem[];
   lip_agents: LipAgentFinding[];
   agent_coverage: AgentCoverageFinding[];
+  audit_findings?: AuditFinding[];
   warnings: string[];
 }
 
@@ -114,11 +133,35 @@ const DOCUMENT_LABELS: { key: 'pgr_document' | 'pcmso_document' | 'ltcat_documen
   { key: 'lip_document', label: 'LIP' },
 ];
 
+const AUDIT_STATUS_LABELS: Record<AuditFinding['status'], string> = {
+  inconsistency: 'Divergência a esclarecer',
+  insufficient_evidence: 'Evidência insuficiente',
+  to_confirm: 'A confirmar',
+};
+
+const AUDIT_TYPE_LABELS: Record<AuditFinding['type'], string> = {
+  function_exam_gap: 'Relação entre risco e exame',
+  agent_coverage_gap: 'Diferença de cobertura entre documentos',
+  quantitative_divergence: 'Divergência quantitativa',
+};
+
+const CONFIDENCE_LABELS: Record<AuditFinding['confidence'], string> = {
+  high: 'Alta',
+  medium: 'Média',
+  low: 'Baixa',
+};
+
+const AUDIT_STATUS_CLASSES: Record<AuditFinding['status'], string> = {
+  inconsistency: 'text-amber-800',
+  insufficient_evidence: 'text-orange-800',
+  to_confirm: 'text-slate-700',
+};
+
 function DocumentCard({ label, doc }: { label: string; doc: PenteFinoDocumentRef | null }) {
   if (!doc) {
     return (
       <p className="mt-1 text-sm text-brand-900">
-        {label}: <span className="text-slate-500">nenhum {label} encontrado</span>
+        {label}: <span className="text-slate-500">não localizado nos documentos disponíveis</span>
       </p>
     );
   }
@@ -148,7 +191,69 @@ function DocumentCard({ label, doc }: { label: string; doc: PenteFinoDocumentRef
   );
 }
 
-export function PenteFinoPanel({ tenantId }: { tenantId?: string }) {
+function AuditFindings({ findings }: { findings: AuditFinding[] }) {
+  if (findings.length === 0) {
+    return (
+      <p className="mt-3 text-sm text-brand-700">
+        Nenhum achado foi gerado com os dados extraídos. Isso não confirma conformidade; confira os documentos-fonte e os avisos.
+      </p>
+    );
+  }
+
+  return (
+    <ol className="mt-3 divide-y divide-brand-50">
+      {findings.map((finding) => (
+        <li key={finding.id} className="py-4 first:pt-0 last:pb-0">
+          <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+            <h4 className="text-sm font-semibold text-brand-900">{finding.summary}</h4>
+            <span className={`text-sm font-medium ${AUDIT_STATUS_CLASSES[finding.status]}`}>
+              {AUDIT_STATUS_LABELS[finding.status]}
+            </span>
+          </div>
+          <p className="mt-1 text-xs text-brand-700">
+            {`${AUDIT_TYPE_LABELS[finding.type]} · Confiança ${CONFIDENCE_LABELS[finding.confidence]}`}
+          </p>
+          <details className="mt-2 text-sm">
+            <summary className="cursor-pointer text-brand-700 underline underline-offset-2">
+              Ver evidências e verificação recomendada
+            </summary>
+            <div className="mt-3 flex flex-col gap-3">
+              {finding.evidence.map((evidence, index) => (
+                <blockquote key={`${evidence.document_id}-${index}`} className="border-l-2 border-brand-200 pl-3">
+                  <p className="text-xs font-medium text-brand-900">
+                    {evidence.title} · {evidence.page === null ? 'Página não capturada' : `Página ${evidence.page}`}
+                  </p>
+                  <p className="mt-1 text-sm italic text-brand-700">&quot;{evidence.source_excerpt}&quot;</p>
+                </blockquote>
+              ))}
+              {finding.limitations.length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold text-brand-900">Limites da conclusão</p>
+                  <ul className="mt-1 list-disc pl-5 text-xs text-brand-700">
+                    {finding.limitations.map((limitation, index) => <li key={index}>{limitation}</li>)}
+                  </ul>
+                </div>
+              )}
+              <p className="text-sm text-brand-900">
+                <span className="font-semibold">Verificar:</span> {finding.recommended_verification}
+              </p>
+            </div>
+          </details>
+        </li>
+      ))}
+    </ol>
+  );
+}
+
+export function PenteFinoPanel({
+  tenantId,
+  presentation = 'full',
+}: {
+  tenantId?: string;
+  presentation?: 'full' | 'assistant';
+}) {
+  const isAssistantPresentation = presentation === 'assistant';
+  const fullAuditHref = tenantId ? `/tecnico/empresas/${tenantId}/pente-fino` : '/empresa/pente-fino';
   const [runStatus, setRunStatus] = useState<RunStatus>('idle');
   const [report, setReport] = useState<PenteFinoReport | null>(null);
   const [errorMessage, setErrorMessage] = useState('');
@@ -185,12 +290,12 @@ export function PenteFinoPanel({ tenantId }: { tenantId?: string }) {
         const retryAfter = Number(res.headers.get('Retry-After'));
         setRetryAfterSeconds(Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter : null);
         setReport(null);
-        setErrorMessage('Limite de execuções do Pente-Fino atingido. Tente novamente mais tarde.');
+        setErrorMessage('Limite de execuções da Auditoria Montese atingido. Tente novamente mais tarde.');
         setRunStatus('error');
         return;
       }
       const body = await res.json().catch(() => null);
-      const genericMessage = 'Não foi possível rodar o Pente-Fino agora. Tente novamente.';
+      const genericMessage = 'Não foi possível executar a Auditoria Montese agora. Tente novamente.';
       const message =
         res.status === 403 && typeof body?.message === 'string' ? body.message : genericMessage;
       setReport(null);
@@ -204,16 +309,12 @@ export function PenteFinoPanel({ tenantId }: { tenantId?: string }) {
   }
 
   return (
-    <div className="flex flex-col gap-6">
-      <section className="rounded-lg border border-brand-100 p-6">
-        <h2 className="text-lg font-bold text-brand-900">Cruzamento PGR × PCMSO</h2>
+    <div className={`flex flex-col ${isAssistantPresentation ? 'gap-4' : 'gap-6'}`}>
+      <section className={isAssistantPresentation ? '' : 'rounded-lg border border-brand-100 p-6'}>
+        <h2 className="text-lg font-bold text-brand-900">Auditoria Montese</h2>
         <p className="mt-2 text-sm text-brand-700">
-          Compara as funções descritas no PGR com os exames do PCMSO e aponta risco sem exame
-          correspondente, exame sem risco que o justifique, e nomes de função sem cargo cadastrado.
-          Também mostra a data de elaboração e o profissional responsável identificados em PGR,
-          PCMSO, LTCAT e LIP. Além disso, identifica agentes de risco citados no LIP e aponta quando
-          falta exame de audiometria correspondente no PCMSO, e compara a cobertura de agentes entre
-          LIP e LTCAT. Pode levar até 3 minutos.
+          Cruza fatos extraídos do PGR, PCMSO, LTCAT e LIP. Os achados mostram o que foi localizado,
+          o que ainda precisa ser confirmado e quais evidências sustentam cada observação.
         </p>
         <button
           type="button"
@@ -221,7 +322,7 @@ export function PenteFinoPanel({ tenantId }: { tenantId?: string }) {
           disabled={runStatus === 'loading'}
           className="mt-4 self-start rounded-md bg-brand-500 px-6 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50"
         >
-          {runStatus === 'loading' ? 'Rodando...' : 'Rodar Pente-Fino'}
+          {runStatus === 'loading' ? 'Executando auditoria...' : 'Executar Auditoria Montese'}
         </button>
         {runStatus === 'error' && (
           <p className="mt-3 text-sm text-red-600">
@@ -234,6 +335,28 @@ export function PenteFinoPanel({ tenantId }: { tenantId?: string }) {
 
       {report && (
         <>
+          {isAssistantPresentation ? (
+            <section aria-labelledby="assistant-audit-findings-heading">
+              <div className="flex flex-wrap items-baseline justify-between gap-2">
+                <h3 id="assistant-audit-findings-heading" className="text-base font-bold text-brand-900">
+                  Achados da auditoria
+                </h3>
+                <Link href={fullAuditHref} className="text-sm font-medium text-brand-700 underline underline-offset-2">
+                  Abrir Auditoria Montese completa
+                </Link>
+              </div>
+              <p className="mt-1 text-xs text-brand-700">
+                Documentos localizados: {DOCUMENT_LABELS.filter(({ key }) => report[key]).map(({ label }) => label).join(', ') || 'nenhum nos documentos disponíveis'}.
+              </p>
+              <AuditFindings findings={report.audit_findings ?? []} />
+              {report.warnings.length > 0 && (
+                <ul className="mt-3 flex flex-col gap-1 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+                  {report.warnings.map((warning, index) => <li key={index}>{warning}</li>)}
+                </ul>
+              )}
+            </section>
+          ) : (
+            <>
           <section className="rounded-lg border border-brand-100 p-6">
             <h3 className="text-sm font-bold uppercase tracking-wide text-brand-700">Documentos-fonte</h3>
             {DOCUMENT_LABELS.map(({ key, label }) => (
@@ -249,10 +372,15 @@ export function PenteFinoPanel({ tenantId }: { tenantId?: string }) {
           </section>
 
           <section className="rounded-lg border border-brand-100 p-6">
+            <h3 className="text-sm font-bold uppercase tracking-wide text-brand-700">Achados da auditoria</h3>
+            <AuditFindings findings={report.audit_findings ?? []} />
+          </section>
+
+          <section className="rounded-lg border border-brand-100 p-6">
             <h3 className="text-sm font-bold uppercase tracking-wide text-brand-700">Funções</h3>
             {report.functions.length === 0 ? (
               <p className="mt-4 text-sm text-brand-700">
-                Nenhuma função extraída ainda — envie PGR e PCMSO e rode de novo.
+                Nenhuma função pôde ser cruzada com os dados extraídos. Confira os documentos-fonte e os avisos.
               </p>
             ) : (
               <table className="mt-4 w-full text-sm">
@@ -388,8 +516,8 @@ export function PenteFinoPanel({ tenantId }: { tenantId?: string }) {
             <section className="rounded-lg border border-brand-100 p-6">
               <h3 className="text-sm font-bold uppercase tracking-wide text-brand-700">Cobertura LIP × LTCAT</h3>
               <p className="mt-2 text-sm text-brand-700">
-                Categorias de agente citadas em um dos dois laudos mas não no outro — não compara os valores
-                medidos, só aponta a diferença de cobertura pra você conferir.
+                Categorias citadas na extração de um laudo e não localizadas na extração do outro — a diferença
+                pode decorrer de escopo, período ou método distintos e precisa ser conferida nos documentos.
               </p>
               <ul className="mt-3 flex flex-col gap-2 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
                 {report.agent_coverage
@@ -398,19 +526,19 @@ export function PenteFinoPanel({ tenantId }: { tenantId?: string }) {
                     <li key={i}>
                       {finding.presence === 'so_lip' ? (
                         <>
-                          Presente só no LIP: {finding.agent_names_lip.join(', ')} — nada de {finding.agent_category}{' '}
-                          citado no LTCAT.
+                          Localizado na extração do LIP: {finding.agent_names_lip.join(', ')} — não localizado na extração do LTCAT ({finding.agent_category}).
                         </>
                       ) : (
                         <>
-                          Presente só no LTCAT: {finding.agent_names_ltcat.join(', ')} — nada de{' '}
-                          {finding.agent_category} citado no LIP.
+                          Localizado na extração do LTCAT: {finding.agent_names_ltcat.join(', ')} — não localizado na extração do LIP ({finding.agent_category}).
                         </>
                       )}
                     </li>
                   ))}
               </ul>
             </section>
+          )}
+            </>
           )}
         </>
       )}

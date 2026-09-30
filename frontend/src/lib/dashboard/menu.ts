@@ -37,7 +37,7 @@ export const EXTRA_MENU_ITEMS: MenuItem[] = [
   { href: '/empresa/consulta-ca', label: 'Consulta de CA', icon: Search, implemented: true },
   { href: '/empresa/agendamentos', label: 'Reuniões e Visitas', icon: CalendarClock, implemented: true },
   { href: '/empresa/mapa-sst', label: 'Mapa SST', icon: MapPinned, implemented: true },
-  { href: '/empresa/pente-fino', label: 'Pente-Fino', icon: Microscope, implemented: true },
+  { href: '/empresa/pente-fino', label: 'Auditoria Montese', icon: Microscope, implemented: true },
   { href: '/empresa/equipamentos-incendio', label: 'Equip. contra incêndio', icon: Flame, implemented: true },
   { href: '/empresa/checklist-prevencao', label: 'Checklist prevenção', icon: ListChecks, implemented: true },
   { href: '/empresa/simulados', label: 'Simulados', icon: Siren, implemented: true },

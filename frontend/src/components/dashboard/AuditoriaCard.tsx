@@ -5,19 +5,19 @@ export const TOM_CRITICIDADE: Record<'Alta' | 'Média', Tone> = { Alta: 'high', 
 
 const FALTAM = ['PGR × LTCAT', 'PPP × LTCAT', 'PPP × eSocial', 'PGR × S-2240', 'PCMSO × S-2220'];
 
-// Só o cruzamento PGR × PCMSO existe de verdade (Pente-Fino). Os demais ficam
+// Só o cruzamento PGR × PCMSO existe de verdade. Os demais ficam
 // declarados "em breve", sem número. `pgrPcmso` ausente = backend sem o dado.
 export function AuditoriaCard({ pgrPcmso }: { pgrPcmso?: { risco_sem_exame: number; exame_sem_risco: number } }) {
   const riscos = pgrPcmso?.risco_sem_exame ?? 0;
   const exames = pgrPcmso?.exame_sem_risco ?? 0;
   return (
-    <Card title="Auditoria Inteligente" className="h-full">
+    <Card title="Auditoria Montese" className="h-full">
       <p className="-mt-2 mb-3 text-xs text-dash-faint">Cruzamento de documentos</p>
       {pgrPcmso ? (
         <div className="border-b border-dash-border-soft pb-3">
           <p className="font-semibold text-dash-primary">PGR × PCMSO</p>
           {riscos + exames === 0 ? (
-            <p className="mt-1 text-[13px] text-dash-muted">Nenhuma divergência encontrada no Pente-Fino.</p>
+            <p className="mt-1 text-[13px] text-dash-muted">Nenhuma divergência encontrada nesta auditoria.</p>
           ) : (
             <ul className="mt-2 flex flex-col gap-2 text-[13px] text-dash-muted">
               {riscos > 0 && (
@@ -39,7 +39,7 @@ export function AuditoriaCard({ pgrPcmso }: { pgrPcmso?: { risco_sem_exame: numb
             </ul>
           )}
           <Link href="/empresa/pente-fino" className="mt-2 inline-block text-[13px] font-semibold text-dash-brand-green-dark hover:underline">
-            Abrir Pente-Fino
+            Abrir Auditoria Montese
           </Link>
         </div>
       ) : (

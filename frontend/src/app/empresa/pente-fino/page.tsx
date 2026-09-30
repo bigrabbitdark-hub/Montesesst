@@ -22,7 +22,7 @@ export default function EmpresaPenteFinoPage() {
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-16">
-      <h1 className="text-2xl font-bold text-brand-900">Pente-Fino</h1>
+      <h1 className="text-2xl font-bold text-brand-900">Auditoria Montese</h1>
       <div className="mt-8">
         <PenteFinoPanel />
       </div>

@@ -42,16 +42,16 @@ describe('AuditoriaCard (só PGR × PCMSO é real)', () => {
     expect(screen.getByText('Alta')).toBeInTheDocument();
     expect(screen.getByText('Média')).toBeInTheDocument();
     expect(screen.getByText(/PGR × LTCAT/).closest('p')).toHaveTextContent(/Em breve:.*PGR × LTCAT.*PCMSO × S-2220/);
-    expect(screen.getByRole('link', { name: 'Abrir Pente-Fino' })).toHaveAttribute('href', '/empresa/pente-fino');
+    expect(screen.getByRole('link', { name: 'Abrir Auditoria Montese' })).toHaveAttribute('href', '/empresa/pente-fino');
   });
   it('zero divergências', () => {
     render(<AuditoriaCard pgrPcmso={{ risco_sem_exame: 0, exame_sem_risco: 0 }} />);
-    expect(screen.getByText('Nenhuma divergência encontrada no Pente-Fino.')).toBeInTheDocument();
+    expect(screen.getByText('Nenhuma divergência encontrada nesta auditoria.')).toBeInTheDocument();
   });
   it('backend sem o dado: não inventa, diz indisponível', () => {
     render(<AuditoriaCard />);
     expect(screen.getByText(/dado indisponível/)).toBeInTheDocument();
-    expect(screen.queryByText('Abrir Pente-Fino')).toBeNull();
+    expect(screen.queryByText('Abrir Auditoria Montese')).toBeNull();
   });
 });
 

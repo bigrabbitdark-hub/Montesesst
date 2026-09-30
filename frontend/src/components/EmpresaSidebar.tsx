@@ -32,7 +32,7 @@ const GROUPS: NavGroup[] = [
       { href: '/empresa/inspecoes', label: 'Inspeções', emoji: '📋' },
       { href: '/empresa/agendamentos', label: 'Reuniões e Visitas', emoji: '📅' },
       { href: '/empresa/mapa-sst', label: 'Mapa SST', emoji: '🗺️' },
-      { href: '/empresa/pente-fino', label: 'Pente-Fino', emoji: '🔬' },
+      { href: '/empresa/pente-fino', label: 'Auditoria Montese', emoji: '🔬' },
       { href: '/empresa/equipamentos-incendio', label: 'Equipamentos contra incêndio', emoji: '🧯' },
       { href: '/empresa/brigada', label: 'Brigada de incêndio', emoji: '👨‍🚒' },
       { href: '/empresa/checklist-prevencao', label: 'Checklist de prevenção', emoji: '📋' },
