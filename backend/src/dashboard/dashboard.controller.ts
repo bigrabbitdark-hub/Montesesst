@@ -9,6 +9,21 @@ export class DashboardController {
   @Roles('empresa', 'tecnico', 'parceiro')
   @Get('summary')
   summary(@Query('tenant_id') tenantIdQuery: string | undefined, @Req() req: any) {
+    return this.withTargetTenant(req, tenantIdQuery, (client, tenantId) => this.dashboard.getSummary(client, tenantId));
+  }
+
+  // Contagens (só números, sem nomes/PII) para os KPIs do painel novo.
+  @Roles('empresa', 'tecnico', 'parceiro')
+  @Get('overview')
+  overview(@Query('tenant_id') tenantIdQuery: string | undefined, @Req() req: any) {
+    return this.withTargetTenant(req, tenantIdQuery, (client, tenantId) => this.dashboard.getOverview(client, tenantId));
+  }
+
+  private withTargetTenant<T>(
+    req: any,
+    tenantIdQuery: string | undefined,
+    run: (client: any, tenantId: string) => Promise<T>,
+  ): Promise<T> {
     const user = req.user;
     // `tenantIdQuery` é só o ALVO (qual empresa o técnico/parceiro quer
     // ver) — vem da query, então é controlado por quem chama e nunca
@@ -21,7 +36,7 @@ export class DashboardController {
       if (user.role !== 'empresa') {
         await this.dashboard.assertTenantLinked(client, tenantId);
       }
-      return this.dashboard.getSummary(client, tenantId);
+      return run(client, tenantId);
     });
   }
 }

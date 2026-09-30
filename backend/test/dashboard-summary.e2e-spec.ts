@@ -126,6 +126,7 @@ describe('GET /dashboard/summary (e2e)', () => {
     expect(typeof res.body.updated_at).toBe('string');
     expect(res.body.score).toBeNull();
     expect(res.body.empresa_destaque).toBe(false);
+    expect(res.body.auditoria).toEqual({ pgr_pcmso: { risco_sem_exame: 0, exame_sem_risco: 0 } });
   });
 
   it('agrega documento vencido, EPI vencendo e ação pendente em critico com itens de atenção corretos', async () => {

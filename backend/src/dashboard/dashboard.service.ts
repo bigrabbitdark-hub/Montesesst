@@ -76,6 +76,15 @@ export interface DashboardSummary {
   };
   atencao: AttentionItem[];
   proximos_eventos: AttentionItem[];
+  // Contagens completas do cruzamento PGR × PCMSO (Pente-Fino). `atencao` é cortada
+  // em 10 itens, então não serve para contar achados.
+  auditoria: { pgr_pcmso: { risco_sem_exame: number; exame_sem_risco: number } };
+}
+
+export interface DashboardOverview {
+  filiais: number;
+  funcionarios: number;
+  documentos: number;
 }
 
 const PRIORITY_ORDER: Record<AttentionPriority, number> = { alta: 0, media: 1, baixa: 2 };
@@ -114,6 +123,24 @@ export class DashboardService {
     if (!rows[0]?.linked) {
       throw new ForbiddenException('Você não está vinculado a esta empresa');
     }
+  }
+
+  // Só contagens agregadas — nenhum nome, CPF ou título de documento sai daqui.
+  // Filiais = unidades ativas que NÃO são a matriz (a matriz também é uma
+  // company_unit, marcada is_matriz). Funcionários contam só 'ativo'; documentos, todos.
+  async getOverview(client: PoolClient, tenantId: string): Promise<DashboardOverview> {
+    const { rows } = await client.query<{ filiais: string; funcionarios: string; documentos: string }>(
+      `SELECT
+         (SELECT count(*) FROM company_units WHERE tenant_id = $1 AND status = 'ativo' AND NOT is_matriz) AS filiais,
+         (SELECT count(*) FROM employees WHERE tenant_id = $1 AND status = 'ativo') AS funcionarios,
+         (SELECT count(*) FROM documents WHERE tenant_id = $1) AS documentos`,
+      [tenantId],
+    );
+    return {
+      filiais: Number(rows[0].filiais),
+      funcionarios: Number(rows[0].funcionarios),
+      documentos: Number(rows[0].documentos),
+    };
   }
 
   async getSummary(client: PoolClient, tenantId: string): Promise<DashboardSummary> {
@@ -335,6 +362,7 @@ export class DashboardService {
       },
       atencao: atencao.slice(0, 10),
       proximos_eventos,
+      auditoria: { pgr_pcmso: { risco_sem_exame: penteFinoPendencias, exame_sem_risco: penteFinoAvisos } },
     };
   }
 
