@@ -324,3 +324,9 @@ Verificação (VERIFICADO): typecheck, 52 testes e `next build` passaram; contai
 (`sha256:1594ba24…`); pelo nginx, 200 em `/`, `/quem-somos`, `/planos`, `/login`, `/cadastro`, `/dashboard-v2` e `/noticias`;
 backend, Postgres e Redis não foram tocados. NÃO VERIFICADO: navegação logada em empresa/técnico/admin após a troca
 da paleta; contraste medido; o `/health` do backend (porta 4000 não publicada no host).
+
+**Ajustes posteriores (2026-09-30, frontend):** (a) `brand-400` (`#4CAF50`, contraste 2,78:1 sobre branco) deixou de ser
+usado como texto/hover com texto branco — commit `9ea6300`, aplicado às 22:50 UTC; (b) em `/quem-somos`, a missão passou de
+"…identificar riscos, cruzar informações…" para "…e, cada vez mais, identificar riscos e cruzar informações…", para não
+apresentar como pronto o que ainda é roadmap (PRODUCT.md, princípio 2). Texto original do fundador: "organizar documentos,
+acompanhar prazos, identificar riscos, cruzar informações e apoiar profissionais…" — reverter se o fundador preferir.

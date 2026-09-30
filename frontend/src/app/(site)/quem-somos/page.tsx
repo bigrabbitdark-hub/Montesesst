@@ -219,8 +219,9 @@ export default function QuemSomosPage() {
               </p>
               <p>
                 Unimos tecnologia, inteligência artificial, conhecimento técnico e acompanhamento humano para
-                organizar documentos, acompanhar prazos, identificar riscos, cruzar informações e apoiar
-                profissionais de RH, gestores e técnicos de Segurança do Trabalho na tomada de decisões.
+                organizar documentos, acompanhar prazos e, cada vez mais, identificar riscos e cruzar
+                informações para apoiar profissionais de RH, gestores e técnicos de Segurança do Trabalho na
+                tomada de decisões.
               </p>
               <p>
                 Não queremos que a SST seja lembrada apenas quando um documento vence ou quando uma fiscalização
