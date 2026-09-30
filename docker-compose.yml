@@ -34,6 +34,15 @@ services:
   backend:
     build:
       context: ./backend
+      args:
+        # ITEM 009 (auditoria do Assistente, 2026-09-28): sem isto não há como
+        # saber, olhando só o container, se a imagem em produção corresponde
+        # ao HEAD do git — foi exatamente essa lacuna que escondeu um deploy
+        # parado há 6 commits até uma auditoria manual comparar o .js
+        # compilado com o código-fonte. `${GIT_COMMIT:-unknown}` cai em
+        # "unknown" se quem builda não exportar a variável (ver
+        # ops/build-with-commit.sh) — nunca falha o build por causa disto.
+        GIT_COMMIT: ${GIT_COMMIT:-unknown}
     container_name: montese_backend
     restart: unless-stopped
     environment:

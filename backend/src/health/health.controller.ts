@@ -17,6 +17,11 @@ export class HealthController {
   @Get()
   async check() {
     const result = await this.db.withoutTenantContext((client) => client.query('SELECT now()'));
-    return { status: 'ok', db_time: result.rows[0].now };
+    // ITEM 009 (auditoria do Assistente, 2026-09-28): SHA do commit que
+    // builda esta imagem (ver backend/Dockerfile), pra comparar "o que
+    // está rodando" com `git rev-parse HEAD` sem precisar entrar no
+    // container. "unknown" quando ninguém passou --build-arg GIT_COMMIT —
+    // nunca bloqueia o healthcheck.
+    return { status: 'ok', db_time: result.rows[0].now, commit: process.env.GIT_COMMIT ?? 'unknown' };
   }
 }
