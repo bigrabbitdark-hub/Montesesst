@@ -24,5 +24,38 @@
   --color-accent-500: #f59e0b;
   --color-accent-700: #b45309;
 
+  /* Dashboard "Início" — Design System Montese SST (2026-09-30), fonte:
+     docs/specs/montese-design-system.md. Nomes dash-* pra não colidir com os
+     tokens brand e accent enquanto o resto do app não migra. */
+  --color-dash-page: #f8fafc;
+  --color-dash-sidebar: #0f172a;
+  --color-dash-sidebar-hover: #1e293b;
+  --color-dash-card: #ffffff;
+  --color-dash-primary: #0f172a;
+  --color-dash-muted: #475569;
+  --color-dash-faint: #94a3b8;
+  --color-dash-border-soft: #e2e8f0;
+  --color-dash-border-input: #cbd5e1;
+  --color-dash-brand-green: #10b981;
+  --color-dash-brand-green-dark: #059669;
+  --color-dash-brand-green-light: #d1fae5;
+
+  --color-dash-status-ok: #22c55e;
+  --color-dash-status-ok-bg: #d1fae5;
+  --color-dash-status-ok-text: #065f46;
+  --color-dash-status-warn: #f59e0b;
+  --color-dash-status-warn-bg: #fef3c7;
+  --color-dash-status-warn-text: #92400e;
+  --color-dash-status-high: #f97316;
+  --color-dash-status-crit: #ef4444;
+  --color-dash-status-crit-bg: #fee2e2;
+  --color-dash-status-crit-text: #991b1b;
+  --color-dash-status-info: #3b82f6;
+  --color-dash-status-info-bg: #dbeafe;
+  --color-dash-status-info-text: #1e40af;
+  --color-dash-status-epi: #7c3aed;
+  --color-dash-status-epi-text: #6d28d9;
+
   --font-sans: var(--font-poppins), system-ui, sans-serif;
+  --font-body: var(--font-inter), system-ui, sans-serif;
 }
