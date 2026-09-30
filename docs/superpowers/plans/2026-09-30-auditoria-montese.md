@@ -23,7 +23,6 @@
 ---
 
 ### Task 1: Achados determinísticos com evidência
-
 **Files:**
 - Modify: `backend/src/pente-fino/pente-fino-comparison.service.ts`
 - Test: `backend/test/pente-fino-comparison.unit-spec.ts`
@@ -81,11 +80,11 @@ Extend `pente-fino-run.e2e-spec.ts` to assert that a run includes the additive `
 Run from `backend/`:
 
 ```bash
-npm run test:unit -- --runTestsByPath test/pente-fino-comparison.unit-spec.ts
+NODE_OPTIONS=--experimental-vm-modules npm run test:unit -- --runTestsByPath test/pente-fino-comparison.unit-spec.ts
 NODE_OPTIONS=--experimental-vm-modules npm run test:e2e -- --runTestsByPath test/pente-fino-run.e2e-spec.ts
 ```
 
-Expected: both commands pass; the e2e requires the repository test database and Redis configured by the existing test environment.
+Expected: both commands pass; the PDF fixture requires Node VM modules for `pdf-parse` v2 under Jest, and the e2e requires the repository test database and Redis configured by the existing test environment.
 
 ### Task 2: Renomear e reaproveitar o painel
 
