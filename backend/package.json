@@ -10,6 +10,8 @@
     "db:seed": "tsx db/seed.ts",
     "caepi:sync": "tsx db/caepi-sync.ts",
     "db:embed-sst-checklist": "tsx db/embed-sst-checklist.ts",
+    "db:check-checklist-embeddings": "tsx db/check-checklist-embeddings.ts",
+    "db:reseed-normative-sources": "tsx db/reseed-normative-sources.ts",
     "eval:lint": "tsx eval/lint-golden.ts",
     "eval:nr": "tsx eval/nr-text.ts",
     "eval:notices": "tsx eval/notices-check.ts",

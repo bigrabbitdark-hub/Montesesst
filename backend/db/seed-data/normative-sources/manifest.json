@@ -1,0 +1,362 @@
+[
+  {
+    "entity": "MTE",
+    "code": "NR-01",
+    "title": "NR-01 - Disposições gerais e gerenciamento de riscos ocupacionais",
+    "official_url": "https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-partitaria-permanente/normas-regulamentadora/normas-regulamentadoras-vigentes/nr-01-atualizada-2024-i-1.pdf",
+    "mime_type": "application/pdf",
+    "file_name": "nr-01-atualizada-2024-i-1.pdf",
+    "content_hash": "b1eec52bb1f4f903ee48f80a1d97437f3bdd97d27b49b70452bd147c0f857349",
+    "text_file": "NR-01.txt"
+  },
+  {
+    "entity": "MTE",
+    "code": "NR-03",
+    "title": "NR-03 - Embargo e interdição",
+    "official_url": "https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-partitaria-permanente/arquivos/normas-regulamentadoras/nr-03_atualizada_2019.pdf",
+    "mime_type": "application/pdf",
+    "file_name": "nr-03_atualizada_2019.pdf",
+    "content_hash": "26d1cbf2cce7bd6785ec245487e5f4c083148bb685a9c77c0bf4ec79ddb051d4",
+    "text_file": "NR-03.txt"
+  },
+  {
+    "entity": "MTE",
+    "code": "NR-04",
+    "title": "NR-04 - Serviços especializados em segurança e em medicina do trabalho",
+    "official_url": "https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-partitaria-permanente/normas-regulamentadora/normas-regulamentadoras-vigentes/nr-04-atualizada-2023.pdf",
+    "mime_type": "application/pdf",
+    "file_name": "nr-04-atualizada-2023.pdf",
+    "content_hash": "2c3e97cb071e22c11afa1c4e7acfc081a775418ff7e902fbcecc9a0dd15b9363",
+    "text_file": "NR-04.txt"
+  },
+  {
+    "entity": "MTE",
+    "code": "NR-05",
+    "title": "NR-05 - Comissão interna de prevenção de acidentes",
+    "official_url": "https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-partitaria-permanente/normas-regulamentadora/normas-regulamentadoras-vigentes/NR05atualizada2023.pdf",
+    "mime_type": "application/pdf",
+    "file_name": "NR05atualizada2023.pdf",
+    "content_hash": "35ba381c3507d56e75f79217b4356478e264c274d1a759807c290548d3b0fedc",
+    "text_file": "NR-05.txt"
+  },
+  {
+    "entity": "MTE",
+    "code": "NR-06",
+    "title": "NR-06 - Equipamento de proteção individual - epi",
+    "official_url": "https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-partitaria-permanente/normas-regulamentadora/normas-regulamentadoras-vigentes/nr-06-atualizada-2025-ii.pdf",
+    "mime_type": "application/pdf",
+    "file_name": "nr-06-atualizada-2025-ii.pdf",
+    "content_hash": "b4979ff247cbedebc0012e93f774e478139273647371c983c5d7be79624ac985",
+    "text_file": "NR-06.txt"
+  },
+  {
+    "entity": "MTE",
+    "code": "NR-07",
+    "title": "NR-07 - Programa de controle médico de saúde ocupacional",
+    "official_url": "https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-partitaria-permanente/normas-regulamentadora/normas-regulamentadoras-vigentes/nr-07-atualizada-2022-1.pdf",
+    "mime_type": "application/pdf",
+    "file_name": "nr-07-atualizada-2022-1.pdf",
+    "content_hash": "682207e135ad01e3d29e607fb7bb56e704a9ee0c215ba05c0a60075d3f5dfda4",
+    "text_file": "NR-07.txt"
+  },
+  {
+    "entity": "MTE",
+    "code": "NR-08",
+    "title": "NR-08 - Edificações",
+    "official_url": "https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-partitaria-permanente/arquivos/normas-regulamentadoras/nr-08-atualizada-2022.pdf",
+    "mime_type": "application/pdf",
+    "file_name": "nr-08-atualizada-2022.pdf",
+    "content_hash": "a62ec78b008764ced86340f61a71aee5dc1e1b54dd5c409b4a4c3c549437b190",
+    "text_file": "NR-08.txt"
+  },
+  {
+    "entity": "MTE",
+    "code": "NR-09",
+    "title": "NR-09 - Avaliação e controle das exposições ocupacionais a agentes físicos, químicos e biológicos",
+    "official_url": "https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-partitaria-permanente/normas-regulamentadora/normas-regulamentadoras-vigentes/nr-09-atualizada-2026.pdf",
+    "mime_type": "application/pdf",
+    "file_name": "nr-09-atualizada-2026.pdf",
+    "content_hash": "490df5390aaebf902e3c5cd73b6f57ce50c922f529c6fe3f6e58797d00049753",
+    "text_file": "NR-09.txt"
+  },
+  {
+    "entity": "MTE",
+    "code": "NR-10",
+    "title": "NR-10 - Segurança em instalações e serviços em eletricidade",
+    "official_url": "https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-partitaria-permanente/normas-regulamentadora/normas-regulamentadoras-vigentes/nr-10-atualizada-2026-1.pdf",
+    "mime_type": "application/pdf",
+    "file_name": "nr-10-atualizada-2026-1.pdf",
+    "content_hash": "55860d429107b77ea1548cc2ba4597bf94b717c1907c6bfeba99a39dad441547",
+    "text_file": "NR-10.txt"
+  },
+  {
+    "entity": "MTE",
+    "code": "NR-11",
+    "title": "NR-11 - Transporte, movimentação, armazenagem e manuseio de materiais",
+    "official_url": "https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-partitaria-permanente/normas-regulamentadora/normas-regulamentadoras-vigentes/nr-11-atualizada-2016.pdf",
+    "mime_type": "application/pdf",
+    "file_name": "nr-11-atualizada-2016.pdf",
+    "content_hash": "99e18ead0fb9719a77b0741db4f7baffba29f55fcec140b7944a8b34f866dbf7",
+    "text_file": "NR-11.txt"
+  },
+  {
+    "entity": "MTE",
+    "code": "NR-12",
+    "title": "NR-12 - Segurança no trabalho em máquinas e equipamentos",
+    "official_url": "https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-partitaria-permanente/normas-regulamentadora/normas-regulamentadoras-vigentes/nr-12-atualizada-2025.pdf",
+    "mime_type": "application/pdf",
+    "file_name": "nr-12-atualizada-2025.pdf",
+    "content_hash": "d4a320212490688bf78967fbb88b6726215cd31a3c84192c40729f401e740e35",
+    "text_file": "NR-12.txt"
+  },
+  {
+    "entity": "MTE",
+    "code": "NR-13",
+    "title": "NR-13 - Caldeiras, vasos de pressão e tubulações e tanques metálicos de armazenamento",
+    "official_url": "https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-partitaria-permanente/normas-regulamentadora/normas-regulamentadoras-vigentes/nr-13-atualizada-2023-b.pdf",
+    "mime_type": "application/pdf",
+    "file_name": "nr-13-atualizada-2023-b.pdf",
+    "content_hash": "53144b21b3e46141a06cf50d05dcd83b6d3a3046c7ecf1848277668b07be58c8",
+    "text_file": "NR-13.txt"
+  },
+  {
+    "entity": "MTE",
+    "code": "NR-14",
+    "title": "NR-14 - Fornos",
+    "official_url": "https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-partitaria-permanente/arquivos/normas-regulamentadoras/nr-14-atualizada-2022.pdf",
+    "mime_type": "application/pdf",
+    "file_name": "nr-14-atualizada-2022.pdf",
+    "content_hash": "95818fc1d3d66e0ec0ce2800fd4dda714a83d04ccaa5afc14a848e10511d831e",
+    "text_file": "NR-14.txt"
+  },
+  {
+    "entity": "MTE",
+    "code": "NR-15",
+    "title": "NR-15 - Atividades e operações insalubres",
+    "official_url": "https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-partitaria-permanente/normas-regulamentadora/normas-regulamentadoras-vigentes/nr-15-atualizada-2025.pdf",
+    "mime_type": "application/pdf",
+    "file_name": "nr-15-atualizada-2025.pdf",
+    "content_hash": "09ffdef8c48b6aff209402906116be080b0b75ffe80d1ccad0c83c84144e2dd8",
+    "text_file": "NR-15.txt"
+  },
+  {
+    "entity": "MTE",
+    "code": "NR-16",
+    "title": "NR-16 - Atividades e operações perigosas",
+    "official_url": "https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-partitaria-permanente/normas-regulamentadora/normas-regulamentadoras-vigentes/nr-16-atualizada-2025-ii.pdf",
+    "mime_type": "application/pdf",
+    "file_name": "nr-16-atualizada-2025-ii.pdf",
+    "content_hash": "f5a34e8fb95797dbe75c0b5ac91b202266fedcc8894a3a860ba9dc8e4611dddc",
+    "text_file": "NR-16.txt"
+  },
+  {
+    "entity": "MTE",
+    "code": "NR-17",
+    "title": "NR-17 - Ergonomia",
+    "official_url": "https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-partitaria-permanente/normas-regulamentadora/normas-regulamentadoras-vigentes/nr-17-atualizada-2023.pdf",
+    "mime_type": "application/pdf",
+    "file_name": "nr-17-atualizada-2023.pdf",
+    "content_hash": "9e5760a270fab7c98390bad73db1d3cf66af4bb5b25ff03bf9aca86ecdb27046",
+    "text_file": "NR-17.txt"
+  },
+  {
+    "entity": "MTE",
+    "code": "NR-18",
+    "title": "NR-18 - Segurança e saúde no trabalho na indústria da construção",
+    "official_url": "https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-partitaria-permanente/normas-regulamentadora/normas-regulamentadoras-vigentes/nr-18-atualizada-2020.pdf",
+    "mime_type": "application/pdf",
+    "file_name": "nr-18-atualizada-2020.pdf",
+    "content_hash": "d08adc4e9446bbfa52d00842df96b00c1b0e2fdb42fd19f9504a0145e35d77de",
+    "text_file": "NR-18.txt"
+  },
+  {
+    "entity": "MTE",
+    "code": "NR-19",
+    "title": "NR-19 - Explosivos",
+    "official_url": "https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-partitaria-permanente/normas-regulamentadora/normas-regulamentadoras-vigentes/nr-19-atualizada-2023.pdf",
+    "mime_type": "application/pdf",
+    "file_name": "nr-19-atualizada-2023.pdf",
+    "content_hash": "766e57547ac8f090860187b433bfb73630abd7c66794f69eca1e80714b13cde9",
+    "text_file": "NR-19.txt"
+  },
+  {
+    "entity": "MTE",
+    "code": "NR-20",
+    "title": "NR-20 - Segurança e saúde no trabalho com inflamáveis e combustíveis",
+    "official_url": "https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-partitaria-permanente/normas-regulamentadora/normas-regulamentadoras-vigentes/nr-20-atualizada-2025.pdf",
+    "mime_type": "application/pdf",
+    "file_name": "nr-20-atualizada-2025.pdf",
+    "content_hash": "ff993fc1f8b38454793c7cb0c66d20ab03dfd0beb5795a9c02ae9aadb3be3442",
+    "text_file": "NR-20.txt"
+  },
+  {
+    "entity": "MTE",
+    "code": "NR-21",
+    "title": "NR-21 - Trabalhos a céu aberto",
+    "official_url": "https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-partitaria-permanente/arquivos/normas-regulamentadoras/nr-21.pdf",
+    "mime_type": "application/pdf",
+    "file_name": "nr-21.pdf",
+    "content_hash": "89194830e20302d845cda19e5781763f18b3229df1d6554dc22968b29a25a271",
+    "text_file": "NR-21.txt"
+  },
+  {
+    "entity": "MTE",
+    "code": "NR-22",
+    "title": "NR-22 - Segurança e saúde ocupacional na mineração",
+    "official_url": "https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-partitaria-permanente/normas-regulamentadora/normas-regulamentadoras-vigentes/nr-22-atualizada-2026.pdf",
+    "mime_type": "application/pdf",
+    "file_name": "nr-22-atualizada-2026.pdf",
+    "content_hash": "dd4d4903a32b6c1eed364dad1d53306729750b0078de542a623c0fc884feb8ee",
+    "text_file": "NR-22.txt"
+  },
+  {
+    "entity": "MTE",
+    "code": "NR-23",
+    "title": "NR-23 - Proteção contra incêndios",
+    "official_url": "https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-partitaria-permanente/arquivos/normas-regulamentadoras/nr-23-atualizada-2022.pdf",
+    "mime_type": "application/pdf",
+    "file_name": "nr-23-atualizada-2022.pdf",
+    "content_hash": "35c49c6396d3de72d8e3d147410bdd66a3d5d1206d23c91c5cb7cc2d7d522eaf",
+    "text_file": "NR-23.txt"
+  },
+  {
+    "entity": "MTE",
+    "code": "NR-24",
+    "title": "NR-24 - Condições sanitárias e de conforto nos locais de trabalho",
+    "official_url": "https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-partitaria-permanente/arquivos/normas-regulamentadoras/nr-24-atualizada-2022.pdf",
+    "mime_type": "application/pdf",
+    "file_name": "nr-24-atualizada-2022.pdf",
+    "content_hash": "c0426016e3d7b05acd9c2455c0474a5f50fa234ca56ac970ac54b3f474feab67",
+    "text_file": "NR-24.txt"
+  },
+  {
+    "entity": "MTE",
+    "code": "NR-25",
+    "title": "NR-25 - Resíduos industriais",
+    "official_url": "https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-partitaria-permanente/arquivos/normas-regulamentadoras/nr-25-atualizada-2022-1.pdf",
+    "mime_type": "application/pdf",
+    "file_name": "nr-25-atualizada-2022-1.pdf",
+    "content_hash": "37bb18faa0cce21c22e4f6322f95558c02650f3b0acdc384fadfe28c6ace377d",
+    "text_file": "NR-25.txt"
+  },
+  {
+    "entity": "MTE",
+    "code": "NR-26",
+    "title": "NR-26 - Sinalização de segurança",
+    "official_url": "https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-partitaria-permanente/arquivos/normas-regulamentadoras/nr-26-atualizada-2022.pdf",
+    "mime_type": "application/pdf",
+    "file_name": "nr-26-atualizada-2022.pdf",
+    "content_hash": "df2dc7ad39052504341be4d66f2b189fff6ae15bf375194597ae9b365ac15d57",
+    "text_file": "NR-26.txt"
+  },
+  {
+    "entity": "MTE",
+    "code": "NR-28",
+    "title": "NR-28 - Fiscalização e penalidades",
+    "official_url": "https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-partitaria-permanente/normas-regulamentadora/normas-regulamentadoras-vigentes/nr-28-atualizada-2026.pdf",
+    "mime_type": "application/pdf",
+    "file_name": "nr-28-atualizada-2026.pdf",
+    "content_hash": "6327bb4aa61b906d5bc13c9093466761f4b74b5dbb24418be6e235c4a8e85fd5",
+    "text_file": "NR-28.txt"
+  },
+  {
+    "entity": "MTE",
+    "code": "NR-29",
+    "title": "NR-29 - Norma regulamentadora de segurança e saúde no trabalho portuário",
+    "official_url": "https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-partitaria-permanente/normas-regulamentadora/normas-regulamentadoras-vigentes/nr-29-atualizada-2023.pdf",
+    "mime_type": "application/pdf",
+    "file_name": "nr-29-atualizada-2023.pdf",
+    "content_hash": "2063fc7b21c52207ed645d714e0d6619608eb84ea0fbc4c12dce29537aaf75c7",
+    "text_file": "NR-29.txt"
+  },
+  {
+    "entity": "MTE",
+    "code": "NR-30",
+    "title": "NR-30 - Segurança e saúde no trabalho aquaviário",
+    "official_url": "https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-partitaria-permanente/normas-regulamentadora/normas-regulamentadoras-vigentes/nr-30-atualizada-2023.pdf",
+    "mime_type": "application/pdf",
+    "file_name": "nr-30-atualizada-2023.pdf",
+    "content_hash": "d9b260cd81f49c6a1c4b552bc072df8365959a97098a34284a9fbb383a22b128",
+    "text_file": "NR-30.txt"
+  },
+  {
+    "entity": "MTE",
+    "code": "NR-31",
+    "title": "NR-31 - Segurança e saúde no trabalho na agricultura, pecuária silvicultura, exploração florestal e aquicultura",
+    "official_url": "https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-partitaria-permanente/normas-regulamentadora/normas-regulamentadoras-vigentes/nr-31-atualizada-2024-2.pdf",
+    "mime_type": "application/pdf",
+    "file_name": "nr-31-atualizada-2024-2.pdf",
+    "content_hash": "6f788072205e32669fb9a08e2ab7a04f66d4492e66cde540e67cf23eb70fcb8c",
+    "text_file": "NR-31.txt"
+  },
+  {
+    "entity": "MTE",
+    "code": "NR-32",
+    "title": "NR-32 - Segurança e saúde no trabalho em serviços de saúde",
+    "official_url": "https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-partitaria-permanente/normas-regulamentadora/normas-regulamentadoras-vigentes/nr-32-atualizada-2023-1.pdf",
+    "mime_type": "application/pdf",
+    "file_name": "nr-32-atualizada-2023-1.pdf",
+    "content_hash": "29c9f549dd3fc121e22e899a4c36997894d489892db11eb1a60a042450fdd1b4",
+    "text_file": "NR-32.txt"
+  },
+  {
+    "entity": "MTE",
+    "code": "NR-33",
+    "title": "NR-33 - Segurança e saúde nos trabalhos em espaços confinados",
+    "official_url": "https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-partitaria-permanente/arquivos/normas-regulamentadoras/nr-33-atualizada-2022-_retificada.pdf",
+    "mime_type": "application/pdf",
+    "file_name": "nr-33-atualizada-2022-_retificada.pdf",
+    "content_hash": "13d3a18b8ba95cb6df057f37de6c042e075a67c2a0b9f206d7e1621fcc3488e6",
+    "text_file": "NR-33.txt"
+  },
+  {
+    "entity": "MTE",
+    "code": "NR-34",
+    "title": "NR-34 - Condições e meio ambiente de trabalho na indústria da construção, reparação e desmonte naval",
+    "official_url": "https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-partitaria-permanente/normas-regulamentadora/normas-regulamentadoras-vigentes/nr-34-atualizada-2023-2.pdf",
+    "mime_type": "application/pdf",
+    "file_name": "nr-34-atualizada-2023-2.pdf",
+    "content_hash": "3f22faf73ab836f4fbc7fcb369ca34dc594ea6c59b715a1082708219e198fb31",
+    "text_file": "NR-34.txt"
+  },
+  {
+    "entity": "MTE",
+    "code": "NR-35",
+    "title": "NR-35 - Trabalho em altura",
+    "official_url": "https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-partitaria-permanente/normas-regulamentadora/normas-regulamentadoras-vigentes/nr-35-atualizada-2025-1.pdf",
+    "mime_type": "application/pdf",
+    "file_name": "nr-35-atualizada-2025-1.pdf",
+    "content_hash": "ade78234c4ad8d5129d3270d8c5ce271d91b2931c86a5378c09ab2b3ada2d19b",
+    "text_file": "NR-35.txt"
+  },
+  {
+    "entity": "MTE",
+    "code": "NR-36",
+    "title": "NR-36 - Segurança e saúde no trabalho em empresas de abate e processamento de carnes e derivados",
+    "official_url": "https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-partitaria-permanente/normas-regulamentadora/normas-regulamentadoras-vigentes/nr-36-atualizada-2024-1.pdf",
+    "mime_type": "application/pdf",
+    "file_name": "nr-36-atualizada-2024-1.pdf",
+    "content_hash": "fbeb4c6791f15032d9f6d75211ba76bf5d8d377cc63c2ee407969618c173c2e7",
+    "text_file": "NR-36.txt"
+  },
+  {
+    "entity": "MTE",
+    "code": "NR-37",
+    "title": "NR-37 - Segurança e saúde em plataformas de petróleo",
+    "official_url": "https://www.gov.br/trabalho-e-emprego/pt-br/assuntos/inspecao-do-trabalho/seguranca-e-saude-no-trabalho/ctpp-nrs/nr-37-atualizada-2023.pdf",
+    "mime_type": "application/pdf",
+    "file_name": "nr-37-atualizada-2023.pdf",
+    "content_hash": "f35279aa625b0c985a86588b5b1809380ed17d4894242a4eb5b9caf08b3a915b",
+    "text_file": "NR-37.txt"
+  },
+  {
+    "entity": "MTE",
+    "code": "NR-38",
+    "title": "NR-38 - Segurança e saúde no trabalho nas atividades de limpeza urbana e manejo de resíduos sólidos",
+    "official_url": "https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-partitaria-permanente/normas-regulamentadora/normas-regulamentadoras-vigentes/NR38atualizada2026.pdf",
+    "mime_type": "application/pdf",
+    "file_name": "NR38atualizada2026.pdf",
+    "content_hash": "416cfc3fe581828acdc1ca8e654fbb0396474dcbcf25476b9806613a031f52e9",
+    "text_file": "NR-38.txt"
+  }
+]
