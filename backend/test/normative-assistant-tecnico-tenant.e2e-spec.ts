@@ -18,6 +18,7 @@ describe('POST /assistant/normative-query — tenant_id de técnico/parceiro (e2
   let chunkId: string;
   let linkedTecnicoToken: string;
   let unlinkedTecnicoToken: string;
+  let expiredDocumentId: string;
   const fakeAnswer = jest.fn();
   const fakeEmbed = jest.fn().mockResolvedValue(new Array(1536).fill(0).map((_, i) => (i === 0 ? 1 : 0)));
 
@@ -59,6 +60,21 @@ describe('POST /assistant/normative-query — tenant_id de técnico/parceiro (e2
     );
     chunkId = chunk.rows[0].id;
 
+    // Documento vencido do MESMO tenant — vira um item operacional real
+    // (tipo:'documento', AI-safe pela allowlist ATTENTION_TIPO_AI_SAFE)
+    // em dashboard.getSummary(). Existe só para o teste abaixo provar que
+    // técnico vinculado NÃO recebe isto (Restrição Global §1 da Fase 10)
+    // com uma pendência de verdade disponível — sem um item real, o
+    // teste passaria mesmo se o guard de role fosse removido por engano,
+    // porque não haveria nada a vazar.
+    const expiredDoc = await client.query(
+      `INSERT INTO documents (tenant_id, category, title, file_key, file_name, mime_type, size_bytes, uploaded_by_user_id, uploaded_by_role, expires_at)
+       VALUES ($1, 'pcmso', 'PCMSO Vencido Assistente Tecnico Teste', 'fixture/pcmso-vencido.pdf', 'pcmso.pdf', 'application/pdf', 100, $2, 'empresa', now() - interval '10 days')
+       RETURNING id`,
+      [tenantId, tenant.userId],
+    );
+    expiredDocumentId = expiredDoc.rows[0].id;
+
     // Mesmo padrão de fixture de pente-fino-run.e2e-spec.ts: dois
     // técnicos com o mesmo cenário do ponto de vista do atacante, só o
     // vínculo em tenant_technicians diferindo.
@@ -92,6 +108,7 @@ describe('POST /assistant/normative-query — tenant_id de técnico/parceiro (e2
   afterAll(async () => {
     await (db as any).client.query('DELETE FROM company_document_chunks WHERE id = $1', [chunkId]);
     await (db as any).client.query('DELETE FROM documents WHERE id = $1', [documentId]);
+    await (db as any).client.query('DELETE FROM documents WHERE id = $1', [expiredDocumentId]);
     await db.cleanup();
     await db.disconnect();
     await app.close();
@@ -119,6 +136,34 @@ describe('POST /assistant/normative-query — tenant_id de técnico/parceiro (e2
     expect(res.body.company_citations).toEqual([
       { document_id: documentId, title: 'PGR Assistente Tecnico Teste', category: 'pgr' },
     ]);
+  });
+
+  it('tecnico vinculado + tenant_id: NUNCA recebe itens operacionais, mesmo com pendência real disponível (Restrição Global §1 da Fase 10)', async () => {
+    fakeAnswer.mockResolvedValue([
+      {
+        claim: 'O PGR identifica risco de queda de altura.',
+        chunk_ids: [],
+        operational_ref_ids: [],
+        company_chunk_ids: [chunkId],
+        checklist_ref_ids: [],
+        uses_attachment: false,
+      },
+    ]);
+
+    const res = await request(app.getHttpServer())
+      .post('/assistant/normative-query')
+      .set('Authorization', `Bearer ${linkedTecnicoToken}`)
+      .send({ question: 'o que o PGR diz sobre altura?', tenant_id: tenantId });
+
+    expect(res.status).toBe(201);
+    expect(fakeAnswer).toHaveBeenCalledTimes(1);
+    // Índice 2 é `operationalItems` na assinatura de
+    // NormativeAnswerProvider.answer(question, chunks, operationalItems,
+    // companyChunks, checklistItems, attachment) — precisa vir [], nunca
+    // o "PCMSO Vencido" que existe de verdade pra este tenant (empresa
+    // veria; técnico não pode).
+    expect(fakeAnswer.mock.calls[0][2]).toEqual([]);
+    expect(JSON.stringify(res.body)).not.toContain('PCMSO Vencido');
   });
 
   it('tecnico NÃO vinculado + tenant_id real: 403, sem vazar nenhum dado da empresa', async () => {

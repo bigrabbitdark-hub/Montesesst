@@ -30,6 +30,7 @@ describe('POST /assistant/normative-query (e2e)', () => {
   let redis: Redis;
   let tokenAdmin: string;
   let tokenEmpresa: string;
+  let tenantEmpresaId: string;
   let tokenTecnico: string;
   let sourceId: string;
   let documentId: string;
@@ -83,6 +84,7 @@ describe('POST /assistant/normative-query (e2e)', () => {
     tokenAdmin = loginAdmin.body.access_token;
 
     const tenant = await db.createTenantWithUser('Empresa Assistente Teste');
+    tenantEmpresaId = tenant.tenantId;
     const loginEmpresa = await request(app.getHttpServer())
       .post('/auth/login')
       .send({ email: tenant.email, password: tenant.password });
@@ -254,13 +256,24 @@ describe('POST /assistant/normative-query (e2e)', () => {
         .send({ question: 'preciso usar capacete?' });
 
       expect(res.status).toBe(201);
-      // Duas transações curtas e separadas agora (busca operacional +
-      // busca de trechos de documento da empresa, Fase 24) — o spy
-      // genérico em withTenantContext captura as duas, cada uma com seu
-      // próprio par start/end, ambas completas antes de "answer-called".
+      // Quatro transações curtas e separadas agora, nesta ordem: (1)
+      // SubscriptionStatusGuard (roda antes de qualquer rota paga,
+      // inclusive esta — checa SubscriptionAccessService.stateFor via seu
+      // próprio withTenantContext, achado ao investigar esta falha do
+      // teste em 2026-09-28: o spy genérico captura QUALQUER chamador,
+      // não só o serviço do Assistente), (2) busca de knownFullNames pra
+      // redação de PII (achado C-5 da auditoria do Assistente, mesmo dia —
+      // ver normative-assistant.service.ts), (3) busca operacional e (4)
+      // busca de trechos de documento da empresa (Fase 24) — o spy
+      // genérico em withTenantContext captura as quatro, cada uma com seu
+      // próprio par start/end, todas completas antes de "answer-called".
       // Prova a mesma disciplina do Finding C1a original: nenhuma delas
       // segura conexão aberta durante a chamada de IA.
       expect(order).toEqual([
+        'operational-start',
+        'operational-end',
+        'operational-start',
+        'operational-end',
         'operational-start',
         'operational-end',
         'operational-start',
@@ -671,10 +684,17 @@ describe('POST /assistant/normative-query (e2e)', () => {
       },
     ]);
 
+    // Pergunta deliberadamente mais longa que 4 palavras (mesmo sentido
+    // de "preciso usar capacete?", usado até 2026-09-28): a heurística de
+    // dado_insuficiente (Etapa 2, question-notices.ts) dispara pra
+    // perguntas com 4 palavras ou menos sem menção a NR — "preciso usar
+    // capacete?" (3 palavras) passou a disparar esse aviso legitimamente
+    // depois da Etapa 2, e este teste quer uma pergunta SEM nenhum
+    // gatilho, não uma pergunta curta especificamente.
     const res = await request(app.getHttpServer())
       .post('/assistant/normative-query')
       .set('Authorization', `Bearer ${tokenEmpresa}`)
-      .send({ question: 'preciso usar capacete?' });
+      .send({ question: 'qual a norma que trata do uso de capacete?' });
 
     expect(res.status).toBe(201);
     expect(res.body.answer).toBe('É obrigatório o uso de capacete.');
@@ -730,5 +750,89 @@ describe('POST /assistant/normative-query (e2e)', () => {
     expect(res.body.answer).toBeNull();
     expect(res.body.message).toBe(FALLBACK_MESSAGE);
     expect(res.body.notices.map((n: any) => n.tipo)).toEqual(['contexto']);
+  });
+
+  // Achado da auditoria do Assistente (2026-09-28, C-3): SYSTEM_PROMPT_WITH_EPI_GUIDE
+  // nunca era passado como 7º argumento de answerer.answer() — código morto
+  // desde a Fase A/Etapa 2. Sem este teste, o mesmo bug poderia voltar em
+  // silêncio (nenhum outro teste chama fakeAnswer.mock.calls[...][6]).
+  it('pergunta sobre EPI recebe o guia EPI-por-função como systemPrompt (Fase A — Etapa 2, achado C-3)', async () => {
+    fakeAnswer.mockResolvedValue([
+      { claim: 'O soldador precisa de máscara de solda.', chunk_ids: [chunkId], operational_ref_ids: [], company_chunk_ids: [], checklist_ref_ids: [], uses_attachment: false },
+    ]);
+
+    await request(app.getHttpServer())
+      .post('/assistant/normative-query')
+      .set('Authorization', `Bearer ${tokenEmpresa}`)
+      .send({ question: 'que EPI o soldador precisa usar?' });
+
+    const lastCall = fakeAnswer.mock.calls[fakeAnswer.mock.calls.length - 1];
+    const systemPromptArg = lastCall[6];
+    expect(systemPromptArg).toBeDefined();
+    expect(systemPromptArg).toContain('GUIA EPI-POR-FUNÇÃO MONTESE');
+    expect(systemPromptArg).toContain('Soldador');
+  });
+
+  it('pergunta sem menção a EPI usa o SYSTEM_PROMPT padrão (systemPrompt undefined)', async () => {
+    fakeAnswer.mockResolvedValue([
+      { claim: 'É obrigatório o uso de capacete.', chunk_ids: [chunkId], operational_ref_ids: [], company_chunk_ids: [], checklist_ref_ids: [], uses_attachment: false },
+    ]);
+
+    await request(app.getHttpServer())
+      .post('/assistant/normative-query')
+      .set('Authorization', `Bearer ${tokenEmpresa}`)
+      .send({ question: 'qual a norma que trata do uso de capacete?' });
+
+    const lastCall = fakeAnswer.mock.calls[fakeAnswer.mock.calls.length - 1];
+    expect(lastCall[6]).toBeUndefined();
+  });
+
+  // Achado da auditoria do Assistente (2026-09-28, C-5): antes desta
+  // correção, um CPF ou nome de funcionário colado na pergunta saía sem
+  // nenhuma redação pro provedor de embedding E pro provedor de resposta
+  // — redactPii só cobria texto de documento indexado (Fase 24) e ata de
+  // CIPA. Estes dois testes travam a correção pelos mesmos dois pontos de
+  // saída externa (embedding e chat completion), não só um.
+  it('CPF na pergunta é redigido antes de ir pro embedding e pro provedor de resposta', async () => {
+    fakeAnswer.mockResolvedValue([
+      { claim: 'É obrigatório o uso de capacete.', chunk_ids: [chunkId], operational_ref_ids: [], company_chunk_ids: [], checklist_ref_ids: [], uses_attachment: false },
+    ]);
+
+    await request(app.getHttpServer())
+      .post('/assistant/normative-query')
+      .set('Authorization', `Bearer ${tokenEmpresa}`)
+      .send({ question: 'meu CPF é 123.456.789-00, preciso saber sobre capacete de segurança' });
+
+    const embedArg = fakeEmbed.mock.calls[fakeEmbed.mock.calls.length - 1][0];
+    const answerArg = fakeAnswer.mock.calls[fakeAnswer.mock.calls.length - 1][0];
+    expect(embedArg).not.toContain('123.456.789-00');
+    expect(embedArg).toContain('[CPF removido]');
+    expect(answerArg).not.toContain('123.456.789-00');
+    expect(answerArg).toContain('[CPF removido]');
+  });
+
+  it('nome completo de funcionário cadastrado na pergunta é redigido (mesma redação do fluxo de indexação)', async () => {
+    const employee = await (db as any).client.query(
+      `INSERT INTO employees (tenant_id, full_name, cpf, status)
+       VALUES ($1, 'Fulano da Silva Sauro', '22233344455', 'ativo') RETURNING id`,
+      [tenantEmpresaId],
+    );
+
+    fakeAnswer.mockResolvedValue([
+      { claim: 'É obrigatório o uso de capacete.', chunk_ids: [chunkId], operational_ref_ids: [], company_chunk_ids: [], checklist_ref_ids: [], uses_attachment: false },
+    ]);
+
+    await request(app.getHttpServer())
+      .post('/assistant/normative-query')
+      .set('Authorization', `Bearer ${tokenEmpresa}`)
+      .send({ question: 'Fulano da Silva Sauro precisa de que EPI pra trabalho em altura?' });
+
+    const embedArg = fakeEmbed.mock.calls[fakeEmbed.mock.calls.length - 1][0];
+    const answerArg = fakeAnswer.mock.calls[fakeAnswer.mock.calls.length - 1][0];
+    expect(embedArg).not.toContain('Fulano da Silva Sauro');
+    expect(embedArg).toContain('[nome removido]');
+    expect(answerArg).not.toContain('Fulano da Silva Sauro');
+
+    await (db as any).client.query('DELETE FROM employees WHERE id = $1', [employee.rows[0].id]);
   });
 });

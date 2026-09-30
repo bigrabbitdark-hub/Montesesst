@@ -12,9 +12,6 @@
 //   que há auditoria de vencimentos no operacional.
 // - dado_insuficiente: pergunta é genérica e exige contexto da empresa
 //   (CNAE, nº funcionários, grau de risco, estado).
-// - anexo_nao_lido: aplicado quando o backend detecta que veio
-//   pergunta com texto esperando anexo, mas o anexo está ausente.
-//   (controlado fora do módulo — ver normative-assistant.service.ts).
 // - geografia: derivada de pergunta mencionando estado/município, distinta
 //   da jurisdicao para granularidade (jurisdicao é regulatório, geografia
 //   é só contextualização).
@@ -61,7 +58,10 @@ const TRIGGERS: { tipo: NoticeType; patterns: RegExp[] }[] = [
       /\blicenca ambiental\b/,
       /\blicenciamento\b/,
       /\bcodigo de obras\b/,
-      /\bmeu (estado|municipio|cidade)\b/,
+      // "cidade" é feminino ("minha cidade", nunca "meu cidade") — ver ITEM
+      // 007 da auditoria do Assistente (2026-09-28).
+      /\bmeu (estado|municipio)\b/,
+      /\bminha cidade\b/,
       /\b(estadual|estaduais|municipal|municipais)\b/,
     ],
   },
@@ -112,7 +112,9 @@ const TRIGGERS: { tipo: NoticeType; patterns: RegExp[] }[] = [
     patterns: [
       // Estado / UF explícita (sigla).
       /\b(al|ba|ce|df|es|go|ma|mg|ms|mt|pa|pb|pe|pi|pr|rj|rn|ro|rr|rs|sc|se|sp|to)\b\s*(?:[,\.\?\!]|$)/i,
-      /\bno (estado|municipio|cidade) de\b/,
+      // Mesma correção de concordância de gênero do ITEM 007 acima.
+      /\bno (estado|municipio) de\b/,
+      /\bna cidade de\b/,
       /\bda (bahia|s[aã]o paulo|rio|minas|paran[aá]|santa catarina|rio grande do sul|goi[aá]s|alagoas|cear[aá]|maranh[aã]o|pernambuco|par[aá]|para[ií]ba|esp[ií]rito santo|sergipe|amaz[oô]nas|par[aá]|tocantins|ac[re]+|roraima|rond[oô]nia|distrito federal)\b/i,
     ],
   },
@@ -140,7 +142,17 @@ export function detectNotices(question: string): NormativeNotice[] {
     if (tipo === 'dado_insuficiente') {
       const words = normalized.split(/\s+/).filter(Boolean);
       const mentionsNr = /\bnr-?\d{1,2}/.test(normalized);
-      if (words.length > 0 && words.length <= 4 && !mentionsNr) {
+      // Achado da auditoria do Assistente (2026-09-28, C-4): o comentário
+      // acima ("já não disparou jurisdicao/profissional_habilitado") nunca
+      // virou código — esta checagem estava ausente. Sem ela, uma pergunta
+      // curta que já casa em jurisdicao/profissional_habilitado (ex.: "Como
+      // funciona o licenciamento?", "Preciso de RRT?") ganhava os DOIS
+      // avisos, mesmo o usuário já tendo demonstrado saber exatamente o que
+      // está perguntando. TRIGGERS processa jurisdicao/profissional_habilitado
+      // ANTES de dado_insuficiente (ordem do array), então `seen` já reflete
+      // esta mesma chamada nesse ponto do loop.
+      const alreadyShowsIntent = seen.has('jurisdicao') || seen.has('profissional_habilitado');
+      if (words.length > 0 && words.length <= 4 && !mentionsNr && !alreadyShowsIntent) {
         notices.push({ tipo, texto: NOTICE_TEXTS[tipo] });
         seen.add(tipo);
       }

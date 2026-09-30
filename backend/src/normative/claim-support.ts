@@ -137,10 +137,59 @@ function numberPattern(number: string): string {
   return escapeRegExp(number).replace(/\\[.]|,/g, '[.,]');
 }
 
+// Achado da auditoria do Assistente (2026-09-28, item 008): converte um
+// inteiro (0-999) pro cardinal por extenso em português, nas formas de
+// gênero que aparecem em texto de NR ("um ano", "uma vez", "dois dias",
+// "duas horas"). Escrito sem acento de propósito — o texto de evidência já
+// chega normalizado (NFD + remoção de marca, ver normalize() acima), então
+// "quatorze"/"dezessete" aqui precisam bater com a forma já sem acento.
+// Escopo deliberadamente pequeno (0-999): cobre qualquer prazo/quantidade
+// plausível de norma de SST ("8 horas", "24 horas", "30 dias", "2 anos");
+// números maiores, decimais ou por extenso fora do padrão cardinal simples
+// (ordinais, frações) continuam fora — ficam em `logged`, não em
+// `blocking`, então nunca bloqueiam uma claim por um falso negativo daqui.
+const UNITS: readonly string[] = ['zero', 'um', 'dois', 'tres', 'quatro', 'cinco', 'seis', 'sete', 'oito', 'nove'];
+const TEENS: readonly string[] = [
+  'dez', 'onze', 'doze', 'treze', 'quatorze', 'quinze', 'dezesseis', 'dezessete', 'dezoito', 'dezenove',
+];
+const TENS: readonly string[] = ['', '', 'vinte', 'trinta', 'quarenta', 'cinquenta', 'sessenta', 'setenta', 'oitenta', 'noventa'];
+const HUNDREDS: readonly string[] = [
+  '', 'cento', 'duzentos', 'trezentos', 'quatrocentos', 'quinhentos', 'seiscentos', 'setecentos', 'oitocentos', 'novecentos',
+];
+
+function twoDigitWords(n: number): string {
+  if (n < 10) return UNITS[n];
+  if (n < 20) return TEENS[n - 10];
+  const tens = Math.floor(n / 10);
+  const rest = n % 10;
+  return rest === 0 ? TENS[tens] : `${TENS[tens]} e ${UNITS[rest]}`;
+}
+
+function numberToPortugueseWords(n: number): string[] {
+  if (!Number.isInteger(n) || n < 0 || n > 999) return [];
+  let masculine: string;
+  if (n === 0) masculine = 'zero';
+  else if (n === 100) masculine = 'cem';
+  else if (n < 100) masculine = twoDigitWords(n);
+  else {
+    const hundreds = Math.floor(n / 100);
+    const rest = n % 100;
+    masculine = rest === 0 ? HUNDREDS[hundreds] : `${HUNDREDS[hundreds]} e ${twoDigitWords(rest)}`;
+  }
+  // Só o último componente do número carrega gênero em português
+  // ("vinte e um" / "vinte e uma", nunca "vinte e um" fica "vinte e umo").
+  const variants = new Set([masculine]);
+  if (masculine.endsWith('um')) variants.add(`${masculine.slice(0, -'um'.length)}uma`);
+  if (masculine.endsWith('dois')) variants.add(`${masculine.slice(0, -'dois'.length)}duas`);
+  return [...variants];
+}
+
 // O mesmo número imediatamente seguido (tolerando espaços e um parêntese
-// curto, "8 (oito) horas") de uma unidade da mesma família. Número por
-// extenso na evidência NÃO é convertido — conta como ausente e vai para o
-// log, que é exatamente o falso positivo que a Etapa 3 vai medir.
+// curto, "8 (oito) horas") de uma unidade da mesma família, OU o número por
+// extenso (item 008) seguido da mesma unidade ("oito horas"). Só tenta a
+// forma por extenso quando o número da claim é um inteiro simples — decimal
+// ("3,5") e número fora de 0-999 continuam sem conversão, e vão pro log
+// (nunca bloqueiam), que é exatamente o resíduo que a Etapa 3 mede.
 function evidenceHasNumberWithUnit(evidence: string, item: NumberWithUnit): boolean {
   const num = numberPattern(item.number);
   const forms = UNIT_FAMILIES[item.family].map(escapeRegExp).join('|');
@@ -148,6 +197,14 @@ function evidenceHasNumberWithUnit(evidence: string, item: NumberWithUnit): bool
   if (suffixed.test(evidence)) return true;
   if (item.family === 'real') {
     return new RegExp(`r\\$\\s*${num}(?!\\d)`).test(evidence);
+  }
+  if (/^\d+$/.test(item.number)) {
+    const words = numberToPortugueseWords(parseInt(item.number, 10));
+    if (words.length > 0) {
+      const wordAlternation = words.map(escapeRegExp).join('|');
+      const spelledOut = new RegExp(`\\b(?:${wordAlternation})\\s+(?:${forms})\\b`);
+      if (spelledOut.test(evidence)) return true;
+    }
   }
   return false;
 }

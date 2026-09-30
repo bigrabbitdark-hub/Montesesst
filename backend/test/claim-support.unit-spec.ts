@@ -93,10 +93,29 @@ describe('checkClaimSupport (unit)', () => {
   });
 
   describe('números com unidade (só registrados)', () => {
-    it('número por extenso na evidência vai para logged e nunca para blocking', () => {
+    // Item 008 (auditoria do Assistente, 2026-09-28): antes desta correção,
+    // "oito horas" na evidência NUNCA apoiava "8 horas" na claim — ia pro
+    // log como se a evidência não tivesse a informação, mesmo tendo.
+    it('número por extenso simples na evidência apoia o dígito na claim (item 008)', () => {
       const result = checkClaimSupport('O prazo é de 8 horas.', ['o curso tem carga de oito horas']);
       expect(result.blocking).toEqual([]);
-      expect(result.logged).toEqual(['8 horas']);
+      expect(result.logged).toEqual([]);
+    });
+
+    it('número por extenso composto ("vinte e quatro") também é reconhecido', () => {
+      expect(checkClaimSupport('Prazo de 24 horas.', ['deve ser cumprido em vinte e quatro horas']).logged).toEqual([]);
+      expect(checkClaimSupport('Validade de 30 dias.', ['validade de trinta dias']).logged).toEqual([]);
+    });
+
+    it('forma feminina do número por extenso é reconhecida ("duas horas", "um ano")', () => {
+      expect(checkClaimSupport('Intervalo de 2 horas.', ['intervalo de duas horas']).logged).toEqual([]);
+      expect(checkClaimSupport('Repetir a cada 1 ano.', ['deve ser repetido a cada um ano']).logged).toEqual([]);
+    });
+
+    it('número por extenso fora de 0-999 (limite documentado) continua só registrado, nunca bloqueia', () => {
+      const result = checkClaimSupport('O valor é de 1200 dias.', ['prazo de mil e duzentos dias']);
+      expect(result.blocking).toEqual([]);
+      expect(result.logged).toEqual(['1200 dias']);
     });
 
     it('número com parêntese por extenso na evidência ("8 (oito) horas") é apoiado', () => {
@@ -104,9 +123,14 @@ describe('checkClaimSupport (unit)', () => {
       expect(result.logged).toEqual([]);
     });
 
-    it('"por cento" na evidência apoia "%" na claim, e a ausência é registrada', () => {
-      expect(checkClaimSupport('São 10% do total.', ['dez por cento']).logged).toEqual(['10 %']);
+    it('"por cento" na evidência apoia "%" na claim, inclusive por extenso, e a ausência de verdade é registrada', () => {
       expect(checkClaimSupport('São 10% do total.', ['10 por cento do total']).logged).toEqual([]);
+      // "dez por cento" combina duas equivalências ao mesmo tempo (número
+      // por extenso, item 008, e "por cento" como forma de "%") — passou a
+      // ser reconhecido pela mesma correção.
+      expect(checkClaimSupport('São 10% do total.', ['dez por cento']).logged).toEqual([]);
+      // Percentual genuinamente diferente do citado continua registrado.
+      expect(checkClaimSupport('São 10% do total.', ['são 25% do total']).logged).toEqual(['10 %']);
     });
 
     it('valor em reais com prefixo R$ é comparado com a evidência', () => {

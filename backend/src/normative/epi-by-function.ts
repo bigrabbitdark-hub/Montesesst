@@ -70,3 +70,26 @@ export function epiByFunctionForPrompt(): string {
     return `- ${row.funcao} (${row.nrs.join('/')}): ${epis}`;
   }).join('\n');
 }
+
+// Achado da auditoria do Assistente (2026-09-28, C-3): SYSTEM_PROMPT_WITH_EPI_GUIDE
+// (normative-answer-shared.ts) foi construído na Fase A — Etapa 2 pra ser
+// passado como 7º argumento de NormativeAnswerProvider.answer() "quando a
+// pergunta casa em 'EPI por função'", mas o detector nunca foi escrito — o
+// call site real em normative-assistant.service.ts sempre chamava
+// answer(...) com só 6 argumentos, então SYSTEM_PROMPT_WITH_EPI_GUIDE nunca
+// era usado, mesmo em produção com o build mais recente. Confirmado por
+// grep: zero usos fora da própria definição.
+//
+// Deliberadamente amplo (qualquer menção a "EPI"/"EPIs"), não restrito a
+// "que EPI o pedreiro precisa": o próprio SYSTEM_PROMPT_WITH_EPI_GUIDE já
+// instrui o modelo a usar o guia só pra pergunta de função ("Use apenas
+// para perguntas tipo…") e a nunca tratá-lo como texto oficial — o filtro
+// aqui só decide se vale a pena gastar ~20 linhas extra de contexto, não
+// decide sozinho o comportamento final. Restringir demais aqui arriscaria
+// esconder o guia justamente da pergunta "que EPI preciso pra soldar" se o
+// fraseio não bater um padrão mais específico.
+const EPI_QUESTION_PATTERN = /\bepis?\b/i;
+
+export function isEpiQuestion(question: string): boolean {
+  return EPI_QUESTION_PATTERN.test(question);
+}

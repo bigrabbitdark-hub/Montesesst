@@ -30,9 +30,9 @@ const ALLOWED: Record<string, { calls: number; motivo: string }> = {
     motivo: 'Monta o contexto a partir de request.user (JWT); é a única fonte de req.withTenantContext.',
   },
   'normative/normative-assistant.service.ts': {
-    calls: 3,
+    calls: 4,
     motivo:
-      'Contexto do usuário autenticado (JWT). O tenantId ALVO vindo do corpo, para técnico/parceiro, é validado por assertTenantLinked antes; a empresa opera sempre no próprio tenant.',
+      'Contexto do usuário autenticado (JWT). O tenantId ALVO vindo do corpo, para técnico/parceiro, é validado por assertTenantLinked antes; a empresa opera sempre no próprio tenant. 4ª chamada (achado C-5 da auditoria do Assistente, 2026-09-28): busca de knownFullNames pra redação de PII na pergunta/anexo, mesmo padrão de contexto das outras 3.',
   },
   'pente-fino/pente-fino-comparison.service.ts': {
     calls: 8,

@@ -20,6 +20,9 @@ import { detectNotices, NormativeNotice } from './question-notices';
 import { checkClaimSupport } from './claim-support';
 import { QueryOutcome, QueryTrace, hashQuestion, tokensAllowedForClaim } from './query-trace';
 import { AssistantQueryLogService } from './assistant-query-log.service';
+import { isEpiQuestion } from './epi-by-function';
+import { redactPii } from '../common/text/pii-redaction.util';
+import { SYSTEM_PROMPT_WITH_EPI_GUIDE } from './normative-answer-shared';
 
 // Fase 10 — copy ajustada pra ser direta e não sugerir que o assistente
 // está fazendo afirmação categórica (pede verificação humana em vez disso).
@@ -251,6 +254,31 @@ export class NormativeAssistantService {
       );
     }
 
+    // Achado da auditoria do Assistente (2026-09-28, C-5): redactPii já
+    // protegia o texto de documento indexado (Fase 24) e a transcrição de
+    // ata de CIPA, mas NUNCA a pergunta digitada aqui nem o texto do anexo
+    // desta própria pergunta — as duas coisas saem pro provedor externo
+    // (embedding + chat completion) sem nenhuma minimização de PII. Um CPF
+    // ou nome de terceiro colado na pergunta ia direto pro MiniMax/
+    // OpenRouter. knownFullNames só é buscado quando há tenantId (mesma
+    // query de documents.controller.ts, transação própria e curta, sem
+    // custo extra numa pergunta puramente normativa); CPF é sempre
+    // redigido, com ou sem tenant. `question`/`attachment.buffer`
+    // originais continuam intactos pra detectNotices/hashQuestion (rodam
+    // só localmente, nunca saem do backend) — só o que vai pro provedor
+    // externo passa pela redação.
+    let knownFullNames: string[] = [];
+    if (tenantId) {
+      knownFullNames = await this.db.withTenantContext(
+        { userId: user.id, tenantId: user.tenantId ?? undefined, role: user.role },
+        (client) =>
+          client
+            .query<{ full_name: string }>('SELECT full_name FROM employees WHERE tenant_id = $1', [tenantId])
+            .then((res) => res.rows.map((row) => row.full_name)),
+      );
+    }
+    const redactedQuestion = redactPii(question, knownFullNames);
+
     let attachmentInput: AttachmentInput | undefined;
     let attachmentWarning: string | undefined;
 
@@ -258,21 +286,21 @@ export class NormativeAssistantService {
       if (attachment.mimetype === 'application/pdf') {
         const text = await extractPdfText(attachment.buffer);
         if (text) {
-          attachmentInput = { kind: 'pdf_text', content: text };
+          attachmentInput = { kind: 'pdf_text', content: redactPii(text, knownFullNames) };
         } else {
           attachmentWarning = PDF_UNREADABLE_WARNING;
         }
       } else if (attachment.mimetype === DOCX_MIME_TYPE) {
         const text = await extractDocxText(attachment.buffer);
         if (text) {
-          attachmentInput = { kind: 'docx_text', content: text };
+          attachmentInput = { kind: 'docx_text', content: redactPii(text, knownFullNames) };
         } else {
           attachmentWarning = DOCX_UNREADABLE_WARNING;
         }
       } else if (attachment.mimetype === XLSX_MIME_TYPE) {
         const rows = await extractXlsxRows(attachment.buffer);
         if (rows.length > 0) {
-          attachmentInput = { kind: 'xlsx_text', content: rows.join('\n') };
+          attachmentInput = { kind: 'xlsx_text', content: redactPii(rows.join('\n'), knownFullNames) };
         } else {
           attachmentWarning = XLSX_UNREADABLE_WARNING;
         }
@@ -290,7 +318,9 @@ export class NormativeAssistantService {
 
     traceState.usedAttachment = attachmentInput !== undefined;
     retrievalStartedAt = Date.now();
-    const questionEmbedding = await this.embeddings.embed(question);
+    // redactedQuestion (não `question`): o embedding também é uma chamada
+    // externa (OpenRouter) — ver comentário do achado C-5 acima.
+    const questionEmbedding = await this.embeddings.embed(redactedQuestion);
     // 0.75 (valor original do plano) nunca teria funcionado de verdade —
     // calibrado contra as 38 NRs reais indexadas em 2026-08-31: pergunta
     // irrelevante ("capital da França") ~0.13, tangencial ("bolo de
@@ -428,12 +458,20 @@ export class NormativeAssistantService {
     }
 
     const claims = await this.answerer.answer(
-      question,
+      // redactedQuestion (não `question`): ver achado C-5 acima — é a
+      // pergunta que efetivamente sai pro MiniMax/OpenRouter.
+      redactedQuestion,
       relevant.map((r) => ({ id: r.chunk_id, content: r.content })),
       operationalItems,
       companyChunks.map((c): CompanyChunk => ({ id: c.chunk_id, content: c.content })),
       relevantChecklist.map((c): ChecklistItem => ({ id: c.item_id, content: c.content })),
       attachmentInput,
+      // Achado da auditoria do Assistente (2026-09-28, C-3): este 7º
+      // argumento nunca era passado — SYSTEM_PROMPT_WITH_EPI_GUIDE existia
+      // desde a Fase A/Etapa 2 mas era código morto. undefined aqui faz o
+      // provedor cair no SYSTEM_PROMPT padrão (mesmo comportamento de
+      // sempre para pergunta que não é sobre EPI).
+      isEpiQuestion(question) ? SYSTEM_PROMPT_WITH_EPI_GUIDE : undefined,
     );
     traceState.claimsTotal = claims.length;
 
