@@ -224,6 +224,34 @@ export class SubscriptionsService {
     return result.rows;
   }
 
+  // ITEM 031 (auditoria 2026-09-27): decisão do fundador (2026-09-28) — downgrade nunca
+  // desativa funcionário nenhum (o limite só bloqueia CADASTRAR novos, ver
+  // employees.service.ts:assertEmployeeLimitNotExceeded), mas a empresa precisa ser avisada
+  // no momento da troca, antes de ir pro checkout. null = sem aviso (o novo plano comporta
+  // os funcionários atuais, ou não tem limite).
+  async downgradeWarning(client: PoolClient, tenantId: string, planId: string): Promise<string | null> {
+    const planResult = await client.query<{ employee_limit: number | null }>(
+      'SELECT employee_limit FROM plans WHERE id = $1 AND audience = $2 AND active = true',
+      [planId, 'empresa'],
+    );
+    const limit = planResult.rows[0]?.employee_limit;
+    if (limit === undefined) throw new NotFoundException('Plano não encontrado');
+    if (limit === null) return null;
+
+    const countResult = await client.query<{ count: string }>(
+      `SELECT COUNT(*) FROM employees WHERE tenant_id = $1 AND status = 'ativo'`,
+      [tenantId],
+    );
+    const activeCount = parseInt(countResult.rows[0].count, 10);
+    if (activeCount <= limit) return null;
+
+    return (
+      `Este plano permite até ${limit} funcionário${limit === 1 ? '' : 's'} ativo${limit === 1 ? '' : 's'}. ` +
+      `Sua empresa tem ${activeCount} hoje — eles continuam ativos e funcionando normalmente, ` +
+      `mas você não vai conseguir cadastrar nenhum novo até ficar dentro do limite.`
+    );
+  }
+
   async getActiveEmployeeLimit(client: PoolClient, tenantId: string): Promise<number | null> {
     const result = await client.query<{ employee_limit: number | null }>(
       `SELECT p.employee_limit

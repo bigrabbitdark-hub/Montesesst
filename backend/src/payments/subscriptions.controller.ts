@@ -1,4 +1,17 @@
-import { Body, Controller, Get, Param, Patch, Post, Req, UsePipes, ValidationPipe } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  NotFoundException,
+  Param,
+  ParseUUIDPipe,
+  Patch,
+  Post,
+  Query,
+  Req,
+  UsePipes,
+  ValidationPipe,
+} from '@nestjs/common';
 import { Roles } from '../common/decorators/roles.decorator';
 import { SkipSubscriptionCheck } from '../common/decorators/skip-subscription-check.decorator';
 import { SubscriptionsService } from './subscriptions.service';
@@ -37,6 +50,24 @@ export class SubscriptionsController {
   @Get('me')
   async me(@Req() req: any) {
     return { access: await this.access.stateFor(req.user) };
+  }
+
+  // ITEM 031 (auditoria 2026-09-27): a empresa vê ANTES de ir pro checkout se o plano
+  // escolhido comporta o número atual de funcionários ativos — nada é criado nem cobrado
+  // aqui, é só leitura; permite cancelar sem deixar preapproval nenhum pra trás no Mercado
+  // Pago. Isento do bloqueio de assinatura pelo mesmo motivo de POST / (é parte do próprio
+  // fluxo de reativar/trocar de plano).
+  @SkipSubscriptionCheck()
+  @Roles('empresa')
+  @Get('downgrade-check')
+  downgradeCheck(
+    @Query('plan_id', new ParseUUIDPipe({ exceptionFactory: () => new NotFoundException('Plano não encontrado') }))
+    planId: string,
+    @Req() req: any,
+  ) {
+    return req.withTenantContext((client: any) =>
+      this.subscriptions.downgradeWarning(client, req.user.tenantId, planId).then((warning) => ({ warning })),
+    );
   }
 
   @Roles('admin')
