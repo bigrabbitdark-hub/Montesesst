@@ -1,6 +1,13 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PoolClient } from 'pg';
 import { buildSafeSetClause } from '../common/safe-update.util';
+
+// ITEM 019 (auditoria 2026-09-27): apagar uma filial apagava em CASCATA todo o histórico
+// de conformidade vinculado a ela (CIPA, brigada de incêndio, checklist de prevenção) — 12
+// tabelas, sem confirmação nem aviso do que ia junto. Decisão do fundador (2026-09-28):
+// nunca apagar de verdade. `remove()` reaproveita a coluna `status` (já existia, sem uso
+// nenhum até então) para marcar a filial como 'inativo' — reversível via
+// PATCH .../company-units/:id { status: 'ativo' }, que já era uma rota existente.
 
 const UPDATABLE_FIELDS = [
   'name',
@@ -68,9 +75,17 @@ export class CompanyUnitsService {
     return result.rows[0];
   }
 
-  async findAll(client: PoolClient): Promise<CompanyUnit[]> {
+  // `includeInactive`: por padrão as listagens (seletor de filial pra agendar visita, ficha
+  // da empresa vista pelo técnico, etc.) não devem oferecer uma filial desativada. `true` é
+  // o único jeito de redescobrir o id de uma filial desativada para reativá-la — sem UI
+  // dedicada hoje, é a rota de recuperação real.
+  async findAll(client: PoolClient, includeInactive = false): Promise<CompanyUnit[]> {
     // Sem WHERE tenant_id: RLS já filtra pelo contexto (app.tenant_id/app.role).
-    const result = await client.query<CompanyUnit>('SELECT * FROM company_units ORDER BY name');
+    const result = await client.query<CompanyUnit>(
+      includeInactive
+        ? 'SELECT * FROM company_units ORDER BY name'
+        : `SELECT * FROM company_units WHERE status <> 'inativo' ORDER BY name`,
+    );
     return result.rows;
   }
 
@@ -82,6 +97,15 @@ export class CompanyUnitsService {
   }
 
   async update(client: PoolClient, id: string, data: UpdateCompanyUnitData): Promise<CompanyUnit> {
+    // A mesma proteção do remove() vale aqui: sem isso, dava pra desativar a matriz só
+    // trocando de rota (PATCH status='inativo' em vez de DELETE).
+    if (data.status === 'inativo') {
+      const current = await this.findOne(client, id);
+      if (current.is_matriz) {
+        throw new BadRequestException('A matriz não pode ser desativada — é a unidade do cadastro da empresa.');
+      }
+    }
+
     const { setClauses, values } = buildSafeSetClause(data, UPDATABLE_FIELDS, 2);
     if (setClauses.length === 0) return this.findOne(client, id);
 
@@ -94,8 +118,13 @@ export class CompanyUnitsService {
     return unit;
   }
 
+  // Nunca DELETE físico (ver comentário no topo do arquivo — ITEM 019). Idempotente: chamar
+  // de novo numa filial já inativa não é erro. Reativação: PATCH .../:id { status: 'ativo' }.
   async remove(client: PoolClient, id: string): Promise<void> {
-    const result = await client.query('DELETE FROM company_units WHERE id = $1', [id]);
-    if (result.rowCount === 0) throw new NotFoundException('Filial não encontrada');
+    const unit = await this.findOne(client, id);
+    if (unit.is_matriz) {
+      throw new BadRequestException('A matriz não pode ser removida — é a unidade do cadastro da empresa.');
+    }
+    await client.query(`UPDATE company_units SET status = 'inativo' WHERE id = $1`, [id]);
   }
 }

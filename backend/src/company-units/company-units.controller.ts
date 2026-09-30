@@ -7,6 +7,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   Req,
   UsePipes,
   ValidationPipe,
@@ -40,9 +41,11 @@ export class CompanyUnitsController {
     );
   }
 
+  // includeInactive=true: única forma hoje de redescobrir o id de uma filial desativada
+  // (ITEM 019) pra reativá-la via PATCH — não há tela dedicada a isso ainda.
   @Get()
-  findAll(@Req() req: any) {
-    return req.withTenantContext((client: any) => this.companyUnits.findAll(client));
+  findAll(@Query('includeInactive') includeInactive: string | undefined, @Req() req: any) {
+    return req.withTenantContext((client: any) => this.companyUnits.findAll(client, includeInactive === 'true'));
   }
 
   @Get(':id')
