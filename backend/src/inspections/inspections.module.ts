@@ -4,9 +4,10 @@ import { ActionPlansController } from './action-plans.controller';
 import { InspectionsService } from './inspections.service';
 import { AiCopilotModule } from '../ai-copilot/ai-copilot.module';
 import { DocumentsModule } from '../documents/documents.module';
+import { NrConformidadeModule } from '../nr-conformidade/nr-conformidade.module';
 
 @Module({
-  imports: [AiCopilotModule, DocumentsModule],
+  imports: [AiCopilotModule, DocumentsModule, NrConformidadeModule],
   controllers: [InspectionsController, ActionPlansController],
   providers: [InspectionsService],
 })

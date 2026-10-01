@@ -1,10 +1,14 @@
 import { BadRequestException, Controller, Get, Query, Req } from '@nestjs/common';
 import { Roles } from '../common/decorators/roles.decorator';
 import { DashboardService } from './dashboard.service';
+import { NrConformidadeService } from '../nr-conformidade/nr-conformidade.service';
 
 @Controller('dashboard')
 export class DashboardController {
-  constructor(private readonly dashboard: DashboardService) {}
+  constructor(
+    private readonly dashboard: DashboardService,
+    private readonly nrConformidade: NrConformidadeService,
+  ) {}
 
   @Roles('empresa', 'tecnico', 'parceiro')
   @Get('summary')
@@ -17,6 +21,20 @@ export class DashboardController {
   @Get('overview')
   overview(@Query('tenant_id') tenantIdQuery: string | undefined, @Req() req: any) {
     return this.withTargetTenant(req, tenantIdQuery, (client, tenantId) => this.dashboard.getOverview(client, tenantId));
+  }
+
+  // Status por NR marcada como aplicável (evidências já cadastradas). Não afirma obrigação legal.
+  @Roles('empresa', 'tecnico', 'parceiro')
+  @Get('nr-conformidade')
+  nrConformidadeStatus(@Query('tenant_id') tenantIdQuery: string | undefined, @Req() req: any) {
+    return this.withTargetTenant(req, tenantIdQuery, (client, tenantId) => this.nrConformidade.getConformidade(client, tenantId));
+  }
+
+  // Catálogo + NRs hoje marcadas, para pré-preencher o bloco do relatório de visita.
+  @Roles('empresa', 'tecnico', 'parceiro')
+  @Get('nr-aplicaveis')
+  nrAplicaveis(@Query('tenant_id') tenantIdQuery: string | undefined, @Req() req: any) {
+    return this.withTargetTenant(req, tenantIdQuery, (client, tenantId) => this.nrConformidade.getAplicaveis(client, tenantId));
   }
 
   private withTargetTenant<T>(

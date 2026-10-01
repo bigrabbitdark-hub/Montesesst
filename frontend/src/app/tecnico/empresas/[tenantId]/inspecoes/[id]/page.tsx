@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import { NrAplicaveisSection } from '@/components/NrAplicaveisSection';
 
 interface ChecklistItem {
   id: string;
@@ -40,6 +41,7 @@ interface InspectionDetail {
   general_recommendations: string | null;
   technician_signature_name: string | null;
   company_signature_name: string | null;
+  nrs_aplicaveis: string[] | null;
   items: ChecklistItem[];
   action_plans: ActionPlan[];
 }
@@ -70,6 +72,9 @@ export default function InspecaoPage() {
   const [aiError, setAiError] = useState('');
   const [aiSuggestions, setAiSuggestions] = useState<Record<string, AiSuggestion>>({});
   const [noSuggestionsFound, setNoSuggestionsFound] = useState(false);
+  const [nrCatalogo, setNrCatalogo] = useState<{ code: string; nome: string }[]>([]);
+  const [salvandoNrs, setSalvandoNrs] = useState(false);
+  const [nrMarcadasVigentes, setNrMarcadasVigentes] = useState<string[]>([]);
 
   async function loadInspection() {
     const token = localStorage.getItem('montese_token');
@@ -88,12 +93,29 @@ export default function InspecaoPage() {
     setLoading(false);
   }
 
+  async function loadNrAplicaveis() {
+    const token = localStorage.getItem('montese_token');
+    try {
+      const res = await fetch(`/api/dashboard/nr-aplicaveis?tenant_id=${params.tenantId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const body = await res.json();
+        setNrCatalogo(body.catalogo);
+        setNrMarcadasVigentes(body.marcadas);
+      }
+    } catch {
+      // Sem o catálogo o bloco simplesmente não aparece; o resto do relatório segue normal.
+    }
+  }
+
   useEffect(() => {
     if (!localStorage.getItem('montese_token')) {
       router.push('/login');
       return;
     }
     loadInspection();
+    loadNrAplicaveis();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router]);
 
@@ -115,6 +137,28 @@ export default function InspecaoPage() {
       }
     } catch {
       setError('Não foi possível conectar ao servidor.');
+    }
+  }
+
+  async function saveNrs(proximas: string[]) {
+    const token = localStorage.getItem('montese_token');
+    setSalvandoNrs(true);
+    try {
+      const res = await fetch(`/api/inspections/${params.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ nrs_aplicaveis: proximas }),
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        setInspection((prev) => (prev ? { ...prev, ...updated } : prev));
+      } else {
+        setError('Não foi possível salvar as NRs aplicáveis.');
+      }
+    } catch {
+      setError('Não foi possível conectar ao servidor.');
+    } finally {
+      setSalvandoNrs(false);
     }
   }
 
@@ -220,6 +264,7 @@ export default function InspecaoPage() {
 
   async function handleConcluir(event: FormEvent) {
     event.preventDefault();
+    if (salvandoNrs) return;
     setConcluding(true);
     setError('');
     const token = localStorage.getItem('montese_token');
@@ -326,6 +371,16 @@ export default function InspecaoPage() {
           />
         </label>
       </section>
+
+      {nrCatalogo.length > 0 && (
+        <NrAplicaveisSection
+          catalogo={nrCatalogo}
+          selecionadas={inspection.nrs_aplicaveis ?? nrMarcadasVigentes}
+          disabled={!isDraft || salvandoNrs || concluding}
+          salvando={salvandoNrs}
+          onChange={saveNrs}
+        />
+      )}
 
       {BLOCK_ORDER.map((block) => (
         <section key={block} className="mt-6 rounded-lg border border-brand-100 p-6">
@@ -495,7 +550,7 @@ export default function InspecaoPage() {
         <form onSubmit={handleConcluir} className="mt-8">
           <button
             type="submit"
-            disabled={concluding}
+            disabled={concluding || salvandoNrs}
             className="w-full rounded-md bg-brand-500 px-6 py-3 font-medium text-white hover:bg-brand-700 disabled:opacity-50"
           >
             {concluding ? 'Concluindo...' : 'Concluir inspeção'}

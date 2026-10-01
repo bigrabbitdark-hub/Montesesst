@@ -212,7 +212,7 @@ export default function TecnicoEmpresaDocumentosPage() {
       </section>
 
       <section className="mt-10 rounded-lg border border-brand-100 p-6">
-        <h2 className="text-lg font-bold text-brand-900">Inspeções</h2>
+        <h2 className="text-lg font-bold text-brand-900">Relatórios de visita técnica</h2>
         <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-end">
           <label className="flex flex-1 flex-col gap-1 text-sm text-brand-900">
             Filial

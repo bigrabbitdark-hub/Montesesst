@@ -4,6 +4,7 @@ import { mapPgError } from '../common/pg-error.util';
 import { buildSafeSetClause } from '../common/safe-update.util';
 import { CHECKLIST_ITEMS, ChecklistBlock } from './checklist-items.const';
 import { DocumentsService } from '../documents/documents.service';
+import { NrConformidadeService } from '../nr-conformidade/nr-conformidade.service';
 import { buildInspectionPdf, toDateString } from './inspection-pdf.util';
 
 export interface Inspection {
@@ -24,6 +25,7 @@ export interface Inspection {
   technician_signature_at: string | null;
   company_signature_name: string | null;
   company_signature_at: string | null;
+  nrs_aplicaveis: string[] | null;
   concluded_at: string | null;
   created_at: string;
   updated_at: string;
@@ -77,7 +79,10 @@ const ACTION_PLAN_UPDATABLE_FIELDS = ['deadline', 'responsible', 'status'] as co
 export class InspectionsService {
   private readonly logger = new Logger(InspectionsService.name);
 
-  constructor(private readonly documents: DocumentsService) {}
+  constructor(
+    private readonly documents: DocumentsService,
+    private readonly nrConformidade: NrConformidadeService,
+  ) {}
 
   private async assertCompanyUnitBelongsToTenant(client: PoolClient, companyUnitId: string, tenantId: string): Promise<void> {
     const result = await client.query('SELECT id FROM company_units WHERE id = $1 AND tenant_id = $2', [
@@ -230,7 +235,14 @@ export class InspectionsService {
   async update(client: PoolClient, id: string, data: Partial<Inspection>): Promise<Inspection> {
     await this.assertDraft(client, id);
 
-    const { setClauses, values } = buildSafeSetClause(data, INSPECTION_UPDATABLE_FIELDS, 2);
+    // jsonb: o node-pg converteria um array JS em array Postgres, não em JSON — por isso
+    // este campo fica fora de buildSafeSetClause e é serializado explicitamente.
+    const { nrs_aplicaveis, ...resto } = data as Partial<Inspection>;
+    const { setClauses, values } = buildSafeSetClause(resto, INSPECTION_UPDATABLE_FIELDS, 2);
+    if (nrs_aplicaveis !== undefined) {
+      setClauses.push(`nrs_aplicaveis = $${values.length + 2}::jsonb`);
+      values.push(JSON.stringify(nrs_aplicaveis));
+    }
     if ((data as any).technician_signature_name !== undefined) {
       setClauses.push('technician_signature_at = now()');
     }
@@ -299,6 +311,18 @@ export class InspectionsService {
          VALUES ($1, $2, $3, $4)`,
         [tenantId, id, item.id, item.item_label],
       );
+    }
+
+    // Aplicabilidade das NRs (spec conformidade-por-nr): aplicada AQUI, antes do SAVEPOINT do
+    // PDF, para que uma falha de geração/indexação do PDF nunca desfaça a marcação. NULL = o
+    // técnico não mexeu no bloco nesta visita: não altera nada.
+    const draftResult = await client.query<{ nrs_aplicaveis: string[] | null }>(
+      'SELECT nrs_aplicaveis FROM inspections WHERE id = $1',
+      [id],
+    );
+    const draftNrs = draftResult.rows[0].nrs_aplicaveis;
+    if (draftNrs !== null) {
+      await this.nrConformidade.applyMarks(client, tenantId, id, userId, draftNrs);
     }
 
     const detail = await this.findOne(client, id);

@@ -7,6 +7,7 @@ import { PositionsModule } from '../positions/positions.module';
 import { FireSafetyEquipmentModule } from '../fire-safety-equipment/fire-safety-equipment.module';
 import { FireBrigadeModule } from '../fire-brigade/fire-brigade.module';
 import { PreventionCorrectiveActionsModule } from '../prevention-corrective-actions/prevention-corrective-actions.module';
+import { NrConformidadeModule } from '../nr-conformidade/nr-conformidade.module';
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { PreventionCorrectiveActionsModule } from '../prevention-corrective-acti
     FireSafetyEquipmentModule,
     FireBrigadeModule,
     PreventionCorrectiveActionsModule,
+    NrConformidadeModule,
   ],
   controllers: [DashboardController],
   providers: [DashboardService, WeeklyDigestService],

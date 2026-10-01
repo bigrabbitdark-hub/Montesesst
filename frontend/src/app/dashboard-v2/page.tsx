@@ -11,12 +11,13 @@ import { AuditoriaCard } from '@/components/dashboard/AuditoriaCard';
 import { PendenciasCard } from '@/components/dashboard/PendenciasCard';
 import { VencimentosCard } from '@/components/dashboard/VencimentosCard';
 import { ProximosEventosCard } from '@/components/dashboard/ProximosEventosCard';
+import { NrConformidadeCard } from '@/components/dashboard/NrConformidadeCard';
 import { EmBreveCard } from '@/components/dashboard/EmBreveCard';
 import { ApoioTecnicoCard } from '@/components/dashboard/ApoioTecnicoCard';
 import { SubscriptionNotice } from '@/components/SubscriptionNotice';
 import { Skeleton } from '@/components/ui/Skeleton';
-import type { ApiOverview, ApiSummary } from '@/lib/dashboard/api-types';
-import { hojeISO, nivelScore, paraItensLista, paraVencimentos, seloDoStatus } from '@/lib/dashboard/real';
+import type { ApiNrItem, ApiOverview, ApiSummary } from '@/lib/dashboard/api-types';
+import { hojeISO, lerNrs, nivelScore, paraItensLista, paraNrLinhas, paraVencimentos, seloDoStatus } from '@/lib/dashboard/real';
 
 interface TenantData {
   name: string;
@@ -41,6 +42,7 @@ export default function DashboardV2Page() {
   const [tenant, setTenant] = useState<TenantData | null>(null);
   const [summary, setSummary] = useState<ApiSummary | null>(null);
   const [overview, setOverview] = useState<ApiOverview | null>(null);
+  const [nrs, setNrs] = useState<ApiNrItem[] | null>(null);
   const [estado, setEstado] = useState<Estado>('carregando');
   const [menuAberto, setMenuAberto] = useState(false);
 
@@ -55,10 +57,11 @@ export default function DashboardV2Page() {
     setEstado('carregando');
     const headers = { Authorization: `Bearer ${token}` };
     try {
-      const [tenantRes, summaryRes, overviewRes] = await Promise.all([
+      const [tenantRes, summaryRes, overviewRes, nrRes] = await Promise.all([
         fetch('/api/tenants/me', { headers }),
         fetch('/api/dashboard/summary', { headers }),
         fetch('/api/dashboard/overview', { headers }),
+        fetch('/api/dashboard/nr-conformidade', { headers }).catch(() => null),
       ]);
       if (tenantRes.status === 401 || summaryRes.status === 401) {
         localStorage.removeItem('montese_token');
@@ -76,6 +79,8 @@ export default function DashboardV2Page() {
       if (tenantRes.ok) setTenant(await tenantRes.json());
       // Sem as contagens o painel ainda é útil (KPIs mostram "—"); sem o resumo, não.
       setOverview(overviewRes.ok ? await overviewRes.json() : null);
+      // Sem esta resposta o cartão mostra "indisponível"; o resto do painel segue.
+      setNrs(await lerNrs(nrRes));
       if (!summaryRes.ok) {
         setEstado('erro');
         return;
@@ -167,7 +172,7 @@ export default function DashboardV2Page() {
                   />
                 </section>
                 <section aria-label="Conformidade" className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
-                  <EmBreveCard titulo="Conformidade por NR" descricao="Acompanhamento da conformidade por norma regulamentadora ainda não está disponível." />
+                  <NrConformidadeCard itens={nrs === null ? null : paraNrLinhas(nrs)} />
                   <AuditoriaCard pgrPcmso={summary.auditoria?.pgr_pcmso} />
                   <PendenciasCard
                     itens={paraItensLista(summary.atencao)}

@@ -7,6 +7,8 @@ import { VencimentosCard } from '../VencimentosCard';
 import { ProximosEventosCard } from '../ProximosEventosCard';
 import { EmBreveCard } from '../EmBreveCard';
 import { KpiCard } from '../KpiCard';
+import { NrConformidadeCard } from '../NrConformidadeCard';
+import type { NrLinha } from '@/lib/dashboard/real';
 import type { ItemLista, VencimentoItem } from '@/lib/dashboard/real';
 
 const itens: ItemLista[] = [
@@ -125,5 +127,53 @@ describe('DashboardBanner', () => {
     render(<DashboardBanner titulo="Painel de Controle SST" subtitulo="Empresa X · CNPJ —" />);
     expect(screen.getByRole('heading', { level: 1, name: 'Painel de Controle SST' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Macribo71 · CC BY-SA 4.0/ }).getAttribute('href')).toContain('commons.wikimedia.org');
+  });
+});
+
+describe('NrConformidadeCard', () => {
+  const linhas: NrLinha[] = [
+    { code: 'NR-1', nome: 'PGR', rotulo: 'Em dia', tone: 'ok', detalhe: '1 evidência cadastrada', fonteUrl: 'https://www.gov.br/x' },
+    { code: 'NR-7', nome: 'PCMSO', rotulo: 'Pendente', tone: 'crit', detalhe: 'Nenhuma evidência cadastrada', fonteUrl: 'https://www.gov.br/x' },
+  ];
+  it('lista cada NR com status em TEXTO, detalhe e link da fonte oficial', () => {
+    render(<NrConformidadeCard itens={linhas} />);
+    expect(screen.getByText('NR-7')).toBeInTheDocument();
+    expect(screen.getByText('Pendente')).toBeInTheDocument();
+    expect(screen.getByText('Em dia')).toBeInTheDocument();
+    const link = screen.getByRole('link', { name: 'Fonte oficial da NR-1' });
+    expect(link).toHaveAttribute('href', 'https://www.gov.br/x');
+    expect(link).toHaveAttribute('rel', expect.stringContaining('noopener'));
+  });
+  it('mostra o aviso de que não substitui a avaliação técnica', () => {
+    render(<NrConformidadeCard itens={linhas} />);
+    expect(screen.getByText(/Não substitui a avaliação técnica/)).toBeInTheDocument();
+  });
+  it('sem NRs marcadas: estado vazio explicativo, sem número', () => {
+    render(<NrConformidadeCard itens={[]} />);
+    expect(screen.getByText(/Nenhuma visita técnica registrou NRs aplicáveis/)).toBeInTheDocument();
+    expect(screen.queryByRole('link')).toBeNull();
+  });
+  it('backend indisponível (null): diz "indisponível" e não inventa dado', () => {
+    render(<NrConformidadeCard itens={null} />);
+    expect(screen.getByText(/indisponível no momento/i)).toBeInTheDocument();
+  });
+  it('linha nao_avaliavel mostra o rótulo e a mensagem em texto', () => {
+    render(
+      <NrConformidadeCard
+        itens={[{ code: 'NR-5', nome: 'CIPA', rotulo: 'Não avaliável', tone: 'info', detalhe: 'Não foi possível calcular agora.', fonteUrl: 'https://www.gov.br/x' }]}
+      />,
+    );
+    expect(screen.getByText('Não avaliável')).toBeInTheDocument();
+    expect(screen.getByText('Não foi possível calcular agora.')).toBeInTheDocument();
+  });
+  it('fonteUrl com esquema não-http(s) não vira link, mas o resto da linha aparece', () => {
+    render(
+      <NrConformidadeCard
+        itens={[{ code: 'NR-9', nome: 'Agentes', rotulo: 'Pendente', tone: 'crit', detalhe: 'Nenhuma evidência cadastrada', fonteUrl: 'javascript:alert(1)' }]}
+      />,
+    );
+    expect(screen.queryByRole('link')).toBeNull();
+    expect(screen.getByText('NR-9')).toBeInTheDocument();
+    expect(screen.getByText('Nenhuma evidência cadastrada')).toBeInTheDocument();
   });
 });

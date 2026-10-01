@@ -1,5 +1,6 @@
 import { Transform } from 'class-transformer';
-import { IsInt, IsOptional, IsString, MaxLength, Matches, Min } from 'class-validator';
+import { ArrayUnique, IsArray, IsIn, IsInt, IsOptional, IsString, MaxLength, Matches, Min } from 'class-validator';
+import { NR_CODES } from '../../nr-conformidade/nr-catalog';
 
 export class UpdateInspectionDto {
   @IsOptional()
@@ -51,4 +52,12 @@ export class UpdateInspectionDto {
   @Transform(({ value }) => (value === '' ? null : value))
   @Matches(/^\d{2}:\d{2}$/, { message: 'ended_at deve estar no formato HH:MM' })
   ended_at?: string | null;
+
+  // Rascunho das NRs aplicáveis (só é gravado em company_applicable_nrs ao concluir).
+  // `NR_CODES` é readonly string[]; IsIn exige array mutável, daí o spread.
+  @IsOptional()
+  @IsArray()
+  @ArrayUnique()
+  @IsIn([...NR_CODES], { each: true })
+  nrs_aplicaveis?: string[];
 }

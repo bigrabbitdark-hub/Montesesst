@@ -3,6 +3,7 @@ import { NotFoundException } from '@nestjs/common';
 import { PoolClient } from 'pg';
 import { InspectionsService } from '../src/inspections/inspections.service';
 import { DocumentsService } from '../src/documents/documents.service';
+import { NrConformidadeService } from '../src/nr-conformidade/nr-conformidade.service';
 
 describe('InspectionsService — filial e identificação', () => {
   let service: InspectionsService;
@@ -10,7 +11,11 @@ describe('InspectionsService — filial e identificação', () => {
 
   beforeEach(async () => {
     const moduleRef = await Test.createTestingModule({
-      providers: [InspectionsService, { provide: DocumentsService, useValue: fakeDocuments }],
+      providers: [
+        InspectionsService,
+        { provide: DocumentsService, useValue: fakeDocuments },
+        { provide: NrConformidadeService, useValue: { applyMarks: jest.fn() } },
+      ],
     }).compile();
     service = moduleRef.get(InspectionsService);
   });

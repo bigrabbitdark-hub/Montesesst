@@ -18,6 +18,7 @@ export const MENU_ITEMS: MenuItem[] = [
   { href: '/empresa/onboarding', label: 'Empresas', icon: Building2, implemented: true },
   { href: '/empresa/em-construcao?item=Funcionários', label: 'Funcionários', icon: Users, implemented: false },
   { href: '/empresa/documentos', label: 'Documentos', icon: FileText, implemented: true },
+  { href: '/empresa/inspecoes', label: 'Relatório de visita técnica', icon: ClipboardCheck, implemented: true },
   { href: '/empresa/em-construcao?item=Auditoria IA', label: 'Auditoria IA', icon: ScanSearch, implemented: false },
   { href: '/empresa/em-construcao?item=eSocial', label: 'eSocial', icon: Globe, implemented: false },
   { href: '/empresa/em-construcao?item=Relatórios', label: 'Relatórios', icon: FileBarChart2, implemented: false },
@@ -31,7 +32,6 @@ export const MENU_ITEMS: MenuItem[] = [
 export const EXTRA_MENU_ITEMS: MenuItem[] = [
   { href: '/empresa/assistente', label: 'Assistente Montese', icon: Bot, implemented: true },
   { href: '/empresa/epis', label: 'EPIs', icon: ShieldCheck, implemented: true },
-  { href: '/empresa/inspecoes', label: 'Inspeções', icon: ClipboardCheck, implemented: true },
   { href: '/empresa/brigada', label: 'Brigada de Incêndio', icon: Flame, implemented: true },
   { href: '/empresa/cipa', label: 'CIPA', icon: CircleCheck, implemented: true },
   { href: '/empresa/consulta-ca', label: 'Consulta de CA', icon: Search, implemented: true },
