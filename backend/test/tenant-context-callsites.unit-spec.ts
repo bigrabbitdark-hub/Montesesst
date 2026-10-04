@@ -60,6 +60,11 @@ const ALLOWED: Record<string, { calls: number; motivo: string }> = {
   'visits/visit-reminder.cron.ts': { calls: 1, motivo: 'Cron do sistema (role admin), sem entrada de usuário.' },
   'normative/normative-monitor.service.ts': { calls: 1, motivo: 'Cron do sistema (role admin), sem entrada de usuário.' },
   'normative/assistant-query-log.service.ts': { calls: 1, motivo: 'Cron de purga do log (role admin), sem entrada de usuário.' },
+  'payments/subscription-reconciliation.cron.ts': {
+    calls: 1,
+    motivo:
+      'Cron do sistema (role admin literal), sem entrada de usuário: lista as assinaturas pending/authorized do próprio banco e reconcilia o status com o Mercado Pago. Mesmo padrão do visit-reminder.cron.ts.',
+  },
 };
 
 // Entradas do CLIENTE que nunca podem compor um contexto: o identificador SOLTO
