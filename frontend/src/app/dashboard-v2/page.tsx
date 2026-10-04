@@ -2,8 +2,6 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { DashboardSidebar } from '@/components/dashboard/DashboardSidebar';
-import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
 import { DashboardBanner } from '@/components/dashboard/DashboardBanner';
 import { KpiCard } from '@/components/dashboard/KpiCard';
 import { ScoreRing } from '@/components/dashboard/ScoreRing';
@@ -14,7 +12,6 @@ import { ProximosEventosCard } from '@/components/dashboard/ProximosEventosCard'
 import { NrConformidadeCard } from '@/components/dashboard/NrConformidadeCard';
 import { EmBreveCard } from '@/components/dashboard/EmBreveCard';
 import { ApoioTecnicoCard } from '@/components/dashboard/ApoioTecnicoCard';
-import { SubscriptionNotice } from '@/components/SubscriptionNotice';
 import { Skeleton } from '@/components/ui/Skeleton';
 import type { ApiNrItem, ApiOverview, ApiSummary } from '@/lib/dashboard/api-types';
 import { hojeISO, lerNrs, nivelScore, paraItensLista, paraNrLinhas, paraVencimentos, seloDoStatus } from '@/lib/dashboard/real';
@@ -44,7 +41,6 @@ export default function DashboardV2Page() {
   const [overview, setOverview] = useState<ApiOverview | null>(null);
   const [nrs, setNrs] = useState<ApiNrItem[] | null>(null);
   const [estado, setEstado] = useState<Estado>('carregando');
-  const [menuAberto, setMenuAberto] = useState(false);
 
   // Mesmo tratamento do /empresa/dashboard (ITEM 016): cada falha tem seu estado,
   // nunca uma tela vazia sem explicação.
@@ -102,19 +98,7 @@ export default function DashboardV2Page() {
   const num = (v: number | undefined) => (v === undefined ? '—' : v);
 
   return (
-    <div className="flex min-h-screen bg-dash-page font-[family-name:var(--font-body)]">
-      <DashboardSidebar open={menuAberto} onClose={() => setMenuAberto(false)} />
-      <div className="flex min-w-0 flex-1 flex-col">
-        <DashboardHeader
-          nomeUsuario={empresaNome.split(' ')[0]}
-          papel="Empresa"
-          menuAberto={menuAberto}
-          onMenuClick={() => setMenuAberto((v) => !v)}
-        />
-        <main className="flex-1 px-4 py-6 sm:px-8">
-          <div className="-mx-4 -mt-4 mb-2 sm:-mx-4">
-            <SubscriptionNotice />
-          </div>
+    <div className="px-4 py-6 sm:px-8">
           <DashboardBanner titulo="Painel de Controle SST" subtitulo={`${empresaNome} · CNPJ ${tenant?.cnpj ?? '—'}`} />
 
           {estado === 'carregando' && (
@@ -188,8 +172,6 @@ export default function DashboardV2Page() {
               </div>
             </>
           )}
-        </main>
-      </div>
     </div>
   );
 }

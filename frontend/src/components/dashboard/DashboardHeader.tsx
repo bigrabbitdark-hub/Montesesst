@@ -4,11 +4,13 @@ import { Search, Bell, Sparkles, Menu } from 'lucide-react';
 export function DashboardHeader({
   nomeUsuario,
   papel,
+  logoSrc,
   menuAberto = false,
   onMenuClick,
 }: {
   nomeUsuario: string;
   papel: string;
+  logoSrc?: string;
   menuAberto?: boolean;
   onMenuClick?: () => void;
 }) {
@@ -48,12 +50,17 @@ export function DashboardHeader({
         >
           <Bell size={18} className="text-dash-muted" aria-hidden />
         </button>
-        <div
-          aria-hidden
-          className="flex h-[42px] w-[42px] items-center justify-center rounded-full bg-dash-sidebar text-sm font-bold text-white"
-        >
-          {nomeUsuario.slice(0, 2).toUpperCase()}
-        </div>
+        {logoSrc ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={logoSrc} alt="" aria-hidden className="h-[42px] w-[42px] flex-none rounded-full border border-dash-border-soft object-cover" />
+        ) : (
+          <div
+            aria-hidden
+            className="flex h-[42px] w-[42px] items-center justify-center rounded-full bg-dash-sidebar text-sm font-bold text-white"
+          >
+            {nomeUsuario.slice(0, 2).toUpperCase()}
+          </div>
+        )}
         <div className="hidden text-sm leading-tight md:block">
           <p className="font-semibold text-dash-primary">{nomeUsuario}</p>
           <p className="text-xs text-dash-muted">{papel}</p>

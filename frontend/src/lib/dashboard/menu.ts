@@ -1,7 +1,7 @@
 import {
   LayoutDashboard, Building2, Users, FileText, ScanSearch, Globe, FileBarChart2, Coins,
   GraduationCap, Settings, Bot, ShieldCheck, ClipboardCheck, Flame, CircleCheck, Search,
-  CalendarClock, MapPinned, Microscope, ListChecks, Siren, type LucideIcon,
+  CalendarClock, MapPinned, Microscope, ListChecks, Siren, Vote, type LucideIcon,
 } from 'lucide-react';
 
 export interface MenuItem {
@@ -34,6 +34,8 @@ export const EXTRA_MENU_ITEMS: MenuItem[] = [
   { href: '/empresa/epis', label: 'EPIs', icon: ShieldCheck, implemented: true },
   { href: '/empresa/brigada', label: 'Brigada de Incêndio', icon: Flame, implemented: true },
   { href: '/empresa/cipa', label: 'CIPA', icon: CircleCheck, implemented: true },
+  { href: '/empresa/cipa/eleicao', label: 'Eleição da CIPA', icon: Vote, implemented: true },
+  { href: '/empresa/cipa/capacitacao', label: 'Capacitação da CIPA', icon: GraduationCap, implemented: true },
   { href: '/empresa/consulta-ca', label: 'Consulta de CA', icon: Search, implemented: true },
   { href: '/empresa/agendamentos', label: 'Reuniões e Visitas', icon: CalendarClock, implemented: true },
   { href: '/empresa/mapa-sst', label: 'Mapa SST', icon: MapPinned, implemented: true },
@@ -42,3 +44,16 @@ export const EXTRA_MENU_ITEMS: MenuItem[] = [
   { href: '/empresa/checklist-prevencao', label: 'Checklist prevenção', icon: ListChecks, implemented: true },
   { href: '/empresa/simulados', label: 'Simulados', icon: Siren, implemented: true },
 ];
+
+// Item ativo = o de href mais específico que casa com o caminho (exato ou como prefixo de segmento).
+// Itens com query (em construção) nunca ficam ativos: a própria página mostra o título.
+export function itemAtivo(pathname: string, itens: MenuItem[]): string | null {
+  let melhor: string | null = null;
+  for (const { href } of itens) {
+    if (href.includes('?')) continue;
+    if ((pathname === href || pathname.startsWith(`${href}/`)) && (melhor === null || href.length > melhor.length)) {
+      melhor = href;
+    }
+  }
+  return melhor;
+}

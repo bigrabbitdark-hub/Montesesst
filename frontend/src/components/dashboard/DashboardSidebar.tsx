@@ -1,18 +1,26 @@
 'use client';
 
+import { useEffect, useRef } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { X } from 'lucide-react';
-import { MENU_ITEMS, EXTRA_MENU_ITEMS, type MenuItem } from '@/lib/dashboard/menu';
+import { X, LogOut } from 'lucide-react';
+import { MENU_ITEMS, EXTRA_MENU_ITEMS, itemAtivo, type MenuItem } from '@/lib/dashboard/menu';
+import { logout } from '@/lib/auth';
 import { ASSET_PATHS } from '@/lib/dashboard/assets';
 
-function NavItem({ item, pathname }: { item: MenuItem; pathname: string }) {
+function NavItem({ item, ativo }: { item: MenuItem; ativo: string | null }) {
   const { href, label, icon: Icon, implemented } = item;
-  const active = pathname === href;
+  const active = href === ativo;
+  const ref = useRef<HTMLAnchorElement>(null);
+  // A lista rola (alturas menores); sem isto o item ativo pode ficar fora da área visível.
+  useEffect(() => {
+    if (active) ref.current?.scrollIntoView?.({ block: 'nearest' });
+  }, [active]);
   return (
     <li>
       <Link
+        ref={ref}
         href={href}
         aria-current={active ? 'page' : undefined}
         className={`flex h-[42px] items-center gap-3 rounded-xl px-3.5 text-[15px] font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-white ${
@@ -28,6 +36,7 @@ function NavItem({ item, pathname }: { item: MenuItem; pathname: string }) {
 
 export function DashboardSidebar({ open = false, onClose }: { open?: boolean; onClose?: () => void }) {
   const pathname = usePathname() ?? '';
+  const ativo = itemAtivo(pathname, [...MENU_ITEMS, ...EXTRA_MENU_ITEMS]);
   return (
     <>
       {open && <div className="fixed inset-0 z-30 bg-slate-900/50 lg:hidden" onClick={onClose} aria-hidden />}
@@ -51,15 +60,23 @@ export function DashboardSidebar({ open = false, onClose }: { open?: boolean; on
       </div>
       <ul className="flex flex-1 flex-col gap-1 overflow-y-auto">
         {MENU_ITEMS.map((item) => (
-          <NavItem key={item.label} item={item} pathname={pathname} />
+          <NavItem key={item.label} item={item} ativo={ativo} />
         ))}
         <li aria-hidden className="mt-3 px-3.5 pb-0.5 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
           Mais ferramentas
         </li>
         {EXTRA_MENU_ITEMS.map((item) => (
-          <NavItem key={item.label} item={item} pathname={pathname} />
+          <NavItem key={item.label} item={item} ativo={ativo} />
         ))}
       </ul>
+        <button
+          type="button"
+          onClick={logout}
+          className="mt-2 flex h-[42px] flex-none items-center gap-3 rounded-xl px-3.5 text-[15px] font-medium text-slate-300 hover:bg-dash-sidebar-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
+        >
+          <LogOut size={18} strokeWidth={2} aria-hidden />
+          Sair
+        </button>
         {/* Só em telas altas: em alturas menores o espaço é da lista de ferramentas. */}
         <div className="relative mt-2 hidden h-[150px] flex-none overflow-hidden rounded-xl [@media(min-height:1100px)]:block">
           <Image src={ASSET_PATHS.sidebarFooter} alt="" aria-hidden fill sizes="248px" className="object-cover object-[50%_30%]" />
