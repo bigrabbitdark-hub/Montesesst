@@ -17,20 +17,33 @@ describe('Certificates (e2e)', () => {
     app = moduleRef.createNestApplication();
     await app.init();
     db = new TestDb();
+    await db.connect();
   });
 
   afterAll(async () => {
     await db.cleanup();
+    await db.disconnect();
     await app.close();
   });
 
+  // Helper: cria tenant + usuário 'empresa', faz login via /auth/login, devolve token.
+  // Mesmo padrão usado em aso.e2e-spec.ts e fire-brigade.e2e-spec.ts: nunca confiar
+  // em `tenant.token` direto (campo inexistente em TestTenantFixture).
+  async function loginAsEmpresa(namePrefix: string): Promise<{ token: string; tenant: Awaited<ReturnType<TestDb['createTenantWithUser']>> }> {
+    const tenant = await db.createTenantWithUser(namePrefix);
+    const res = await request(app.getHttpServer())
+      .post('/auth/login')
+      .send({ email: tenant.email, password: tenant.password });
+    return { token: res.body.access_token, tenant };
+  }
+
   it('faz upload, lista sem vazar segredo, e remove', async () => {
-    const tenant = await db.createTenantWithUser('cert-basic');
+    const { token, tenant } = await loginAsEmpresa('cert-basic');
     const pfxBuffer = readFileSync(FIXTURE_PATH);
 
     const uploadRes = await request(app.getHttpServer())
       .post('/esocial/certificates')
-      .set('Authorization', `Bearer ${tenant.token}`)
+      .set('Authorization', `Bearer ${token}`)
       .field('label', 'Certificado principal')
       .field('password', 'teste1234')
       .attach('file', pfxBuffer, 'test-certificate.pfx');
@@ -44,23 +57,26 @@ describe('Certificates (e2e)', () => {
 
     const listRes = await request(app.getHttpServer())
       .get('/esocial/certificates')
-      .set('Authorization', `Bearer ${tenant.token}`);
+      .set('Authorization', `Bearer ${token}`);
     expect(listRes.status).toBe(200);
     expect(listRes.body).toHaveLength(1);
 
     const removeRes = await request(app.getHttpServer())
       .delete(`/esocial/certificates/${uploadRes.body.id}`)
-      .set('Authorization', `Bearer ${tenant.token}`);
+      .set('Authorization', `Bearer ${token}`);
     expect(removeRes.status).toBe(200);
+    // cleanup de tenant só acontece no afterAll — o certificado removido é descartado
+    // em CASCADE junto com o tenant via `tenants.id ON DELETE CASCADE`.
+    void tenant;
   });
 
   it('rejeita upload com senha errada sem persistir nada', async () => {
-    const tenant = await db.createTenantWithUser('cert-wrong-pw');
+    const { token } = await loginAsEmpresa('cert-wrong-pw');
     const pfxBuffer = readFileSync(FIXTURE_PATH);
 
     const res = await request(app.getHttpServer())
       .post('/esocial/certificates')
-      .set('Authorization', `Bearer ${tenant.token}`)
+      .set('Authorization', `Bearer ${token}`)
       .field('label', 'Certificado')
       .field('password', 'senha-errada')
       .attach('file', pfxBuffer, 'test-certificate.pfx');
@@ -69,7 +85,7 @@ describe('Certificates (e2e)', () => {
 
     const listRes = await request(app.getHttpServer())
       .get('/esocial/certificates')
-      .set('Authorization', `Bearer ${tenant.token}`);
+      .set('Authorization', `Bearer ${token}`);
     expect(listRes.body).toHaveLength(0);
   });
 });

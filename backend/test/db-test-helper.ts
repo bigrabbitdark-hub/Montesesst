@@ -134,6 +134,27 @@ export class TestDb {
     return result.rows[0].id;
   }
 
+  // Insere um esocial_certificates mínimo direto via superuser (bypassa RLS/HTTP) —
+  // usado por specs de RLS (Task 12, esocial-certificates-rls.e2e-spec.ts) que
+  // precisam de um certificado em outro tenant sem passar pelo fluxo de upload
+  // (que cifra via envelope-encryption). Os campos cifrados recebem placeholder
+  // textual — nenhum spec tenta decifrar, e o teste de RLS só verifica visibilidade.
+  async insertMinimalCertificate(tenant: {
+    tenantId: string;
+    userId: string;
+  }): Promise<string> {
+    const result = await this.client.query<{ id: string }>(
+      `INSERT INTO esocial_certificates (
+        tenant_id, label, subject_cn, thumbprint_sha256, not_before, not_after,
+        status, pfx_r2_key, encrypted_password, encrypted_data_key, uploaded_by_user_id
+      ) VALUES ($1, 'Teste', 'TESTE LTDA', 'aaaa', now() - interval '1 day', now() + interval '1 year',
+        'ativo', 'fake-key', 'fake:fake:fake', 'fake:fake:fake', $2)
+      RETURNING id`,
+      [tenant.tenantId, tenant.userId],
+    );
+    return result.rows[0].id;
+  }
+
   // Apaga só o que este helper criou. Tenants em CASCADE levam junto users e
   // employees vinculados a eles; users soltos (tecnico/parceiro/admin) são
   // apagados à parte.
