@@ -3,6 +3,9 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { DocumentsPanel } from '@/components/DocumentsPanel';
+import { Card } from '@/components/ui/Card';
+import { DashSkin } from '@/components/dashboard/DashSkin';
+import { PageHeader } from '@/components/dashboard/PageHeader';
 
 export default function EmpresaDocumentosPage() {
   const router = useRouter();
@@ -17,18 +20,17 @@ export default function EmpresaDocumentosPage() {
   }, [router]);
 
   if (!ready) {
-    return <div className="mx-auto max-w-2xl px-4 py-16 text-center text-brand-700">Carregando...</div>;
+    return <div role="status" className="px-4 py-16 text-center text-sm text-dash-muted">Carregando...</div>;
   }
 
   return (
-    <div className="mx-auto max-w-2xl px-4 py-16">
-      <h1 className="text-2xl font-bold text-brand-900">Documentos</h1>
-      <p className="mt-2 text-brand-700">
-        PGR, PCMSO, laudos, fichas de EPI e treinamentos da sua empresa.
-      </p>
-      <div className="mt-8">
-        <DocumentsPanel />
-      </div>
+    <div className="mx-auto max-w-4xl px-4 py-8 sm:px-8">
+      <PageHeader titulo="Documentos" descricao="PGR, PCMSO, laudos, fichas de EPI e treinamentos da sua empresa." />
+      <DashSkin>
+        <Card>
+          <DocumentsPanel />
+        </Card>
+      </DashSkin>
     </div>
   );
 }

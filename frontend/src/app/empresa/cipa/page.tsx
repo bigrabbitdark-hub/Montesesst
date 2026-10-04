@@ -97,7 +97,7 @@ export default function CipaDashboardPage() {
   const ordinariasComData = meetings.filter((m) => m.tipo === 'ordinaria' && m.data).length;
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-16">
+    <div className="mx-auto max-w-4xl px-4 py-8 sm:px-8">
       <h1 className="text-2xl font-bold text-brand-900">🦺 Central da CIPA</h1>
       <p className="mt-1 text-sm text-brand-700">
         Gestão {committee.ano} — {formatDateBR(committee.data_inicio)} a {formatDateBR(committee.data_termino)}

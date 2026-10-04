@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { getToken } from '@/lib/auth';
+import { DashSkin } from '@/components/dashboard/DashSkin';
 
 interface CaepiRecord {
   numero_ca: string;
@@ -39,7 +40,7 @@ function formatSyncedAt(iso: string | null): string {
   return new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
-export default function ConsultaCaPage() {
+function ConsultaCaPageContent() {
   const router = useRouter();
   const [ready, setReady] = useState(false);
   const [query, setQuery] = useState('');
@@ -88,7 +89,7 @@ export default function ConsultaCaPage() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-16">
+    <div className="mx-auto max-w-4xl px-4 py-8 sm:px-8">
       <h1 className="text-2xl font-bold text-brand-900">🔎 Consulta de CA</h1>
       <p className="mt-1 text-sm text-brand-700">
         Busque pelo número do Certificado de Aprovação (CA) ou por equipamento/fabricante, na base
@@ -149,5 +150,13 @@ export default function ConsultaCaPage() {
         Fonte oficial: MTE / CAEPI. Base local atualizada em {formatSyncedAt(syncStatus?.last_synced_at ?? null)}.
       </p>
     </div>
+  );
+}
+
+export default function ConsultaCaPage() {
+  return (
+    <DashSkin>
+      <ConsultaCaPageContent />
+    </DashSkin>
   );
 }

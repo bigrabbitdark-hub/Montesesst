@@ -3,6 +3,9 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { EpisPanel } from '@/components/EpisPanel';
+import { Card } from '@/components/ui/Card';
+import { DashSkin } from '@/components/dashboard/DashSkin';
+import { PageHeader } from '@/components/dashboard/PageHeader';
 
 export default function EmpresaEpisPage() {
   const router = useRouter();
@@ -17,15 +20,17 @@ export default function EmpresaEpisPage() {
   }, [router]);
 
   if (!ready) {
-    return <div className="mx-auto max-w-2xl px-4 py-16 text-center text-brand-700">Carregando...</div>;
+    return <div role="status" className="px-4 py-16 text-center text-sm text-dash-muted">Carregando...</div>;
   }
 
   return (
-    <div className="mx-auto max-w-2xl px-4 py-16">
-      <h1 className="text-2xl font-bold text-brand-900">Catálogo de EPI</h1>
-      <div className="mt-8">
-        <EpisPanel />
-      </div>
+    <div className="mx-auto max-w-4xl px-4 py-8 sm:px-8">
+      <PageHeader titulo="Catálogo de EPI" />
+      <DashSkin>
+        <Card>
+          <EpisPanel />
+        </Card>
+      </DashSkin>
     </div>
   );
 }

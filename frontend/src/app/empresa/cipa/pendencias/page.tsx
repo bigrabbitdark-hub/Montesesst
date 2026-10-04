@@ -104,7 +104,7 @@ export default function PendenciasPage() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-16">
+    <div className="mx-auto max-w-4xl px-4 py-8 sm:px-8">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-brand-900">📌 Pendências da CIPA</h1>
         <button

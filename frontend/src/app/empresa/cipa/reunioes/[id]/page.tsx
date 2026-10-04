@@ -305,7 +305,7 @@ export default function ReuniaoPage() {
   const titulo = meeting.tipo === 'ordinaria' ? `${meeting.numero}ª Reunião Ordinária da CIPA` : meeting.titulo;
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-16">
+    <div className="mx-auto max-w-4xl px-4 py-8 sm:px-8">
       <h1 className="text-2xl font-bold text-brand-900">{titulo}</h1>
       <p className="mt-1 text-sm text-brand-700">
         {meeting.data ? formatDateBR(meeting.data) : 'Sem data'} {meeting.hora ? `às ${meeting.hora}` : ''}

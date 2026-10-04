@@ -110,3 +110,28 @@
     animation: none;
   }
 }
+
+/*
+ * Skin do dashboard novo (lote 1: Documentos, EPIs, Assistente). Painéis compartilhados com a área
+ * do técnico usam tokens brand-*; dentro de .skin-dash eles apontam para o design system v2
+ * (docs/specs/montese-design-system.md) sem mexer no JSX. Fora do escopo nada muda.
+ * Contrastes conferidos por src/lib/dashboard/__tests__/skin.test.ts.
+ */
+.skin-dash {
+  --color-brand-900: var(--color-dash-primary);
+  --color-brand-700: #065f46; /* hover de botão/link: verde escuro, 7,7:1 com texto branco */
+  --color-brand-100: var(--color-dash-border-soft);
+  --color-brand-50: var(--color-dash-page);
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
+}
+
+/* brand-700 também é texto secundário nos painéis: no dashboard ele é slate, não verde. */
+.skin-dash .text-brand-700 {
+  color: var(--color-dash-muted);
+}
+
+/* Borda de campo legível (≥ 3:1); o brand-100 original é decorativo demais para delimitar um campo. */
+.skin-dash :where(input, select, textarea) {
+  border-color: #7b8aa0;
+}

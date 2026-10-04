@@ -17,7 +17,7 @@ export default function CapacitacaoPage() {
   const [tab, setTab] = useState<Tab>('treinamentos');
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-16">
+    <div className="mx-auto max-w-4xl px-4 py-8 sm:px-8">
       <h1 className="text-2xl font-bold text-brand-900">🎓 Capacitação</h1>
       <p className="mt-1 text-sm text-brand-700">Treinamentos obrigatórios, DDS e SIPAT da empresa.</p>
 

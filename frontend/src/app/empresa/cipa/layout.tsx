@@ -3,9 +3,10 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { getToken } from '@/lib/auth';
+import { DashSkin } from '@/components/dashboard/DashSkin';
 import { CompanyUnit, CIPA_COMPANY_UNIT_STORAGE_KEY as STORAGE_KEY } from '@/lib/cipa-types';
 
-export default function CipaLayout({ children }: { children: React.ReactNode }) {
+function CipaLayoutContent({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const [ready, setReady] = useState(false);
   const [units, setUnits] = useState<CompanyUnit[]>([]);
@@ -80,5 +81,13 @@ export default function CipaLayout({ children }: { children: React.ReactNode }) 
       )}
       {children}
     </div>
+  );
+}
+
+export default function CipaLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <DashSkin>
+      <CipaLayoutContent>{children}</CipaLayoutContent>
+    </DashSkin>
   );
 }

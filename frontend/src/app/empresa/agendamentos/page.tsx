@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { DashSkin } from '@/components/dashboard/DashSkin';
 
 interface Technician {
   user_id: string;
@@ -33,7 +34,7 @@ const STATUS_LABELS: Record<string, string> = {
   cancelado: 'Cancelado',
 };
 
-export default function EmpresaAgendamentosPage() {
+function EmpresaAgendamentosPageContent() {
   const router = useRouter();
   const [technicians, setTechnicians] = useState<Technician[]>([]);
   const [units, setUnits] = useState<CompanyUnit[]>([]);
@@ -120,7 +121,7 @@ export default function EmpresaAgendamentosPage() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl px-4 py-16">
+    <div className="mx-auto max-w-4xl px-4 py-8 sm:px-8">
       <h1 className="text-2xl font-bold text-brand-900">Reuniões e Visitas</h1>
       {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
 
@@ -239,5 +240,13 @@ export default function EmpresaAgendamentosPage() {
         )}
       </section>
     </div>
+  );
+}
+
+export default function EmpresaAgendamentosPage() {
+  return (
+    <DashSkin>
+      <EmpresaAgendamentosPageContent />
+    </DashSkin>
   );
 }

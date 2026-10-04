@@ -3,6 +3,9 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { PreventionChecklistPanel } from '@/components/PreventionChecklistPanel';
+import { Card } from '@/components/ui/Card';
+import { DashSkin } from '@/components/dashboard/DashSkin';
+import { PageHeader } from '@/components/dashboard/PageHeader';
 
 export default function EmpresaChecklistPrevencaoPage() {
   const router = useRouter();
@@ -17,15 +20,17 @@ export default function EmpresaChecklistPrevencaoPage() {
   }, [router]);
 
   if (!ready) {
-    return <div className="mx-auto max-w-2xl px-4 py-16 text-center text-brand-700">Carregando...</div>;
+    return <div role="status" className="px-4 py-16 text-center text-sm text-dash-muted">Carregando...</div>;
   }
 
   return (
-    <div className="mx-auto max-w-4xl px-4 py-16">
-      <h1 className="text-2xl font-bold text-brand-900">Checklist de prevenção</h1>
-      <div className="mt-8">
-        <PreventionChecklistPanel />
-      </div>
+    <div className="mx-auto max-w-4xl px-4 py-8 sm:px-8">
+      <PageHeader titulo="Checklist de prevenção" />
+      <DashSkin>
+        <Card>
+          <PreventionChecklistPanel />
+        </Card>
+      </DashSkin>
     </div>
   );
 }

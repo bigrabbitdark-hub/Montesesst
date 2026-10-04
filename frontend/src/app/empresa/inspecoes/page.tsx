@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { DashSkin } from '@/components/dashboard/DashSkin';
 
 interface InspectionRow {
   id: string;
@@ -43,7 +44,7 @@ function formatDate(isoDate: string): string {
   return `${day}/${month}/${year}`;
 }
 
-export default function EmpresaInspecoesPage() {
+function EmpresaInspecoesPageContent() {
   const router = useRouter();
   const [inspections, setInspections] = useState<InspectionRow[]>([]);
   const [actionPlans, setActionPlans] = useState<ActionPlan[]>([]);
@@ -99,7 +100,7 @@ export default function EmpresaInspecoesPage() {
 
   if (selected) {
     return (
-      <div className="mx-auto max-w-2xl px-4 py-16">
+      <div className="mx-auto max-w-4xl px-4 py-8 sm:px-8">
         <button onClick={() => setSelected(null)} className="text-sm text-brand-500 hover:underline">
           ← Voltar
         </button>
@@ -143,7 +144,7 @@ export default function EmpresaInspecoesPage() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl px-4 py-16">
+    <div className="mx-auto max-w-4xl px-4 py-8 sm:px-8">
       <h1 className="text-2xl font-bold text-brand-900">Relatório de visita técnica</h1>
       {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
 
@@ -183,5 +184,13 @@ export default function EmpresaInspecoesPage() {
         )}
       </section>
     </div>
+  );
+}
+
+export default function EmpresaInspecoesPage() {
+  return (
+    <DashSkin>
+      <EmpresaInspecoesPageContent />
+    </DashSkin>
   );
 }
