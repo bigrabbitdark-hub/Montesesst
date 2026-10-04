@@ -4,6 +4,7 @@ import { RateLimit } from '../common/rate-limit/rate-limit.decorator';
 import { envInt } from '../common/env';
 import { PenteFinoComparisonService } from './pente-fino-comparison.service';
 import { RunPenteFinoDto } from './dto/run-pente-fino.dto';
+import { buildSstAuditPdf } from './sst-audit-pdf.service';
 
 @Controller('pente-fino')
 export class PenteFinoController {
@@ -23,14 +24,19 @@ export class PenteFinoController {
   })
   @UsePipes(new ValidationPipe({ transform: true, whitelist: true, forbidNonWhitelisted: true }))
   @Post('run')
-  run(@Body() dto: RunPenteFinoDto, @Req() req: any) {
+  async run(@Body() dto: RunPenteFinoDto, @Req() req: any) {
     const user = req.user;
-    // `tenantId` aqui é só o ALVO (qual empresa o técnico/parceiro quer
-    // analisar) — vem do corpo, então é controlado por quem chama e NUNCA
-    // pode virar contexto de RLS. Por isso o usuário autenticado vai
-    // separado: é dele (do JWT) que o service monta o TenantContext.
     const tenantId = user.role === 'tecnico' || user.role === 'parceiro' ? dto.tenant_id : user.tenantId;
     if (!tenantId) throw new BadRequestException('tenant_id é obrigatório');
-    return this.comparison.run(tenantId, user);
+
+    const report = await this.comparison.run(tenantId, user);
+    if (!dto.include_pdf) return report;
+
+    const pdf = await buildSstAuditPdf(report as any);
+    return {
+      audit_report: report,
+      pdf_base64: pdf.toString('base64'),
+      pdf_file_name: `auditoria-montese-${Date.now()}.pdf`,
+    };
   }
 }

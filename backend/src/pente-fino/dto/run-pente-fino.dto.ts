@@ -1,4 +1,4 @@
-import { IsOptional, IsUUID } from 'class-validator';
+import { IsBoolean, IsOptional, IsUUID } from 'class-validator';
 
 export class RunPenteFinoDto {
   // Só é lido quando quem chama é role 'tecnico' ou 'parceiro' (empresa
@@ -7,4 +7,8 @@ export class RunPenteFinoDto {
   @IsOptional()
   @IsUUID()
   tenant_id?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  include_pdf?: boolean;
 }

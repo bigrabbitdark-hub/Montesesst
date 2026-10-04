@@ -10,6 +10,9 @@ import { MiniMaxDocumentChecklistService } from './minimax-document-checklist.se
 import { LipAgentExtractorService } from './lip-agent-extractor.service';
 import { LIP_AGENT_EXTRACTION_PROVIDER } from './lip-agent-provider.interface';
 import { MiniMaxLipAgentService } from './minimax-lip-agent.service';
+import { SstAuditFactsService } from './sst-audit-facts.service';
+import { MiniMaxSstAuditFactsProviderService } from './minimax-sst-audit-facts-provider.service';
+import { SST_AUDIT_FACTS_PROVIDER } from './sst-audit-facts-provider.interface';
 
 @Module({
   controllers: [PenteFinoController],
@@ -24,6 +27,9 @@ import { MiniMaxLipAgentService } from './minimax-lip-agent.service';
     { provide: DOCUMENT_CHECKLIST_EXTRACTION_PROVIDER, useClass: MiniMaxDocumentChecklistService },
     MiniMaxLipAgentService,
     { provide: LIP_AGENT_EXTRACTION_PROVIDER, useClass: MiniMaxLipAgentService },
+    SstAuditFactsService,
+    MiniMaxSstAuditFactsProviderService,
+    { provide: SST_AUDIT_FACTS_PROVIDER, useClass: MiniMaxSstAuditFactsProviderService },
   ],
 })
 export class PenteFinoModule {}

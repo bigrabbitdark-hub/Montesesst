@@ -256,6 +256,7 @@ export function PenteFinoPanel({
   const fullAuditHref = tenantId ? `/tecnico/empresas/${tenantId}/pente-fino` : '/empresa/pente-fino';
   const [runStatus, setRunStatus] = useState<RunStatus>('idle');
   const [report, setReport] = useState<PenteFinoReport | null>(null);
+  const [pdfData, setPdfData] = useState<{ base64: string; fileName: string } | null>(null);
   const [errorMessage, setErrorMessage] = useState('');
   const [retryAfterSeconds, setRetryAfterSeconds] = useState<number | null>(null);
   const [expandedIndexes, setExpandedIndexes] = useState<Set<number>>(new Set());
@@ -273,15 +274,23 @@ export function PenteFinoPanel({
     setRunStatus('loading');
     setErrorMessage('');
     setRetryAfterSeconds(null);
+    setPdfData(null);
     const token = localStorage.getItem('montese_token');
     try {
       const res = await fetch('/api/pente-fino/run', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify(tenantId ? { tenant_id: tenantId } : {}),
+        body: JSON.stringify({ ...(tenantId ? { tenant_id: tenantId } : {}), include_pdf: true }),
       });
       if (res.ok) {
-        setReport(await res.json());
+        const body = await res.json();
+        const nextReport = body.audit_report ?? body;
+        setReport(nextReport ?? null);
+        setPdfData(
+          body.pdf_base64
+            ? { base64: body.pdf_base64, fileName: body.pdf_file_name ?? 'auditoria-montese.pdf' }
+            : null,
+        );
         setExpandedIndexes(new Set());
         setRunStatus('done');
         return;
@@ -308,6 +317,19 @@ export function PenteFinoPanel({
     }
   }
 
+  function handleDownloadPdf() {
+    if (!pdfData) return;
+    const binaryString = atob(pdfData.base64);
+    const bytes = Uint8Array.from(binaryString, (char) => char.charCodeAt(0));
+    const blob = new Blob([bytes], { type: 'application/pdf' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = pdfData.fileName;
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
   return (
     <div className={`flex flex-col ${isAssistantPresentation ? 'gap-4' : 'gap-6'}`}>
       <section className={isAssistantPresentation ? '' : 'rounded-lg border border-brand-100 p-6'}>
@@ -330,6 +352,15 @@ export function PenteFinoPanel({
             {retryAfterSeconds !== null &&
               ` (tente novamente em ${Math.ceil(retryAfterSeconds / 60)} minuto(s))`}
           </p>
+        )}
+        {pdfData && (
+          <button
+            type="button"
+            onClick={handleDownloadPdf}
+            className="mt-4 self-start rounded-md border border-brand-300 bg-white px-4 py-2 text-sm font-medium text-brand-700 hover:bg-brand-50"
+          >
+            Baixar PDF
+          </button>
         )}
       </section>
 
