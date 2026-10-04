@@ -12,8 +12,8 @@ import type { SystemState } from './status-state';
 
 const PILL: Record<SystemState, { dot: string; text: string; box: string }> = {
   carregando: { dot: 'bg-slate-400', text: 'text-slate-300', box: 'border-slate-500/40 bg-slate-500/10' },
-  online: { dot: 'bg-emerald-400', text: 'text-emerald-300', box: 'border-emerald-400/30 bg-emerald-400/10' },
-  degradado: { dot: 'bg-red-400', text: 'text-red-300', box: 'border-red-400/30 bg-red-400/10' },
+  online: { dot: 'bg-adm-status-ok', text: 'text-adm-status-ok-text', box: 'border-adm-status-ok/30 bg-adm-status-ok-bg' },
+  degradado: { dot: 'bg-adm-status-crit', text: 'text-adm-status-crit-text', box: 'border-adm-status-crit/30 bg-adm-status-crit-bg' },
   'sem-resposta': { dot: 'bg-slate-400', text: 'text-slate-300', box: 'border-slate-500/40 bg-slate-500/10' },
 };
 
@@ -64,7 +64,7 @@ function AlertBell() {
       {count > 0 && (
         <span
           aria-hidden="true"
-          className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-800 px-1 text-[10px] font-bold text-white"
+          className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-adm-status-crit-solid px-1 text-[10px] font-bold text-white"
         >
           {count}
         </span>

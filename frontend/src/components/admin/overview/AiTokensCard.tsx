@@ -39,7 +39,7 @@ export function AiTokensCard({ miniMax, className = '' }: { miniMax: FetchState<
                     </div>
                     <div className="adm-card-2 mt-1 h-1.5 overflow-hidden">
                       <div
-                        className="h-full rounded-full bg-violet-400"
+                        className="h-full rounded-full bg-adm-status-epi"
                         style={{ width: `${Math.max(2, (Number(c.total_tokens) / maxCap) * 100)}%` }}
                       />
                     </div>
@@ -50,7 +50,7 @@ export function AiTokensCard({ miniMax, className = '' }: { miniMax: FetchState<
                 href="https://platform.minimax.io/user-center/payment/balance"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="mt-4 text-xs font-medium text-emerald-400 hover:underline"
+                className="mt-4 text-xs font-medium text-adm-brand hover:underline"
               >
                 Ver saldo no painel da MiniMax
               </a>

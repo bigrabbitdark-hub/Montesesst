@@ -41,6 +41,10 @@
 
   background: var(--admin-bg);
   color: var(--admin-text);
+
+  /* Tokens semânticos --color-adm-* (status, marca): ficam no @theme de globals.css, para o Tailwind
+   * gerar os utilitários text-adm-*, bg-adm-*, border-adm-*. Contrastes cobertos por
+   * app/admin/__tests__/admin-theme-contraste.test.ts. */
 }
 
 /* evita a faixa branca no overscroll quando o admin está aberto */
@@ -60,12 +64,13 @@ html:has(.admin-theme) {
 .admin-theme .adm-card {
   background: var(--admin-surface);
   border: 1px solid var(--admin-border);
-  border-radius: 0.875rem;
+  border-radius: 1rem; /* 16px — Design System v2 (era 14px) */
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35); /* DS v2 --shadow-card-default */
 }
 
 .admin-theme .adm-card-2 {
   background: var(--admin-surface-2);
-  border-radius: 0.625rem;
+  border-radius: 0.75rem; /* 12px — DS v2 (era 10px) */
 }
 
 .admin-theme .adm-text-faint {

@@ -12,7 +12,7 @@ export function Gauge({
   const R = 34;
   const C = 2 * Math.PI * R;
   const p = percent === null ? 0 : Math.min(100, Math.max(0, percent));
-  const color = p >= 90 ? '#f87171' : p >= 80 ? '#fbbf24' : '#34d399';
+  const color = p >= 90 ? 'var(--color-adm-status-crit)' : p >= 80 ? 'var(--color-adm-status-warn)' : 'var(--color-adm-status-ok)';
   const text = percent === null ? 'sem dado' : `${Math.round(p)}%`;
   return (
     <div className="flex min-w-0 flex-col items-center gap-1 text-center">

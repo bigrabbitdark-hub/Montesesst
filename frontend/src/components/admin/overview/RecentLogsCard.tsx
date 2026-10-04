@@ -37,7 +37,7 @@ export function RecentLogsCard({ state, className = '' }: { state: FetchState<Au
             onClick={() => setFiltro(f.id)}
             className={`rounded-full border px-2.5 py-1 text-xs font-medium ${
               filtro === f.id
-                ? 'border-emerald-400/40 bg-emerald-400/15 text-emerald-200'
+                ? 'border-adm-status-ok/40 bg-adm-status-ok-bg text-adm-status-ok-text'
                 : 'border-brand-100 text-brand-700 hover:text-brand-900'
             }`}
           >

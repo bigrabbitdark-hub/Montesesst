@@ -90,14 +90,14 @@ export function AdminSidebar({ open, onClose }: { open: boolean; onClose: () => 
                       <Link
                         href={item.href}
                         aria-current={active ? 'page' : undefined}
-                        className={`relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors ${
+                        className={`relative flex items-center gap-3 rounded-xl px-3 py-2 text-sm transition-colors ${
                           active
-                            ? 'bg-emerald-500/15 font-semibold text-brand-900'
+                            ? 'bg-adm-brand/15 font-semibold text-brand-900'
                             : 'text-brand-700 hover:bg-brand-50 hover:text-brand-900'
                         }`}
                       >
                         {active && (
-                          <span aria-hidden="true" className="absolute inset-y-1.5 left-0 w-0.5 rounded-full bg-emerald-400" />
+                          <span aria-hidden="true" className="absolute inset-y-1.5 left-0 w-0.5 rounded-full bg-adm-brand" />
                         )}
                         <AdminIcon name={item.icon} className="h-[18px] w-[18px] shrink-0" />
                         {item.label}

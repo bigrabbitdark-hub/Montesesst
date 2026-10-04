@@ -25,7 +25,7 @@ export function Card({
     <section
       id={id}
       aria-labelledby={titleId}
-      className={`adm-card flex min-w-0 scroll-mt-20 flex-col p-4 sm:p-5 ${className}`}
+      className={`adm-card flex min-w-0 scroll-mt-20 flex-col p-5 sm:p-6 ${className}`}
     >
       <header className="mb-3 flex items-start justify-between gap-3">
         <div className="min-w-0">
@@ -43,7 +43,7 @@ export function Card({
 
 export function CardLink({ href, children }: { href: string; children: ReactNode }) {
   return (
-    <Link href={href} className="shrink-0 text-xs font-medium text-emerald-400 hover:underline">
+    <Link href={href} className="shrink-0 text-xs font-medium text-adm-brand hover:underline">
       {children}
     </Link>
   );
@@ -67,12 +67,12 @@ export function CardError({
   message?: string;
 }) {
   return (
-    <div role="alert" className="flex flex-col items-start gap-2 text-sm text-red-300">
+    <div role="alert" className="flex flex-col items-start gap-2 text-sm text-adm-status-crit-text">
       <p>{message}</p>
       <button
         type="button"
         onClick={onRetry}
-        className="rounded-md border border-red-400/40 px-3 py-1 text-xs font-medium text-red-200 hover:bg-red-400/10"
+        className="rounded-md border border-adm-status-crit/40 px-3 py-1 text-xs font-medium text-adm-status-crit-text hover:bg-adm-status-crit-bg"
       >
         Tentar novamente
       </button>
@@ -130,10 +130,10 @@ export function AsyncBody<T>({
 export type Tone = 'ok' | 'warn' | 'bad' | 'info' | 'neutral';
 
 const TONES: Record<Tone, string> = {
-  ok: 'border-emerald-400/30 bg-emerald-400/10 text-emerald-300',
-  warn: 'border-amber-400/30 bg-amber-400/10 text-amber-300',
-  bad: 'border-red-400/30 bg-red-400/10 text-red-300',
-  info: 'border-blue-400/30 bg-blue-400/10 text-blue-300',
+  ok: 'border-adm-status-ok/30 bg-adm-status-ok-bg text-adm-status-ok-text',
+  warn: 'border-adm-status-warn/30 bg-adm-status-warn-bg text-adm-status-warn-text',
+  bad: 'border-adm-status-crit/30 bg-adm-status-crit-bg text-adm-status-crit-text',
+  info: 'border-adm-status-info/30 bg-adm-status-info-bg text-adm-status-info-text',
   neutral: 'border-slate-400/30 bg-slate-400/10 text-slate-300',
 };
 

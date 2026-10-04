@@ -12,14 +12,14 @@ function ServiceRow({ name, ok, detail }: { name: string; ok: boolean; detail?: 
       <span className="flex min-w-0 items-center gap-2.5">
         <AdminIcon
           name={ok ? 'check' : 'alert'}
-          className={`h-[18px] w-[18px] shrink-0 ${ok ? 'text-emerald-400' : 'text-red-400'}`}
+          className={`h-[18px] w-[18px] shrink-0 ${ok ? 'text-adm-status-ok-text' : 'text-adm-status-crit-text'}`}
         />
         <span className="min-w-0">
           <span className="block text-sm text-brand-900">{name}</span>
           {detail && <span className="block text-xs text-brand-700">{detail}</span>}
         </span>
       </span>
-      <span className={`shrink-0 text-xs font-semibold ${ok ? 'text-emerald-300' : 'text-red-300'}`}>
+      <span className={`shrink-0 text-xs font-semibold ${ok ? 'text-adm-status-ok-text' : 'text-adm-status-crit-text'}`}>
         {ok ? 'Online' : 'Fora do ar'}
       </span>
     </li>

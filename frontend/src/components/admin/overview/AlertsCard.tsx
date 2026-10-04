@@ -8,9 +8,9 @@ import { AdminIcon } from '../icons';
 import type { AlertSeverity } from '../types';
 
 const SEV: Record<AlertSeverity, { label: string; icon: 'alert' | 'info'; text: string; box: string }> = {
-  critico: { label: 'Crítico', icon: 'alert', text: 'text-red-300', box: 'border-red-400/40 bg-red-400/10' },
-  atencao: { label: 'Atenção', icon: 'alert', text: 'text-amber-300', box: 'border-amber-400/40 bg-amber-400/10' },
-  info: { label: 'Info', icon: 'info', text: 'text-blue-300', box: 'border-blue-400/40 bg-blue-400/10' },
+  critico: { label: 'Crítico', icon: 'alert', text: 'text-adm-status-crit-text', box: 'border-adm-status-crit/40 bg-adm-status-crit-bg' },
+  atencao: { label: 'Atenção', icon: 'alert', text: 'text-adm-status-warn-text', box: 'border-adm-status-warn/40 bg-adm-status-warn-bg' },
+  info: { label: 'Info', icon: 'info', text: 'text-adm-status-info-text', box: 'border-adm-status-info/40 bg-adm-status-info-bg' },
 };
 
 // "O que precisa da minha atenção" (spec §49). Calculado na hora no backend por
@@ -30,7 +30,7 @@ export function AlertsCard({ className = '' }: { className?: string }) {
       {data === null && alertas.error && <CardError onRetry={refresh} message="Não foi possível carregar os alertas." />}
       {data !== null && data.itens.length === 0 && (
         <div className="flex flex-col items-center gap-2 py-4 text-center">
-          <AdminIcon name="check" className="h-7 w-7 text-emerald-400" />
+          <AdminIcon name="check" className="h-7 w-7 text-adm-status-ok-text" />
           <p className="text-sm text-brand-700">Nenhum alerta — tudo certo.</p>
         </div>
       )}
@@ -59,7 +59,7 @@ export function AlertsCard({ className = '' }: { className?: string }) {
         </ul>
       )}
       {data !== null && alertas.error && (
-        <p className="mt-2 text-xs text-amber-300">A última verificação falhou; exibindo a leitura anterior.</p>
+        <p className="mt-2 text-xs text-adm-status-warn-text">A última verificação falhou; exibindo a leitura anterior.</p>
       )}
     </Card>
   );

@@ -66,6 +66,44 @@
   --font-body: var(--font-inter), system-ui, sans-serif;
 }
 
+/*
+ * Admin (Montese Control, tema escuro) — Design System v2. Equivalentes escuros de
+ * --color-dash-status-*: mesma semântica ok/warn/crit/info/epi, cores claras o bastante para
+ * texto sobre --admin-surface (#0f1a2e) e --admin-bg (#0a1220). Em @theme (e não dentro de
+ * .admin-theme) para o Tailwind v4 gerar text-adm-status-*, bg-adm-status-*, border-adm-brand etc.
+ *
+ * Contrastes (WCAG 2.1, luminância relativa) medidos de verdade, texto sobre o fundo tingido
+ * (bg-* já composto sobre a superfície; o pior caso entre superfície e fundo da página):
+ *   ok-text #4ade80 8,5:1 · warn-text #fbbf24 9,0:1 · crit-text #fca5a5 8,3:1 · info-text #93c5fd 8,4:1
+ *   epi-text #c4b5fd 7,8:1  → todos AAA (≥ 7). brand #34d399 9,8:1 sobre --admin-bg;
+ *   brand-strong #10b981 6,9:1 sobre --admin-surface.
+ * crit (#ef4444) com texto branco dá só 3,76:1: para badge numérico usar crit-solid (#dc2626, 4,83:1).
+ * Cor nunca é o único indicador: o estado continua escrito em texto (spec SP1).
+ * Conferido por app/admin/__tests__/admin-theme-contraste.test.ts.
+ */
+@theme {
+  --color-adm-status-ok: #22c55e;
+  --color-adm-status-ok-bg: rgba(34, 197, 94, 0.1);
+  --color-adm-status-ok-text: #4ade80;
+  --color-adm-status-warn: #f59e0b;
+  --color-adm-status-warn-bg: rgba(245, 158, 11, 0.1);
+  --color-adm-status-warn-text: #fbbf24;
+  --color-adm-status-crit: #ef4444;
+  --color-adm-status-crit-solid: #dc2626;
+  --color-adm-status-crit-bg: rgba(239, 68, 68, 0.12);
+  --color-adm-status-crit-text: #fca5a5;
+  --color-adm-status-info: #3b82f6;
+  --color-adm-status-info-bg: rgba(59, 130, 246, 0.12);
+  --color-adm-status-info-text: #93c5fd;
+  /* EPI/IA: roxo escuro-equivalente ao #7c3aed do v2, para manter a leitura "IA". */
+  --color-adm-status-epi: #a78bfa;
+  --color-adm-status-epi-bg: rgba(167, 139, 250, 0.12);
+  --color-adm-status-epi-text: #c4b5fd;
+  /* Verde da marca para destaques (item ativo da sidebar, série "aprovado"). */
+  --color-adm-brand: #34d399;
+  --color-adm-brand-strong: #10b981;
+}
+
 /* Site institucional: elementos do navegador com a identidade da marca. */
 ::selection {
   background: var(--color-brand-300);

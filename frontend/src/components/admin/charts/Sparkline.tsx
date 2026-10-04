@@ -4,7 +4,7 @@ import { useId } from 'react';
 
 export function Sparkline({
   values,
-  color = '#34d399',
+  color = 'var(--color-adm-brand-strong)',
   label,
   className = 'h-8 w-24',
 }: {

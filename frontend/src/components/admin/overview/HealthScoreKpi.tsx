@@ -190,15 +190,15 @@ export function computeHealthScore(input: {
 }
 
 function partTextColor(percent: number): string {
-  if (percent >= 90) return 'text-emerald-300';
-  if (percent >= 70) return 'text-amber-300';
-  return 'text-red-300';
+  if (percent >= 90) return 'text-adm-status-ok-text';
+  if (percent >= 70) return 'text-adm-status-warn-text';
+  return 'text-adm-status-crit-text';
 }
 
 function partDotClass(percent: number): string {
-  if (percent >= 90) return 'bg-emerald-400';
-  if (percent >= 70) return 'bg-amber-400';
-  return 'bg-red-400';
+  if (percent >= 90) return 'bg-adm-status-ok';
+  if (percent >= 70) return 'bg-adm-status-warn';
+  return 'bg-adm-status-crit';
 }
 
 const SUB_LABELS: Record<SubKey, string> = {
@@ -236,13 +236,13 @@ export function HealthScoreKpi({
 
   const loading = !system.data && !system.error;
   const totalColor =
-    score.total >= 90 ? 'text-emerald-300' : score.total >= 70 ? 'text-amber-300' : 'text-red-300';
+    score.total >= 90 ? 'text-adm-status-ok-text' : score.total >= 70 ? 'text-adm-status-warn-text' : 'text-adm-status-crit-text';
 
   return (
     <div className={`adm-card flex min-w-0 items-start gap-4 p-4 sm:p-5 ${className}`}>
       <span
         aria-hidden="true"
-        className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-amber-500/15 text-amber-300"
+        className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-adm-status-warn-bg text-adm-status-warn-text"
       >
         <AdminIcon name="shield" className="h-6 w-6" />
       </span>

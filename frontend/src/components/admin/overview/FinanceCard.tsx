@@ -10,8 +10,8 @@ import { Tile } from './Tile';
 export const PERIODOS = [7, 30, 90] as const;
 export type Periodo = (typeof PERIODOS)[number];
 
-const COBRADO = '#60a5fa';
-const APROVADO = '#34d399';
+const COBRADO = 'var(--color-adm-status-info-text)';
+const APROVADO = 'var(--color-adm-brand-strong)';
 
 // "Cobrado" = todos os eventos de cobrança do Mercado Pago; "Aprovado" = os
 // aprovados (é o que de fato entrou). Não usamos "faturamento/recebido" porque
@@ -42,7 +42,7 @@ export function FinanceCard({
               aria-pressed={dias === d}
               onClick={() => onDias(d)}
               className={`rounded-md px-2.5 py-1 text-xs font-medium ${
-                dias === d ? 'bg-emerald-500/20 text-emerald-200' : 'text-brand-700 hover:text-brand-900'
+                dias === d ? 'bg-adm-brand/20 text-adm-status-ok-text' : 'text-brand-700 hover:text-brand-900'
               }`}
             >
               {d} dias

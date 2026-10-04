@@ -44,7 +44,7 @@ function OpenRouterLine({ state }: { state: FetchState<OpenRouterUsage> }) {
       {typeof o.usage_monthly === 'number'
         ? `OpenRouter: ${formatUsd(o.usage_monthly)} este mês`
         : 'OpenRouter: sem dado do mês'}
-      {o.low_balance_warning && <span className="text-amber-300"> · saldo baixo</span>}
+      {o.low_balance_warning && <span className="text-adm-status-warn-text"> · saldo baixo</span>}
     </>
   );
 }
@@ -102,7 +102,7 @@ export function KpiRow({
                     <OpenRouterLine state={openrouter} />
                   </p>
                 </div>
-                <Sparkline values={serie.map((d) => d.total_tokens)} color="#a78bfa" label="Tokens por dia nos últimos 7 dias" />
+                <Sparkline values={serie.map((d) => d.total_tokens)} color="var(--color-adm-status-epi)" label="Tokens por dia nos últimos 7 dias" />
               </div>
             );
           }}

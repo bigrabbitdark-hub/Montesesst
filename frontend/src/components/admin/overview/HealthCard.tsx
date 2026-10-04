@@ -25,13 +25,13 @@ export function HealthCard({ className = '' }: { className?: string }) {
           <span
             aria-hidden="true"
             className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${
-              ok ? 'bg-emerald-500/15 text-emerald-300' : 'bg-red-500/15 text-red-300'
+              ok ? 'bg-adm-status-ok-bg text-adm-status-ok-text' : 'bg-adm-status-crit-bg text-adm-status-crit-text'
             }`}
           >
             <AdminIcon name={ok ? 'shield' : 'alert'} className="h-6 w-6" />
           </span>
           <div className="min-w-0">
-            <p className={`text-lg font-semibold ${ok ? 'text-emerald-300' : 'text-red-300'}`}>
+            <p className={`text-lg font-semibold ${ok ? 'text-adm-status-ok-text' : 'text-adm-status-crit-text'}`}>
               {SYSTEM_STATE_LABEL[state]}
             </p>
             <p className="text-xs text-brand-700">{`${up} de 3 serviços monitorados acessíveis`}</p>
