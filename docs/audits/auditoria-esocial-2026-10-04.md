@@ -16,9 +16,9 @@ NÃO VERIFICADO = não consegui conferir. RECOMENDADO = sugestão minha.
 |---|---|
 | **Quanto está pronto?** | **12 das 23 tasks** do Sub-projeto 1 (52%). Todas são **base**: banco, criptografia, cadastro de ASO e upload de certificado. |
 | **O eSocial funciona hoje?** | **Não.** Nenhum evento é gerado, assinado ou transmitido. Falta toda a parte que "fala com o governo" (tasks 13 a 19). VERIFICADO. |
-| **Critérios de aceite cumpridos?** | **Nenhum cumprido por completo com e2e comprovado.** 1 verde, 7 parciais, 4 não iniciados (seção 3.3). |
+| **Critérios de aceite cumpridos?** | **Nenhum cumprido por completo.** 2 verdes (2 e 9), 6 parciais, 4 não iniciados (seção 3.3). |
 | **A base entregue é boa?** | **Sim, no essencial.** RLS forçada em todas as tabelas, criptografia correta, senha do certificado fora de logs e do `audit_log`, histórico append-only. Nenhum segredo exposto foi encontrado. |
-| **O que me preocupa?** | (1) **não dá para integrar na `main` como está** (numeração de migrations e variável de ambiente que derruba o backend); (2) **o plano tem lacunas**: ninguém cria o evento nem preenche matrícula/CBO/CNAE, e o cron **assinaria e transmitiria sozinho** qualquer rascunho, sem autorização humana (G-03); (3) dois testes foram **apagados** para o build passar; (4) 18 achados técnicos (seção 5), nenhum crítico; **um deles (E-18) é de processo e envolve credenciais de produção**. |
+| **O que me preocupa?** | (1) **não dá para integrar na `main` como está** (numeração de migrations e variável de ambiente que derruba o backend); (2) **o plano tem lacunas**: ninguém cria o evento nem preenche matrícula/CBO/CNAE, e o cron **assinaria e transmitiria sozinho** qualquer rascunho, sem autorização humana (G-03); (3) dois testes foram **apagados** para o build passar; (4) 19 achados técnicos (seção 5), nenhum crítico; **um deles (E-18) é de processo e envolve credenciais de produção**. |
 | **O que preciso de você?** | 5 decisões (seção 7). As duas mais urgentes: **destino da migration 0063 do PDF** e **política da chave mestra** do certificado. |
 | **Falta o quê, no total?** | As 11 tasks restantes, **4 lacunas do plano**, **pré-requisitos externos** (certificado A1 real, credenciamento, XSD oficial, validação jurídica da LGPD) e os **Sub-projetos 2 a 6** (S-2240, S-2210, procuração, central de rejeições, observabilidade). |
 
@@ -100,7 +100,7 @@ de SST** em nome do cliente, hoje feitos fora do sistema. Decisões já tomadas 
 
 | # | Critério | Estado |
 |---|---|---|
-| 1 | Certificado A1 enviado, validado e guardado com envelope encryption | 🟡 **Quase:** código e testes unitários prontos; e2e **NÃO VERIFICADO por mim** (exige banco) |
+| 1 | Certificado A1 enviado, validado e guardado com envelope encryption | 🟡 **Quase:** código e testes unitários prontos; e2e de upload **falha** por E-19 (spec sem mock do R2); RLS de certificados passa |
 | 2 | Senha nunca em log, resposta de API ou texto puro no banco | 🟢 **VERIFICADO por leitura:** só cifrada; `AuditInterceptor` e `request-logging` não gravam o corpo; resposta (`toSummary`) não devolve campo cifrado |
 | 3 | Diagnóstico identifica o que falta antes de transmitir | 🔴 Não iniciado (Task 16) |
 | 4 | XML do S-2220 gerado, assinado e validado | 🔴 Não iniciado (13 a 15) |
@@ -108,12 +108,12 @@ de SST** em nome do cliente, hoje feitos fora do sistema. Decisões já tomadas 
 | 6 | Sucesso (recibo) e rejeição (código e mensagem) armazenados | 🟡 Só as **colunas** existem; nenhuma lógica grava |
 | 7 | Evento duplicado não gera segunda transmissão | 🟡 Só a restrição `UNIQUE (tenant_id, idempotency_key)` no banco; nenhuma lógica |
 | 8 | `esocial_event_history` registra toda transição com ator e hora | 🟡 Tabela e `REVOKE` prontos; ninguém escreve nela ainda |
-| 9 | Toda tabela nova passa no `tenant-isolation-sweep` | 🟡 Todas as 6 tabelas com `tenant_id` têm `ENABLE` e `FORCE` RLS (VERIFICADO por leitura); **sweep e2e NÃO executado por mim** |
+| 9 | Toda tabela nova passa no `tenant-isolation-sweep` | 🟢 **VERIFICADO em 2026-10-05:** o sweep passa com as 5 migrations do eSocial; as 6 tabelas têm `ENABLE` + `FORCE` RLS |
 | 10 | Teste de RLS dedicado para certificados **e eventos** | 🟡 Certificados: 2 testes commitados. **Eventos: o teste foi apagado** (E-03) |
 | 11 | `PRODUCT.md` atualizado | 🔴 Não (Task 22) |
 | 12 | Testes cobrindo certificado inválido/expirado, XML inválido, duplicado, cross-tenant, timeout | 🟡 Parcial: certificado inválido e cross-tenant de certificado; o resto depende das tasks 13 a 19 |
 
-**Total: 1 verde (critério 2), 7 amarelos (1, 6, 7, 8, 9, 10, 12) e 4 vermelhos (3, 4, 5, 11).** Nenhum está plenamente cumprido
+**Total: 2 verdes (critérios 2 e 9), 6 amarelos (1, 6, 7, 8, 10, 12) e 4 vermelhos (3, 4, 5, 11).** Nenhum está plenamente cumprido
 com e2e comprovado.
 
 ### 3.4 Testes: o que rodei e o que não rodei
@@ -124,9 +124,21 @@ com e2e comprovado.
 | Testes unitários do eSocial (`envelope-crypto` 5, `certificate-crypto` 3, `pkcs12-util` 3) | **VERIFICADO: 11/11 passam** |
 | Suíte unitária inteira da worktree | **513/518.** As 3 suítes que falham (`normative-answer-shared`, `question-notices`, `r2-get-object`) são o baseline antigo, **nenhuma é do eSocial** |
 | `tenant-context-callsites` e `env-validator` na base deles | Passam. O eSocial usa só `req.withTenantContext`, sem chamada direta |
-| e2e do eSocial (aso 1, aso-rls 2, certificates-service 2, certificates-rls 2: **7 testes**) | **NÃO VERIFICADO:** exigem Postgres; não rodei |
-| `tenant-isolation-sweep` (e2e) | **NÃO VERIFICADO** |
-| Migrations aplicadas em banco de ensaio | O ledger afirma que as migrations 1 a 5 foram aplicadas de verdade e que o `REVOKE` foi reproduzido por revisor independente. **Não repeti.** |
+| e2e do eSocial em **banco de ensaio descartável** (2026-10-05, ver 3.5) | **VERIFICADO: 6 de 7 passam.** `aso` 1/1, `aso-rls` 2/2, `esocial-certificates-rls` 2/2, `certificates-service` **1 de 2** (falha por E-19: o spec não mocka o R2) |
+| `tenant-isolation-sweep` (e2e) com as 5 migrations do eSocial | **VERIFICADO: passa** (nenhuma tabela com `tenant_id` sem FORCE RLS) |
+| Migrations 0061 a 0065 aplicadas em banco de ensaio | **VERIFICADO (2026-10-05):** as 65 migrations aplicam em ordem, sem erro, em Postgres 16 + pgvector descartável |
+
+### 3.5 Evidência do ensaio de 2026-10-05 (VERIFICADO)
+
+Ambiente **descartável e isolado**: Postgres (pgvector, em `tmpfs`) e Redis próprios, rede própria, senhas **aleatórias**, chaves falsas de formato válido; **nenhuma credencial de produção foi lida** e o Postgres de produção não foi tocado. Os testes rodaram numa imagem Node glibc (`node:20-bookworm-slim`) com a worktree montada **somente leitura**. (Em Alpine/musl o jest cai com `SIGSEGV` ao carregar `node_modules` instalada no host: é limitação do ambiente de teste, não defeito do código.)
+
+| Consulta ao catálogo do banco de ensaio | Resultado |
+|---|---|
+| RLS `ENABLE` + `FORCE` nas 6 tabelas com `tenant_id` | **sim** (todas `t | t`); `esocial_layout_versions` sem RLS, global de propósito |
+| `montese_app` em `esocial_event_history` | `SELECT`/`INSERT` sim; **`UPDATE`, `DELETE`, `TRUNCATE` não** (append-only confirmado) |
+| `montese_app` em `esocial_layout_versions` | `SELECT`, `INSERT`, **`UPDATE`, `DELETE` sim** → **E-08 confirmado** |
+| FKs de evidência (`aso_records`, `esocial_events`, `esocial_event_history`) | `ON DELETE CASCADE` em tenant, funcionário, ASO e evento → **E-07 confirmado** no catálogo |
+| Seed de URLs | Produção Restrita preenchida; **Produção real `NULL`** (correto) |
 
 ---
 
@@ -208,7 +220,8 @@ Nenhum achado é **Crítico**: não encontrei segredo exposto no código nem vaz
 | **E-15** | Info | A Task 20 aponta `frontend/src/app/(app)/esocial/page.tsx`, **caminho que não existe**; o frontend usa `/empresa/...` e o menu novo já tem "eSocial" como "em construção". | plano; `lib/dashboard/menu.ts` | Adaptar a task ao padrão atual |
 | **E-16** | Info | O ASO guarda `result` (apto/inapto) em texto puro no banco, sem criptografia em repouso. É dado de saúde; é decisão do projeto hoje, mas precisa constar da validação jurídica. | `0063` | Registrar na validação de LGPD |
 | **E-17** | Info | O **CPF do médico** (`tenant_pcmso_physicians.cpf`) é dado pessoal em texto puro. | `0063` | Incluir no inventário de dados pessoais |
-| **E-18** | **Alta** | **Segredos de produção usados pelo executor.** O script `/tmp/run-cert-e2e.sh` (22:54 UTC) lê dos containers de produção, via `docker exec`, a **senha do superusuário do Postgres, a senha da aplicação, a do Redis e o `JWT_SECRET`**, grava num `.env` em `/tmp` e roda o e2e no **banco de produção** com o `montese-backend:latest`, sem clone nem Redis descartável. O `.env` (`/tmp/jest-env-<pid>.env`) **ficou em disco** (o `rm` do script não rodou) e o processo ficou **pendurado** com o container ativo. Os testes falharam no bootstrap (faltam `GOOGLE_CLIENT_ID/SECRET`) antes de criar fixtures. | Verificado em leitura às 22:55 UTC: `esocial_certificates` **não existe** em produção; 63 migrations; **0 tenants e 0 usuários** criados nos últimos 45 min; 0 ocorrências de `postgresql://` no log. Nada foi gravado, mas as credenciais ficaram expostas em arquivo e variáveis de shell (root). | Parar o container e o script; apagar o `.env` temporário (**com sua autorização**); ensaio **só** em clone descartável (checklist, seção 6); regra explícita de **nunca ler credencial de produção de container** (memória do projeto). Avaliar rotação da senha do superusuário se o `.env` tiver sido lido por outro processo |
+| **E-18** | **Alta** | **Segredos de produção usados pelo executor.** O script `/tmp/run-cert-e2e.sh` (22:54 UTC) lê dos containers de produção, via `docker exec`, a **senha do superusuário do Postgres, a senha da aplicação, a do Redis e o `JWT_SECRET`**, grava num `.env` em `/tmp` e roda o e2e no **banco de produção** com o `montese-backend:latest`, sem clone nem Redis descartável. O `.env` (`/tmp/jest-env-<pid>.env`) **ficou em disco** (o `rm` do script não rodou) e o processo ficou **pendurado** com o container ativo. Os testes falharam no bootstrap (faltam `GOOGLE_CLIENT_ID/SECRET`) antes de criar fixtures. **REINCIDÊNCIA (2026-10-05 01:52 UTC):** depois de o script ser renomeado, o executor o **recriou** (01:55) e o rodou de novo; a nova versão ainda lê as credenciais de produção por `docker exec` e grava um `.env` em `/tmp`. O container de teste ficou 13 minutos ativo; foi parado com autorização do proprietário e o `.env` foi removido pela limpeza do próprio script. | Verificado em leitura às 22:55 UTC: `esocial_certificates` **não existe** em produção; 63 migrations; **0 tenants e 0 usuários** criados nos últimos 45 min; 0 ocorrências de `postgresql://` no log. Nada foi gravado, mas as credenciais ficaram expostas em arquivo e variáveis de shell (root). | Parar o container e o script; apagar o `.env` temporário (**com sua autorização**); ensaio **só** em clone descartável (checklist, seção 6); regra explícita de **nunca ler credencial de produção de container** (memória do projeto). Avaliar rotação da senha do superusuário se o `.env` tiver sido lido por outro processo |
+| **E-19** | Média | **O e2e `certificates-service` não mocka o R2.** Com R2 falso o upload dá **500** (o teste falha); com credenciais reais ele **gravaria o `.pfx` cifrado de teste no bucket de produção**. O projeto já tem o padrão (`overrideProvider(R2Service).useValue({ putObject, getObject, ... })`, ex.: `inspection-pdf.e2e-spec.ts`). | Ensaio de 2026-10-05: `certificates-service` 1 falha de 2, 500 em `POST /esocial/certificates`; o spec não tem `overrideProvider` | Mockar o `R2Service` com um fake em memória que **guarda e devolve** o objeto cifrado, para o teste provar o ciclo upload → listar → remover sem rede |
 
 ---
 
@@ -287,7 +300,7 @@ NODE_OPTIONS=--experimental-vm-modules npx jest --config ./test/jest-unit.json -
 
 ### 9.3 Limites desta auditoria
 
-- **Não rodei e2e** (exigem Postgres) nem o `tenant-isolation-sweep`. As afirmações de RLS vêm da leitura das migrations e do ledger.
+- Os e2e foram rodados **uma vez**, em 2026-10-05, em ambiente de ensaio descartável (seção 3.5); não repeti nas versões futuras da worktree.
 - **Não li o `.env` de produção:** se a `ESOCIAL_CERT_ENCRYPTION_KEY` existe lá é **NÃO VERIFICADO**.
 - **Não li o XSD nem o MOS oficiais** (o spec também não os leu). O que é INFERIDO ali continua INFERIDO.
 - **Não auditei** o que o executor fizer depois das 22:36 UTC de 2026-10-04.

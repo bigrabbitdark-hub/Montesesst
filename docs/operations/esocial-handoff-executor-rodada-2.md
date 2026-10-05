@@ -32,6 +32,8 @@ uma tarefa pedir tocar fora de `backend/src/esocial`, `backend/src/aso`, `backen
 
 ## 1. Tarefas da rodada (ordem obrigatória)
 
+**Ambiente de teste:** use o ensaio descartável descrito em `docs/audits/auditoria-esocial-2026-10-04.md` (seção 3.5): Postgres e Redis próprios, senhas aleatórias, imagem Node **glibc** (`node:20-bookworm-slim`) com a worktree montada somente leitura. Em Alpine o jest cai com `SIGSEGV`.
+
 Cada tarefa: **teste vermelho primeiro (RED)**, correção, teste verde (GREEN), saída real colada no relatório.
 
 ### 1.1 — E-03 · Restaurar os testes apagados (primeiro de tudo)
@@ -97,6 +99,13 @@ Spec §8: XML, recibo e histórico ficam **indefinidamente**. Hoje `ON DELETE CA
 - E-10: gravar no R2 **depois** do `INSERT` (e remover o objeto se o commit falhar) **ou** limpar o objeto no erro; `ParseUUIDPipe` no `:id` do `DELETE`; `UNIQUE (tenant_id, thumbprint_sha256)` parcial (`WHERE status <> 'removido'`) — o `409` deve explicar "certificado já cadastrado".
 - E-11: passar `authTagLength: 16` em `createDecipheriv`/`setAuthTag`; **não** unifique ainda `secret-crypto.util.ts` (outro módulo, em produção): só registre a duplicação.
 - E-12: validadores de CPF (dígito verificador), UF do CRM (lista das 27 UFs), `examDate` não futuro. Testes unitários dos validadores.
+
+### 1.9 — E-19 · O e2e de certificados precisa mockar o R2 (evidência real, 2026-10-05)
+
+`certificates-service.e2e-spec.ts` não mocka o `R2Service`: sem R2 o upload dá **500**; com credenciais reais gravaria o `.pfx` cifrado no bucket de produção.
+- Usar o padrão do projeto: `Test.createTestingModule({ imports: [AppModule] }).overrideProvider(R2Service).useValue({ putObject, getObject, ... })` (ex.: `inspection-pdf.e2e-spec.ts`),
+  com um fake **em memória que guarda e devolve** o objeto cifrado (para provar upload → listar → remover sem rede).
+- **Aceite:** o spec passa 2/2 **sem nenhuma variável `R2_*` real**; nenhuma chamada de rede.
 
 ## 2. Como entregar (para a revisão)
 
