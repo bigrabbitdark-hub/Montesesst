@@ -2,6 +2,9 @@
 
 import { FormEvent, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { AdminPageHeader } from '@/components/admin/PageHeader';
+import { Badge } from '@/components/admin/Card';
+import { httpStatusTone } from '@/components/admin/status-tone';
 
 interface AuditLogRow {
   id: string;
@@ -43,13 +46,6 @@ function statusLabel(code: number): string {
   if (code >= 400 && code < 500) return 'Erro do usuário/pedido';
   if (code >= 500) return 'Erro do servidor';
   return 'Outro';
-}
-
-function statusColorClass(code: number): string {
-  if (code >= 200 && code < 300) return 'text-green-700';
-  if (code >= 400 && code < 500) return 'text-yellow-800';
-  if (code >= 500) return 'text-red-700';
-  return 'text-brand-700';
 }
 
 export default function AdminAuditoriaPage() {
@@ -116,11 +112,10 @@ export default function AdminAuditoriaPage() {
 
   return (
     <div>
-      <h2 className="text-xl font-bold text-brand-900">Auditoria</h2>
-      <p className="mt-1 text-sm text-brand-700">
-        Registro de ações realizadas no sistema — quem fez o quê, quando, e o resultado (coluna
-        &quot;Status&quot;). Passe o mouse sobre o número do status pra ver o que significa em termos simples.
-      </p>
+      <AdminPageHeader
+        title="Auditoria"
+        description={`Registro de ações realizadas no sistema — quem fez o quê, quando, e o resultado (coluna "Status"). Passe o mouse sobre o número do status pra ver o que significa em termos simples.`}
+      />
 
       <form onSubmit={handleFilterSubmit} className="mt-6 flex items-end gap-3">
         <label className="flex min-w-0 flex-1 flex-col gap-1 text-sm text-brand-900">
@@ -129,13 +124,10 @@ export default function AdminAuditoriaPage() {
             value={resourceTypeFilter}
             onChange={(e) => setResourceTypeFilter(e.target.value)}
             placeholder="ex: technicians, documents, inspections"
-            className="w-full min-w-0 rounded-md border border-brand-100 px-3 py-2"
+            className="adm-input w-full min-w-0"
           />
         </label>
-        <button
-          type="submit"
-          className="rounded-md bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700"
-        >
+        <button type="submit" className="adm-btn adm-btn-primary">
           Filtrar
         </button>
         {appliedFilter && (
@@ -146,7 +138,7 @@ export default function AdminAuditoriaPage() {
               setAppliedFilter('');
               loadPage(0, '', false);
             }}
-            className="rounded-md border border-brand-100 px-4 py-2 text-sm text-brand-700"
+            className="adm-btn"
           >
             Limpar
           </button>
@@ -158,32 +150,34 @@ export default function AdminAuditoriaPage() {
         {rows.length === 0 && !listError ? (
           <p className="text-sm text-brand-700">Nenhum evento de auditoria encontrado.</p>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
+          <div className="adm-card overflow-x-auto p-2 sm:p-4">
+            <table className="adm-table">
               <thead>
-                <tr className="border-b border-brand-100 text-brand-700">
-                  <th className="py-2">Quando</th>
-                  <th className="py-2">Quem</th>
-                  <th className="py-2">Empresa</th>
-                  <th className="py-2">Ação</th>
-                  <th className="py-2">Recurso</th>
-                  <th className="py-2">Status</th>
+                <tr>
+                  <th>Quando</th>
+                  <th>Quem</th>
+                  <th>Empresa</th>
+                  <th>Ação</th>
+                  <th>Recurso</th>
+                  <th>Status</th>
                 </tr>
               </thead>
               <tbody>
                 {rows.map((row) => (
-                  <tr key={row.id} className="border-b border-brand-100">
-                    <td className="py-2 text-brand-700">{formatDateTime(row.occurred_at)}</td>
-                    <td className="py-2 text-brand-700">
+                  <tr key={row.id}>
+                    <td className="text-brand-700">{formatDateTime(row.occurred_at)}</td>
+                    <td className="text-brand-700">
                       {row.actor_full_name ?? '—'} {row.actor_role ? `(${row.actor_role})` : ''}
                     </td>
-                    <td className="py-2 text-brand-700">{row.actor_tenant_name ?? '—'}</td>
-                    <td className="py-2 text-brand-900">{row.action}</td>
-                    <td className="py-2 text-brand-700">{row.resource_type}</td>
-                    <td className={`py-2 ${statusColorClass(row.status_code)}`}>
-                      <span title={statusLabel(row.status_code)}>
-                        {row.method} {row.status_code}
-                      </span>
+                    <td className="text-brand-700">{row.actor_tenant_name ?? '—'}</td>
+                    <td className="text-brand-900">{row.action}</td>
+                    <td className="text-brand-700">{row.resource_type}</td>
+                    <td>
+                      <Badge tone={httpStatusTone(row.status_code)}>
+                        <span title={statusLabel(row.status_code)}>
+                          {row.method} {row.status_code}
+                        </span>
+                      </Badge>
                     </td>
                   </tr>
                 ))}
@@ -192,20 +186,20 @@ export default function AdminAuditoriaPage() {
           </div>
         )}
         {rows.length > 0 && (
-          <div className="mt-4 flex flex-wrap gap-x-6 gap-y-1 rounded-md bg-brand-50 p-3 text-xs text-brand-700">
+          <div className="adm-card-2 mt-4 flex flex-wrap gap-x-6 gap-y-1 p-3 text-xs text-brand-700">
             <span>
-              <strong className="text-green-700">200/201</strong> — deu certo
+              <strong className="text-adm-status-ok-text">200/201</strong> — deu certo
             </span>
             <span>
-              <strong className="text-yellow-800">400/401/403/404</strong> — algo no pedido não foi
+              <strong className="text-adm-status-warn-text">400/401/403/404</strong> — algo no pedido não foi
               aceito (dado errado, sem permissão, ou não existe)
             </span>
             <span>
-              <strong className="text-yellow-800">429</strong> — muitas tentativas seguidas, bloqueado
+              <strong className="text-adm-status-warn-text">429</strong> — muitas tentativas seguidas, bloqueado
               temporariamente
             </span>
             <span>
-              <strong className="text-red-700">500/502/503</strong> — erro do sistema, não do usuário
+              <strong className="text-adm-status-crit-text">500/502/503</strong> — erro do sistema, não do usuário
             </span>
           </div>
         )}
@@ -213,7 +207,7 @@ export default function AdminAuditoriaPage() {
           <button
             onClick={() => loadPage(offset, appliedFilter, true)}
             disabled={loadingMore}
-            className="mt-4 rounded-md border border-brand-100 px-4 py-2 text-sm text-brand-700 disabled:opacity-50"
+            className="adm-btn mt-4 disabled:opacity-50"
           >
             {loadingMore ? 'Carregando...' : 'Carregar mais'}
           </button>

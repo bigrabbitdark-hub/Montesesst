@@ -3,6 +3,9 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { AdminPageHeader } from '@/components/admin/PageHeader';
+import { Badge, Card } from '@/components/admin/Card';
+import { httpStatusTone, subscriptionTone } from '@/components/admin/status-tone';
 
 interface TenantLink {
   id: string;
@@ -202,7 +205,7 @@ export default function AdminEmpresaDetailPage() {
 
   return (
     <div>
-      <Link href="/admin/empresas" className="text-sm text-brand-500 hover:underline">
+      <Link href="/admin/empresas" className="adm-link text-sm">
         ← Voltar para empresas
       </Link>
 
@@ -210,54 +213,59 @@ export default function AdminEmpresaDetailPage() {
 
       {detail && (
         <>
-          <section className="mt-6 rounded-lg border border-brand-100 p-6">
-            <h2 className="text-lg font-bold text-brand-900">{detail.tenant.name}</h2>
-            <dl className="mt-4 grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
+          <div className="mt-6">
+            <AdminPageHeader title={detail.tenant.name} />
+          </div>
+          <section className="adm-card mt-4 p-5 sm:p-6">
+            <dl className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
               <dt className="text-brand-700">CNPJ</dt>
-              <dd className="text-brand-900">{detail.tenant.cnpj}</dd>
+              <dd className="min-w-0 break-words text-brand-900">{detail.tenant.cnpj}</dd>
               <dt className="text-brand-700">Plano</dt>
-              <dd className="text-brand-900">{detail.tenant.plan}</dd>
+              <dd className="min-w-0 break-words text-brand-900">{detail.tenant.plan}</dd>
               <dt className="text-brand-700">Status</dt>
-              <dd className="text-brand-900">{detail.tenant.status}</dd>
+              <dd className="min-w-0 break-words">
+                <Badge tone="neutral">{detail.tenant.status}</Badge>
+              </dd>
               <dt className="text-brand-700">Setor</dt>
-              <dd className="text-brand-900">{detail.tenant.sector ?? '—'}</dd>
+              <dd className="min-w-0 break-words text-brand-900">{detail.tenant.sector ?? '—'}</dd>
               <dt className="text-brand-700">Contato</dt>
-              <dd className="text-brand-900">
+              <dd className="min-w-0 break-words text-brand-900">
                 {detail.tenant.contact_name ?? '—'} {detail.tenant.contact_phone ? `— ${detail.tenant.contact_phone}` : ''}
               </dd>
               <dt className="text-brand-700">Técnicos vinculados</dt>
-              <dd className="text-brand-900">
+              <dd className="min-w-0 break-words text-brand-900">
                 {detail.tenant.technicians.length === 0
                   ? '—'
                   : detail.tenant.technicians.map((t) => t.name).join(', ')}
               </dd>
               <dt className="text-brand-700">Parceiros vinculados</dt>
-              <dd className="text-brand-900">
+              <dd className="min-w-0 break-words text-brand-900">
                 {detail.tenant.partners.length === 0 ? '—' : detail.tenant.partners.map((p) => p.name).join(', ')}
               </dd>
             </dl>
           </section>
 
-          <section className="mt-8 rounded-lg border border-brand-100 p-6">
-            <h2 className="text-lg font-bold text-brand-900">Assinaturas</h2>
+          <Card title="Assinaturas" className="mt-8">
             {detail.subscriptions.length === 0 ? (
-              <p className="mt-4 text-sm text-brand-700">Nenhuma assinatura ainda.</p>
+              <p className="text-sm text-brand-700">Nenhuma assinatura ainda.</p>
             ) : (
-              <ul className="mt-4 flex flex-col gap-4">
+              <ul className="flex flex-col gap-4">
                 {detail.subscriptions.map((sub) => (
-                  <li key={sub.id} className="rounded-md border border-brand-100 px-4 py-3 text-sm">
+                  <li key={sub.id} className="adm-card-2 px-4 py-3 text-sm">
                     <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
-                      <div>
+                      <div className="min-w-0 break-words">
                         <span className="font-medium text-brand-900">{sub.plan_name}</span>
                         <span className="ml-2 text-brand-700">{formatCents(sub.price_cents)}</span>
-                        <span className="ml-2 text-brand-700">({sub.status})</span>
+                        <span className="ml-2">
+                          <Badge tone={subscriptionTone(sub.status)}>{sub.status}</Badge>
+                        </span>
                       </div>
                       <div className="flex flex-wrap items-center gap-3">
                         {sub.status === 'authorized' && (
                           <button
                             onClick={() => handleUpdateStatus(sub.id, 'paused')}
                             disabled={statusUpdateState[sub.id] === 'loading'}
-                            className="text-brand-500 hover:underline disabled:opacity-50"
+                            className="adm-link shrink-0 whitespace-nowrap disabled:opacity-50"
                           >
                             Pausar
                           </button>
@@ -266,7 +274,7 @@ export default function AdminEmpresaDetailPage() {
                           <button
                             onClick={() => handleUpdateStatus(sub.id, 'authorized')}
                             disabled={statusUpdateState[sub.id] === 'loading'}
-                            className="text-brand-500 hover:underline disabled:opacity-50"
+                            className="adm-link shrink-0 whitespace-nowrap disabled:opacity-50"
                           >
                             Reativar
                           </button>
@@ -299,7 +307,7 @@ export default function AdminEmpresaDetailPage() {
                             </button>
                           </span>
                         )}
-                        <button onClick={() => toggleHistory(sub.id)} className="text-brand-500 hover:underline">
+                        <button onClick={() => toggleHistory(sub.id)} className="adm-link shrink-0 whitespace-nowrap">
                           {expandedSubscriptionId === sub.id ? 'Ocultar histórico' : 'Ver histórico'}
                         </button>
                       </div>
@@ -329,86 +337,85 @@ export default function AdminEmpresaDetailPage() {
                 ))}
               </ul>
             )}
-          </section>
+          </Card>
 
-          <section className="mt-8 rounded-lg border border-brand-100 p-6">
-            <h2 className="text-lg font-bold text-brand-900">Documentos</h2>
+          <Card title="Documentos" className="mt-8">
             {detail.documents.length === 0 ? (
-              <p className="mt-4 text-sm text-brand-700">Nenhum documento ainda.</p>
+              <p className="text-sm text-brand-700">Nenhum documento ainda.</p>
             ) : (
               <div className="overflow-x-auto">
-                <table className="mt-4 w-full text-left text-sm">
+                <table className="adm-table">
                   <thead>
-                    <tr className="border-b border-brand-100 text-brand-700">
-                      <th className="py-2">Categoria</th>
-                      <th className="py-2">Título</th>
-                      <th className="py-2">Vencimento</th>
+                    <tr>
+                      <th>Categoria</th>
+                      <th>Título</th>
+                      <th>Vencimento</th>
                     </tr>
                   </thead>
                   <tbody>
                     {detail.documents.map((doc) => (
-                      <tr key={doc.id} className="border-b border-brand-100">
-                        <td className="py-2 text-brand-700">{doc.category}</td>
-                        <td className="py-2 text-brand-900">{doc.title}</td>
-                        <td className="py-2 text-brand-700">{formatDate(doc.expires_at)}</td>
+                      <tr key={doc.id}>
+                        <td className="text-brand-700">{doc.category}</td>
+                        <td className="text-brand-900">{doc.title}</td>
+                        <td className="text-brand-700">{formatDate(doc.expires_at)}</td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
             )}
-          </section>
+          </Card>
 
-          <section className="mt-8 rounded-lg border border-brand-100 p-6">
-            <h2 className="text-lg font-bold text-brand-900">EPIs</h2>
+          <Card title="EPIs" className="mt-8">
             {detail.epis.length === 0 ? (
-              <p className="mt-4 text-sm text-brand-700">Nenhum EPI cadastrado ainda.</p>
+              <p className="text-sm text-brand-700">Nenhum EPI cadastrado ainda.</p>
             ) : (
               <div className="overflow-x-auto">
-                <table className="mt-4 w-full text-left text-sm">
+                <table className="adm-table">
                   <thead>
-                    <tr className="border-b border-brand-100 text-brand-700">
-                      <th className="py-2">Categoria</th>
-                      <th className="py-2">Equipamento</th>
-                      <th className="py-2">CA</th>
-                      <th className="py-2">Validade do CA</th>
+                    <tr>
+                      <th>Categoria</th>
+                      <th>Equipamento</th>
+                      <th>CA</th>
+                      <th>Validade do CA</th>
                     </tr>
                   </thead>
                   <tbody>
                     {detail.epis.map((epi) => (
-                      <tr key={epi.id} className="border-b border-brand-100">
-                        <td className="py-2 text-brand-700">{epi.category}</td>
-                        <td className="py-2 text-brand-900">{epi.description}</td>
-                        <td className="py-2 text-brand-700">{epi.ca_number}</td>
-                        <td className="py-2 text-brand-700">{formatDate(epi.ca_valid_until)}</td>
+                      <tr key={epi.id}>
+                        <td className="text-brand-700">{epi.category}</td>
+                        <td className="text-brand-900">{epi.description}</td>
+                        <td className="text-brand-700">{epi.ca_number}</td>
+                        <td className="text-brand-700">{formatDate(epi.ca_valid_until)}</td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
             )}
-          </section>
+          </Card>
 
-          <section className="mt-8 rounded-lg border border-brand-100 p-6">
-            <h2 className="text-lg font-bold text-brand-900">Inspeções</h2>
+          <Card title="Inspeções" className="mt-8">
             {detail.inspections.length === 0 ? (
-              <p className="mt-4 text-sm text-brand-700">Nenhuma inspeção ainda.</p>
+              <p className="text-sm text-brand-700">Nenhuma inspeção ainda.</p>
             ) : (
               <div className="overflow-x-auto">
-                <table className="mt-4 w-full text-left text-sm">
+                <table className="adm-table">
                   <thead>
-                    <tr className="border-b border-brand-100 text-brand-700">
-                      <th className="py-2">Visita</th>
-                      <th className="py-2">Status</th>
-                      <th className="py-2">Concluída em</th>
+                    <tr>
+                      <th>Visita</th>
+                      <th>Status</th>
+                      <th>Concluída em</th>
                     </tr>
                   </thead>
                   <tbody>
                     {detail.inspections.map((inspection) => (
-                      <tr key={inspection.id} className="border-b border-brand-100">
-                        <td className="py-2 text-brand-700">{formatDate(inspection.visited_at)}</td>
-                        <td className="py-2 text-brand-900">{inspection.status}</td>
-                        <td className="py-2 text-brand-700">
+                      <tr key={inspection.id}>
+                        <td className="text-brand-700">{formatDate(inspection.visited_at)}</td>
+                        <td>
+                          <Badge tone="neutral">{inspection.status}</Badge>
+                        </td>
+                        <td className="text-brand-700">
                           {inspection.concluded_at ? formatDateTime(inspection.concluded_at) : '—'}
                         </td>
                       </tr>
@@ -417,41 +424,42 @@ export default function AdminEmpresaDetailPage() {
                 </table>
               </div>
             )}
-          </section>
+          </Card>
 
-          <section className="mt-8 rounded-lg border border-brand-100 p-6">
-            <h2 className="text-lg font-bold text-brand-900">Auditoria (últimos 20 eventos)</h2>
+          <Card title="Auditoria (últimos 20 eventos)" className="mt-8">
             {auditLog.length === 0 ? (
-              <p className="mt-4 text-sm text-brand-700">Nenhum evento de auditoria encontrado.</p>
+              <p className="text-sm text-brand-700">Nenhum evento de auditoria encontrado.</p>
             ) : (
               <div className="overflow-x-auto">
-                <table className="mt-4 w-full text-left text-sm">
+                <table className="adm-table">
                   <thead>
-                    <tr className="border-b border-brand-100 text-brand-700">
-                      <th className="py-2">Quando</th>
-                      <th className="py-2">Quem</th>
-                      <th className="py-2">Ação</th>
-                      <th className="py-2">Recurso</th>
-                      <th className="py-2">Status</th>
+                    <tr>
+                      <th>Quando</th>
+                      <th>Quem</th>
+                      <th>Ação</th>
+                      <th>Recurso</th>
+                      <th>Status</th>
                     </tr>
                   </thead>
                   <tbody>
                     {auditLog.map((row) => (
-                      <tr key={row.id} className="border-b border-brand-100">
-                        <td className="py-2 text-brand-700">{formatDateTime(row.occurred_at)}</td>
-                        <td className="py-2 text-brand-700">
+                      <tr key={row.id}>
+                        <td className="text-brand-700">{formatDateTime(row.occurred_at)}</td>
+                        <td className="text-brand-700">
                           {row.actor_full_name ?? '—'} {row.actor_role ? `(${row.actor_role})` : ''}
                         </td>
-                        <td className="py-2 text-brand-900">{row.action}</td>
-                        <td className="py-2 text-brand-700">{row.resource_type}</td>
-                        <td className="py-2 text-brand-700">{row.status_code}</td>
+                        <td className="text-brand-900">{row.action}</td>
+                        <td className="text-brand-700">{row.resource_type}</td>
+                        <td>
+                          <Badge tone={httpStatusTone(row.status_code)}>{row.status_code}</Badge>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
             )}
-          </section>
+          </Card>
         </>
       )}
     </div>

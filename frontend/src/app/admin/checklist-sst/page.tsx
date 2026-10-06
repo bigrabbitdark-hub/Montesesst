@@ -2,6 +2,8 @@
 
 import { FormEvent, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { AdminPageHeader } from '@/components/admin/PageHeader';
+import { Card } from '@/components/admin/Card';
 
 interface SstChecklistItem {
   id: string;
@@ -34,7 +36,7 @@ function authHeaders() {
 
 export default function AdminChecklistSstPage() {
   const router = useRouter();
-  const formSectionRef = useRef<HTMLElement>(null);
+  const formSectionRef = useRef<HTMLDivElement>(null);
   const firstFieldRef = useRef<HTMLInputElement>(null);
   const [ready, setReady] = useState(false);
   const [items, setItems] = useState<SstChecklistItem[]>([]);
@@ -134,142 +136,138 @@ export default function AdminChecklistSstPage() {
 
   return (
     <div>
-      <h2 className="text-2xl font-bold text-brand-900">Checklist SST — catálogo de referência</h2>
-      <p className="mt-2 text-sm text-brand-700">
-        Curadoria interna da Montese sobre quais documentos uma empresa costuma precisar por NR — não é o
-        texto oficial da norma. Usado pelo Assistente como uma fonte de citação rotulada como tal.
-      </p>
+      <AdminPageHeader
+        title="Checklist SST — catálogo de referência"
+        description="Curadoria interna da Montese sobre quais documentos uma empresa costuma precisar por NR — não é o texto oficial da norma. Usado pelo Assistente como uma fonte de citação rotulada como tal."
+      />
       {actionError && <p className="mt-2 text-sm text-red-600">{actionError}</p>}
 
-      <section ref={formSectionRef} className="mt-8 rounded-lg border border-brand-100 p-6">
-        <h3 className="text-lg font-bold text-brand-900">{editingId ? 'Editar item' : 'Novo item'}</h3>
-        <form onSubmit={handleSubmit} className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <label className="flex flex-col gap-1 text-sm text-brand-700">
-            <span>Código da NR</span>
-            <input
-              placeholder="ex: NR-13"
-              ref={firstFieldRef}
-              value={form.nr_code}
-              onChange={(e) => setForm({ ...form, nr_code: e.target.value })}
-              required
-              className="rounded-md border border-brand-100 px-3 py-2"
-            />
-          </label>
-          <label className="flex flex-col gap-1 text-sm text-brand-700">
-            <span>Título da NR</span>
-            <input
-              placeholder="ex: Segurança em Caldeiras"
-              value={form.nr_title}
-              onChange={(e) => setForm({ ...form, nr_title: e.target.value })}
-              required
-              className="rounded-md border border-brand-100 px-3 py-2"
-            />
-          </label>
-          <label className="flex flex-col gap-1 text-sm text-brand-700">
-            <span>Categoria</span>
-            <select
-              value={form.nr_category}
-              onChange={(e) => setForm({ ...form, nr_category: e.target.value })}
-              className="rounded-md border border-brand-100 px-3 py-2"
-            >
-              {CATEGORIES.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="flex flex-col gap-1 text-sm text-brand-700">
-            <span>Índice de infração (0 a 4, opcional)</span>
-            <input
-              placeholder="ex: 2"
-              type="number"
-              min={0}
-              max={4}
-              value={form.infraction_index}
-              onChange={(e) => setForm({ ...form, infraction_index: e.target.value })}
-              className="rounded-md border border-brand-100 px-3 py-2"
-            />
-          </label>
-          <label className="flex flex-col gap-1 text-sm text-brand-700 sm:col-span-2">
-            <span>Nome do documento</span>
-            <input
-              placeholder="ex: Prontuário de caldeira"
-              value={form.document_name}
-              onChange={(e) => setForm({ ...form, document_name: e.target.value })}
-              required
-              className="rounded-md border border-brand-100 px-3 py-2"
-            />
-          </label>
-          <label className="flex flex-col gap-1 text-sm text-brand-700 sm:col-span-2">
-            <span>Descrição</span>
-            <textarea
-              placeholder="Descreva o documento e sua importância"
-              value={form.description}
-              onChange={(e) => setForm({ ...form, description: e.target.value })}
-              required
-              rows={3}
-              className="rounded-md border border-brand-100 px-3 py-2"
-            />
-          </label>
-          <label className="flex flex-col gap-1 text-sm text-brand-700 sm:col-span-2">
-            <span>Requisito legal</span>
-            <textarea
-              placeholder="Qual é o requisito legal associado"
-              value={form.legal_requirement}
-              onChange={(e) => setForm({ ...form, legal_requirement: e.target.value })}
-              required
-              rows={3}
-              className="rounded-md border border-brand-100 px-3 py-2"
-            />
-          </label>
-          {saveStatus === 'erro' && (
-            <p className="text-sm text-red-600 sm:col-span-2">Não foi possível salvar. Confira os campos.</p>
-          )}
-          <div className="flex gap-3 sm:col-span-2">
-            <button
-              type="submit"
-              disabled={saveStatus === 'loading'}
-              className="self-start rounded-md bg-brand-500 px-6 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50"
-            >
-              {editingId ? 'Salvar edição' : 'Criar item'}
-            </button>
-            {editingId && (
-              <button
-                type="button"
-                onClick={resetForm}
-                className="self-start rounded-md border border-brand-100 px-6 py-2 text-sm text-brand-700"
+      <div ref={formSectionRef} className="mt-8 scroll-mt-20">
+        <Card title={editingId ? 'Editar item' : 'Novo item'}>
+          <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <label className="flex flex-col gap-1 text-sm text-brand-700">
+              <span>Código da NR</span>
+              <input
+                placeholder="ex: NR-13"
+                ref={firstFieldRef}
+                value={form.nr_code}
+                onChange={(e) => setForm({ ...form, nr_code: e.target.value })}
+                required
+                className="adm-input"
+              />
+            </label>
+            <label className="flex flex-col gap-1 text-sm text-brand-700">
+              <span>Título da NR</span>
+              <input
+                placeholder="ex: Segurança em Caldeiras"
+                value={form.nr_title}
+                onChange={(e) => setForm({ ...form, nr_title: e.target.value })}
+                required
+                className="adm-input"
+              />
+            </label>
+            <label className="flex flex-col gap-1 text-sm text-brand-700">
+              <span>Categoria</span>
+              <select
+                value={form.nr_category}
+                onChange={(e) => setForm({ ...form, nr_category: e.target.value })}
+                className="adm-input"
               >
-                Cancelar
-              </button>
+                {CATEGORIES.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="flex flex-col gap-1 text-sm text-brand-700">
+              <span>Índice de infração (0 a 4, opcional)</span>
+              <input
+                placeholder="ex: 2"
+                type="number"
+                min={0}
+                max={4}
+                value={form.infraction_index}
+                onChange={(e) => setForm({ ...form, infraction_index: e.target.value })}
+                className="adm-input"
+              />
+            </label>
+            <label className="flex flex-col gap-1 text-sm text-brand-700 sm:col-span-2">
+              <span>Nome do documento</span>
+              <input
+                placeholder="ex: Prontuário de caldeira"
+                value={form.document_name}
+                onChange={(e) => setForm({ ...form, document_name: e.target.value })}
+                required
+                className="adm-input"
+              />
+            </label>
+            <label className="flex flex-col gap-1 text-sm text-brand-700 sm:col-span-2">
+              <span>Descrição</span>
+              <textarea
+                placeholder="Descreva o documento e sua importância"
+                value={form.description}
+                onChange={(e) => setForm({ ...form, description: e.target.value })}
+                required
+                rows={3}
+                className="adm-input"
+              />
+            </label>
+            <label className="flex flex-col gap-1 text-sm text-brand-700 sm:col-span-2">
+              <span>Requisito legal</span>
+              <textarea
+                placeholder="Qual é o requisito legal associado"
+                value={form.legal_requirement}
+                onChange={(e) => setForm({ ...form, legal_requirement: e.target.value })}
+                required
+                rows={3}
+                className="adm-input"
+              />
+            </label>
+            {saveStatus === 'erro' && (
+              <p className="text-sm text-red-600 sm:col-span-2">Não foi possível salvar. Confira os campos.</p>
             )}
-          </div>
-        </form>
-      </section>
+            <div className="flex gap-3 sm:col-span-2">
+              <button
+                type="submit"
+                disabled={saveStatus === 'loading'}
+                className="adm-btn adm-btn-primary self-start disabled:opacity-50"
+              >
+                {editingId ? 'Salvar edição' : 'Criar item'}
+              </button>
+              {editingId && (
+                <button type="button" onClick={resetForm} className="adm-btn self-start">
+                  Cancelar
+                </button>
+              )}
+            </div>
+          </form>
+        </Card>
+      </div>
 
-      <section className="mt-8 rounded-lg border border-brand-100 p-6">
+      <section className="adm-card mt-8 p-5 sm:p-6">
         <form onSubmit={handleFilter} className="flex gap-3">
           <input
             placeholder="Filtrar por NR (ex: NR-13)"
             aria-label="Filtrar por NR"
             value={filterNrCode}
             onChange={(e) => setFilterNrCode(e.target.value)}
-            className="min-w-0 flex-1 rounded-md border border-brand-100 px-3 py-2 text-sm"
+            className="adm-input min-w-0 flex-1 text-sm"
           />
-          <button type="submit" className="rounded-md border border-brand-100 px-4 py-2 text-sm text-brand-700">
+          <button type="submit" className="adm-btn">
             Filtrar
           </button>
         </form>
 
-        <h3 className="mt-4 text-lg font-bold text-brand-900">Itens ({items.length})</h3>
+        <h3 className="mt-4 text-[15px] font-semibold text-brand-900">Itens ({items.length})</h3>
         <ul className="mt-4 flex flex-col gap-2">
           {items.map((item) => (
-            <li key={item.id} className="flex items-center justify-between rounded-md border border-brand-100 px-3 py-2 text-sm">
+            <li key={item.id} className="adm-card-2 flex items-center justify-between px-3 py-2 text-sm">
               <span>
                 <strong>{item.nr_code}</strong> ({item.nr_category}) — {item.document_name}
               </span>
               <span className="flex gap-3">
-                <button onClick={() => startEdit(item)} className="text-brand-500 underline">
+                <button onClick={() => startEdit(item)} className="adm-link">
                   Editar
                 </button>
                 <button onClick={() => handleDelete(item.id)} className="text-red-600 underline">

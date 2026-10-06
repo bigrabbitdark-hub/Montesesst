@@ -25,6 +25,8 @@
   --admin-faint: #7b8fb0;
   --admin-accent: #2f9e5c;
   --admin-accent-hover: #3bb56c;
+  --admin-field-border: #5b7094; /* borda de campo: ≥ 3:1 sobre o fundo e a superfície */
+  --admin-on-accent: #04210f; /* texto sobre o verde da marca (botão primário) */
 
   --color-brand-50: #14233b;
   --color-brand-100: #1e2f4a;
@@ -75,6 +77,91 @@ html:has(.admin-theme) {
 
 .admin-theme .adm-text-faint {
   color: var(--admin-faint);
+}
+
+/* Primitivos do admin (DS v2). Por classe, nunca por seletor de tag. Fora de @layer: não combinar
+ * com rounded/bg/border do Tailwind no mesmo elemento. */
+.admin-theme .adm-input {
+  background: var(--admin-bg);
+  border: 1px solid var(--admin-field-border);
+  border-radius: 0.75rem; /* 12px */
+  color: var(--admin-text);
+  padding: 0.5rem 0.75rem;
+}
+.admin-theme .adm-input::placeholder {
+  color: var(--admin-faint);
+}
+
+.admin-theme .adm-btn {
+  background: transparent;
+  border: 1px solid var(--admin-border);
+  border-radius: 0.75rem;
+  color: var(--admin-text);
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 500;
+  padding: 0.5rem 1rem;
+}
+.admin-theme .adm-btn:hover:not(:disabled) {
+  background: var(--admin-surface-2);
+}
+.admin-theme .adm-btn:disabled {
+  cursor: not-allowed;
+}
+/* usar junto de .adm-btn */
+.admin-theme .adm-btn-primary {
+  background: var(--color-adm-brand);
+  border-color: transparent;
+  color: var(--admin-on-accent);
+}
+.admin-theme .adm-btn-primary:hover:not(:disabled) {
+  background: var(--color-adm-brand-strong);
+}
+
+/* Ação destrutiva (ex.: Rejeitar); usar junto de .adm-btn. */
+.admin-theme .adm-btn-danger {
+  border-color: color-mix(in srgb, var(--color-adm-status-crit) 40%, transparent);
+  color: var(--color-adm-status-crit-text);
+}
+.admin-theme .adm-btn-danger:hover:not(:disabled) {
+  background: var(--color-adm-status-crit-bg);
+}
+
+/* Tabela: não define cor de célula (td) — as páginas usam text-brand-900/700 nas células. */
+.admin-theme .adm-table {
+  border-collapse: collapse;
+  font-size: 0.875rem;
+  text-align: left;
+  width: 100%;
+}
+.admin-theme .adm-table thead th {
+  border-bottom: 1px solid var(--admin-border);
+  color: var(--admin-muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.625rem 0.75rem;
+}
+.admin-theme .adm-table tbody td {
+  border-bottom: 1px solid var(--admin-border);
+  padding: 0.625rem 0.75rem;
+}
+.admin-theme .adm-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+.admin-theme .adm-table tbody tr:hover {
+  background: color-mix(in srgb, var(--admin-surface-2) 60%, transparent);
+}
+
+/* Ação em texto (botão ou link): verde da marca, sublinha no hover. */
+.admin-theme .adm-link {
+  background: none;
+  border: 0;
+  color: var(--color-adm-brand);
+  cursor: pointer;
+  padding: 0;
+}
+.admin-theme .adm-link:hover {
+  text-decoration: underline;
 }
 
 .admin-theme :focus-visible {

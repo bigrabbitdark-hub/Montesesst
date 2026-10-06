@@ -2,6 +2,8 @@
 
 import { FormEvent, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { AdminPageHeader } from '@/components/admin/PageHeader';
+import { Badge, Card } from '@/components/admin/Card';
 
 interface Technician {
   id: string;
@@ -154,11 +156,10 @@ export default function AdminTecnicosPage() {
 
   return (
     <div>
-      <h2 className="text-xl font-bold text-brand-900">Técnicos</h2>
+      <AdminPageHeader title="Técnicos" />
 
-      <section className="mt-6 rounded-lg border border-brand-100 p-6">
-        <h3 className="text-lg font-bold text-brand-900">Criar técnico</h3>
-        <form onSubmit={handleCreate} className="mt-4 flex flex-col gap-4">
+      <Card title="Criar técnico" className="mt-6">
+        <form onSubmit={handleCreate} className="flex flex-col gap-4">
           <label className="flex flex-col gap-1 text-sm text-brand-900">
             E-mail
             <input
@@ -166,7 +167,7 @@ export default function AdminTecnicosPage() {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="rounded-md border border-brand-100 px-3 py-2"
+              className="adm-input"
             />
           </label>
           <label className="flex flex-col gap-1 text-sm text-brand-900">
@@ -176,7 +177,7 @@ export default function AdminTecnicosPage() {
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="rounded-md border border-brand-100 px-3 py-2"
+              className="adm-input"
             />
           </label>
           <label className="flex flex-col gap-1 text-sm text-brand-900">
@@ -185,7 +186,7 @@ export default function AdminTecnicosPage() {
               required
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
-              className="rounded-md border border-brand-100 px-3 py-2"
+              className="adm-input"
             />
           </label>
           <label className="flex flex-col gap-1 text-sm text-brand-900">
@@ -193,7 +194,7 @@ export default function AdminTecnicosPage() {
             <input
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
-              className="rounded-md border border-brand-100 px-3 py-2"
+              className="adm-input"
             />
           </label>
           <label className="flex flex-col gap-1 text-sm text-brand-900">
@@ -201,7 +202,7 @@ export default function AdminTecnicosPage() {
             <input
               value={registrationNumber}
               onChange={(e) => setRegistrationNumber(e.target.value)}
-              className="rounded-md border border-brand-100 px-3 py-2"
+              className="adm-input"
             />
           </label>
           <label className="flex flex-col gap-1 text-sm text-brand-900">
@@ -209,37 +210,38 @@ export default function AdminTecnicosPage() {
             <input
               value={specialization}
               onChange={(e) => setSpecialization(e.target.value)}
-              className="rounded-md border border-brand-100 px-3 py-2"
+              className="adm-input"
             />
           </label>
           {status === 'erro' && <p className="text-sm text-red-600">{errorMessage}</p>}
           <button
             type="submit"
             disabled={status === 'loading'}
-            className="self-start rounded-md bg-brand-500 px-6 py-2 font-medium text-white hover:bg-brand-700 disabled:opacity-50"
+            className="adm-btn adm-btn-primary self-start disabled:opacity-50"
           >
             {status === 'loading' ? 'Cadastrando...' : 'Criar técnico'}
           </button>
         </form>
-      </section>
+      </Card>
 
-      <section className="mt-8 rounded-lg border border-brand-100 p-6">
-        <h3 className="text-lg font-bold text-brand-900">Técnicos cadastrados</h3>
-        {listError && <p className="mt-2 text-sm text-red-600">{listError}</p>}
+      <Card title="Técnicos cadastrados" className="mt-8">
+        {listError && <p className="mb-2 text-sm text-red-600">{listError}</p>}
         {technicians.length === 0 ? (
-          <p className="mt-4 text-sm text-brand-700">Nenhum técnico cadastrado ainda.</p>
+          <p className="text-sm text-brand-700">Nenhum técnico cadastrado ainda.</p>
         ) : (
-          <ul className="mt-4 flex flex-col gap-4">
+          <ul className="flex flex-col gap-4">
             {technicians.map((tech) => (
-              <li key={tech.id} className="rounded-md border border-brand-100 px-4 py-3 text-sm">
-                <div className="flex items-center justify-between">
-                  <div>
+              <li key={tech.id} className="adm-card-2 px-4 py-3 text-sm">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="min-w-0 break-words">
                     <strong className="text-brand-900">{tech.full_name}</strong>
                     <span className="ml-2 text-brand-700">{tech.email}</span>
                     {tech.specialization && (
                       <span className="ml-2 text-brand-700">({tech.specialization})</span>
                     )}
-                    <span className="ml-2 text-brand-700">{tech.status}</span>
+                    <span className="ml-2">
+                      <Badge tone="neutral">{tech.status}</Badge>
+                    </span>
                   </div>
                   <button
                     onClick={() => {
@@ -247,7 +249,7 @@ export default function AdminTecnicosPage() {
                       setAssignTenantIds([]);
                       setAssignStatus('idle');
                     }}
-                    className="text-brand-500 hover:underline"
+                    className="adm-link shrink-0 whitespace-nowrap"
                   >
                     Vincular a empresa
                   </button>
@@ -259,7 +261,7 @@ export default function AdminTecnicosPage() {
                     className="mt-3 flex flex-col gap-2 border-t border-brand-100 pt-3"
                   >
                     <p className="text-xs text-brand-900">Empresas (selecione uma ou mais)</p>
-                    <div className="flex max-h-40 flex-col gap-1 overflow-y-auto rounded-md border border-brand-100 p-2">
+                    <div className="adm-input flex max-h-40 flex-col gap-1 overflow-y-auto">
                       {tenants.map((tenant) => (
                         <label key={tenant.id} className="flex items-center gap-2 text-xs text-brand-900">
                           <input
@@ -286,14 +288,14 @@ export default function AdminTecnicosPage() {
                       <button
                         type="submit"
                         disabled={assignTenantIds.length === 0 || assignStatus === 'loading'}
-                        className="self-start rounded-md bg-brand-500 px-4 py-2 text-xs font-medium text-white hover:bg-brand-700 disabled:opacity-50"
+                        className="adm-btn adm-btn-primary self-start disabled:opacity-50"
                       >
                         {assignStatus === 'loading' ? 'Vinculando...' : 'Confirmar vínculo'}
                       </button>
                       <button
                         type="button"
                         onClick={() => setAssignFormId(null)}
-                        className="self-start rounded-md border border-brand-100 px-4 py-2 text-xs font-medium text-brand-700"
+                        className="adm-btn self-start"
                       >
                         Fechar
                       </button>
@@ -304,7 +306,7 @@ export default function AdminTecnicosPage() {
             ))}
           </ul>
         )}
-      </section>
+      </Card>
     </div>
   );
 }

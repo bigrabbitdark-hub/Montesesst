@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { AdminPageHeader } from '@/components/admin/PageHeader';
+import { Badge } from '@/components/admin/Card';
 
 interface TenantLink {
   id: string;
@@ -47,44 +49,46 @@ export default function AdminEmpresasPage() {
 
   return (
     <div>
-      <h2 className="text-xl font-bold text-brand-900">Empresas</h2>
+      <AdminPageHeader title="Empresas" />
       <div className="mt-6">
         {error && <p className="text-sm text-red-600">{error}</p>}
         {tenants.length === 0 && !error ? (
           <p className="text-sm text-brand-700">Nenhuma empresa cadastrada ainda.</p>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
+          <div className="adm-card overflow-x-auto p-2 sm:p-4">
+            <table className="adm-table">
               <thead>
-                <tr className="border-b border-brand-100 text-brand-700">
-                  <th className="py-2">Empresa</th>
-                  <th className="py-2">CNPJ</th>
-                  <th className="py-2">Plano</th>
-                  <th className="py-2">Status</th>
-                  <th className="py-2">Técnicos</th>
-                  <th className="py-2">Parceiros</th>
-                  <th className="py-2"></th>
+                <tr>
+                  <th>Empresa</th>
+                  <th>CNPJ</th>
+                  <th>Plano</th>
+                  <th>Status</th>
+                  <th>Técnicos</th>
+                  <th>Parceiros</th>
+                  <th></th>
                 </tr>
               </thead>
               <tbody>
                 {tenants.map((tenant) => (
-                  <tr key={tenant.id} className="border-b border-brand-100">
-                    <td className="py-2 font-medium text-brand-900">{tenant.name}</td>
-                    <td className="py-2 text-brand-700">{tenant.cnpj}</td>
-                    <td className="py-2 text-brand-700">{tenant.plan}</td>
-                    <td className="py-2 text-brand-700">{tenant.status}</td>
-                    <td className="py-2 text-brand-700">
+                  <tr key={tenant.id}>
+                    <td className="font-medium text-brand-900">{tenant.name}</td>
+                    <td className="text-brand-700">{tenant.cnpj}</td>
+                    <td className="text-brand-700">{tenant.plan}</td>
+                    <td>
+                      <Badge tone="neutral">{tenant.status}</Badge>
+                    </td>
+                    <td className="text-brand-700">
                       {tenant.technicians.length === 0
                         ? '—'
                         : tenant.technicians.map((t) => t.name).join(', ')}
                     </td>
-                    <td className="py-2 text-brand-700">
+                    <td className="text-brand-700">
                       {tenant.partners.length === 0
                         ? '—'
                         : tenant.partners.map((p) => p.name).join(', ')}
                     </td>
-                    <td className="py-2">
-                      <Link href={`/admin/empresas/${tenant.id}`} className="text-brand-500 hover:underline">
+                    <td>
+                      <Link href={`/admin/empresas/${tenant.id}`} className="adm-link">
                         Ver detalhes
                       </Link>
                     </td>

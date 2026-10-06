@@ -2,6 +2,8 @@
 
 import { FormEvent, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { AdminPageHeader } from '@/components/admin/PageHeader';
+import { Badge, Card } from '@/components/admin/Card';
 
 interface OfficialSource {
   id: string;
@@ -153,18 +155,17 @@ export default function AdminNormativaPage() {
 
   return (
     <div>
-      <h2 className="text-2xl font-bold text-brand-900">Base normativa</h2>
+      <AdminPageHeader title="Base normativa" />
       {actionError && <p className="mt-2 text-sm text-red-600">{actionError}</p>}
 
-      <section className="mt-8 rounded-lg border border-brand-100 p-6">
-        <h3 className="text-lg font-bold text-brand-900">Fontes monitoradas</h3>
-        <form onSubmit={handleCreateSource} className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <input placeholder="Entidade (ex: MTE)" value={entity} onChange={(e) => setEntity(e.target.value)} required className="rounded-md border border-brand-100 px-3 py-2" />
-          <input placeholder="Código (ex: NR-06)" value={code} onChange={(e) => setCode(e.target.value)} className="rounded-md border border-brand-100 px-3 py-2" />
-          <input placeholder="Título" value={title} onChange={(e) => setTitle(e.target.value)} required className="rounded-md border border-brand-100 px-3 py-2 sm:col-span-2" />
-          <input placeholder="URL oficial" value={officialUrl} onChange={(e) => setOfficialUrl(e.target.value)} required className="rounded-md border border-brand-100 px-3 py-2 sm:col-span-2" />
+      <Card title="Fontes monitoradas" className="mt-8">
+        <form onSubmit={handleCreateSource} className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <input placeholder="Entidade (ex: MTE)" value={entity} onChange={(e) => setEntity(e.target.value)} required className="adm-input" />
+          <input placeholder="Código (ex: NR-06)" value={code} onChange={(e) => setCode(e.target.value)} className="adm-input" />
+          <input placeholder="Título" value={title} onChange={(e) => setTitle(e.target.value)} required className="adm-input sm:col-span-2" />
+          <input placeholder="URL oficial" value={officialUrl} onChange={(e) => setOfficialUrl(e.target.value)} required className="adm-input sm:col-span-2" />
           {createStatus === 'erro' && <p className="text-sm text-red-600 sm:col-span-2">Não foi possível cadastrar. Confira a URL.</p>}
-          <button type="submit" disabled={createStatus === 'loading'} className="self-start rounded-md bg-brand-500 px-6 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50 sm:col-span-2">
+          <button type="submit" disabled={createStatus === 'loading'} className="adm-btn adm-btn-primary self-start disabled:opacity-50 sm:col-span-2">
             Cadastrar fonte
           </button>
         </form>
@@ -174,46 +175,46 @@ export default function AdminNormativaPage() {
               {s.entity} {s.code ? `— ${s.code}` : ''} — {s.title}
               <span className="ml-2 text-xs text-brand-500">{formatChecked(s.last_checked_at)}</span>
               {s.consecutive_failures > 0 && (
-                <span className="ml-2 rounded bg-red-500/10 px-2 py-0.5 text-xs font-medium text-red-300">
-                  Falhando ({s.consecutive_failures}){s.last_error ? ` — ${s.last_error}` : ''}
+                <span className="ml-2">
+                  <Badge tone="bad">
+                    Falhando ({s.consecutive_failures}){s.last_error ? ` — ${s.last_error}` : ''}
+                  </Badge>
                 </span>
               )}
             </li>
           ))}
         </ul>
-      </section>
+      </Card>
 
-      <section className="mt-8 rounded-lg border border-brand-100 p-6">
-        <h3 className="text-lg font-bold text-brand-900">Aguardando validação ({pending.length})</h3>
-        <ul className="mt-4 flex flex-col gap-2">
+      <Card title={`Aguardando validação (${pending.length})`} className="mt-8">
+        <ul className="flex flex-col gap-2">
           {pending.map((doc) => (
-            <li key={doc.id} className="flex items-center justify-between rounded-md border border-brand-100 px-3 py-2 text-sm">
+            <li key={doc.id} className="adm-card-2 flex items-center justify-between px-3 py-2 text-sm">
               <span>{doc.file_name} — detectado em {new Date(doc.detected_at).toLocaleDateString('pt-BR')}</span>
-              <button onClick={() => openDetail(doc.id)} className="text-brand-500 underline">Revisar</button>
+              <button onClick={() => openDetail(doc.id)} className="adm-link">Revisar</button>
             </li>
           ))}
           {pending.length === 0 && <p className="text-sm text-brand-700">Nada pendente.</p>}
         </ul>
-      </section>
+      </Card>
 
-      <section className="mt-8 rounded-lg border border-brand-100 p-6">
-        <h3 className="text-lg font-bold text-brand-900">Vigentes ({vigentes.length})</h3>
-        <ul className="mt-4 flex flex-col gap-2">
+      <Card title={`Vigentes (${vigentes.length})`} className="mt-8">
+        <ul className="flex flex-col gap-2">
           {vigentes.map((doc) => (
-            <li key={doc.id} className="flex items-center justify-between rounded-md border border-brand-100 px-3 py-2 text-sm">
+            <li key={doc.id} className="adm-card-2 flex items-center justify-between px-3 py-2 text-sm">
               <span>{doc.file_name} — {doc.indexed_at ? 'indexado' : 'aprovado, indexação pendente'}</span>
               {!doc.indexed_at && (
-                <button onClick={() => handleReindex(doc.id)} className="text-brand-500 underline">Reindexar</button>
+                <button onClick={() => handleReindex(doc.id)} className="adm-link">Reindexar</button>
               )}
             </li>
           ))}
         </ul>
-      </section>
+      </Card>
 
       {detail && (
-        <section className="mt-8 rounded-lg border border-brand-500 p-6">
-          <h3 className="text-lg font-bold text-brand-900">Revisar versão</h3>
-          <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+        // O destaque (antes borda verde) vira outline: .adm-card já define a borda e vence border-*.
+        <Card title="Revisar versão" className="mt-8 outline outline-2 outline-adm-brand">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
               <h4 className="text-sm font-bold text-brand-700">Texto anterior</h4>
               <p className="mt-2 max-h-64 overflow-y-auto whitespace-pre-wrap text-sm text-brand-700">
@@ -228,20 +229,20 @@ export default function AdminNormativaPage() {
             </div>
           </div>
           <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center">
-            <button onClick={() => handleApprove(detail.document.id)} className="rounded-md bg-brand-500 px-6 py-2 text-sm font-medium text-white hover:bg-brand-700">
+            <button onClick={() => handleApprove(detail.document.id)} className="adm-btn adm-btn-primary">
               Aprovar
             </button>
             <input
               placeholder="Motivo da rejeição"
               value={rejectReason}
               onChange={(e) => setRejectReason(e.target.value)}
-              className="flex-1 rounded-md border border-brand-100 px-3 py-2 text-sm"
+              className="adm-input flex-1 text-sm"
             />
-            <button onClick={() => handleReject(detail.document.id)} disabled={!rejectReason} className="rounded-md border border-red-600 px-6 py-2 text-sm font-medium text-red-600 disabled:opacity-50">
+            <button onClick={() => handleReject(detail.document.id)} disabled={!rejectReason} className="adm-btn adm-btn-danger disabled:opacity-50">
               Rejeitar
             </button>
           </div>
-        </section>
+        </Card>
       )}
     </div>
   );

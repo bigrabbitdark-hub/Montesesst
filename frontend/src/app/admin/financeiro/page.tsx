@@ -3,6 +3,9 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { company } from '@/lib/company';
+import { AdminPageHeader } from '@/components/admin/PageHeader';
+import { Badge, Card } from '@/components/admin/Card';
+import { subscriptionTone } from '@/components/admin/status-tone';
 
 interface Plan {
   id: string;
@@ -172,28 +175,29 @@ export default function AdminFinanceiroPage() {
 
   return (
     <div>
-      <h2 className="text-xl font-bold text-brand-900">Financeiro</h2>
-      <p className="mt-1 text-sm text-brand-700">{`Recebedor: ${company.nomeFantasia} · CNPJ ${company.cnpj}`}</p>
+      <AdminPageHeader
+        title="Financeiro"
+        description={`Recebedor: ${company.nomeFantasia} · CNPJ ${company.cnpj}`}
+      />
 
-      <section className="mt-6 rounded-lg border border-brand-100 p-6">
-        <h3 className="text-lg font-bold text-brand-900">Planos</h3>
+      <Card title="Planos" className="mt-6">
         <div className="overflow-x-auto">
-          <table className="mt-4 w-full text-left text-sm">
+          <table className="adm-table">
             <thead>
-              <tr className="border-b border-brand-100 text-brand-700">
-                <th className="py-2">Plano</th>
-                <th className="py-2">Público</th>
-                <th className="py-2">Preço</th>
-                <th className="py-2">Limite de funcionários</th>
-                <th className="py-2"></th>
+              <tr>
+                <th>Plano</th>
+                <th>Público</th>
+                <th>Preço</th>
+                <th>Limite de funcionários</th>
+                <th></th>
               </tr>
             </thead>
             <tbody>
               {plans.map((plan) => (
-                <tr key={plan.id} className="border-b border-brand-100">
-                  <td className="py-2 font-medium text-brand-900">{plan.name}</td>
-                  <td className="py-2 text-brand-700">{plan.audience}</td>
-                  <td className="py-2 text-brand-700">
+                <tr key={plan.id}>
+                  <td className="font-medium text-brand-900">{plan.name}</td>
+                  <td className="text-brand-700">{plan.audience}</td>
+                  <td className="text-brand-700">
                     {editingPlanId === plan.id ? (
                       <form onSubmit={(e) => handleEditPrice(e, plan.id)} className="flex items-center gap-2">
                         <input
@@ -201,9 +205,9 @@ export default function AdminFinanceiroPage() {
                           value={editPriceReais}
                           onChange={(e) => setEditPriceReais(e.target.value)}
                           placeholder="0,00"
-                          className="w-24 rounded-md border border-brand-100 px-2 py-1"
+                          className="adm-input w-24"
                         />
-                        <button type="submit" className="text-brand-500 hover:underline">
+                        <button type="submit" className="adm-link">
                           Salvar
                         </button>
                         <button
@@ -218,8 +222,8 @@ export default function AdminFinanceiroPage() {
                       formatCents(plan.price_cents)
                     )}
                   </td>
-                  <td className="py-2 text-brand-700">{plan.employee_limit ?? '—'}</td>
-                  <td className="py-2">
+                  <td className="text-brand-700">{plan.employee_limit ?? '—'}</td>
+                  <td>
                     {editingPlanId !== plan.id && (
                       <button
                         onClick={() => {
@@ -227,7 +231,7 @@ export default function AdminFinanceiroPage() {
                           setEditPriceReais((plan.price_cents / 100).toFixed(2).replace('.', ','));
                           setEditStatus('idle');
                         }}
-                        className="text-brand-500 hover:underline"
+                        className="adm-link"
                       >
                         Editar preço
                       </button>
@@ -239,29 +243,30 @@ export default function AdminFinanceiroPage() {
           </table>
         </div>
         {editStatus === 'erro' && <p className="mt-2 text-sm text-red-600">Não foi possível salvar o preço.</p>}
-      </section>
+      </Card>
 
-      <section className="mt-8 rounded-lg border border-brand-100 p-6">
-        <h3 className="text-lg font-bold text-brand-900">Assinaturas</h3>
+      <Card title="Assinaturas" className="mt-8">
         {listError && <p className="mt-2 text-sm text-red-600">{listError}</p>}
         {subscriptions.length === 0 && !listError ? (
           <p className="mt-4 text-sm text-brand-700">Nenhuma assinatura ainda.</p>
         ) : (
           <ul className="mt-4 flex flex-col gap-4">
             {subscriptions.map((sub) => (
-              <li key={sub.id} className="rounded-md border border-brand-100 px-4 py-3 text-sm">
+              <li key={sub.id} className="adm-card-2 px-4 py-3 text-sm">
                 <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
                   <div>
                     <strong className="text-brand-900">{sub.tenant_name ?? sub.technician_name ?? '—'}</strong>
                     <span className="ml-2 text-brand-700">{sub.plan_name}</span>
-                    <span className="ml-2 text-brand-700">({sub.status})</span>
+                    <span className="ml-2">
+                      <Badge tone={subscriptionTone(sub.status)}>{sub.status}</Badge>
+                    </span>
                   </div>
                   <div className="flex flex-wrap items-center gap-3">
                     {sub.status === 'authorized' && (
                       <button
                         onClick={() => handleUpdateStatus(sub.id, 'paused')}
                         disabled={statusUpdateState[sub.id] === 'loading'}
-                        className="text-brand-500 hover:underline disabled:opacity-50"
+                        className="adm-link disabled:opacity-50"
                       >
                         Pausar
                       </button>
@@ -270,7 +275,7 @@ export default function AdminFinanceiroPage() {
                       <button
                         onClick={() => handleUpdateStatus(sub.id, 'authorized')}
                         disabled={statusUpdateState[sub.id] === 'loading'}
-                        className="text-brand-500 hover:underline disabled:opacity-50"
+                        className="adm-link disabled:opacity-50"
                       >
                         Reativar
                       </button>
@@ -303,7 +308,7 @@ export default function AdminFinanceiroPage() {
                         </button>
                       </span>
                     )}
-                    <button onClick={() => toggleHistory(sub.id)} className="text-brand-500 hover:underline">
+                    <button onClick={() => toggleHistory(sub.id)} className="adm-link">
                       {expandedSubscriptionId === sub.id ? 'Ocultar histórico' : 'Ver histórico'}
                     </button>
                   </div>
@@ -333,7 +338,7 @@ export default function AdminFinanceiroPage() {
             ))}
           </ul>
         )}
-      </section>
+      </Card>
     </div>
   );
 }

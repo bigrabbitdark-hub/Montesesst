@@ -2,6 +2,8 @@
 
 import { FormEvent, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { AdminPageHeader } from '@/components/admin/PageHeader';
+import { Badge, Card } from '@/components/admin/Card';
 
 interface Partner {
   id: string;
@@ -134,11 +136,10 @@ export default function AdminParceirosPage() {
 
   return (
     <div>
-      <h2 className="text-xl font-bold text-brand-900">Parceiros</h2>
+      <AdminPageHeader title="Parceiros" />
 
-      <section className="mt-6 rounded-lg border border-brand-100 p-6">
-        <h3 className="text-lg font-bold text-brand-900">Criar parceiro</h3>
-        <form onSubmit={handleCreate} className="mt-4 flex flex-col gap-4">
+      <Card title="Criar parceiro" className="mt-6">
+        <form onSubmit={handleCreate} className="flex flex-col gap-4">
           <label className="flex flex-col gap-1 text-sm text-brand-900">
             E-mail
             <input
@@ -146,7 +147,7 @@ export default function AdminParceirosPage() {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="rounded-md border border-brand-100 px-3 py-2"
+              className="adm-input"
             />
           </label>
           <label className="flex flex-col gap-1 text-sm text-brand-900">
@@ -156,7 +157,7 @@ export default function AdminParceirosPage() {
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="rounded-md border border-brand-100 px-3 py-2"
+              className="adm-input"
             />
           </label>
           <label className="flex flex-col gap-1 text-sm text-brand-900">
@@ -165,7 +166,7 @@ export default function AdminParceirosPage() {
               required
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
-              className="rounded-md border border-brand-100 px-3 py-2"
+              className="adm-input"
             />
           </label>
           <label className="flex flex-col gap-1 text-sm text-brand-900">
@@ -173,7 +174,7 @@ export default function AdminParceirosPage() {
             <input
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
-              className="rounded-md border border-brand-100 px-3 py-2"
+              className="adm-input"
             />
           </label>
           <label className="flex flex-col gap-1 text-sm text-brand-900">
@@ -182,42 +183,43 @@ export default function AdminParceirosPage() {
               required
               value={serviceRegion}
               onChange={(e) => setServiceRegion(e.target.value)}
-              className="rounded-md border border-brand-100 px-3 py-2"
+              className="adm-input"
             />
           </label>
           {status === 'erro' && <p className="text-sm text-red-600">{errorMessage}</p>}
           <button
             type="submit"
             disabled={status === 'loading'}
-            className="self-start rounded-md bg-brand-500 px-6 py-2 font-medium text-white hover:bg-brand-700 disabled:opacity-50"
+            className="adm-btn adm-btn-primary self-start disabled:opacity-50"
           >
             {status === 'loading' ? 'Cadastrando...' : 'Criar parceiro'}
           </button>
         </form>
-      </section>
+      </Card>
 
-      <section className="mt-8 rounded-lg border border-brand-100 p-6">
-        <h3 className="text-lg font-bold text-brand-900">Parceiros cadastrados</h3>
-        {listError && <p className="mt-2 text-sm text-red-600">{listError}</p>}
+      <Card title="Parceiros cadastrados" className="mt-8">
+        {listError && <p className="mb-2 text-sm text-red-600">{listError}</p>}
         {partners.length === 0 ? (
-          <p className="mt-4 text-sm text-brand-700">Nenhum parceiro cadastrado ainda.</p>
+          <p className="text-sm text-brand-700">Nenhum parceiro cadastrado ainda.</p>
         ) : (
-          <ul className="mt-4 flex flex-col gap-4">
+          <ul className="flex flex-col gap-4">
             {partners.map((partner) => (
-              <li key={partner.id} className="rounded-md border border-brand-100 px-4 py-3 text-sm">
-                <div className="flex items-center justify-between">
-                  <div>
+              <li key={partner.id} className="adm-card-2 px-4 py-3 text-sm">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="min-w-0 break-words">
                     <strong className="text-brand-900">{partner.full_name}</strong>
                     <span className="ml-2 text-brand-700">{partner.email}</span>
                     <span className="ml-2 text-brand-700">({partner.service_region})</span>
-                    <span className="ml-2 text-brand-700">{partner.status}</span>
+                    <span className="ml-2">
+                      <Badge tone="neutral">{partner.status}</Badge>
+                    </span>
                   </div>
                   <button
                     onClick={() => {
                       setAssignFormId(partner.id);
                       setAssignStatus('idle');
                     }}
-                    className="text-brand-500 hover:underline"
+                    className="adm-link shrink-0 whitespace-nowrap"
                   >
                     Vincular a empresa
                   </button>
@@ -234,7 +236,7 @@ export default function AdminParceirosPage() {
                         required
                         value={assignTenantId}
                         onChange={(e) => setAssignTenantId(e.target.value)}
-                        className="rounded-md border border-brand-100 px-3 py-2"
+                        className="adm-input"
                       >
                         <option value="">Selecione</option>
                         {tenants.map((tenant) => (
@@ -253,14 +255,14 @@ export default function AdminParceirosPage() {
                     <div className="flex gap-3">
                       <button
                         type="submit"
-                        className="self-start rounded-md bg-brand-500 px-4 py-2 text-xs font-medium text-white hover:bg-brand-700"
+                        className="adm-btn adm-btn-primary self-start"
                       >
                         Confirmar vínculo
                       </button>
                       <button
                         type="button"
                         onClick={() => setAssignFormId(null)}
-                        className="self-start rounded-md border border-brand-100 px-4 py-2 text-xs font-medium text-brand-700"
+                        className="adm-btn self-start"
                       >
                         Fechar
                       </button>
@@ -271,7 +273,7 @@ export default function AdminParceirosPage() {
             ))}
           </ul>
         )}
-      </section>
+      </Card>
     </div>
   );
 }

@@ -72,3 +72,47 @@ describe('tokens do admin (DS v2, tema escuro)', () => {
     expect(admin).not.toMatch(/--color-adm-[a-z-]+\s*:/);
   });
 });
+
+describe('primitivos .adm-* do admin (lote 1)', () => {
+  const bg = rgb(SUPERFICIES.bg);
+  const surface = rgb(SUPERFICIES.surface);
+
+  it.each(['adm-input', 'adm-btn', 'adm-btn-primary', 'adm-table', 'adm-link'])('define .admin-theme .%s', (classe) => {
+    expect(admin).toMatch(new RegExp(`\\.admin-theme \\.${classe}\\b`));
+  });
+
+  it('borda de campo ≥ 3:1 sobre o fundo da página e sobre a superfície', () => {
+    const borda = rgb(adm('field-border'));
+    expect(contraste(borda, bg)).toBeGreaterThanOrEqual(3);
+    expect(contraste(borda, surface)).toBeGreaterThanOrEqual(3);
+  });
+
+  it('texto do botão primário ≥ 4,5:1 sobre o verde da marca e sobre a versão forte (hover)', () => {
+    const texto = rgb(adm('on-accent'));
+    expect(contraste(texto, rgb(tok('brand')))).toBeGreaterThanOrEqual(4.5);
+    expect(contraste(texto, rgb(tok('brand-strong')))).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it('verde da marca (links .adm-link) ≥ 4,5:1 sobre a superfície e sobre o fundo', () => {
+    expect(contraste(rgb(tok('brand')), surface)).toBeGreaterThanOrEqual(4.5);
+    expect(contraste(rgb(tok('brand')), bg)).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it('brand-500 remapeado (ações antigas ainda em texto) ≥ 4,5:1 sobre a superfície e sobre o fundo', () => {
+    const verde = rgb(valor(admin, 'color-brand-500'));
+    expect(contraste(verde, surface)).toBeGreaterThanOrEqual(4.5);
+    expect(contraste(verde, bg)).toBeGreaterThanOrEqual(4.5);
+  });
+});
+
+describe('.adm-btn-danger (lote 2 do admin)', () => {
+  it('define .admin-theme .adm-btn-danger', () => {
+    expect(admin).toMatch(/\.admin-theme \.adm-btn-danger\b/);
+  });
+  it('texto de ação destrutiva ≥ 4,5:1 sobre a superfície, sobre o fundo e sobre o hover tingido', () => {
+    const texto = rgb(tok('status-crit-text'));
+    expect(contraste(texto, rgb(SUPERFICIES.surface))).toBeGreaterThanOrEqual(4.5);
+    expect(contraste(texto, rgb(SUPERFICIES.bg))).toBeGreaterThanOrEqual(4.5);
+    expect(contraste(texto, sobre(tok('status-crit-bg'), SUPERFICIES.surface))).toBeGreaterThanOrEqual(4.5);
+  });
+});
