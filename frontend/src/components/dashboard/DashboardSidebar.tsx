@@ -34,9 +34,21 @@ function NavItem({ item, ativo }: { item: MenuItem; ativo: string | null }) {
   );
 }
 
-export function DashboardSidebar({ open = false, onClose }: { open?: boolean; onClose?: () => void }) {
+export function DashboardSidebar({
+  open = false,
+  onClose,
+  items = MENU_ITEMS,
+  extraItems = EXTRA_MENU_ITEMS,
+  extraLabel = 'Mais ferramentas',
+}: {
+  open?: boolean;
+  onClose?: () => void;
+  items?: MenuItem[];
+  extraItems?: MenuItem[];
+  extraLabel?: string;
+}) {
   const pathname = usePathname() ?? '';
-  const ativo = itemAtivo(pathname, [...MENU_ITEMS, ...EXTRA_MENU_ITEMS]);
+  const ativo = itemAtivo(pathname, [...items, ...extraItems]);
   return (
     <>
       {open && <div className="fixed inset-0 z-30 bg-slate-900/50 lg:hidden" onClick={onClose} aria-hidden />}
@@ -59,15 +71,19 @@ export function DashboardSidebar({ open = false, onClose }: { open?: boolean; on
         <Image src={ASSET_PATHS.logo} alt="Montese SST" width={1224} height={270} priority className="h-auto w-[200px]" />
       </div>
       <ul className="flex flex-1 flex-col gap-1 overflow-y-auto">
-        {MENU_ITEMS.map((item) => (
+        {items.map((item) => (
           <NavItem key={item.label} item={item} ativo={ativo} />
         ))}
-        <li aria-hidden className="mt-3 px-3.5 pb-0.5 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-          Mais ferramentas
-        </li>
-        {EXTRA_MENU_ITEMS.map((item) => (
-          <NavItem key={item.label} item={item} ativo={ativo} />
-        ))}
+        {extraItems.length > 0 && (
+          <>
+            <li aria-hidden className="mt-3 px-3.5 pb-0.5 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+              {extraLabel}
+            </li>
+            {extraItems.map((item) => (
+              <NavItem key={item.label} item={item} ativo={ativo} />
+            ))}
+          </>
+        )}
       </ul>
         <button
           type="button"

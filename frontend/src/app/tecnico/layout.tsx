@@ -1,23 +1,18 @@
-import { TecnicoSidebar } from '@/components/TecnicoSidebar';
-import { DashboardFooter } from '@/components/DashboardFooter';
+import { TecnicoShell } from '@/components/dashboard/TecnicoShell';
+import { DashSkin } from '@/components/dashboard/DashSkin';
 import { WhatsAppButton } from '@/components/WhatsAppButton';
 import { RoleGuard } from '@/components/RoleGuard';
-import { SubscriptionNotice } from '@/components/SubscriptionNotice';
 
 export default function TecnicoLayout({ children }: { children: React.ReactNode }) {
   return (
     <RoleGuard allow={['tecnico', 'parceiro']}>
-      <div className="flex min-h-screen flex-col">
-        <div className="mx-auto flex w-full max-w-6xl flex-1">
-          <TecnicoSidebar />
-          <main className="flex-1">
-            <SubscriptionNotice />
-            {children}
-          </main>
-        </div>
-        <DashboardFooter />
-        <WhatsAppButton />
-      </div>
+      <TecnicoShell>
+        {/* O skin remapeia os tokens brand-* das páginas do técnico para o DS v2, sem mexer no JSX delas. */}
+        <DashSkin>
+          <div className="mx-auto w-full max-w-6xl">{children}</div>
+        </DashSkin>
+      </TecnicoShell>
+      <WhatsAppButton />
     </RoleGuard>
   );
 }

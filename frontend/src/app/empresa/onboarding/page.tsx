@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { DashSkin } from '@/components/dashboard/DashSkin';
 import { MatrizForm, TenantData } from './MatrizForm';
 import { FiliaisForm, CompanyUnit } from './FiliaisForm';
 import { FuncionariosForm } from './FuncionariosForm';
@@ -79,7 +80,8 @@ export default function OnboardingPage() {
   const matrizComplete = isMatrizComplete(tenant);
 
   return (
-    <div className="mx-auto max-w-2xl px-4 py-16">
+    <DashSkin>
+      <div className="mx-auto max-w-2xl px-4 py-16">
       <h1 className="text-2xl font-bold text-brand-900">Complete o cadastro da sua empresa</h1>
       <p className="mt-2 text-brand-700">
         O passo 1 (matriz) é obrigatório. Os demais você pode pular e voltar depois.
@@ -155,6 +157,7 @@ export default function OnboardingPage() {
           </div>
         </>
       )}
-    </div>
+      </div>
+    </DashSkin>
   );
 }
