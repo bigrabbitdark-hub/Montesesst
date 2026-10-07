@@ -20,7 +20,7 @@ export const MENU_ITEMS: MenuItem[] = [
   { href: '/empresa/documentos', label: 'Documentos', icon: FileText, implemented: true },
   { href: '/empresa/inspecoes', label: 'Relatório de visita técnica', icon: ClipboardCheck, implemented: true },
   { href: '/empresa/em-construcao?item=Auditoria IA', label: 'Auditoria IA', icon: ScanSearch, implemented: false },
-  { href: '/empresa/em-construcao?item=eSocial', label: 'eSocial', icon: Globe, implemented: false },
+  { href: '/empresa/esocial', label: 'eSocial', icon: Globe, implemented: true },
   { href: '/empresa/em-construcao?item=Relatórios', label: 'Relatórios', icon: FileBarChart2, implemented: false },
   { href: '/empresa/em-construcao?item=Financeiro', label: 'Financeiro', icon: Coins, implemented: false },
   { href: '/empresa/em-construcao?item=Universidade', label: 'Universidade', icon: GraduationCap, implemented: false },
