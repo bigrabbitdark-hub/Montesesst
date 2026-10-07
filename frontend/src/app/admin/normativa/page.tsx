@@ -160,10 +160,10 @@ export default function AdminNormativaPage() {
 
       <Card title="Fontes monitoradas" className="mt-8">
         <form onSubmit={handleCreateSource} className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <input placeholder="Entidade (ex: MTE)" value={entity} onChange={(e) => setEntity(e.target.value)} required className="adm-input" />
-          <input placeholder="Código (ex: NR-06)" value={code} onChange={(e) => setCode(e.target.value)} className="adm-input" />
-          <input placeholder="Título" value={title} onChange={(e) => setTitle(e.target.value)} required className="adm-input sm:col-span-2" />
-          <input placeholder="URL oficial" value={officialUrl} onChange={(e) => setOfficialUrl(e.target.value)} required className="adm-input sm:col-span-2" />
+          <input placeholder="Entidade (ex: MTE)" aria-label="Entidade (ex: MTE)" value={entity} onChange={(e) => setEntity(e.target.value)} required className="adm-input" />
+          <input placeholder="Código (ex: NR-06)" aria-label="Código (ex: NR-06)" value={code} onChange={(e) => setCode(e.target.value)} className="adm-input" />
+          <input placeholder="Título" aria-label="Título" value={title} onChange={(e) => setTitle(e.target.value)} required className="adm-input sm:col-span-2" />
+          <input placeholder="URL oficial" aria-label="URL oficial" value={officialUrl} onChange={(e) => setOfficialUrl(e.target.value)} required className="adm-input sm:col-span-2" />
           {createStatus === 'erro' && <p className="text-sm text-red-600 sm:col-span-2">Não foi possível cadastrar. Confira a URL.</p>}
           <button type="submit" disabled={createStatus === 'loading'} className="adm-btn adm-btn-primary self-start disabled:opacity-50 sm:col-span-2">
             Cadastrar fonte
@@ -189,9 +189,9 @@ export default function AdminNormativaPage() {
       <Card title={`Aguardando validação (${pending.length})`} className="mt-8">
         <ul className="flex flex-col gap-2">
           {pending.map((doc) => (
-            <li key={doc.id} className="adm-card-2 flex items-center justify-between px-3 py-2 text-sm">
-              <span>{doc.file_name} — detectado em {new Date(doc.detected_at).toLocaleDateString('pt-BR')}</span>
-              <button onClick={() => openDetail(doc.id)} className="adm-link">Revisar</button>
+            <li key={doc.id} className="adm-card-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 px-3 py-2 text-sm">
+              <span className="min-w-0 break-words">{doc.file_name} — detectado em {new Date(doc.detected_at).toLocaleDateString('pt-BR')}</span>
+              <button onClick={() => openDetail(doc.id)} className="adm-link shrink-0 whitespace-nowrap">Revisar</button>
             </li>
           ))}
           {pending.length === 0 && <p className="text-sm text-brand-700">Nada pendente.</p>}
@@ -201,10 +201,10 @@ export default function AdminNormativaPage() {
       <Card title={`Vigentes (${vigentes.length})`} className="mt-8">
         <ul className="flex flex-col gap-2">
           {vigentes.map((doc) => (
-            <li key={doc.id} className="adm-card-2 flex items-center justify-between px-3 py-2 text-sm">
-              <span>{doc.file_name} — {doc.indexed_at ? 'indexado' : 'aprovado, indexação pendente'}</span>
+            <li key={doc.id} className="adm-card-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 px-3 py-2 text-sm">
+              <span className="min-w-0 break-words">{doc.file_name} — {doc.indexed_at ? 'indexado' : 'aprovado, indexação pendente'}</span>
               {!doc.indexed_at && (
-                <button onClick={() => handleReindex(doc.id)} className="adm-link">Reindexar</button>
+                <button onClick={() => handleReindex(doc.id)} className="adm-link shrink-0 whitespace-nowrap">Reindexar</button>
               )}
             </li>
           ))}
@@ -234,6 +234,7 @@ export default function AdminNormativaPage() {
             </button>
             <input
               placeholder="Motivo da rejeição"
+              aria-label="Motivo da rejeição"
               value={rejectReason}
               onChange={(e) => setRejectReason(e.target.value)}
               className="adm-input flex-1 text-sm"

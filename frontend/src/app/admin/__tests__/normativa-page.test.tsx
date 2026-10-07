@@ -100,3 +100,28 @@ describe('/admin/normativa (DS v2)', () => {
     await waitFor(() => expect(chamadas('/api/normative-documents/d2/reindex', 'POST')).toHaveLength(1));
   });
 });
+
+describe('/admin/normativa — acessibilidade e nomes longos', () => {
+  it('os campos do cadastro de fonte têm nome acessível (aria-label igual ao placeholder)', async () => {
+    render(<AdminNormativaPage />);
+    for (const nome of ['Entidade (ex: MTE)', 'Código (ex: NR-06)', 'Título', 'URL oficial']) {
+      expect(await screen.findByLabelText(nome)).toBeInTheDocument();
+    }
+  });
+
+  it('o campo do motivo da rejeição também tem nome acessível', async () => {
+    render(<AdminNormativaPage />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Revisar' }));
+    expect(await screen.findByLabelText('Motivo da rejeição')).toBeInTheDocument();
+  });
+
+  it('as linhas de documento quebram em vez de vazar quando o nome do arquivo é longo', async () => {
+    render(<AdminNormativaPage />);
+    const pendente = (await screen.findByText(/nr06-v2\.pdf/)).closest('li');
+    const vigente = screen.getByText(/nr06-v1\.pdf/).closest('li');
+    for (const li of [pendente, vigente]) {
+      expect(li).toHaveClass('flex-wrap');
+      expect(li!.querySelector('span')).toHaveClass('min-w-0', 'break-words');
+    }
+  });
+});

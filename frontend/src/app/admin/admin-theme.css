@@ -164,6 +164,18 @@ html:has(.admin-theme) {
   text-decoration: underline;
 }
 
+/* Ação destrutiva em texto (ex.: Excluir, Cancelar): mesma forma do .adm-link, cor de status crítico. */
+.admin-theme .adm-link-danger {
+  background: none;
+  border: 0;
+  color: var(--color-adm-status-crit-text);
+  cursor: pointer;
+  padding: 0;
+}
+.admin-theme .adm-link-danger:hover {
+  text-decoration: underline;
+}
+
 .admin-theme :focus-visible {
   outline: 2px solid #34d399;
   outline-offset: 2px;

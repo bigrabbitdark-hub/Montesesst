@@ -285,7 +285,7 @@ export default function AdminFinanceiroPage() {
                         <button
                           onClick={() => setConfirmingCancelId(sub.id)}
                           disabled={statusUpdateState[sub.id] === 'loading'}
-                          className="text-red-600 hover:underline disabled:opacity-50"
+                          className="adm-link-danger shrink-0 whitespace-nowrap disabled:opacity-50"
                         >
                           Cancelar
                         </button>
@@ -296,7 +296,7 @@ export default function AdminFinanceiroPage() {
                         <button
                           onClick={() => handleUpdateStatus(sub.id, 'cancelled')}
                           disabled={statusUpdateState[sub.id] === 'loading'}
-                          className="font-medium text-red-600 hover:underline disabled:opacity-50"
+                          className="adm-link-danger shrink-0 whitespace-nowrap disabled:opacity-50"
                         >
                           Sim, cancelar
                         </button>

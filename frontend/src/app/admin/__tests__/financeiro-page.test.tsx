@@ -135,3 +135,13 @@ describe('/admin/financeiro — ações de status da assinatura', () => {
     expect(screen.getByText('authorized')).toBeInTheDocument();
   });
 });
+
+describe('/admin/financeiro — ações destrutivas no primitivo', () => {
+  it('"Cancelar" e "Sim, cancelar" usam .adm-link-danger', async () => {
+    render(<AdminFinanceiroPage />);
+    const cancelar = await screen.findByRole('button', { name: 'Cancelar' });
+    expect(cancelar).toHaveClass('adm-link-danger');
+    fireEvent.click(cancelar);
+    expect(screen.getByRole('button', { name: 'Sim, cancelar' })).toHaveClass('adm-link-danger');
+  });
+});

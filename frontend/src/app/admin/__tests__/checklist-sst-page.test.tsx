@@ -102,3 +102,17 @@ describe('/admin/checklist-sst (DS v2)', () => {
     );
   });
 });
+
+describe('/admin/checklist-sst — ação destrutiva e nomes longos', () => {
+  it('"Excluir" usa o primitivo .adm-link-danger', async () => {
+    render(<AdminChecklistSstPage />);
+    expect(await screen.findByRole('button', { name: 'Excluir' })).toHaveClass('adm-link-danger');
+  });
+
+  it('a linha do item quebra em vez de vazar quando o nome do documento é longo', async () => {
+    render(<AdminChecklistSstPage />);
+    const li = (await screen.findByText(/Prontuário de caldeira/)).closest('li');
+    expect(li).toHaveClass('flex-wrap');
+    expect(li!.querySelector('span')).toHaveClass('min-w-0', 'break-words');
+  });
+});

@@ -262,15 +262,15 @@ export default function AdminChecklistSstPage() {
         <h3 className="mt-4 text-[15px] font-semibold text-brand-900">Itens ({items.length})</h3>
         <ul className="mt-4 flex flex-col gap-2">
           {items.map((item) => (
-            <li key={item.id} className="adm-card-2 flex items-center justify-between px-3 py-2 text-sm">
-              <span>
+            <li key={item.id} className="adm-card-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 px-3 py-2 text-sm">
+              <span className="min-w-0 break-words">
                 <strong>{item.nr_code}</strong> ({item.nr_category}) — {item.document_name}
               </span>
-              <span className="flex gap-3">
+              <span className="flex shrink-0 gap-3">
                 <button onClick={() => startEdit(item)} className="adm-link">
                   Editar
                 </button>
-                <button onClick={() => handleDelete(item.id)} className="text-red-600 underline">
+                <button onClick={() => handleDelete(item.id)} className="adm-link-danger">
                   Excluir
                 </button>
               </span>

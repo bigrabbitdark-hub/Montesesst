@@ -39,6 +39,8 @@ describe('regras de convenção (autoteste)', () => {
     ['adm-input hover:bg-red-500', 1],
     ['adm-input rounded-md', 1],
     ['adm-link text-red-600', 1],
+    ['adm-link-danger text-red-600', 1],
+    ['adm-link-danger px-2', 1],
     ['adm-card-2 border-brand-100', 1],
     ['adm-card-2 border border-brand-100', 2],
   ])('%s é recusado', (classes, quantidade) => {
@@ -53,6 +55,7 @@ describe('regras de convenção (autoteste)', () => {
     'adm-card overflow-x-auto p-2 sm:p-4',
     'adm-card-2 flex items-center justify-between px-3 py-2 text-sm',
     'adm-link',
+    'adm-link-danger shrink-0 whitespace-nowrap disabled:opacity-50',
     'adm-table',
   ])('%s é aceito', (classes) => {
     expect(violacoes(classes)).toEqual([]);

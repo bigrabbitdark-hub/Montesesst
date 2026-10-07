@@ -99,6 +99,17 @@ Arquivos (`frontend/src`): `app/admin/empresas/[id]/page.tsx`, `app/admin/__test
 - **Marco:** com esta camada todas as páginas do admin usam os primitivos DS v2, exceto `/admin/overview` (componentes próprios, feito em 2026-10-04).
 - **Pendências:** campos de `normativa` só com `placeholder`, sem `label`; `li` com nome de arquivo longo em `normativa`/`checklist-sst` sem `flex-wrap`/`min-w-0`; "Excluir" do checklist e "Cancelar"/"Sim, cancelar" das assinaturas (`financeiro` e `empresas/[id]`) fora do `.adm-link` (continuam `text-red-600`, legíveis); `empresa/pente-fino` sem skin (WIP alheio no `PenteFinoPanel`); botão flutuante do WhatsApp cobre o canto inferior direito (global, preexistente).
 
+## 0.5 Polimentos do admin (2026-10-07) — COMMITADOS (sem push, sem deploy)
+
+Fecham as pendências baixas das seções 0.3 e 0.4. Só frontend; sem backend, migration, Docker ou Nginx. **Commitado na branch `feat/conformidade-por-nr` (2026-10-07), sem push e sem aplicar em produção**, sobre os commits `989d6b2`, `6ba05af` e `edcefbb`.
+
+Arquivos (`frontend/src/app/admin`): `admin-theme.css` (novo `.adm-link-danger`), `normativa/page.tsx`, `checklist-sst/page.tsx`, `financeiro/page.tsx`, `empresas/[id]/page.tsx` e os testes `admin-theme-contraste`, `convencoes-paginas`, `normativa-page`, `checklist-sst-page`, `financeiro-page`, `empresas-detalhe-page` (só acréscimos aos testes).
+
+- **O que mudou:** (1) campos de `normativa` ganham `aria-label` igual ao placeholder (texto visível inalterado); (2) linhas de documento/itens com nome longo em `normativa` e `checklist-sst` passam a quebrar (`flex-wrap`, `min-w-0 break-words`) em vez de vazar a 390 px; (3) "Excluir", "Cancelar" e "Sim, cancelar" usam o novo `.adm-link-danger` (cor de status crítico `#fca5a5`, a mesma já testada em ≥ 4,5:1) no lugar de `text-red-600`; (4) em `empresas/[id]` os dados cadastrais ficam em 1 coluna no mobile (rótulo acima do valor) e em 2 a partir de `sm`.
+- **VERIFICADO (2026-10-07):** `vitest` 268/268 (26 arquivos; RED→GREEN com 9 testes novos); `tsc --noEmit` sem erros; `next build` compilou; eslint em `src/app/admin` + `src/components/admin`: 0 erros e o aviso preexistente de `AdminBrand.tsx`. QA no Playwright (API simulada, 390 e 1440, nomes de arquivo longos sem espaço): sem overflow de página; `Revisar`/`Reindexar` continuam em uma linha; `aria-label` achado por `getByLabel`; "Editar" verde `rgb(52,211,153)` e "Excluir" vermelho `rgb(252,165,165)` com sublinhado só no hover; `Cancelar`/`Sim, cancelar` medidos em `rgb(252,165,165)` e legíveis; dados cadastrais em 1 coluna (316 px) no mobile e 2 colunas (523 px) no desktop; 0 erros de JS.
+- **NÃO VERIFICADO:** fluxo real de cancelamento (POST) nesse QA (coberto por teste de unidade), foco por teclado além do hover de "Excluir", leitor de tela real, navegadores além do Chromium, dados reais.
+- **Pendências que continuam:** `empresa/pente-fino` sem skin (WIP alheio no `PenteFinoPanel`); botão flutuante do WhatsApp cobre o canto inferior direito (global); a confirmação "Cancelar de vez?" (`flex items-center gap-2`) não tem `flex-wrap` (cabe em 390 px).
+
 ## 1. O que é
 
 Só frontend. Todas as páginas `/empresa/*` passam a usar a sidebar, o header e o rodapé do dashboard novo

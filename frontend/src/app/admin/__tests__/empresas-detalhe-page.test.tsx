@@ -123,3 +123,19 @@ describe('/admin/empresas/[id] (DS v2)', () => {
     expect(screen.queryByRole('heading', { level: 3, name: 'Assinaturas' })).toBeNull();
   });
 });
+
+describe('/admin/empresas/[id] — polimentos', () => {
+  it('"Cancelar" e "Sim, cancelar" usam .adm-link-danger', async () => {
+    render(<AdminEmpresaDetailPage />);
+    const cancelar = await screen.findByRole('button', { name: 'Cancelar' });
+    expect(cancelar).toHaveClass('adm-link-danger');
+    fireEvent.click(cancelar);
+    expect(screen.getByRole('button', { name: 'Sim, cancelar' })).toHaveClass('adm-link-danger');
+  });
+
+  it('os dados cadastrais ficam em 1 coluna no mobile (rótulo acima do valor) e em 2 a partir de sm', async () => {
+    render(<AdminEmpresaDetailPage />);
+    const dl = (await screen.findByText('CNPJ')).closest('dl');
+    expect(dl).toHaveClass('grid-cols-1', 'sm:grid-cols-2');
+  });
+});

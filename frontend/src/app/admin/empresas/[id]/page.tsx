@@ -217,29 +217,29 @@ export default function AdminEmpresaDetailPage() {
             <AdminPageHeader title={detail.tenant.name} />
           </div>
           <section className="adm-card mt-4 p-5 sm:p-6">
-            <dl className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
+            <dl className="grid grid-cols-1 gap-x-6 gap-y-0.5 text-sm sm:grid-cols-2 sm:gap-y-2">
               <dt className="text-brand-700">CNPJ</dt>
-              <dd className="min-w-0 break-words text-brand-900">{detail.tenant.cnpj}</dd>
+              <dd className="mb-2 min-w-0 break-words text-brand-900 sm:mb-0">{detail.tenant.cnpj}</dd>
               <dt className="text-brand-700">Plano</dt>
-              <dd className="min-w-0 break-words text-brand-900">{detail.tenant.plan}</dd>
+              <dd className="mb-2 min-w-0 break-words text-brand-900 sm:mb-0">{detail.tenant.plan}</dd>
               <dt className="text-brand-700">Status</dt>
-              <dd className="min-w-0 break-words">
+              <dd className="mb-2 min-w-0 break-words sm:mb-0">
                 <Badge tone="neutral">{detail.tenant.status}</Badge>
               </dd>
               <dt className="text-brand-700">Setor</dt>
-              <dd className="min-w-0 break-words text-brand-900">{detail.tenant.sector ?? '—'}</dd>
+              <dd className="mb-2 min-w-0 break-words text-brand-900 sm:mb-0">{detail.tenant.sector ?? '—'}</dd>
               <dt className="text-brand-700">Contato</dt>
-              <dd className="min-w-0 break-words text-brand-900">
+              <dd className="mb-2 min-w-0 break-words text-brand-900 sm:mb-0">
                 {detail.tenant.contact_name ?? '—'} {detail.tenant.contact_phone ? `— ${detail.tenant.contact_phone}` : ''}
               </dd>
               <dt className="text-brand-700">Técnicos vinculados</dt>
-              <dd className="min-w-0 break-words text-brand-900">
+              <dd className="mb-2 min-w-0 break-words text-brand-900 sm:mb-0">
                 {detail.tenant.technicians.length === 0
                   ? '—'
                   : detail.tenant.technicians.map((t) => t.name).join(', ')}
               </dd>
               <dt className="text-brand-700">Parceiros vinculados</dt>
-              <dd className="min-w-0 break-words text-brand-900">
+              <dd className="mb-2 min-w-0 break-words text-brand-900 sm:mb-0">
                 {detail.tenant.partners.length === 0 ? '—' : detail.tenant.partners.map((p) => p.name).join(', ')}
               </dd>
             </dl>
@@ -284,7 +284,7 @@ export default function AdminEmpresaDetailPage() {
                             <button
                               onClick={() => setConfirmingCancelId(sub.id)}
                               disabled={statusUpdateState[sub.id] === 'loading'}
-                              className="text-red-600 hover:underline disabled:opacity-50"
+                              className="adm-link-danger shrink-0 whitespace-nowrap disabled:opacity-50"
                             >
                               Cancelar
                             </button>
@@ -295,7 +295,7 @@ export default function AdminEmpresaDetailPage() {
                             <button
                               onClick={() => handleUpdateStatus(sub.id, 'cancelled')}
                               disabled={statusUpdateState[sub.id] === 'loading'}
-                              className="font-medium text-red-600 hover:underline disabled:opacity-50"
+                              className="adm-link-danger shrink-0 whitespace-nowrap disabled:opacity-50"
                             >
                               Sim, cancelar
                             </button>

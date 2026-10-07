@@ -116,3 +116,9 @@ describe('.adm-btn-danger (lote 2 do admin)', () => {
     expect(contraste(texto, sobre(tok('status-crit-bg'), SUPERFICIES.surface))).toBeGreaterThanOrEqual(4.5);
   });
 });
+
+describe('.adm-link-danger (polimentos do admin)', () => {
+  it('define .admin-theme .adm-link-danger com a cor de texto de status crítico (já testada em ≥ 4,5:1)', () => {
+    expect(admin).toMatch(/\.admin-theme \.adm-link-danger\b[^}]*color:\s*var\(--color-adm-status-crit-text\)/);
+  });
+});
