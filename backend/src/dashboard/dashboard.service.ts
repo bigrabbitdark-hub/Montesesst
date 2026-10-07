@@ -99,6 +99,14 @@ function toDateString(value: string | Date | null | undefined): string | null {
   return value;
 }
 
+// Título do item de atenção da Auditoria Montese (internamente ainda "pente-fino": rotas, API e
+// tabelas mantêm o nome antigo; o texto mostrado ao usuário é "Auditoria Montese").
+export function tituloAtencaoAuditoria(status: string, nome: string): string {
+  return status === 'risco_sem_exame'
+    ? `Auditoria Montese: risco sem exame correspondente — ${nome}`
+    : `Auditoria Montese: exame sem risco correspondente — ${nome}`;
+}
+
 @Injectable()
 export class DashboardService {
   constructor(
@@ -286,10 +294,7 @@ export class DashboardService {
       })),
       ...penteFino.map((item): AttentionItem => ({
         tipo: 'pente_fino',
-        titulo:
-          item.status === 'risco_sem_exame'
-            ? `Pente-Fino: risco sem exame correspondente — ${item.position_name ?? item.function_text_raw}`
-            : `Pente-Fino: exame sem risco correspondente — ${item.position_name ?? item.function_text_raw}`,
+        titulo: tituloAtencaoAuditoria(item.status, item.position_name ?? item.function_text_raw),
         prioridade: item.status === 'risco_sem_exame' ? 'alta' : 'media',
         data: null,
         responsavel: 'empresa',
