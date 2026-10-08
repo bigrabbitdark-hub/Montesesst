@@ -1,3 +1,6 @@
+// Sem rede: a guarda de URL consulta o DNS; aqui ele devolve sempre um IP público.
+jest.mock('dns/promises', () => ({ lookup: jest.fn(async () => [{ address: '200.10.10.10', family: 4 }]) }));
+
 import { NormativeMonitorService } from '../src/normative/normative-monitor.service';
 
 const PAGINA_LONGA = `<html><body><div id="content-core">${'Texto da norma regulamentadora. '.repeat(20)}</div></body></html>`;

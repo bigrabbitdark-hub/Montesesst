@@ -1,22 +1,11 @@
 'use client';
 
-import { FormEvent, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AdminPageHeader } from '@/components/admin/PageHeader';
-import { Badge, Card } from '@/components/admin/Card';
-
-interface OfficialSource {
-  id: string;
-  entity: string;
-  code: string | null;
-  title: string;
-  official_url: string;
-  active: boolean;
-  last_checked_at: string | null;
-  last_check_status: 'ok' | 'erro' | null;
-  last_error: string | null;
-  consecutive_failures: number;
-}
+import { Card } from '@/components/admin/Card';
+import { FontesPanel, type OfficialSource } from './FontesPanel';
+import { authHeaders } from './api';
 
 interface NormativeDocument {
   id: string;
@@ -33,19 +22,6 @@ interface DocumentDetail {
   previous_text: string | null;
 }
 
-function authHeaders() {
-  const token = localStorage.getItem('montese_token');
-  return { Authorization: `Bearer ${token}` };
-}
-
-function formatChecked(iso: string | null): string {
-  if (!iso) return 'nunca verificada';
-  const hours = Math.floor((Date.now() - new Date(iso).getTime()) / 3_600_000);
-  if (hours < 1) return 'verificada há menos de 1 h';
-  if (hours < 48) return `verificada há ${hours} h`;
-  return `verificada há ${Math.floor(hours / 24)} dias`;
-}
-
 export default function AdminNormativaPage() {
   const router = useRouter();
   const [ready, setReady] = useState(false);
@@ -55,12 +31,6 @@ export default function AdminNormativaPage() {
   const [detail, setDetail] = useState<DocumentDetail | null>(null);
   const [rejectReason, setRejectReason] = useState('');
   const [actionError, setActionError] = useState('');
-
-  const [entity, setEntity] = useState('');
-  const [code, setCode] = useState('');
-  const [title, setTitle] = useState('');
-  const [officialUrl, setOfficialUrl] = useState('');
-  const [createStatus, setCreateStatus] = useState<'idle' | 'loading' | 'erro'>('idle');
 
   async function loadAll() {
     const [sourcesRes, pendingRes, vigentesRes] = await Promise.all([
@@ -83,26 +53,6 @@ export default function AdminNormativaPage() {
     loadAll();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router]);
-
-  async function handleCreateSource(event: FormEvent) {
-    event.preventDefault();
-    setCreateStatus('loading');
-    const res = await fetch('/api/normative-sources', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...authHeaders() },
-      body: JSON.stringify({ entity, code: code || undefined, title, official_url: officialUrl }),
-    });
-    if (res.ok) {
-      setEntity('');
-      setCode('');
-      setTitle('');
-      setOfficialUrl('');
-      setCreateStatus('idle');
-      loadAll();
-      return;
-    }
-    setCreateStatus('erro');
-  }
 
   async function openDetail(id: string) {
     const res = await fetch(`/api/normative-documents/${id}`, { headers: authHeaders() });
@@ -158,33 +108,7 @@ export default function AdminNormativaPage() {
       <AdminPageHeader title="Base normativa" />
       {actionError && <p className="mt-2 text-sm text-red-600">{actionError}</p>}
 
-      <Card title="Fontes monitoradas" className="mt-8">
-        <form onSubmit={handleCreateSource} className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <input placeholder="Entidade (ex: MTE)" aria-label="Entidade (ex: MTE)" value={entity} onChange={(e) => setEntity(e.target.value)} required className="adm-input" />
-          <input placeholder="Código (ex: NR-06)" aria-label="Código (ex: NR-06)" value={code} onChange={(e) => setCode(e.target.value)} className="adm-input" />
-          <input placeholder="Título" aria-label="Título" value={title} onChange={(e) => setTitle(e.target.value)} required className="adm-input sm:col-span-2" />
-          <input placeholder="URL oficial" aria-label="URL oficial" value={officialUrl} onChange={(e) => setOfficialUrl(e.target.value)} required className="adm-input sm:col-span-2" />
-          {createStatus === 'erro' && <p className="text-sm text-red-600 sm:col-span-2">Não foi possível cadastrar. Confira a URL.</p>}
-          <button type="submit" disabled={createStatus === 'loading'} className="adm-btn adm-btn-primary self-start disabled:opacity-50 sm:col-span-2">
-            Cadastrar fonte
-          </button>
-        </form>
-        <ul className="mt-4 flex flex-col gap-1 text-sm text-brand-700">
-          {sources.map((s) => (
-            <li key={s.id}>
-              {s.entity} {s.code ? `— ${s.code}` : ''} — {s.title}
-              <span className="ml-2 text-xs text-brand-500">{formatChecked(s.last_checked_at)}</span>
-              {s.consecutive_failures > 0 && (
-                <span className="ml-2">
-                  <Badge tone="bad">
-                    Falhando ({s.consecutive_failures}){s.last_error ? ` — ${s.last_error}` : ''}
-                  </Badge>
-                </span>
-              )}
-            </li>
-          ))}
-        </ul>
-      </Card>
+      <FontesPanel sources={sources} onChanged={loadAll} />
 
       <Card title={`Aguardando validação (${pending.length})`} className="mt-8">
         <ul className="flex flex-col gap-2">

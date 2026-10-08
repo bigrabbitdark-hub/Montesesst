@@ -45,9 +45,9 @@ describe('/admin/normativa (DS v2)', () => {
     }
   });
 
-  it('a fonte com falhas mostra um Badge "bad" com o texto original; campos e botão usam os primitivos', async () => {
+  it('a fonte com falhas mostra um Badge "bad" e o erro completo logo abaixo; campos e botão usam os primitivos', async () => {
     render(<AdminNormativaPage />);
-    const falha = await screen.findByText('Falhando (2) — timeout');
+    const falha = await screen.findByText('Falhando (2)');
     expect(falha.closest('span.rounded-full')).not.toBeNull();
     expect(falha.closest('span.rounded-full')!.className).toContain('text-adm-status-crit-text');
     expect(screen.getByPlaceholderText('Entidade (ex: MTE)')).toHaveClass('adm-input');

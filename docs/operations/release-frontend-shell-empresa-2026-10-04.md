@@ -110,6 +110,19 @@ Arquivos (`frontend/src/app/admin`): `admin-theme.css` (novo `.adm-link-danger`)
 - **NÃO VERIFICADO:** fluxo real de cancelamento (POST) nesse QA (coberto por teste de unidade), foco por teclado além do hover de "Excluir", leitor de tela real, navegadores além do Chromium, dados reais.
 - **Pendências que continuam:** `empresa/pente-fino` sem skin (WIP alheio no `PenteFinoPanel`); botão flutuante do WhatsApp cobre o canto inferior direito (global); a confirmação "Cancelar de vez?" (`flex items-center gap-2`) não tem `flex-wrap` (cabe em 390 px).
 
+## 0.6 Gerir fontes normativas (2026-10-08) — NÃO COMMITADA, sem push, sem deploy
+
+Spec: `docs/superpowers/specs/2026-10-08-monitor-normativo-gerir-fontes-design.md` (resultados em §8).
+
+- **Arquivos (backend):** `common/url/public-url.util.ts` (guarda SSRF), `normative/normative-monitor.service.ts`, `normative/official-sources.{service,controller}.ts`, DTOs `create-` (alterado), `update-` e `preview-source` (novos); testes `public-url`, `normative-monitor-sources`, `official-sources` (novos) e `normative-monitor-guard` (só o topo).
+- **Arquivos (frontend):** `app/admin/normativa/FontesPanel.tsx` e `api.ts` (novos), `page.tsx` (usa o painel), testes `normativa-fontes.test.tsx` (novo) e `convencoes-paginas.test.ts` (1 linha).
+- Sem migration, sem env nova, sem dependência nova.
+- **Backend e frontend precisam sair juntos:** a tela nova chama `PATCH /normative-sources/:id`, `POST …/check-now` e `POST …/preview`, que só existem no backend novo. Frontend novo com backend antigo quebra editar/desativar/verificar/testar URL.
+- **Aviso:** o backend só sai depois do commit/merge do eSocial (a árvore tem WIP de `backend/src/pente-fino/*` e `docker-compose.yml`, que não fazem parte desta fatia; commitar só os arquivos listados acima, nunca `git add -A`).
+- **VERIFICADO:** `tsc` (back e front), unit do backend (mesmas 8 falhas do HEAD limpo, nenhuma a mais), vitest 285/285, eslint 0 erros, `next build`, leitura real de 5 páginas do planalto.gov.br com acentos corretos, QA visual em 1440 e 390 com API simulada.
+- **NÃO VERIFICADO:** e2e; as 51 URLs de produção contra a guarda (precisa do export do proprietário); CAEPI/STF; DNS rebinding; comportamento em produção com API real.
+- Nenhum passo 🔒 foi executado.
+
 ## 1. O que é
 
 Só frontend. Todas as páginas `/empresa/*` passam a usar a sidebar, o header e o rodapé do dashboard novo

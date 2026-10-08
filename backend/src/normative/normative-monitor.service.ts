@@ -1,10 +1,11 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { PDFParse } from 'pdf-parse';
 import { DatabaseService } from '../common/database/database.service';
 import { NormativeDocumentsService } from './normative-documents.service';
 import { EmailService } from '../common/email/email.service';
 import { MonitorEvent, buildMonitorAlertEmail } from './normative-monitor-email';
+import { fetchPublic, readBodyCapped } from '../common/url/public-url.util';
 import { MONITOR_FETCH_HEADERS, decodeHtmlBuffer, meaningfulLength, suspiciousExtractionReason } from './normative-text.util';
 
 // As páginas de norma do gov.br/trabalho (CMS Plone) têm cabeçalho, menu de
@@ -56,6 +57,44 @@ function sourceLabel(source: MonitoredSource): string {
   return source.code ? `${source.code} — ${source.title}` : source.title;
 }
 
+const MAX_FONTE_BYTES = 25 * 1024 * 1024;
+
+export interface ExtractedPage {
+  text: string;
+  mimeType: string;
+  buffer: Buffer;
+  statusCode: number;
+}
+
+export interface CheckOutcome {
+  outcome: 'nova_versao' | 'sem_mudanca' | 'erro';
+  message: string;
+}
+
+export type SourcePreview =
+  | { ok: true; status_code: number; mime_type: string; chars: number; meaningful_chars: number; sample: string; suspicious: string | null }
+  | { ok: false; message: string };
+
+// Erros de rede do fetch chegam como 'fetch failed' (causa em err.cause.code) ou AbortError/TimeoutError:
+// traduz para uma frase curta em português. Demais mensagens (status, guarda de URL, conteúdo suspeito) ficam intactas.
+export function mensagemDeErro(err: unknown): string {
+  const e = err as { message?: string; name?: string; cause?: { code?: string } } | null;
+  const msg = e?.message ?? String(err);
+  const ehAbort = e?.name === 'AbortError' || e?.name === 'TimeoutError' || /operation was aborted|timed? ?out/i.test(msg);
+  if (msg !== 'fetch failed' && !ehAbort) return msg;
+  const code = String(e?.cause?.code ?? '');
+  if (code === 'ENOTFOUND') return 'Domínio não encontrado (DNS)';
+  if (code === 'ECONNREFUSED') return 'Conexão recusada pelo servidor';
+  if (code === 'ECONNRESET') return 'Conexão interrompida pelo servidor';
+  if (code.startsWith('CERT_') || code.startsWith('UNABLE_TO_VERIFY') || code.startsWith('ERR_TLS')) {
+    return 'Certificado HTTPS inválido na fonte';
+  }
+  if (ehAbort || code === 'ETIMEDOUT' || code === 'UND_ERR_CONNECT_TIMEOUT' || /timeout/i.test(code)) {
+    return 'Tempo esgotado ao acessar a fonte (30 s)';
+  }
+  return 'Falha de rede ao acessar a fonte';
+}
+
 @Injectable()
 export class NormativeMonitorService {
   private readonly logger = new Logger(NormativeMonitorService.name);
@@ -95,7 +134,7 @@ export class NormativeMonitorService {
         }
       } catch (err) {
         this.logger.error(`Falha ao monitorar fonte ${source.id}`, (err as Error).stack);
-        const message = (err as Error).message ?? String(err);
+        const message = mensagemDeErro(err);
         const failures = await this.recordFailure(source.id, message);
         if (failures === REPEATED_FAILURE_THRESHOLD) {
           events.push({
@@ -178,22 +217,21 @@ export class NormativeMonitorService {
     }
   }
 
-  private async processSource(sourceId: string, url: string): Promise<boolean> {
-    const response = await fetch(url, { headers: MONITOR_FETCH_HEADERS, signal: AbortSignal.timeout(30_000) });
+  // Busca (pela guarda de URL, com limite de tamanho) e extrai o texto. Usado pelo cron, por
+  // "Verificar agora" e pela pré-visualização.
+  async fetchAndExtract(url: string): Promise<ExtractedPage> {
+    const { response } = await fetchPublic(url, { headers: MONITOR_FETCH_HEADERS, signal: AbortSignal.timeout(30_000) });
     if (!response.ok) {
       throw new Error(`Fonte respondeu status ${response.status}`);
     }
 
     const contentType = response.headers.get('content-type') ?? '';
-    const buffer = Buffer.from(await response.arrayBuffer());
+    const buffer = await readBodyCapped(response, MAX_FONTE_BYTES);
 
     let text: string;
     let mimeType: string;
     if (contentType.includes('pdf') || url.toLowerCase().endsWith('.pdf')) {
-      // pdf-parse v2 é baseado em classe, não em função (mudança de API
-      // confirmada em 2026-08-28 — ver Global Constraints do plano).
-      // `data` aceita Buffer do Node diretamente (convertido pra
-      // Uint8Array internamente pela própria lib).
+      // pdf-parse v2 é baseado em classe, não em função (mudança de API confirmada em 2026-08-28).
       const parser = new PDFParse({ data: buffer });
       try {
         text = (await parser.getText()).text;
@@ -205,6 +243,11 @@ export class NormativeMonitorService {
       text = extractHtmlText(decodeHtmlBuffer(buffer, contentType));
       mimeType = 'text/html';
     }
+    return { text, mimeType, buffer, statusCode: response.status };
+  }
+
+  private async processSource(sourceId: string, url: string): Promise<boolean> {
+    const { text, mimeType, buffer } = await this.fetchAndExtract(url);
 
     // Barreira contra extração vazia/quebrada: não vira pendente (aprovar substituiria uma norma boa por
     // lixo). Vira falha da fonte — badge vermelho na tela e e-mail na 2ª falha seguida.
@@ -224,5 +267,48 @@ export class NormativeMonitorService {
       this.documents.recordDetectedVersion(client, sourceId, text, buffer, mimeType, url),
     );
     return created !== null;
+  }
+
+  // "Verificar agora": mesma contabilidade de sucesso/falha do cron, mas sem e-mail (o admin está olhando).
+  async checkSource(sourceId: string): Promise<CheckOutcome> {
+    const { rows } = await this.db.withoutTenantContext((client) =>
+      client.query<MonitoredSource>('SELECT id, code, title, official_url FROM official_sources WHERE id = $1', [sourceId]),
+    );
+    const source = rows[0];
+    if (!source) throw new NotFoundException('Fonte não encontrada');
+
+    try {
+      const createdNewVersion = await this.processSource(source.id, source.official_url);
+      await this.recordSuccess(source.id);
+      return createdNewVersion
+        ? { outcome: 'nova_versao', message: 'Nova versão detectada: veja em "Aguardando validação".' }
+        : {
+            outcome: 'sem_mudanca',
+            message: 'Nenhuma versão nova criada (sem mudança relevante ou já há uma versão aguardando revisão).',
+          };
+    } catch (err) {
+      const message = mensagemDeErro(err).slice(0, LAST_ERROR_MAX_LENGTH);
+      await this.recordFailure(source.id, message);
+      return { outcome: 'erro', message };
+    }
+  }
+
+  // Pré-visualização: lê e extrai a URL sem gravar nada, para o admin testar antes de salvar a fonte.
+  async previewUrl(url: string): Promise<SourcePreview> {
+    try {
+      const page = await this.fetchAndExtract(url);
+      const significativos = meaningfulLength(page.text);
+      return {
+        ok: true,
+        status_code: page.statusCode,
+        mime_type: page.mimeType,
+        chars: page.text.length,
+        meaningful_chars: significativos,
+        sample: page.text.replace(/\s+/g, ' ').trim().slice(0, 400),
+        suspicious: suspiciousExtractionReason(significativos, null),
+      };
+    } catch (err) {
+      return { ok: false, message: mensagemDeErro(err).slice(0, LAST_ERROR_MAX_LENGTH) };
+    }
   }
 }
