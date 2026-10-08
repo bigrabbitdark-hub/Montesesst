@@ -677,7 +677,8 @@ export class NormativeAssistantService {
          FROM normative_document_chunks c
          JOIN normative_documents d ON d.id = c.document_id
          JOIN official_sources s ON s.id = d.source_id
-         WHERE d.status = 'vigente' AND d.indexed_at IS NOT NULL
+         -- Fonte desativada sai das respostas; o documento e o histórico ficam.
+         WHERE d.status = 'vigente' AND d.indexed_at IS NOT NULL AND s.active = true
          ORDER BY c.embedding <=> $1::vector
          LIMIT $2`,
         [toVectorLiteral(questionEmbedding), chunkLimit],
