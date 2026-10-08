@@ -5,6 +5,9 @@ import { EmailService } from '../src/common/email/email.service';
 import { NormativeMonitorService, extractHtmlText } from '../src/normative/normative-monitor.service';
 import { TestDb } from './db-test-helper';
 
+// A barreira de extração suspeita exige >= 100 caracteres de texto: as páginas simuladas precisam ser maiores.
+const corpo = (frase: string) => `${frase} `.repeat(8).trim();
+
 // Lógica pura, sem I/O — mas fica neste arquivo (não um .util.ts à parte)
 // porque é específica do monitor, não reaproveitada em outro lugar.
 describe('extractHtmlText', () => {
@@ -99,7 +102,7 @@ describe('NormativeMonitorService (e2e)', () => {
   it('cria normative_document aguardando_validacao quando o conteúdo muda, e não repete quando não muda', async () => {
     fetchSpy = jest.spyOn(global, 'fetch').mockImplementation(async (url: any) => {
       if (url === 'https://exemplo.gov.br/norma-teste.html') {
-        return new Response('<html><body><p>Conteúdo da norma de teste.</p></body></html>', {
+        return new Response(`<html><body><p>${corpo('Conteúdo da norma de teste.')}</p></body></html>`, {
           status: 200,
           headers: { 'content-type': 'text/html' },
         });
@@ -130,7 +133,7 @@ describe('NormativeMonitorService (e2e)', () => {
   it('falha numa fonte não impede o processamento das demais', async () => {
     fetchSpy = jest.spyOn(global, 'fetch').mockImplementation(async (url: any) => {
       if (url === 'https://exemplo.gov.br/norma-teste.html') {
-        return new Response('<html><body><p>Conteúdo mudou de novo.</p></body></html>', {
+        return new Response(`<html><body><p>${corpo('Conteúdo mudou de novo.')}</p></body></html>`, {
           status: 200,
           headers: { 'content-type': 'text/html' },
         });
@@ -180,7 +183,7 @@ describe('NormativeMonitorService (e2e)', () => {
     );
     fetchSpy = jest.spyOn(global, 'fetch').mockImplementation(async (url: any) => {
       if (url === 'https://exemplo.gov.br/norma-teste.html') {
-        return new Response('<html><body><p>Conteúdo mudou de novo.</p></body></html>', {
+        return new Response(`<html><body><p>${corpo('Conteúdo mudou de novo.')}</p></body></html>`, {
           status: 200,
           headers: { 'content-type': 'text/html' },
         });
@@ -230,8 +233,11 @@ describe('NormativeMonitorService (e2e)', () => {
   });
 
   it('um único e-mail-resumo por rodada quando há uma falha repetida e uma versão nova', async () => {
+    // Com um pendente já existente a mudança é ignorada (pendente congelado, sem e-mail de "nova versão"):
+    // parte de uma fonte sem documentos para que a versão desta rodada seja de fato nova.
+    await (db as any).client.query('DELETE FROM normative_documents WHERE source_id = $1', [sourceIdPdf]);
     await setFailures(sourceIdFalha, 1);
-    const conteudoNovo = `Conteúdo versão ${Date.now()}`;
+    const conteudoNovo = corpo(`Conteúdo versão ${Date.now()}`);
     fetchSpy = jest.spyOn(global, 'fetch').mockImplementation(async (url: any) => {
       if (url === 'https://exemplo.gov.br/norma-teste.html') {
         return new Response(`<html><body><p>${conteudoNovo}</p></body></html>`, {
@@ -249,6 +255,51 @@ describe('NormativeMonitorService (e2e)', () => {
     expect(paraOAdmin).toHaveLength(1);
     expect(paraOAdmin[0][0].html).toContain('NR-FALHA');
     expect(paraOAdmin[0][0].html).toContain('NR-TESTE');
+  });
+
+  it('com um pendente já existente, uma mudança real NÃO o altera (pendente congelado) e não envia e-mail de "nova versão"', async () => {
+    const client = (db as any).client;
+    await client.query('DELETE FROM normative_documents WHERE source_id = $1', [sourceIdPdf]);
+    const servir = (texto: string) =>
+      (fetchSpy = jest.spyOn(global, 'fetch').mockImplementation(async (url: any) => {
+        if (url === 'https://exemplo.gov.br/norma-teste.html') {
+          return new Response(`<html><body><p>${texto}</p></body></html>`, { status: 200, headers: { 'content-type': 'text/html' } });
+        }
+        throw new Error('URL inesperada nesta chamada do teste: ' + url);
+      }));
+
+    servir(corpo('Versão A da norma.'));
+    await monitor.runOnce({ onlySourceIds: [sourceIdPdf] });
+    fetchSpy?.mockRestore();
+    sendMock.mockClear();
+
+    servir(corpo('Versão B da norma, realmente diferente.'));
+    await monitor.runOnce({ onlySourceIds: [sourceIdPdf] });
+
+    const docs = await client.query('SELECT status, raw_text FROM normative_documents WHERE source_id = $1', [sourceIdPdf]);
+    expect(docs.rows).toHaveLength(1);
+    expect(docs.rows[0].status).toBe('aguardando_validacao');
+    expect(docs.rows[0].raw_text).toContain('Versão A');
+    expect(docs.rows[0].raw_text).not.toContain('Versão B');
+    expect(sendMock.mock.calls.filter(([arg]) => arg.to === adminEmail)).toHaveLength(0);
+  });
+
+  it('extração minúscula não cria pendente e conta como falha da fonte', async () => {
+    const client = (db as any).client;
+    await client.query('DELETE FROM normative_documents WHERE source_id = $1', [sourceIdPdf]);
+    fetchSpy = jest.spyOn(global, 'fetch').mockImplementation(async (url: any) => {
+      if (url === 'https://exemplo.gov.br/norma-teste.html') {
+        return new Response('<html><body>curto</body></html>', { status: 200, headers: { 'content-type': 'text/html' } });
+      }
+      throw new Error('URL inesperada nesta chamada do teste: ' + url);
+    });
+
+    await monitor.runOnce({ onlySourceIds: [sourceIdPdf] });
+
+    const docs = await client.query('SELECT id FROM normative_documents WHERE source_id = $1', [sourceIdPdf]);
+    expect(docs.rows).toHaveLength(0);
+    expect((await stateOf(sourceIdPdf)).last_check_status).toBe('erro');
+    expect((await stateOf(sourceIdPdf)).last_error).toMatch(/Conteúdo suspeito/);
   });
 
   it('falha no envio do e-mail não derruba a rodada e o estado continua gravado', async () => {

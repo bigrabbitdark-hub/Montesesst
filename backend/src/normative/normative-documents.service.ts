@@ -5,6 +5,7 @@ import { R2Service } from '../common/r2/r2.service';
 import { EMBEDDING_PROVIDER, EmbeddingProvider } from '../common/embedding/embedding-provider.interface';
 import { splitIntoChunks } from '../common/chunking/chunking.util';
 import { toVectorLiteral } from '../common/vector/vector.util';
+import { normalizeForComparison } from './normative-text.util';
 
 export type NormativeDocumentStatus = 'aguardando_validacao' | 'vigente' | 'rejeitado' | 'substituido';
 
@@ -41,11 +42,14 @@ export class NormativeDocumentsService {
     @Inject(EMBEDDING_PROVIDER) private readonly embeddings: EmbeddingProvider,
   ) {}
 
-  // Compara com a linha MAIS RECENTE da fonte, qualquer status — não só
-  // `vigente` (correção sobre a spec seção 4.2, ver Global Constraints
-  // do plano). Comparar só com `vigente` recriaria uma linha
-  // `aguardando_validacao` duplicada a cada execução do monitor enquanto
-  // a mesma versão ficasse pendente de revisão ou já rejeitada.
+  // Compara com a linha MAIS RECENTE da fonte, qualquer status — não só `vigente` (correção sobre a spec
+  // seção 4.2): comparar só com `vigente` recriaria um pendente duplicado a cada rodada enquanto a mesma
+  // versão ficasse pendente de revisão ou já rejeitada.
+  //
+  // Contrato: devolve a linha SÓ ao criar uma versão nova. Devolve null quando: (a) o hash bruto é o mesmo;
+  // (b) o texto é igual após normalizar (rótulos como "Modificado em dd/mm/aaaa hh:mm" não são versão nova;
+  // `content_hash` continua sendo o hash do texto BRUTO); ou (c) já existe um pendente aguardando revisão
+  // (um pendente por fonte, congelado: sem UPDATE e sem mexer no R2).
   async recordDetectedVersion(
     client: PoolClient,
     sourceId: string,
@@ -56,16 +60,30 @@ export class NormativeDocumentsService {
   ): Promise<NormativeDocument | null> {
     const hash = createHash('sha256').update(text).digest('hex');
 
-    const mostRecent = await client.query<{ content_hash: string }>(
-      `SELECT content_hash FROM normative_documents WHERE source_id = $1 ORDER BY created_at DESC LIMIT 1`,
+    const mostRecent = await client.query<{
+      id: string;
+      status: NormativeDocumentStatus;
+      content_hash: string;
+      raw_text: string;
+      file_key: string;
+    }>(
+      `SELECT id, status, content_hash, raw_text, file_key FROM normative_documents WHERE source_id = $1 ORDER BY created_at DESC LIMIT 1`,
       [sourceId],
     );
-    if (mostRecent.rows[0]?.content_hash === hash) {
+    const last = mostRecent.rows[0];
+    if (last?.content_hash === hash) {
+      return null;
+    }
+    if (last && normalizeForComparison(last.raw_text) === normalizeForComparison(text)) {
       return null;
     }
 
-    const id = randomUUID();
+    // Pendente CONGELADO: nenhuma escrita enquanto houver uma versão aguardando revisão, para o admin
+    // nunca aprovar/rejeitar um texto diferente do que leu. Após a decisão, a próxima rodada compara de novo.
+    if (last?.status === 'aguardando_validacao') return null;
+
     const fileName = sourceUrl.split('/').pop() || 'documento';
+    const id = randomUUID();
     const fileKey = `normative/${sourceId}/${id}/${fileName}`;
     await this.r2.putObject(fileKey, fileBuffer, mimeType);
 

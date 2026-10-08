@@ -5,6 +5,7 @@ import { DatabaseService } from '../common/database/database.service';
 import { NormativeDocumentsService } from './normative-documents.service';
 import { EmailService } from '../common/email/email.service';
 import { MonitorEvent, buildMonitorAlertEmail } from './normative-monitor-email';
+import { MONITOR_FETCH_HEADERS, decodeHtmlBuffer, meaningfulLength, suspiciousExtractionReason } from './normative-text.util';
 
 // As páginas de norma do gov.br/trabalho (CMS Plone) têm cabeçalho, menu de
 // navegação e rodapé institucional enormes em volta do texto real da norma
@@ -178,7 +179,7 @@ export class NormativeMonitorService {
   }
 
   private async processSource(sourceId: string, url: string): Promise<boolean> {
-    const response = await fetch(url, { signal: AbortSignal.timeout(30_000) });
+    const response = await fetch(url, { headers: MONITOR_FETCH_HEADERS, signal: AbortSignal.timeout(30_000) });
     if (!response.ok) {
       throw new Error(`Fonte respondeu status ${response.status}`);
     }
@@ -201,8 +202,22 @@ export class NormativeMonitorService {
       }
       mimeType = 'application/pdf';
     } else {
-      text = extractHtmlText(buffer.toString('utf-8'));
+      text = extractHtmlText(decodeHtmlBuffer(buffer, contentType));
       mimeType = 'text/html';
+    }
+
+    // Barreira contra extração vazia/quebrada: não vira pendente (aprovar substituiria uma norma boa por
+    // lixo). Vira falha da fonte — badge vermelho na tela e e-mail na 2ª falha seguida.
+    const vigenteChars = await this.db.withoutTenantContext(async (client) => {
+      const { rows } = await client.query<{ len: number }>(
+        `SELECT length(raw_text) AS len FROM normative_documents WHERE source_id = $1 AND status = 'vigente'`,
+        [sourceId],
+      );
+      return rows[0]?.len ?? null;
+    });
+    const suspeita = suspiciousExtractionReason(meaningfulLength(text), vigenteChars);
+    if (suspeita) {
+      throw new Error(suspeita);
     }
 
     const created = await this.db.withoutTenantContext((client) =>
