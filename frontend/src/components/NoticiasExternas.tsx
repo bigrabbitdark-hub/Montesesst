@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import type { ExternalPost } from '@/lib/sstnews-feed';
+import { NewsCover } from './NewsCover';
 
 const PAGE_SIZE = 12;
 const TODAS = 'Todas';
@@ -72,7 +73,9 @@ export function NoticiasExternas({ posts, source }: { posts: ExternalPost[]; sou
       </p>
 
       {featured && page === 1 && (
-        <article className="mt-6 rounded-2xl border border-brand-100 bg-gradient-to-br from-brand-50 to-white p-6 sm:p-8">
+        <article className="mt-6 overflow-hidden rounded-2xl border border-brand-100 bg-gradient-to-br from-brand-50 to-white sm:grid sm:grid-cols-[260px_1fr]">
+          <NewsCover category={featured.category} className="h-36 sm:h-full" />
+          <div className="p-6 sm:p-8">
           <div className="flex flex-wrap items-center gap-2 text-xs font-semibold">
             <span className="rounded-full bg-brand-700 px-3 py-1 text-white">Mais recente</span>
             <span className="text-brand-700">{featured.category}</span>
@@ -86,12 +89,15 @@ export function NoticiasExternas({ posts, source }: { posts: ExternalPost[]; sou
           )}
           <p className="mt-4 text-xs text-slate-500">Fonte: {source}</p>
           <SourceLink post={featured} source={source} />
+          </div>
         </article>
       )}
 
       <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
         {visible.map((post) => (
-          <article key={post.url} className="flex flex-col rounded-2xl border border-brand-100 bg-white p-5 transition-all hover:-translate-y-1 hover:shadow-xl hover:shadow-brand-900/10">
+          <article key={post.url} className="flex flex-col overflow-hidden rounded-2xl border border-brand-100 bg-white transition-all hover:-translate-y-1 hover:shadow-xl hover:shadow-brand-900/10">
+            <NewsCover category={post.category} />
+            <div className="flex flex-1 flex-col p-5">
             <span className="w-fit rounded-full bg-brand-100 px-3 py-1 text-[11px] font-semibold text-brand-700">{post.category}</span>
             <h3 className="mt-3 text-[15.5px] font-bold leading-snug text-brand-900">{post.title}</h3>
             <p className="mt-2 text-xs text-slate-500">{formatDate(post.date)} · Fonte: {source}</p>
@@ -99,6 +105,7 @@ export function NoticiasExternas({ posts, source }: { posts: ExternalPost[]; sou
               <p className="mt-2 line-clamp-3 text-[13px] leading-relaxed text-brand-700">{post.extras.join(' · ')}</p>
             )}
             <div className="mt-auto"><SourceLink post={post} source={source} /></div>
+            </div>
           </article>
         ))}
       </div>

@@ -2,6 +2,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { getAllPosts, getExternalNews } from '@/lib/noticias';
 import { MountainDivider } from '@/components/MountainDivider';
+import { NewsCover } from '@/components/NewsCover';
 import { NoticiasExternas } from '@/components/NoticiasExternas';
 
 export const metadata = { title: 'Notícias — Montese SST' };
@@ -48,12 +49,15 @@ export default async function NoticiasPage() {
                 <Link
                   key={post.slug}
                   href={`/noticias/${post.slug}`}
-                  className="rounded-2xl border border-brand-100 bg-white p-5 transition-all hover:-translate-y-1 hover:shadow-xl hover:shadow-brand-900/10"
+                  className="overflow-hidden rounded-2xl border border-brand-100 bg-white transition-all hover:-translate-y-1 hover:shadow-xl hover:shadow-brand-900/10"
                 >
+                  <NewsCover />
+                  <div className="p-5">
                   <span className="rounded-full bg-brand-700 px-3 py-1 text-[11px] font-semibold text-white">Montese SST</span>
                   <h3 className="mt-3 text-[15.5px] font-bold leading-snug text-brand-900">{post.title}</h3>
                   <p className="mt-2 text-xs text-slate-500">{post.date}</p>
                   <p className="mt-2 text-[13px] leading-relaxed text-brand-700">{post.excerpt}</p>
+                  </div>
                 </Link>
               ))}
             </div>
