@@ -83,4 +83,15 @@ describe('recordDetectedVersion', () => {
     expect(r2.putObject).not.toHaveBeenCalled();
     expect(r2.deleteObject).not.toHaveBeenCalled();
   });
+  it('texto antigo colapsado vs. novo com quebras de linha (mesmas palavras): não cria pendente', async () => {
+    const colapsado = 'Art. 1º Fica instituída a norma. Art. 2º Esta norma entra em vigor.';
+    const comQuebras = 'Art. 1º Fica instituída a norma.\nArt. 2º Esta norma entra em vigor.';
+    expect(sha(colapsado)).not.toBe(sha(comQuebras));
+    const { service, client, r2, gravou } = montar(ultimo('vigente', colapsado));
+    const r = await service.recordDetectedVersion(client, 'src-1', comQuebras, Buffer.from('x'), 'text/html', URL);
+    expect(r).toBeNull();
+    expect(gravou('INSERT')).toHaveLength(0);
+    expect(gravou('UPDATE')).toHaveLength(0);
+    expect(r2.putObject).not.toHaveBeenCalled();
+  });
 });

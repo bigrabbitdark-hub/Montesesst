@@ -17,6 +17,11 @@ import { MONITOR_FETCH_HEADERS, decodeHtmlBuffer, meaningfulLength, suspiciousEx
 // CMS; `viewlet-below-content` marca onde o rodapé de navegação recomeça
 // logo depois. Quando a página não usa esse CMS (outra entidade, formato
 // diferente), cai de volta pro HTML inteiro — heurística, não garantia.
+// Elementos de bloco (abertura ou fechamento) viram quebra de linha, para o diff por parágrafos
+// (splitParagraphs) enxergar parágrafos nas fontes HTML. Tags inline (span, a, b, i...) não entram.
+// As fronteiras de tag são as mesmas da regra antiga (uma passada só com `<[^>]+>`); sem flag g, o test() não guarda estado.
+const BLOCK_TAG_RE = /^<\/?(?:br|p|div|li|tr|h[1-6]|table|ul|ol|blockquote|section|article|pre)\b/i;
+
 export function extractHtmlText(html: string): string {
   const startMatch = html.match(/<div[^>]*id=["']content-core["'][^>]*>/i);
   let scoped = html;
@@ -28,9 +33,12 @@ export function extractHtmlText(html: string): string {
   return scoped
     .replace(/<script[\s\S]*?<\/script>/gi, ' ')
     .replace(/<style[\s\S]*?<\/style>/gi, ' ')
-    .replace(/<[^>]+>/g, ' ')
+    .replace(/<[^>]+>/g, (m) => (BLOCK_TAG_RE.test(m) ? '\n' : ' '))
     .replace(/&nbsp;/g, ' ')
-    .replace(/\s+/g, ' ')
+    .split('\n')
+    .map((line) => line.replace(/[^\S\n]+/g, ' ').trim())
+    .filter((line) => line.length > 0)
+    .join('\n')
     .trim();
 }
 
