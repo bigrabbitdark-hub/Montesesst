@@ -123,6 +123,19 @@ Spec: `docs/superpowers/specs/2026-10-08-monitor-normativo-gerir-fontes-design.m
 - **NÃO VERIFICADO:** e2e; as 51 URLs de produção contra a guarda (precisa do export do proprietário); CAEPI/STF; DNS rebinding; comportamento em produção com API real.
 - Nenhum passo 🔒 foi executado.
 
+## 0.7 Revisão do monitor normativo (2026-10-09) — NÃO COMMITADA, sem push, sem deploy
+
+Spec: `docs/superpowers/specs/2026-10-09-monitor-normativo-revisao-design.md` (resultados em §8).
+
+- **Arquivos (backend):** `normative/paragraph-diff.util.ts`, `normative/normative-documents.{service,controller}.ts`, DTOs `reject-batch` e `retire-document` (novos); testes `paragraph-diff` e `normative-documents-review` (novos).
+- **Arquivos (frontend):** `app/admin/normativa/DiffView.tsx` (novo), `page.tsx`, `__tests__/normativa-revisao.test.tsx` (novo) e `convencoes-paginas.test.ts` (só `PAGINAS`).
+- Rotas novas: `GET /normative-documents/:id/diff`, `POST /normative-documents/reject-batch` (até 50, tudo ou nada), `POST /normative-documents/:id/retire`. Sem aprovação em lote. Sem migration, sem env, sem dependência nova.
+- **Backend e frontend precisam sair juntos** (a tela chama as 3 rotas novas). A árvore tem WIP de outras frentes (`backend/src/pente-fino/*`, `docker-compose.yml`, `PenteFinoPanel*`, docs eSocial): commitar só os arquivos listados, nunca `git add -A`.
+- **VERIFICADO:** `tsc` (back e front); unit do backend em worktree do HEAD (mesmas 8 falhas, nenhuma a mais; +2 suítes e +24 testes novos passando); vitest 308/308; eslint 0 erros; `next build`; QA visual em 1440 e 390 com API simulada (diff truncado, lado a lado, lote, limite de 50, retirada, falha do diff); corpos de `reject-batch` e `retire` conferidos; CLT real (3,5 MB, 27.804 parágrafos): diff em 93–123 ms, ~+20 MB de heap.
+- **Achado (RECOMENDADO decidir):** `extractHtmlText` colapsa quebras de linha, então fontes HTML viram 1 parágrafo e o diff mostra o texto inteiro removido/adicionado; para HTML a revisão útil continua sendo o lado a lado.
+- **NÃO VERIFICADO:** e2e; as 3 rotas com banco real/RLS; produção; efeito da retirada no monitor (só leitura de código/teste unitário); PDFs reais grandes.
+- Nenhum passo 🔒 foi executado.
+
 ## 1. O que é
 
 Só frontend. Todas as páginas `/empresa/*` passam a usar a sidebar, o header e o rodapé do dashboard novo

@@ -3,7 +3,7 @@ import { readFileSync } from 'fs';
 import { join } from 'path';
 
 // Páginas já migradas para o DS v2 do admin. Cada lote acrescenta as suas aqui.
-const PAGINAS = ['empresas/page.tsx', 'auditoria/page.tsx', 'financeiro/page.tsx', 'tecnicos/page.tsx', 'parceiros/page.tsx', 'normativa/page.tsx', 'checklist-sst/page.tsx', 'empresas/[id]/page.tsx', 'normativa/FontesPanel.tsx'];
+const PAGINAS = ['empresas/page.tsx', 'auditoria/page.tsx', 'financeiro/page.tsx', 'tecnicos/page.tsx', 'parceiros/page.tsx', 'normativa/page.tsx', 'checklist-sst/page.tsx', 'empresas/[id]/page.tsx', 'normativa/FontesPanel.tsx', 'normativa/DiffView.tsx'];
 
 const BASE = join(process.cwd(), 'src/app/admin');
 

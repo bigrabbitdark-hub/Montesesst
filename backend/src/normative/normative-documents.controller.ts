@@ -1,7 +1,9 @@
-import { Body, Controller, Get, Param, Post, Query, Req, UsePipes, ValidationPipe } from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseUUIDPipe, Post, Query, Req, UsePipes, ValidationPipe } from '@nestjs/common';
 import { Roles } from '../common/decorators/roles.decorator';
 import { NormativeDocumentsService } from './normative-documents.service';
 import { RejectDocumentDto } from './dto/reject-document.dto';
+import { RejectBatchDto } from './dto/reject-batch.dto';
+import { RetireDocumentDto } from './dto/retire-document.dto';
 
 @Controller('normative-documents')
 export class NormativeDocumentsController {
@@ -11,6 +13,26 @@ export class NormativeDocumentsController {
   @Get()
   findAll(@Query('status') status: string | undefined, @Req() req: any) {
     return req.withTenantContext((client: any) => this.documents.findByStatus(client, status));
+  }
+
+  @Roles('admin')
+  @Get(':id/diff')
+  diff(@Param('id', ParseUUIDPipe) id: string, @Req() req: any) {
+    return req.withTenantContext((client: any) => this.documents.diffForDocument(client, id));
+  }
+
+  @Roles('admin')
+  @UsePipes(new ValidationPipe({ transform: true, whitelist: true, forbidNonWhitelisted: true }))
+  @Post('reject-batch')
+  rejectBatch(@Body() dto: RejectBatchDto, @Req() req: any) {
+    return req.withTenantContext((client: any) => this.documents.rejectBatch(client, dto.ids, req.user.id, dto.reason));
+  }
+
+  @Roles('admin')
+  @UsePipes(new ValidationPipe({ transform: true, whitelist: true, forbidNonWhitelisted: true }))
+  @Post(':id/retire')
+  retire(@Param('id', ParseUUIDPipe) id: string, @Body() dto: RetireDocumentDto, @Req() req: any) {
+    return req.withTenantContext((client: any) => this.documents.retire(client, id, req.user.id, dto.reason));
   }
 
   @Roles('admin')

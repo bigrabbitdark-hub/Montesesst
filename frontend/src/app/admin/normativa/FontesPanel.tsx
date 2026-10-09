@@ -3,7 +3,7 @@
 import { FormEvent, useRef, useState } from 'react';
 import { Badge, Card } from '@/components/admin/Card';
 import type { Tone } from '@/components/admin/Card';
-import { authHeaders } from './api';
+import { authHeaders, mensagemDaApi } from './api';
 
 export interface OfficialSource {
   id: string;
@@ -62,12 +62,6 @@ function hostDe(url: string): string {
   } catch {
     return url;
   }
-}
-
-function mensagemDaApi(body: { message?: unknown } | null, padrao: string): string {
-  const m = body?.message;
-  if (Array.isArray(m)) return m.join('; ');
-  return typeof m === 'string' && m ? m : padrao;
 }
 
 const ERRO_MAX = 120;

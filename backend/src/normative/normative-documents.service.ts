@@ -6,6 +6,7 @@ import { EMBEDDING_PROVIDER, EmbeddingProvider } from '../common/embedding/embed
 import { splitIntoChunks } from '../common/chunking/chunking.util';
 import { toVectorLiteral } from '../common/vector/vector.util';
 import { normalizeForComparison } from './normative-text.util';
+import { diffParagraphs, ParagraphDiff } from './paragraph-diff.util';
 
 export type NormativeDocumentStatus = 'aguardando_validacao' | 'vigente' | 'rejeitado' | 'substituido';
 
@@ -218,6 +219,62 @@ export class NormativeDocumentsService {
        WHERE id = $1`,
       [documentId, reviewerUserId, reason],
     );
+    return this.findOne(client, documentId);
+  }
+
+  // Diff entre a versão vigente da mesma fonte e este documento (revisão de pendente).
+  async diffForDocument(client: PoolClient, id: string): Promise<{ has_previous: boolean } & ParagraphDiff> {
+    const document = await this.findOne(client, id);
+    const previous = await client.query<{ raw_text: string }>(
+      `SELECT raw_text FROM normative_documents WHERE source_id = $1 AND status = 'vigente' AND id != $2`,
+      [document.source_id, id],
+    );
+    const anterior = previous.rows[0];
+    if (!anterior) {
+      return { has_previous: false, summary: { added: 0, removed: 0, unchanged: 0 }, truncated: false, hunks: [] };
+    }
+    return { has_previous: true, ...diffParagraphs(anterior.raw_text, document.raw_text) };
+  }
+
+  // Rejeita vários pendentes de uma vez, tudo ou nada (a chamada roda dentro de req.withTenantContext).
+  async rejectBatch(client: PoolClient, ids: string[], reviewerUserId: string, reason: string): Promise<{ rejected: number; ids: string[] }> {
+    const found = await client.query<{ id: string; status: NormativeDocumentStatus }>(
+      'SELECT id, status FROM normative_documents WHERE id = ANY($1::uuid[]) FOR UPDATE',
+      [ids],
+    );
+    const pendentes = new Set(found.rows.filter((r) => r.status === 'aguardando_validacao').map((r) => r.id));
+    const invalidos = ids.filter((id) => !pendentes.has(id));
+    if (invalidos.length > 0) {
+      throw new BadRequestException(
+        `Nenhum documento foi rejeitado: ${invalidos.length} não existe(m) ou não está(ão) aguardando validação (${invalidos.slice(0, 3).map((i) => i.slice(0, 8)).join(', ')})`,
+      );
+    }
+    await client.query(
+      `UPDATE normative_documents
+       SET status = 'rejeitado', reviewed_by_user_id = $2, reviewed_at = now(), rejection_reason = $3
+       WHERE id = ANY($1::uuid[])`,
+      [ids, reviewerUserId, reason],
+    );
+    return { rejected: ids.length, ids };
+  }
+
+  // Tira um documento vigente do Assistente sem apagar o texto nem o arquivo: vira `rejeitado` com o
+  // prefixo "Retirada:" (o CHECK de status não tem valor próprio e não criamos migration para isso).
+  async retire(client: PoolClient, documentId: string, reviewerUserId: string, reason: string): Promise<NormativeDocument> {
+    const doc = await this.findOne(client, documentId);
+    if (doc.status !== 'vigente') {
+      throw new BadRequestException('Só documentos vigentes podem ser retirados');
+    }
+    const updated = await client.query(
+      `UPDATE normative_documents
+       SET status = 'rejeitado', reviewed_by_user_id = $2, reviewed_at = now(), rejection_reason = $3, indexed_at = NULL
+       WHERE id = $1 AND status = 'vigente'`,
+      [documentId, reviewerUserId, `Retirada: ${reason}`],
+    );
+    if (updated.rowCount === 0) {
+      throw new ConflictException('O documento deixou de estar vigente; recarregue a lista');
+    }
+    await client.query('DELETE FROM normative_document_chunks WHERE document_id = $1', [documentId]);
     return this.findOne(client, documentId);
   }
 
