@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import type { ExternalPost } from '@/lib/sstnews-feed';
+import { assignNewsPhotos } from '@/lib/news-photos';
 import { NewsCover } from './NewsCover';
 
 const PAGE_SIZE = 12;
@@ -30,6 +31,9 @@ function SourceLink({ post, source }: { post: ExternalPost; source: string }) {
 export function NoticiasExternas({ posts, source }: { posts: ExternalPost[]; source: string }) {
   const [category, setCategory] = useState(TODAS);
   const [page, setPage] = useState(1);
+
+  // Atribuição sobre a lista completa: filtrar por categoria não muda a foto de cada edição.
+  const photos = useMemo(() => assignNewsPhotos(posts), [posts]);
 
   const categories = useMemo(() => {
     const counts = new Map<string, number>();
@@ -74,7 +78,7 @@ export function NoticiasExternas({ posts, source }: { posts: ExternalPost[]; sou
 
       {featured && page === 1 && (
         <article className="mt-6 overflow-hidden rounded-2xl border border-brand-100 bg-gradient-to-br from-brand-50 to-white sm:grid sm:grid-cols-[260px_1fr]">
-          <NewsCover category={featured.category} className="h-36 sm:h-full" />
+          <NewsCover category={featured.category} seed={featured.url} photo={photos.get(featured.url) ?? null} className="h-48 sm:h-full sm:min-h-[260px]" sizes="(min-width: 640px) 260px, 100vw" priority />
           <div className="p-6 sm:p-8">
           <div className="flex flex-wrap items-center gap-2 text-xs font-semibold">
             <span className="rounded-full bg-brand-700 px-3 py-1 text-white">Mais recente</span>
@@ -96,7 +100,7 @@ export function NoticiasExternas({ posts, source }: { posts: ExternalPost[]; sou
       <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
         {visible.map((post) => (
           <article key={post.url} className="flex flex-col overflow-hidden rounded-2xl border border-brand-100 bg-white transition-all hover:-translate-y-1 hover:shadow-xl hover:shadow-brand-900/10">
-            <NewsCover category={post.category} />
+            <NewsCover category={post.category} seed={post.url} photo={photos.get(post.url) ?? null} />
             <div className="flex flex-1 flex-col p-5">
             <span className="w-fit rounded-full bg-brand-100 px-3 py-1 text-[11px] font-semibold text-brand-700">{post.category}</span>
             <h3 className="mt-3 text-[15.5px] font-bold leading-snug text-brand-900">{post.title}</h3>

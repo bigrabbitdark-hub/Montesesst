@@ -1,3 +1,5 @@
+import Image from 'next/image';
+import { pickNewsPhoto } from '@/lib/news-photos';
 import { Brain, ClipboardList, FileCheck, Gavel, Landmark, Newspaper, Scale, Stethoscope, TriangleAlert, Users, type LucideIcon } from 'lucide-react';
 
 interface CoverStyle {
@@ -24,8 +26,26 @@ const COVERS: Record<string, CoverStyle> = {
 
 const FALLBACK: CoverStyle = { icon: Newspaper, background: MID, iconColor: 'text-white' };
 
+interface NewsCoverProps {
+  category?: string;
+  seed?: string;
+  photo?: string | null;
+  className?: string;
+  sizes?: string;
+  priority?: boolean;
+}
+
 // Capa decorativa (aria-hidden): o título e a categoria já estão no texto do card.
-export function NewsCover({ category, className = 'h-32' }: { category?: string; className?: string }) {
+// Usa foto real quando a categoria tem; senão cai na ilustração.
+export function NewsCover({ category, seed = '', photo: assignedPhoto, className = 'h-44', sizes = '(min-width: 1024px) 360px, (min-width: 640px) 50vw, 100vw', priority = false }: NewsCoverProps) {
+  const photo = assignedPhoto !== undefined ? assignedPhoto : pickNewsPhoto(category, seed || category || '');
+  if (photo) {
+    return (
+      <div aria-hidden="true" className={`relative overflow-hidden bg-brand-100 ${className}`}>
+        <Image src={photo} alt="" fill sizes={sizes} priority={priority} className="object-cover" />
+      </div>
+    );
+  }
   const { icon: Icon, background, iconColor } = (category && COVERS[category]) || FALLBACK;
   return (
     <div aria-hidden="true" className={`relative flex items-center justify-center overflow-hidden ${background} ${className}`}>

@@ -4,12 +4,18 @@ import { NewsCover } from '../NewsCover';
 
 describe('NewsCover', () => {
   it('é decorativa para leitores de tela', () => {
-    const { container } = render(<NewsCover category="eSocial SST" />);
+    const { container } = render(<NewsCover category="eSocial SST" seed="a" />);
     expect(container.firstElementChild?.getAttribute('aria-hidden')).toBe('true');
   });
 
-  it('renderiza ícone para categoria conhecida e para desconhecida', () => {
-    expect(render(<NewsCover category="Gestão para RH" />).container.querySelector('svg.lucide')).not.toBeNull();
-    expect(render(<NewsCover category="Categoria nova" />).container.querySelector('svg.lucide')).not.toBeNull();
+  it('usa foto real quando a categoria tem foto', () => {
+    const { container } = render(<NewsCover category="Medicina Ocupacional" seed="a" />);
+    expect(container.querySelector('img')?.getAttribute('src')).toMatch(/medicina-\d\.jpg/);
+  });
+
+  it('cai na ilustração com ícone para categoria sem foto', () => {
+    const { container } = render(<NewsCover category="Categoria nova" />);
+    expect(container.querySelector('img')).toBeNull();
+    expect(container.querySelector('svg.lucide')).not.toBeNull();
   });
 });

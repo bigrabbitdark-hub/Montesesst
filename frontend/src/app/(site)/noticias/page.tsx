@@ -17,7 +17,7 @@ export default async function NoticiasPage() {
     <div>
       <section className="bg-gradient-to-b from-brand-50 to-white px-4 pb-6 pt-16 sm:px-10 sm:pt-20">
         <div className="mx-auto max-w-2xl text-center">
-          <Image src="/brand/logo-icon-mark.png" alt="Montese SST" width={64} height={64} className="mx-auto h-14 w-auto" />
+          <Image src="/brand/logo-horizontal-transparente.png" alt="Montese SST" width={1489} height={306} priority className="mx-auto h-16 w-auto sm:h-20" />
           <h1 className="mt-4 text-[36px] font-extrabold text-brand-900 sm:text-[40px]">Notícias</h1>
           <p className="mt-3.5 text-[16.5px] leading-relaxed text-brand-700">
             O que importa em Segurança e Saúde do Trabalho, organizado por tema.
@@ -31,6 +31,7 @@ export default async function NoticiasPage() {
               . O crédito e o texto completo são da fonte original. Confira sempre a norma oficial.
             </p>
           )}
+          <p className="mt-2 text-xs text-slate-500">Fotos: Unsplash (licença gratuita).</p>
         </div>
 
         <div className="mt-10">
@@ -51,7 +52,7 @@ export default async function NoticiasPage() {
                   href={`/noticias/${post.slug}`}
                   className="overflow-hidden rounded-2xl border border-brand-100 bg-white transition-all hover:-translate-y-1 hover:shadow-xl hover:shadow-brand-900/10"
                 >
-                  <NewsCover />
+                  <NewsCover category="Montese SST" />
                   <div className="p-5">
                   <span className="rounded-full bg-brand-700 px-3 py-1 text-[11px] font-semibold text-white">Montese SST</span>
                   <h3 className="mt-3 text-[15.5px] font-bold leading-snug text-brand-900">{post.title}</h3>
