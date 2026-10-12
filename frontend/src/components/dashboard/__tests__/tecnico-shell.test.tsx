@@ -37,8 +37,21 @@ describe('DashboardSidebar parametrizada', () => {
   it('sem props continua sendo o menu da empresa (default)', () => {
     pathname = '/empresa/documentos';
     render(<DashboardSidebar />);
-    expect(screen.getByText('Mais ferramentas')).toBeInTheDocument();
+    expect(screen.queryByText('Mais ferramentas')).toBeNull();
+    const titulos = screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent);
+    expect(titulos).toEqual(['Empresa', 'CIPA', 'Brigada e Incêndio', 'Segurança', 'Agenda', 'Gestão']);
     expect(screen.getByRole('link', { name: /Documentos/ })).toHaveAttribute('href', '/empresa/documentos');
+  });
+  it('o menu do técnico não tem headings de setor nem listas aninhadas', () => {
+    render(<DashboardSidebar items={TECNICO_MENU_ITEMS} extraItems={[]} />);
+    expect(screen.queryAllByRole('heading')).toHaveLength(0);
+    expect(screen.getAllByRole('list')).toHaveLength(1);
+  });
+  it('o menu do técnico via TecnicoShell também não tem headings de setor', () => {
+    user = { id: 'u1', role: 'tecnico', tenantId: null };
+    render(<TecnicoShell><p>conteúdo</p></TecnicoShell>);
+    const nav = screen.getByRole('navigation', { name: 'Menu principal' });
+    expect(within(nav).queryAllByRole('heading')).toHaveLength(0);
   });
 });
 

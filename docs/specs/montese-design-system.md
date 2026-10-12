@@ -65,10 +65,33 @@ Múltiplos de 8: 4, 8, 16, 24, 32, 48, 64 px.
 
 ## 6. Layout principal
 
-- **Sidebar** 280px, fundo `#0F172A`. Itens: Logo, Dashboard, Empresas,
-  Funcionários, Documentos, Auditoria IA, eSocial, Relatórios, Financeiro,
-  Universidade, Configurações.
+- **Sidebar** 280px, fundo `#0F172A`. No menu da Empresa, o conteúdo é
+  organizado em **7 grupos** (setores sempre abertos, sem acordeão), nesta
+  ordem exata — fonte única em `frontend/src/lib/dashboard/menu.ts`
+  (`MENU_SETORES`):
+  - *Topo sem título*: Dashboard, Assistente Montese.
+  - **Empresa**: Empresas, Funcionários, Documentos, Relatório de visita
+    técnica.
+  - **CIPA**: CIPA, Eleição da CIPA, Capacitação da CIPA.
+  - **Brigada e Incêndio**: Brigada de Incêndio, Equip. contra incêndio,
+    Checklist prevenção, Simulados.
+  - **Segurança**: Mapa SST, EPIs, Consulta de CA.
+  - **Agenda**: Reuniões e Visitas.
+  - **Gestão**: Auditoria Montese, Auditoria IA, eSocial, Relatórios,
+    Financeiro, Universidade, Configurações.
+  Total: 24 itens. Nenhuma rota foi alterada neste reposicionamento; o rótulo
+  "Mais ferramentas" e o array `EXTRA_MENU_ITEMS` saíram do menu da Empresa
+  (a prop `extraItems` continua existindo no `DashboardSidebar`, mas só é
+  usada pelo menu do técnico). Itens "em construção" seguem idênticos.
 - **Topbar** 72px: pesquisa global, notificações, IA SST, perfil.
+
+  > **Acessibilidade (atualizado em 2026-10-12):** cada título de setor é
+  > renderizado como `<h2>` e a `<ul>` de itens é ligada a ele por
+  > `aria-labelledby` (id estável via `React.useId` para evitar warning de
+  > hidratação). O agrupamento por setores é decisão do proprietário de
+  > 2026-10-12 e vale só para o menu da Empresa — o menu do técnico
+  > (`items`/`extraItems` explícitos em `DashboardSidebar`) não foi
+  > alterado nesta fatia.
 
 ## 7. Componentes
 

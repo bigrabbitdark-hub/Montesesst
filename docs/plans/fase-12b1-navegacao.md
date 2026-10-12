@@ -421,3 +421,47 @@ git commit -m "feat: primeira sidebar do técnico + logout"
 2. Fazer uma passada visual final nas 3 áreas autenticadas (empresa/admin/técnico) no navegador, confirmando que nada quebrou nas páginas existentes por causa da mudança de sidebar.
 3. Seguir com `superpowers:finishing-a-development-branch` — mesmo fluxo das fases anteriores (branch é `main` direto, sem remote configurado — o "finish" aqui é só confirmar e reportar, sem menu de merge/PR).
 4. Próximo passo da frente maior: `docs/plans/fase-12b2-central-cipa-telas.md` (calendário/wizard, reuniões/ata, membros, pendências, dashboard da CIPA) — essa sim adiciona o grupo "CIPA" nesta sidebar, quando as páginas existirem.
+
+---
+
+## Atualização 2026-10-12 — agrupamento por setores (fatia 4)
+
+> **Nota:** este plano foi escrito quando o menu da Empresa tinha só 3
+> agrupamentos (Visão Geral / Segurança / Conta) e a fase de CIPA ainda não
+> existia. Em 2026-10-12 o proprietário aprovou um novo agrupamento para o
+> menu da Empresa, refletido no código em `frontend/src/lib/dashboard/menu.ts`
+> (`MENU_SETORES`) e em `frontend/src/components/dashboard/DashboardSidebar.tsx`.
+> Esta nota registra o estado atual; o corpo do plano acima é histórico e
+> fica como está.
+
+**Estado atual (2026-10-12) — menu da Empresa, 7 grupos / 24 itens, ordem fixa:**
+
+1. *Topo sem título* — Dashboard, Assistente Montese.
+2. **Empresa** — Empresas, Funcionários, Documentos, Relatório de visita técnica.
+3. **CIPA** — CIPA, Eleição da CIPA, Capacitação da CIPA.
+4. **Brigada e Incêndio** — Brigada de Incêndio, Equip. contra incêndio,
+   Checklist prevenção, Simulados.
+5. **Segurança** — Mapa SST, EPIs, Consulta de CA.
+6. **Agenda** — Reuniões e Visitas.
+7. **Gestão** — Auditoria Montese, Auditoria IA, eSocial, Relatórios,
+   Financeiro, Universidade, Configurações.
+
+**Regras que valem agora:**
+
+- Fonte única da lista: `MENU_SETORES` em `frontend/src/lib/dashboard/menu.ts`.
+  `MENU_ITEMS` é a lista plana derivada (não duplicar).
+- `EXTRA_MENU_ITEMS` e o rótulo "Mais ferramentas" **não fazem mais parte do
+  menu da Empresa**. A prop `extraItems` em `DashboardSidebar` continua
+  existindo (é o caminho usado pelo menu do técnico, que não mudou).
+- Nenhuma rota foi alterada neste reposicionamento — só a ordem visual e o
+  agrupamento. Itens "em construção" seguem idênticos.
+- Setores são sempre abertos (sem acordeão).
+- Acessibilidade: cada título de setor vira `<h2>` e a `<ul>` de itens é
+  ligada por `aria-labelledby` (id estável via `React.useId`, evitando
+  warning de hidratação).
+- O menu do técnico (props `items`/`extraItems` explícitas no `DashboardSidebar`)
+  não foi alterado por esta fatia.
+
+**Escopo desta nota:** apenas registro documental. O código e os testes
+correspondentes já estão na árvore (worktree `/opt/montese-work/002`); nada
+disto foi commitado nem publicado em produção.

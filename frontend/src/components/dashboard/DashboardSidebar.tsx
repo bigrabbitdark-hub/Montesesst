@@ -1,11 +1,11 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { Fragment, useEffect, useId, useRef } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { X, LogOut } from 'lucide-react';
-import { MENU_ITEMS, EXTRA_MENU_ITEMS, itemAtivo, type MenuItem } from '@/lib/dashboard/menu';
+import { MENU_SETORES, itemAtivo, type MenuItem, type MenuSetor } from '@/lib/dashboard/menu';
 import { logout } from '@/lib/auth';
 import { ASSET_PATHS } from '@/lib/dashboard/assets';
 
@@ -34,21 +34,58 @@ function NavItem({ item, ativo }: { item: MenuItem; ativo: string | null }) {
   );
 }
 
+function SetorComTitulo({ titulo, itens, ativo }: { titulo: string; itens: MenuItem[]; ativo: string | null }) {
+  // useId dá um id estável entre servidor e cliente (evita warning de hidratação).
+  const headingId = useId();
+  return (
+    <li>
+      <h2
+        id={headingId}
+        className="mt-3 px-3.5 pb-0.5 text-[11px] font-semibold uppercase tracking-wide text-slate-500"
+      >
+        {titulo}
+      </h2>
+      <ul aria-labelledby={headingId} className="flex flex-col gap-1">
+        {itens.map((item) => (
+          <NavItem key={item.label} item={item} ativo={ativo} />
+        ))}
+      </ul>
+    </li>
+  );
+}
+
 export function DashboardSidebar({
   open = false,
   onClose,
-  items = MENU_ITEMS,
-  extraItems = EXTRA_MENU_ITEMS,
+  items,
+  extraItems,
   extraLabel = 'Mais ferramentas',
+  setores,
 }: {
   open?: boolean;
   onClose?: () => void;
   items?: MenuItem[];
   extraItems?: MenuItem[];
   extraLabel?: string;
+  setores?: MenuSetor[];
 }) {
   const pathname = usePathname() ?? '';
-  const ativo = itemAtivo(pathname, [...items, ...extraItems]);
+  // Hierarquia de render:
+  // (1) `setores` explícito -> render por setores com a lista passada.
+  // (2) `items`/`extraItems` explícito (caso do técnico) -> render antigo EXATO: mesmo
+  //     `<li aria-hidden>` do rótulo "Mais ferramentas", mesmo DOM, para não regredir testes
+  //     nem mudar o que dependentes externos enxergam.
+  // (3) Sem nenhuma das anteriores -> render padrão da empresa via MENU_SETORES.
+  const renderAntigo = setores === undefined && (items !== undefined || extraItems !== undefined);
+  const setoresParaRender: MenuSetor[] = setores ?? MENU_SETORES;
+  // Item ativo calculado sobre a lista plana de todos os itens renderizados.
+  const itensAtivos: MenuItem[] = setores !== undefined
+    ? setores.flatMap((s) => s.itens)
+    : renderAntigo
+      ? [...(items ?? []), ...(extraItems ?? [])]
+      : setoresParaRender.flatMap((s) => s.itens);
+  const ativo = itemAtivo(pathname, itensAtivos);
+
   return (
     <>
       {open && <div className="fixed inset-0 z-30 bg-slate-900/50 lg:hidden" onClick={onClose} aria-hidden />}
@@ -67,24 +104,40 @@ export function DashboardSidebar({
         >
           <X size={20} aria-hidden />
         </button>
-      <div className="mb-4 flex h-[72px] items-center justify-center rounded-xl bg-white">
-        <Image src={ASSET_PATHS.logo} alt="Montese SST" width={1224} height={270} priority className="h-auto w-[200px]" />
-      </div>
-      <ul className="flex flex-1 flex-col gap-1 overflow-y-auto">
-        {items.map((item) => (
-          <NavItem key={item.label} item={item} ativo={ativo} />
-        ))}
-        {extraItems.length > 0 && (
-          <>
-            <li aria-hidden className="mt-3 px-3.5 pb-0.5 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-              {extraLabel}
-            </li>
-            {extraItems.map((item) => (
-              <NavItem key={item.label} item={item} ativo={ativo} />
-            ))}
-          </>
-        )}
-      </ul>
+        <div className="mb-4 flex h-[72px] items-center justify-center rounded-xl bg-white">
+          <Image src={ASSET_PATHS.logo} alt="Montese SST" width={1224} height={270} priority className="h-auto w-[200px]" />
+        </div>
+        <ul className="flex flex-1 flex-col gap-1 overflow-y-auto">
+          {renderAntigo ? (
+            <>
+              {(items ?? []).map((item) => (
+                <NavItem key={item.label} item={item} ativo={ativo} />
+              ))}
+              {extraItems && extraItems.length > 0 && (
+                <>
+                  <li aria-hidden className="mt-3 px-3.5 pb-0.5 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                    {extraLabel}
+                  </li>
+                  {extraItems.map((item) => (
+                    <NavItem key={item.label} item={item} ativo={ativo} />
+                  ))}
+                </>
+              )}
+            </>
+          ) : (
+            setoresParaRender.map((setor, idx) =>
+              setor.titulo === null ? (
+                <Fragment key={`setor-topo-${idx}`}>
+                  {setor.itens.map((item) => (
+                    <NavItem key={item.label} item={item} ativo={ativo} />
+                  ))}
+                </Fragment>
+              ) : (
+                <SetorComTitulo key={setor.titulo} titulo={setor.titulo} itens={setor.itens} ativo={ativo} />
+              ),
+            )
+          )}
+        </ul>
         <button
           type="button"
           onClick={logout}
