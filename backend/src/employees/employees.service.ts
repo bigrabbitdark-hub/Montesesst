@@ -71,6 +71,40 @@ interface UpdateEmployeeData {
   activity_description?: string;
 }
 
+export interface EmployeeTableRow {
+  id: string;
+  sequence: number;
+  row_version: string;
+  full_name: string;
+  esocial_registration: string | null;
+  cpf: string;
+  birth_date: string | null;
+  sex: 'F' | 'M' | null;
+  position: string | null;
+  admission_date: string | null;
+  cbo_code: string | null;
+  activity_description: string | null;
+  company_unit_id: string | null;
+  status: string;
+}
+
+// Datas saem como texto (nunca Date do JS) e row_version com precisão de
+// microssegundos, para o controle de concorrência otimista da tabela.
+const ROW_VERSION_SQL = `to_char(updated_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"')`;
+const TABLE_COLUMNS = `id, full_name, esocial_registration, cpf,
+  to_char(birth_date,'YYYY-MM-DD') AS birth_date, sex, position,
+  to_char(admission_date,'YYYY-MM-DD') AS admission_date, cbo_code, activity_description,
+  company_unit_id, status, ${ROW_VERSION_SQL} AS row_version`;
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const BULK_MAX_CHANGES = 200;
+
+export interface BulkChangeInput {
+  id: string;
+  row_version: string;
+  fields: Record<string, unknown>;
+}
+
 export interface ImportRowError {
   linha: number;
   motivo: string;
@@ -172,6 +206,113 @@ export class EmployeesService {
     // Sem filtro: RLS já restringe pelo contexto (app.tenant_id / app.role).
     const result = await client.query<Employee>('SELECT * FROM employees ORDER BY full_name');
     return result.rows;
+  }
+
+  async findTable(
+    client: PoolClient,
+    opts: { tenantId?: string; companyUnitId?: string; limit?: number; offset?: number },
+  ): Promise<{ items: EmployeeTableRow[]; total: number }> {
+    const limit = opts.limit ?? 50;
+    const offset = opts.offset ?? 0;
+    if (!Number.isInteger(limit) || limit < 1 || limit > BULK_MAX_CHANGES) {
+      throw new BadRequestException(`limit deve estar entre 1 e ${BULK_MAX_CHANGES}`);
+    }
+    if (!Number.isInteger(offset) || offset < 0) throw new BadRequestException('offset deve ser maior ou igual a 0');
+    for (const [label, v] of [['tenant_id', opts.tenantId], ['company_unit_id', opts.companyUnitId]] as const) {
+      if (v !== undefined && !UUID_RE.test(v)) throw new BadRequestException(`${label} inválido`);
+    }
+
+    // RLS segue sendo a barreira; os filtros abaixo só estreitam o resultado.
+    const where: string[] = [];
+    const params: unknown[] = [];
+    if (opts.tenantId) {
+      params.push(opts.tenantId);
+      where.push(`tenant_id = $${params.length}`);
+    }
+    if (opts.companyUnitId) {
+      params.push(opts.companyUnitId);
+      where.push(`company_unit_id = $${params.length}`);
+    }
+    const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
+
+    const totalResult = await client.query<{ count: string }>(`SELECT COUNT(*) FROM employees ${whereSql}`, params);
+    const rows = await client.query<EmployeeTableRow>(
+      // A janela é avaliada antes de OFFSET/LIMIT, então ROW_NUMBER já é offset + posição.
+      `SELECT (ROW_NUMBER() OVER (ORDER BY full_name, id))::int AS sequence,
+              ${TABLE_COLUMNS}
+         FROM employees ${whereSql}
+        ORDER BY full_name, id
+        LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
+      [...params, limit, offset],
+    );
+    return { items: rows.rows, total: parseInt(totalResult.rows[0].count, 10) };
+  }
+
+  // Edição em lote atômica (a transação é a do withTenantContext: qualquer
+  // exceção desfaz tudo). Concorrência otimista por row_version.
+  async bulkUpdate(
+    client: PoolClient,
+    changes: BulkChangeInput[],
+    callerRole: string,
+  ): Promise<{ updated: number; items: EmployeeTableRow[] }> {
+    if (!Array.isArray(changes) || changes.length < 1 || changes.length > BULK_MAX_CHANGES) {
+      throw new BadRequestException(`Envie de 1 a ${BULK_MAX_CHANGES} alterações por vez`);
+    }
+
+    const errors: Record<string, string> = {};
+    const normalized: { id: string; row_version: string; values: Record<string, unknown> }[] = [];
+    const seen = new Set<string>();
+    for (const change of changes) {
+      const id = typeof change?.id === 'string' ? change.id : '';
+      if (!UUID_RE.test(id)) {
+        errors['id'] = 'Identificador de funcionário inválido';
+        continue;
+      }
+      if (seen.has(id)) {
+        errors[`${id}.id`] = 'Funcionário repetido no lote';
+        continue;
+      }
+      seen.add(id);
+      if (typeof change.row_version !== 'string' || !change.row_version) {
+        errors[`${id}.row_version`] = 'Versão da linha é obrigatória';
+        continue;
+      }
+      const fields = change.fields;
+      if (fields === null || typeof fields !== 'object' || Array.isArray(fields)) {
+        errors[`${id}.fields`] = 'Campos inválidos';
+        continue;
+      }
+      const result = normalizeEmployeeInput(fields);
+      for (const [field, message] of Object.entries(result.errors)) errors[`${id}.${field}`] = message;
+      normalized.push({ id, row_version: change.row_version, values: result.values });
+    }
+    if (Object.keys(errors).length) throw new BadRequestException({ message: 'Há campos inválidos', errors });
+
+    const ids = normalized.map((c) => c.id).sort();
+    // Ordem fixa de bloqueio evita deadlock entre lotes concorrentes. Id
+    // inexistente e id de outro tenant (RLS) são indistinguíveis de propósito.
+    const current = await client.query<{ id: string; row_version: string }>(
+      `SELECT id, ${ROW_VERSION_SQL} AS row_version FROM employees WHERE id = ANY($1::uuid[]) ORDER BY id FOR UPDATE`,
+      [ids],
+    );
+    if (current.rowCount !== ids.length) throw new NotFoundException('Funcionário não encontrado');
+    const versions = new Map(current.rows.map((r) => [r.id, r.row_version]));
+    for (const change of normalized) {
+      if (versions.get(change.id) !== change.row_version) {
+        throw new ConflictException('Esta linha foi alterada por outra pessoa. Atualize a tabela e refaça a edição.');
+      }
+    }
+
+    for (const change of normalized) {
+      if (Object.keys(change.values).length === 0) continue;
+      await this.update(client, change.id, change.values as UpdateEmployeeData, callerRole);
+    }
+
+    const items = await client.query<EmployeeTableRow>(
+      `SELECT ${TABLE_COLUMNS} FROM employees WHERE id = ANY($1::uuid[]) ORDER BY full_name, id`,
+      [ids],
+    );
+    return { updated: normalized.length, items: items.rows };
   }
 
   async findOne(client: PoolClient, id: string): Promise<Employee> {

@@ -18,6 +18,7 @@ import { Roles } from '../common/decorators/roles.decorator';
 import { EmployeesService } from './employees.service';
 import { CreateEmployeeDto } from './dto/create-employee.dto';
 import { UpdateEmployeeDto } from './dto/update-employee.dto';
+import { BulkUpdateEmployeesDto } from './dto/bulk-update-employees.dto';
 
 @Controller('employees')
 export class EmployeesController {
@@ -114,6 +115,40 @@ export class EmployeesController {
       throw new BadRequestException('tenant_id é obrigatório');
     }
     return req.withTenantContext((client: any) => this.employees.findAll(client, tenantId));
+  }
+
+  // Rotas estáticas ('table', 'bulk') DEVEM vir antes de ':id', senão viram parâmetro.
+  @Get('table')
+  findTable(
+    @Query() q: { tenant_id?: string; company_unit_id?: string; limit?: string; offset?: string },
+    @Req() req: any,
+  ) {
+    if ((req.user.role === 'tecnico' || req.user.role === 'parceiro') && !q.tenant_id) {
+      throw new BadRequestException('tenant_id é obrigatório');
+    }
+    const toInt = (v: string | undefined, label: string): number | undefined => {
+      if (v === undefined || v === '') return undefined;
+      if (!/^\d+$/.test(v)) throw new BadRequestException(`${label} inválido`);
+      return Number(v);
+    };
+    const limit = toInt(q.limit, 'limit');
+    const offset = toInt(q.offset, 'offset');
+    return req.withTenantContext((client: any) =>
+      this.employees.findTable(client, {
+        tenantId: q.tenant_id || undefined,
+        companyUnitId: q.company_unit_id || undefined,
+        limit,
+        offset,
+      }),
+    );
+  }
+
+  @Roles('empresa', 'admin')
+  @Patch('bulk')
+  bulkUpdate(@Body() dto: BulkUpdateEmployeesDto, @Req() req: any) {
+    return req.withTenantContext((client: any) =>
+      this.employees.bulkUpdate(client, dto.changes ?? [], req.user.role),
+    );
   }
 
   @Get(':id')
