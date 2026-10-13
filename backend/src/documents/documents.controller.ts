@@ -6,7 +6,10 @@ import {
   Get,
   Inject,
   Logger,
+  NotFoundException,
   Param,
+  ParseUUIDPipe,
+  Patch,
   Post,
   Query,
   Req,
@@ -22,8 +25,11 @@ import { RateLimit } from '../common/rate-limit/rate-limit.decorator';
 import { envInt } from '../common/env';
 import { extractPdfText } from '../common/pdf/pdf-text.util';
 import { verifyFileContent } from '../common/files/file-content.util';
+import { isDateOnly } from '../common/dates/date-only';
 import { DocumentsService } from './documents.service';
 import { CreateDocumentDto } from './dto/create-document.dto';
+import { UpdateDocumentValidityDto } from './dto/update-document-validity.dto';
+import { UpdateValidityRuleDto } from './dto/update-validity-rule.dto';
 import { DOCUMENT_CLASSIFIER_PROVIDER, DocumentClassifierProvider } from './document-classifier-provider.interface';
 import { CompanyDocumentIndexerService } from './company-document-indexer.service';
 
@@ -42,6 +48,15 @@ export interface ClassifyBatchItem {
   suggested_expires_at: string | null;
   needs_review: boolean;
 }
+
+// Categorias espelhadas do CHECK da tabela document_validity_rules
+// (migration 0078). O controller usa isso pra devolver 404 sem precisar
+// ir ao banco quando a categoria é inválida.
+const VALIDITY_RULE_CATEGORIES = new Set([
+  'pgr', 'pcmso', 'laudo', 'ficha_epi', 'treinamento',
+  'cipa_ata', 'cipa_comunicado', 'cipa_documento_eleitoral', 'cipa_anexo',
+  'ltcat', 'lip', 'relatorio_visita',
+]);
 
 @Controller('documents')
 export class DocumentsController {
@@ -63,12 +78,22 @@ export class DocumentsController {
     const tenantId = user.role === 'tecnico' || user.role === 'parceiro' ? dto.tenant_id : user.tenantId;
     if (!tenantId) throw new BadRequestException('tenant_id é obrigatório');
 
+    // O ValidationPipe já validou o tipo; aqui garantimos o FORMATO
+    // 'AAAA-MM-DD' (rejeita ISO com hora, /, etc) antes de chegar no service.
+    if (dto.valid_from != null && !isDateOnly(dto.valid_from)) {
+      throw new BadRequestException('valid_from inválida (esperado AAAA-MM-DD)');
+    }
+    if (dto.expires_at != null && !isDateOnly(dto.expires_at)) {
+      throw new BadRequestException('expires_at inválida (esperado AAAA-MM-DD)');
+    }
+
     const document = await req.withTenantContext((client: any) =>
       this.documents.upload(client, {
         tenantId,
         category: dto.category,
         title: dto.title,
-        expiresAt: dto.expires_at,
+        validFrom: dto.valid_from ?? null,
+        expiresAt: dto.expires_at ?? null,
         file: {
           buffer: file.buffer,
           mimetype: file.mimetype,
@@ -194,6 +219,43 @@ export class DocumentsController {
     return results;
   }
 
+  // IMPORTANTE: as rotas de validity-rules são declaradas ANTES de ':id/...'
+  // pra que o Nest não tente casar 'validity-rules' como um id. A ordem
+  // das declarações no controller importa pro roteador do Express.
+  @Get('validity-rules')
+  listRules(@Req() req: any) {
+    return req.withTenantContext((client: any) => this.documents.findAllRules(client));
+  }
+
+  @Roles('admin')
+  @UsePipes(new ValidationPipe({ transform: true, whitelist: true, forbidNonWhitelisted: true }))
+  @Patch('validity-rules/:category')
+  async updateRule(
+    @Param('category') category: string,
+    @Body() dto: UpdateValidityRuleDto,
+    @Req() req: any,
+  ) {
+    if (!VALIDITY_RULE_CATEGORIES.has(category)) {
+      // Mesma resposta que o service daria (loadRule → 0 linhas → 404).
+      throw new NotFoundException('Categoria de regra inexistente');
+    }
+    // O DTO garante que validity_months está entre 1..600 quando presente
+    // (ou null) e alert_days entre 0..365 quando presente; aqui só
+    // propagamos a presença/ausência para o service aplicar a regra
+    // "manter o valor atual" quando a chave não veio no body.
+    if (dto.validity_months === undefined && dto.alert_days === undefined) {
+      throw new BadRequestException('Informe validity_months e/ou alert_days');
+    }
+    return req.withTenantContext((client: any) =>
+      this.documents.updateRule(
+        client,
+        category,
+        { validityMonths: dto.validity_months, alertDays: dto.alert_days },
+        req.user.id,
+      ),
+    );
+  }
+
   @Get()
   findAll(@Query('tenant_id') tenantId: string | undefined, @Req() req: any) {
     // Técnico ou parceiro sem tenant_id: RLS já restringe a query às empresas
@@ -218,14 +280,49 @@ export class DocumentsController {
     );
   }
 
+  @Roles('empresa', 'tecnico', 'parceiro', 'admin')
+  @UsePipes(new ValidationPipe({ transform: true, whitelist: true, forbidNonWhitelisted: true }))
+  @Patch(':id/validity')
+  async updateValidity(
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Body() dto: UpdateDocumentValidityDto,
+    @Req() req: any,
+  ) {
+    // Validação adicional de formato (IsString do DTO aceita qualquer
+    // string; queremos estritamente 'AAAA-MM-DD' ou null).
+    if (dto.valid_from !== null && dto.valid_from !== undefined && !isDateOnly(dto.valid_from)) {
+      throw new BadRequestException('valid_from inválida (esperado AAAA-MM-DD)');
+    }
+    if (dto.expires_at !== null && dto.expires_at !== undefined && !isDateOnly(dto.expires_at)) {
+      throw new BadRequestException('expires_at inválida (esperado AAAA-MM-DD)');
+    }
+    if (dto.valid_from === undefined && dto.expires_at === undefined) {
+      throw new BadRequestException('Informe valid_from e/ou expires_at');
+    }
+    const user = req.user;
+    // Empresa só pode editar dentro do próprio tenant — a RLS já limita,
+    // mas o findOne no service devolve 404 quando o doc é de outro tenant.
+    // Passamos undefined (não null) para o service distinguir "não enviado"
+    // (mantém) de "enviou null" (limpa).
+    return req.withTenantContext((client: any) =>
+      this.documents.updateValidity(
+        client,
+        id,
+        user.id,
+        user.role === 'admin',
+        { validFrom: dto.valid_from, expiresAt: dto.expires_at },
+      ),
+    );
+  }
+
   @Get(':id/download')
-  download(@Param('id') id: string, @Req() req: any) {
+  download(@Param('id', new ParseUUIDPipe()) id: string, @Req() req: any) {
     return req.withTenantContext((client: any) => this.documents.getDownloadUrl(client, id));
   }
 
   @Roles('empresa', 'tecnico', 'parceiro', 'admin')
   @Delete(':id')
-  remove(@Param('id') id: string, @Req() req: any) {
+  remove(@Param('id', new ParseUUIDPipe()) id: string, @Req() req: any) {
     const user = req.user;
     return req.withTenantContext((client: any) =>
       this.documents.remove(client, id, user.id, user.role === 'admin'),

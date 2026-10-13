@@ -1,17 +1,32 @@
 'use client';
 
-import { ChangeEvent, FormEvent, useEffect, useState } from 'react';
+import { ChangeEvent, FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import { FileInput } from './FileInput';
+import { Badge, Tone } from './ui/Badge';
+import { addMonths, formatDateBR } from '@/lib/date-only';
+
+type Situacao = 'valido' | 'vencendo' | 'vencido' | 'sem_vencimento';
+type ExpiresSource = 'manual' | 'rule' | null;
 
 interface DocumentRow {
   id: string;
   category: string;
   title: string;
   file_name: string;
+  valid_from: string | null;
   expires_at: string | null;
+  expires_source: ExpiresSource;
+  validity_months_applied: number | null;
+  situacao: Situacao;
   uploaded_by_user_id: string;
   company_unit_id: string | null;
   created_at: string;
+}
+
+interface ValidityRule {
+  category: string;
+  validity_months: number | null;
+  alert_days: number;
 }
 
 interface CompanyUnitOption {
@@ -47,7 +62,9 @@ interface BatchRow {
   file: File;
   category: string;
   title: string;
+  validFrom: string;
   expiresAt: string;
+  expiresAtManuallyEdited: boolean;
   needsReview: boolean;
   importStatus: 'pendente' | 'sucesso' | 'erro';
 }
@@ -105,6 +122,10 @@ function capitalize(text: string): string {
   return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
+// Mantido por compatibilidade com usos existentes neste arquivo.
+// Para datas vindas do backend (que chegam como 'AAAA-MM-DD' puro),
+// o projeto hoje prefere `formatDateBR` de `@/lib/date-only`, que
+// não depende de fuso. Aqui só serve pra `formatMonthLabel`.
 function formatDate(isoDate: string): string {
   const [year, month, day] = isoDate.slice(0, 10).split('-');
   return `${day}/${month}/${year}`;
@@ -149,12 +170,44 @@ function groupAgendaByMonth(items: AgendaItem[]): AgendaGroup[] {
   return groups;
 }
 
+function situacaoLabel(s: Situacao): string {
+  switch (s) {
+    case 'valido':
+      return 'Válido';
+    case 'vencendo':
+      return 'Próximo do vencimento';
+    case 'vencido':
+      return 'Vencido';
+    case 'sem_vencimento':
+      return 'Sem vencimento definido';
+    default:
+      return 'Sem vencimento definido';
+  }
+}
+
+function situacaoTone(s: Situacao): Tone {
+  switch (s) {
+    case 'valido':
+      return 'ok';
+    case 'vencendo':
+      return 'warn';
+    case 'vencido':
+      return 'crit';
+    case 'sem_vencimento':
+      return 'info';
+    default:
+      return 'info';
+  }
+}
+
 export function DocumentsPanel({ tenantId }: { tenantId?: string }) {
   const [documents, setDocuments] = useState<DocumentRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [category, setCategory] = useState('pgr');
   const [title, setTitle] = useState('');
+  const [validFrom, setValidFrom] = useState('');
   const [expiresAt, setExpiresAt] = useState('');
+  const [expiresAtManuallyEdited, setExpiresAtManuallyEdited] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [status, setStatus] = useState<'idle' | 'loading' | 'erro'>('idle');
   const [errorMessage, setErrorMessage] = useState('');
@@ -167,6 +220,11 @@ export function DocumentsPanel({ tenantId }: { tenantId?: string }) {
   const [batchRows, setBatchRows] = useState<BatchRow[]>([]);
   const [batchStatus, setBatchStatus] = useState<'idle' | 'analisando' | 'importando' | 'erro'>('idle');
   const [batchError, setBatchError] = useState('');
+  const [validityRules, setValidityRules] = useState<ValidityRule[] | null>(null);
+  const [validityRulesWarning, setValidityRulesWarning] = useState('');
+  const [editingDocId, setEditingDocId] = useState<string | null>(null);
+  const [editError, setEditError] = useState('');
+  const [editStatus, setEditStatus] = useState<'idle' | 'salvando'>('idle');
 
   function currentUserId(): string | null {
     const raw = localStorage.getItem('montese_user');
@@ -185,6 +243,28 @@ export function DocumentsPanel({ tenantId }: { tenantId?: string }) {
   function episUrl(): string {
     return tenantId ? `/api/epis?tenant_id=${tenantId}` : '/api/epis';
   }
+
+  function rulesUrl(): string {
+    return '/api/documents/validity-rules';
+  }
+
+  const ruleForCategory = useCallback(
+    (cat: string): ValidityRule | null => {
+      if (!validityRules) return null;
+      return validityRules.find((r) => r.category === cat) ?? null;
+    },
+    [validityRules],
+  );
+
+  // Vencimento que o formulário de envio individual "sugere" agora
+  // (sem nunca escrever de novo se o usuário já tiver editado à mão).
+  const calculatedExpiresAt = useMemo(() => {
+    if (expiresAtManuallyEdited) return null;
+    if (!validFrom) return null;
+    const rule = ruleForCategory(category);
+    if (!rule || rule.validity_months === null) return null;
+    return addMonths(validFrom, rule.validity_months);
+  }, [validFrom, category, expiresAtManuallyEdited, ruleForCategory]);
 
   async function loadEpis() {
     const token = localStorage.getItem('montese_token');
@@ -247,23 +327,68 @@ export function DocumentsPanel({ tenantId }: { tenantId?: string }) {
     }
   }
 
+  async function loadValidityRules() {
+    const token = localStorage.getItem('montese_token');
+    try {
+      const res = await fetch(rulesUrl(), { headers: { Authorization: `Bearer ${token}` } });
+      if (res.ok) {
+        const data = (await res.json()) as ValidityRule[];
+        setValidityRules(data);
+        setValidityRulesWarning('');
+      } else {
+        setValidityRules(null);
+        setValidityRulesWarning(
+          'Não foi possível carregar as regras de validade. O vencimento pode ser informado manualmente.',
+        );
+      }
+    } catch {
+      setValidityRules(null);
+      setValidityRulesWarning(
+        'Não foi possível carregar as regras de validade. O vencimento pode ser informado manualmente.',
+      );
+    }
+  }
+
   useEffect(() => {
     loadDocuments();
     loadCompliance();
     loadEpis();
     loadUnits();
+    loadValidityRules();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Quando o usuário troca a categoria ou a data de início e ainda não
+  // editou o vencimento à mão, mantém o campo de vencimento em sincronia
+  // com o cálculo automático. Nunca preenche sozinho se a data de início
+  // estiver vazia — é o usuário quem decide.
+  useEffect(() => {
+    if (expiresAtManuallyEdited) return;
+    if (calculatedExpiresAt) {
+      setExpiresAt(calculatedExpiresAt);
+    } else if (validityRules !== null) {
+      // regra ausente ou data de início vazia: vencimento volta a ficar
+      // vazio, a menos que o usuário já tenha digitado algo.
+      setExpiresAt('');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [calculatedExpiresAt, expiresAtManuallyEdited]);
 
   async function handleUpload(event: FormEvent) {
     event.preventDefault();
     if (!file) return;
+    if (validFrom && expiresAt && expiresAt < validFrom) {
+      setErrorMessage('O vencimento não pode ser anterior à data de início da validade.');
+      setStatus('erro');
+      return;
+    }
     setStatus('loading');
     setErrorMessage('');
     const token = localStorage.getItem('montese_token');
     const formData = new FormData();
     formData.append('category', category);
     formData.append('title', title);
+    if (validFrom) formData.append('valid_from', validFrom);
     if (expiresAt) formData.append('expires_at', expiresAt);
     if (tenantId) formData.append('tenant_id', tenantId);
     if (companyUnitId) formData.append('company_unit_id', companyUnitId);
@@ -277,7 +402,9 @@ export function DocumentsPanel({ tenantId }: { tenantId?: string }) {
       });
       if (res.ok) {
         setTitle('');
+        setValidFrom('');
         setExpiresAt('');
+        setExpiresAtManuallyEdited(false);
         setFile(null);
         setCompanyUnitId('');
         setStatus('idle');
@@ -336,7 +463,9 @@ export function DocumentsPanel({ tenantId }: { tenantId?: string }) {
             file: batchFiles[i],
             category: item.suggested_category ?? '',
             title: item.suggested_title ?? '',
+            validFrom: '',
             expiresAt: item.suggested_expires_at ?? '',
+            expiresAtManuallyEdited: false,
             needsReview: item.needs_review,
             importStatus: 'pendente' as const,
           })),
@@ -357,6 +486,32 @@ export function DocumentsPanel({ tenantId }: { tenantId?: string }) {
     setBatchRows((rows) => rows.map((row, i) => (i === index ? { ...row, ...changes } : row)));
   }
 
+  function batchCalculatedExpiresAt(row: BatchRow): string | null {
+    if (row.expiresAtManuallyEdited) return null;
+    if (!row.validFrom) return null;
+    const rule = ruleForCategory(row.category);
+    if (!rule || rule.validity_months === null) return null;
+    return addMonths(row.validFrom, rule.validity_months);
+  }
+
+  function applyBatchCalculation(index: number) {
+    const row = batchRows[index];
+    if (!row) return;
+    const next = batchCalculatedExpiresAt(row);
+    if (next) {
+      updateBatchRow(index, { expiresAt: next });
+    } else if (validityRules !== null) {
+      updateBatchRow(index, { expiresAt: '' });
+    }
+  }
+
+  function revertBatchToAuto(index: number) {
+    const row = batchRows[index];
+    if (!row) return;
+    updateBatchRow(index, { expiresAtManuallyEdited: false });
+    applyBatchCalculation(index);
+  }
+
   async function handleImportBatch() {
     setBatchStatus('importando');
     const token = localStorage.getItem('montese_token');
@@ -367,6 +522,7 @@ export function DocumentsPanel({ tenantId }: { tenantId?: string }) {
       const rowFormData = new FormData();
       rowFormData.append('category', row.category);
       rowFormData.append('title', row.title);
+      if (row.validFrom) rowFormData.append('valid_from', row.validFrom);
       if (row.expiresAt) rowFormData.append('expires_at', row.expiresAt);
       if (tenantId) rowFormData.append('tenant_id', tenantId);
       rowFormData.append('file', row.file);
@@ -423,10 +579,55 @@ export function DocumentsPanel({ tenantId }: { tenantId?: string }) {
     }
   }
 
+  async function handlePatchValidity(docId: string, newValidFrom: string, newExpiresAt: string) {
+    if (newValidFrom && newExpiresAt && newExpiresAt < newValidFrom) {
+      setEditError('O vencimento não pode ser anterior à data de início da validade.');
+      return;
+    }
+    setEditStatus('salvando');
+    setEditError('');
+    const token = localStorage.getItem('montese_token');
+    try {
+      const res = await fetch(`/api/documents/${docId}/validity`, {
+        method: 'PATCH',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          valid_from: newValidFrom || null,
+          expires_at: newExpiresAt || null,
+        }),
+      });
+      if (res.ok) {
+        setEditingDocId(null);
+        setEditStatus('idle');
+        setEditError('');
+        loadDocuments();
+        loadCompliance();
+        return;
+      }
+      if (res.status === 403) {
+        setEditError('Só quem enviou o documento ou o administrador pode alterar as datas.');
+      } else {
+        const body = await res.json().catch(() => null);
+        setEditError(body?.message ?? 'Não foi possível atualizar as datas.');
+      }
+      setEditStatus('idle');
+    } catch {
+      setEditError('Não foi possível conectar ao servidor.');
+      setEditStatus('idle');
+    }
+  }
+
   const userId = currentUserId();
   const agendaGroups = groupAgendaByMonth([...documentsToAgendaItems(documents), ...episToAgendaItems(epis)]);
   const canImportBatch =
     batchRows.length > 0 && batchRows.every((row) => row.category !== '' && row.title.trim() !== '');
+
+  const currentRule = ruleForCategory(category);
+  const ruleHasMonths = currentRule !== null && currentRule.validity_months !== null;
+  const isCurrentCalculated = !expiresAtManuallyEdited && calculatedExpiresAt !== null;
 
   if (loading) {
     return <p className="text-brand-700">Carregando documentos...</p>;
@@ -495,12 +696,18 @@ export function DocumentsPanel({ tenantId }: { tenantId?: string }) {
 
       <section className="rounded-lg border border-brand-100 p-6">
         <h2 className="text-lg font-bold text-brand-900">Enviar documento</h2>
+        {validityRulesWarning && (
+          <p className="mt-2 text-sm text-amber-700">{validityRulesWarning}</p>
+        )}
         <form onSubmit={handleUpload} className="mt-4 flex flex-col gap-4">
           <label className="flex flex-col gap-1 text-sm text-brand-900">
             Categoria
             <select
               value={category}
-              onChange={(e) => setCategory(e.target.value)}
+              onChange={(e) => {
+                setCategory(e.target.value);
+                setExpiresAtManuallyEdited(false);
+              }}
               className="rounded-md border border-brand-100 px-3 py-2"
             >
               {UPLOAD_CATEGORIES.map((value) => (
@@ -520,14 +727,60 @@ export function DocumentsPanel({ tenantId }: { tenantId?: string }) {
             />
           </label>
           <label className="flex flex-col gap-1 text-sm text-brand-900">
+            Início da validade
+            <input
+              type="date"
+              value={validFrom}
+              onChange={(e) => {
+                setValidFrom(e.target.value);
+                setExpiresAtManuallyEdited(false);
+              }}
+              className="rounded-md border border-brand-100 px-3 py-2"
+            />
+          </label>
+          <label className="flex flex-col gap-1 text-sm text-brand-900">
             Vencimento (opcional)
             <input
               type="date"
               value={expiresAt}
-              onChange={(e) => setExpiresAt(e.target.value)}
+              onChange={(e) => {
+                setExpiresAt(e.target.value);
+                setExpiresAtManuallyEdited(true);
+              }}
               className="rounded-md border border-brand-100 px-3 py-2"
             />
           </label>
+          {isCurrentCalculated && currentRule && currentRule.validity_months !== null && (
+            <p className="text-sm text-brand-700" data-testid="upload-calculated-hint">
+              Vencimento calculado: {formatDateBR(calculatedExpiresAt)}. Calculado por regra
+              configurável de {currentRule.validity_months} meses. Parâmetro operacional da
+              plataforma, não é prazo legal.
+            </p>
+          )}
+          {expiresAtManuallyEdited && (
+            <div className="flex flex-wrap items-center gap-3" data-testid="upload-manual-hint">
+              <p className="text-sm text-brand-700">Data informada manualmente.</p>
+              {validFrom && ruleHasMonths && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setExpiresAtManuallyEdited(false);
+                    const next = addMonths(validFrom, currentRule!.validity_months!);
+                    setExpiresAt(next);
+                  }}
+                  className="text-sm text-brand-500 hover:underline"
+                >
+                  Voltar ao cálculo
+                </button>
+              )}
+            </div>
+          )}
+          {validFrom && !ruleHasMonths && validityRules !== null && (
+            <p className="text-sm text-brand-700" data-testid="upload-no-rule-hint">
+              Este tipo de documento não tem vencimento automático definido. Preencha o
+              vencimento manualmente se aplicável.
+            </p>
+          )}
           {units.length > 0 && (
             <label className="flex flex-col gap-1 text-sm text-brand-900">
               Matriz ou filial (opcional)
@@ -598,6 +851,9 @@ export function DocumentsPanel({ tenantId }: { tenantId?: string }) {
           <div className="mt-4 flex flex-col gap-3">
             {batchRows.map((row, i) => {
               const rowIncomplete = row.category === '' || row.title.trim() === '';
+              const rowRule = ruleForCategory(row.category);
+              const rowRuleHasMonths = rowRule !== null && rowRule.validity_months !== null;
+              const rowCalculated = batchCalculatedExpiresAt(row);
               return (
               <div key={i} className="rounded-md border border-brand-100 p-4">
                 <p className="text-sm font-medium text-brand-900">
@@ -605,12 +861,15 @@ export function DocumentsPanel({ tenantId }: { tenantId?: string }) {
                   {row.needsReview && <span className="ml-2 text-xs text-amber-700">⚠️ revisar manualmente</span>}
                   {rowIncomplete && <span className="ml-2 text-xs text-red-600">⚠️ preencha categoria e título</span>}
                 </p>
-                <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-3">
+                <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
                   <label className="flex flex-col gap-1 text-sm text-brand-900">
                     Categoria
                     <select
                       value={row.category}
-                      onChange={(e) => updateBatchRow(i, { category: e.target.value })}
+                      onChange={(e) => {
+                        updateBatchRow(i, { category: e.target.value, expiresAtManuallyEdited: false });
+                        applyBatchCalculation(i);
+                      }}
                       className="rounded-md border border-brand-100 px-3 py-2"
                     >
                       <option value="">Selecione...</option>
@@ -630,15 +889,53 @@ export function DocumentsPanel({ tenantId }: { tenantId?: string }) {
                     />
                   </label>
                   <label className="flex flex-col gap-1 text-sm text-brand-900">
+                    Início da validade
+                    <input
+                      type="date"
+                      value={row.validFrom}
+                      onChange={(e) => {
+                        updateBatchRow(i, { validFrom: e.target.value, expiresAtManuallyEdited: false });
+                        applyBatchCalculation(i);
+                      }}
+                      className="rounded-md border border-brand-100 px-3 py-2"
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1 text-sm text-brand-900">
                     Vencimento (opcional)
                     <input
                       type="date"
                       value={row.expiresAt}
-                      onChange={(e) => updateBatchRow(i, { expiresAt: e.target.value })}
+                      onChange={(e) => updateBatchRow(i, { expiresAt: e.target.value, expiresAtManuallyEdited: true })}
                       className="rounded-md border border-brand-100 px-3 py-2"
                     />
                   </label>
                 </div>
+                {!row.expiresAtManuallyEdited && rowCalculated && rowRule && rowRule.validity_months !== null && (
+                  <p className="mt-2 text-xs text-brand-700">
+                    Vencimento calculado: {formatDateBR(rowCalculated)}. Calculado por regra
+                    configurável de {rowRule.validity_months} meses. Parâmetro operacional da
+                    plataforma, não é prazo legal.
+                  </p>
+                )}
+                {row.expiresAtManuallyEdited && (
+                  <div className="mt-2 flex flex-wrap items-center gap-3">
+                    <p className="text-xs text-brand-700">Data informada manualmente.</p>
+                    {row.validFrom && rowRuleHasMonths && (
+                      <button
+                        type="button"
+                        onClick={() => revertBatchToAuto(i)}
+                        className="text-xs text-brand-500 hover:underline"
+                      >
+                        Voltar ao cálculo
+                      </button>
+                    )}
+                  </div>
+                )}
+                {row.validFrom && !rowRuleHasMonths && validityRules !== null && (
+                  <p className="mt-2 text-xs text-brand-700">
+                    Este tipo de documento não tem vencimento automático definido.
+                  </p>
+                )}
                 {row.importStatus === 'sucesso' && <p className="mt-2 text-sm text-green-700">Importado.</p>}
                 {row.importStatus === 'erro' && <p className="mt-2 text-sm text-red-600">Falha ao importar.</p>}
               </div>
@@ -664,34 +961,196 @@ export function DocumentsPanel({ tenantId }: { tenantId?: string }) {
         ) : (
           <ul className="mt-4 flex flex-col gap-3">
             {documents.map((doc) => (
-              <li
+              <DocumentListItem
                 key={doc.id}
-                className="flex items-center justify-between rounded-md border border-brand-100 px-4 py-3 text-sm"
-              >
-                <div>
-                  <strong className="text-brand-900">{CATEGORY_LABELS[doc.category]}</strong>{' '}
-                  <span className="text-brand-700">— {doc.title}</span>
-                  {doc.expires_at && (
-                    <span className="ml-2 text-brand-700">
-                      (vence em {new Date(doc.expires_at).toLocaleDateString('pt-BR')})
-                    </span>
-                  )}
-                </div>
-                <div className="flex gap-3">
-                  <button onClick={() => handleDownload(doc.id)} className="text-brand-500 hover:underline">
-                    Baixar
-                  </button>
-                  {doc.uploaded_by_user_id === userId && (
-                    <button onClick={() => handleDelete(doc.id)} className="text-red-600 hover:underline">
-                      Apagar
-                    </button>
-                  )}
-                </div>
-              </li>
+                doc={doc}
+                currentUserId={userId}
+                isEditing={editingDocId === doc.id}
+                editError={editingDocId === doc.id ? editError : ''}
+                editStatus={editingDocId === doc.id ? editStatus : 'idle'}
+                validityRules={validityRules}
+                onStartEdit={() => {
+                  setEditError('');
+                  setEditingDocId(doc.id);
+                }}
+                onCancelEdit={() => {
+                  setEditingDocId(null);
+                  setEditError('');
+                }}
+                onSave={(validFromValue, expiresAtValue) => handlePatchValidity(doc.id, validFromValue, expiresAtValue)}
+                onDownload={() => handleDownload(doc.id)}
+                onDelete={() => handleDelete(doc.id)}
+              />
             ))}
           </ul>
         )}
       </section>
     </div>
+  );
+}
+
+interface DocumentListItemProps {
+  doc: DocumentRow;
+  currentUserId: string | null;
+  isEditing: boolean;
+  editError: string;
+  editStatus: 'idle' | 'salvando';
+  validityRules: ValidityRule[] | null;
+  onStartEdit: () => void;
+  onCancelEdit: () => void;
+  onSave: (validFrom: string, expiresAt: string) => void;
+  onDownload: () => void;
+  onDelete: () => void;
+}
+
+function DocumentListItem({
+  doc,
+  currentUserId,
+  isEditing,
+  editError,
+  editStatus,
+  validityRules,
+  onStartEdit,
+  onCancelEdit,
+  onSave,
+  onDownload,
+  onDelete,
+}: DocumentListItemProps) {
+  const [editValidFrom, setEditValidFrom] = useState(doc.valid_from ?? '');
+  const [editExpiresAt, setEditExpiresAt] = useState(doc.expires_at ?? '');
+  const [editManuallyEdited, setEditManuallyEdited] = useState(false);
+
+  const rule = useMemo<ValidityRule | null>(() => {
+    if (!validityRules) return null;
+    return validityRules.find((r) => r.category === doc.category) ?? null;
+  }, [validityRules, doc.category]);
+
+  const ruleHasMonths = rule !== null && rule.validity_months !== null;
+
+  const editCalculated = useMemo(() => {
+    if (editManuallyEdited) return null;
+    if (!editValidFrom) return null;
+    if (!rule || rule.validity_months === null) return null;
+    return addMonths(editValidFrom, rule.validity_months);
+  }, [editValidFrom, editManuallyEdited, rule]);
+
+  useEffect(() => {
+    if (editManuallyEdited) return;
+    if (editCalculated) {
+      setEditExpiresAt(editCalculated);
+    } else if (validityRules !== null) {
+      setEditExpiresAt('');
+    }
+  }, [editCalculated, editManuallyEdited, validityRules]);
+
+  const canEdit = doc.uploaded_by_user_id === currentUserId;
+
+  return (
+    <li className="flex flex-col gap-3 rounded-md border border-brand-100 px-4 py-3 text-sm sm:flex-row sm:items-start sm:justify-between">
+      <div className="flex-1">
+        <div className="flex flex-wrap items-center gap-2">
+          <strong className="text-brand-900">{CATEGORY_LABELS[doc.category] ?? doc.category}</strong>
+          <span className="text-brand-700">— {doc.title}</span>
+          <Badge tone={situacaoTone(doc.situacao)}>{situacaoLabel(doc.situacao)}</Badge>
+        </div>
+        <p className="mt-1 text-brand-700" data-testid={`doc-dates-${doc.id}`}>
+          Início: {doc.valid_from ? formatDateBR(doc.valid_from) : 'Não informado'}
+          {' · '}
+          Vencimento: {doc.expires_at ? formatDateBR(doc.expires_at) : 'Não definido'}
+          {doc.expires_source === 'rule' && doc.expires_at && (
+            <span className="ml-1 text-xs text-brand-500">
+              (calculado por regra
+              {rule && rule.validity_months !== null ? ` de ${rule.validity_months} meses` : ''})
+            </span>
+          )}
+        </p>
+        {isEditing && (
+          <div className="mt-3 flex flex-col gap-3 rounded-md border border-brand-100 p-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <label className="flex flex-col gap-1 text-sm text-brand-900">
+                Início da validade
+                <input
+                  type="date"
+                  value={editValidFrom}
+                  onChange={(e) => {
+                    setEditValidFrom(e.target.value);
+                    setEditManuallyEdited(false);
+                  }}
+                  className="rounded-md border border-brand-100 px-3 py-2"
+                />
+              </label>
+              <label className="flex flex-col gap-1 text-sm text-brand-900">
+                Vencimento
+                <input
+                  type="date"
+                  value={editExpiresAt}
+                  onChange={(e) => {
+                    setEditExpiresAt(e.target.value);
+                    setEditManuallyEdited(true);
+                  }}
+                  className="rounded-md border border-brand-100 px-3 py-2"
+                />
+              </label>
+            </div>
+            {!editManuallyEdited && editCalculated && rule && rule.validity_months !== null && (
+              <p className="text-xs text-brand-700">
+                Vencimento calculado: {formatDateBR(editCalculated)}. Calculado por regra
+                configurável de {rule.validity_months} meses.
+              </p>
+            )}
+            {editManuallyEdited && (
+              <div className="flex flex-wrap items-center gap-3">
+                <p className="text-xs text-brand-700">Data informada manualmente.</p>
+                {editValidFrom && ruleHasMonths && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditManuallyEdited(false);
+                      setEditExpiresAt(addMonths(editValidFrom, rule!.validity_months!));
+                    }}
+                    className="text-xs text-brand-500 hover:underline"
+                  >
+                    Voltar ao cálculo
+                  </button>
+                )}
+              </div>
+            )}
+            {editError && <p className="text-sm text-red-600">{editError}</p>}
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => onSave(editValidFrom, editExpiresAt)}
+                disabled={editStatus === 'salvando'}
+                className="rounded-md bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50"
+              >
+                {editStatus === 'salvando' ? 'Salvando...' : 'Salvar datas'}
+              </button>
+              <button
+                type="button"
+                onClick={onCancelEdit}
+                className="rounded-md border border-brand-100 px-4 py-2 text-sm font-medium text-brand-700 hover:bg-brand-50"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+      <div className="flex flex-wrap gap-3">
+        <button onClick={onDownload} className="text-brand-500 hover:underline">
+          Baixar
+        </button>
+        {canEdit && !isEditing && (
+          <button onClick={onStartEdit} className="text-brand-500 hover:underline">
+            Editar datas
+          </button>
+        )}
+        {doc.uploaded_by_user_id === currentUserId && (
+          <button onClick={onDelete} className="text-red-600 hover:underline">
+            Apagar
+          </button>
+        )}
+      </div>
+    </li>
   );
 }
