@@ -128,4 +128,67 @@ export class TestDb {
     this.tenantIds = [];
     this.userIds = [];
   }
+
+  // Insere um aso_records mínimo direto via superuser (bypassa RLS/HTTP) —
+  // usado por specs de RLS que precisam de uma linha em outro tenant sem
+  // passar pela API (ex.: esocial-events-rls.e2e-spec.ts, Task 4).
+  async insertMinimalAsoRecord(tenant: {
+    tenantId: string;
+    employeeId: string;
+    userId: string;
+  }): Promise<string> {
+    const result = await this.client.query<{ id: string }>(
+      `INSERT INTO aso_records (
+        tenant_id, employee_id, exam_type, exam_date, result,
+        result_disclosure_authorized, doctor_name, doctor_crm, doctor_crm_uf, created_by_user_id
+      ) VALUES ($1, $2, 'periodico', CURRENT_DATE, 'apto', false, 'Dr. Teste', '12345', 'SP', $3)
+      RETURNING id`,
+      [tenant.tenantId, tenant.employeeId, tenant.userId],
+    );
+    return result.rows[0].id;
+  }
+
+  // Insere um esocial_certificates mínimo direto via superuser (bypassa RLS/HTTP) —
+  // usado por specs de RLS (Task 12, esocial-certificates-rls.e2e-spec.ts) que
+  // precisam de um certificado em outro tenant sem passar pelo fluxo de upload
+  // (que cifra via envelope-encryption). Os campos cifrados recebem placeholder
+  // textual — nenhum spec tenta decifrar, e o teste de RLS só verifica visibilidade.
+  async insertMinimalCertificate(tenant: {
+    tenantId: string;
+    userId: string;
+  }): Promise<string> {
+    const result = await this.client.query<{ id: string }>(
+      `INSERT INTO esocial_certificates (
+        tenant_id, label, subject_cn, thumbprint_sha256, not_before, not_after,
+        status, pfx_r2_key, encrypted_password, encrypted_data_key, uploaded_by_user_id
+      ) VALUES ($1, 'Teste', 'TESTE LTDA', 'aaaa', now() - interval '1 day', now() + interval '1 year',
+        'ativo', 'fake-key', 'fake:fake:fake', 'fake:fake:fake', $2)
+      RETURNING id`,
+      [tenant.tenantId, tenant.userId],
+    );
+    return result.rows[0].id;
+  }
+
+  // Consulta/ajuste direto via superuser (bypassa RLS): só para montar o cenário do teste.
+  async rawQuery<T = any>(sql: string, params: unknown[] = []): Promise<T[]> {
+    const r = await this.client.query(sql, params);
+    return r.rows as T[];
+  }
+
+  async getActiveLayoutVersionId(): Promise<string> {
+    const r = await this.client.query<{ id: string }>(
+      'SELECT id FROM esocial_layout_versions WHERE is_active ORDER BY effective_from DESC LIMIT 1',
+    );
+    return r.rows[0].id;
+  }
+
+  async insertRawRow(table: string, row: Record<string, unknown>): Promise<string> {
+    if (!/^[a-z_]+$/.test(table)) throw new Error('nome de tabela inválido');
+    const cols = Object.keys(row);
+    const result = await this.client.query<{ id: string }>(
+      `INSERT INTO ${table} (${cols.join(', ')}) VALUES (${cols.map((_, i) => `$${i + 1}`).join(', ')}) RETURNING id`,
+      cols.map((c) => row[c]),
+    );
+    return result.rows[0].id;
+  }
 }
