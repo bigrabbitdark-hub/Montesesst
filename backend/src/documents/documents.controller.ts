@@ -50,7 +50,7 @@ export interface ClassifyBatchItem {
 }
 
 // Categorias espelhadas do CHECK da tabela document_validity_rules
-// (migration 0078). O controller usa isso pra devolver 404 sem precisar
+// (migration 0079). O controller usa isso pra devolver 404 sem precisar
 // ir ao banco quando a categoria é inválida.
 const VALIDITY_RULE_CATEGORIES = new Set([
   'pgr', 'pcmso', 'laudo', 'ficha_epi', 'treinamento',

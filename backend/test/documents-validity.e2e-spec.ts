@@ -1,4 +1,4 @@
-// IMPORTANTE: este e2e depende da migration 0078 (documents.valid_from,
+// IMPORTANTE: este e2e depende da migration 0079 (documents.valid_from,
 // expires_source, validity_months_applied + tabela document_validity_rules).
 // Roda em banco descartável/jest-e2e; em produção, NÃO aplicar e NÃO rodar
 // esta suíte semrollback. Para rodar:
@@ -664,7 +664,7 @@ describe('Vigência de documentos (e2e) — banco descartável, VERIFICADO em 20
   describe('Documentos legados sem datas (sem colunas novas)', () => {
     it('documento antigo criado direto no banco com NULL → listagem traz null + sem_vencimento', async () => {
       // INSERT direto via superuser pra simular um documento histórico
-      // (anterior à 0078) — sem valid_from, expires_source, etc.
+      // (anterior à 0079) — sem valid_from, expires_source, etc.
       const legacy = await (db as any).client.query(
         `INSERT INTO documents (tenant_id, category, title, file_key, file_name, mime_type, size_bytes, expires_at, uploaded_by_user_id, uploaded_by_role)
          VALUES ($1, 'pgr', 'PGR legado', 'legacy-key', 'legado.pdf', 'application/pdf', 100, NULL, $2, 'empresa') RETURNING id`,

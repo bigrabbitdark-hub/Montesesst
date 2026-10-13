@@ -2,9 +2,9 @@ import { readFileSync } from 'fs';
 import { join } from 'path';
 
 // Só o SQL executável conta (comentários mencionam RLS/DROP/UPDATE só para explicar).
-const sql = readFileSync(join(__dirname, '..', 'db', 'migrations', '0078_document_validity.sql'), 'utf8').replace(/--.*$/gm, '');
+const sql = readFileSync(join(__dirname, '..', 'db', 'migrations', '0079_document_validity.sql'), 'utf8').replace(/--.*$/gm, '');
 
-describe('migration 0078 — validade de documentos', () => {
+describe('migration 0079 — validade de documentos', () => {
   it('colunas novas em documents são opcionais (sem NOT NULL/DEFAULT)', () => {
     for (const c of ['valid_from DATE', 'expires_source TEXT', 'validity_months_applied INT']) {
       expect(sql).toMatch(new RegExp(`ALTER TABLE documents ADD COLUMN IF NOT EXISTS ${c};`));
