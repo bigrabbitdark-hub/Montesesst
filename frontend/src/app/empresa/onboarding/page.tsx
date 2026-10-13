@@ -9,7 +9,6 @@ import { FuncionariosForm } from './FuncionariosForm';
 import { DocumentsPanel } from '@/components/DocumentsPanel';
 
 const REQUIRED_MATRIZ_FIELDS: (keyof TenantData)[] = [
-  'trade_name',
   'address_street',
   'address_city',
   'address_state',

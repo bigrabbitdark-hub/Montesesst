@@ -1,7 +1,8 @@
 'use client';
 
-import { FormEvent, useState } from 'react';
+import { FormEvent, useRef, useState } from 'react';
 import { AuthSplit } from '@/components/AuthSplit';
+import { useCnpjLookup } from '@/lib/useCnpjLookup';
 
 export default function CadastroPage() {
   const [companyName, setCompanyName] = useState('');
@@ -11,6 +12,20 @@ export default function CadastroPage() {
   const [password, setPassword] = useState('');
   const [status, setStatus] = useState<'idle' | 'loading' | 'ok' | 'erro'>('idle');
   const [errorMessage, setErrorMessage] = useState('');
+  // Razão social vinda da consulta: só é trocada por outra consulta se o
+  // usuário não tiver editado o campo (nunca sobrescreve o que ele digitou).
+  const autoFilledName = useRef<string | null>(null);
+  const [nameFromLookup, setNameFromLookup] = useState(false);
+  const companyNameRef = useRef(companyName);
+  companyNameRef.current = companyName;
+  const { state: lookupState, lookup } = useCnpjLookup((data) => {
+    if (!data.razao_social) return;
+    const current = companyNameRef.current;
+    if (current.trim() && current !== autoFilledName.current) return;
+    autoFilledName.current = data.razao_social;
+    setCompanyName(data.razao_social);
+    setNameFromLookup(true);
+  });
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
@@ -79,7 +94,10 @@ export default function CadastroPage() {
               <input
                 required
                 value={companyName}
-                onChange={(e) => setCompanyName(e.target.value)}
+                onChange={(e) => {
+                  setCompanyName(e.target.value);
+                  setNameFromLookup(false);
+                }}
                 className="w-full rounded-[9px] border-[1.5px] border-brand-100 px-4 py-3.5 text-sm text-brand-900 placeholder:text-brand-300"
               />
             </label>
@@ -89,9 +107,24 @@ export default function CadastroPage() {
                 required
                 value={cnpj}
                 onChange={(e) => setCnpj(e.target.value)}
+                onBlur={() => lookup(cnpj)}
                 placeholder="00.000.000/0000-00"
+                aria-describedby="cnpj-status"
                 className="w-full rounded-[9px] border-[1.5px] border-brand-100 px-4 py-3.5 text-sm text-brand-900 placeholder:text-brand-300"
               />
+              <span id="cnpj-status" role="status" aria-live="polite" className="text-xs">
+                {lookupState.status === 'loading' && (
+                  <span className="text-brand-700">Consultando CNPJ...</span>
+                )}
+                {lookupState.status === 'erro' && (
+                  <span className="text-red-600">{lookupState.message}</span>
+                )}
+                {lookupState.status === 'done' && nameFromLookup && (
+                  <span className="text-brand-700">
+                    Razão social preenchida pela consulta (BrasilAPI / Receita Federal). Confira antes de continuar.
+                  </span>
+                )}
+              </span>
             </label>
             <label className="flex flex-col gap-1 text-sm text-brand-900">
               Nome do responsável
