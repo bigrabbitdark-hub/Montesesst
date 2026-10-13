@@ -357,4 +357,55 @@ describe('Funcionários: tabela oficial e PATCH /employees/bulk (e2e)', () => {
     expect(JSON.stringify(res.body)).toContain('Filial não encontrada');
     expect((await rowOf(e.id)).company_unit_id).toBe(unitAId);
   });
+
+  // Rollback de verdade: a mudança 1 é escrita (UPDATE) ANTES de a mudança 2 falhar dentro do
+  // laço de bulkUpdate (a validação prévia e a checagem de row_version já passaram).
+  it('rollback no meio do lote: filial de outro tenant na mudança 2 desfaz a mudança 1 já escrita', async () => {
+    const first = await createEmp('Rollback A1', { position: 'Original A1' });
+    const second = await createEmp('Rollback A2', { position: 'Original A2' });
+    const before1 = await rowOf(first.id);
+    const before2 = await rowOf(second.id);
+    // filial de OUTRO tenant criada direto pelo superuser
+    const foreignUnit = await (db as any).client.query(
+      `INSERT INTO company_units (tenant_id, name, address_street, address_city, address_state, address_zip)
+       VALUES ($1, 'Filial Alheia Rollback', 'Rua X', 'Cidade X', 'SC', '88800000') RETURNING id`,
+      [tenantBId],
+    );
+
+    const res = await bulk(tokenA, [
+      { id: first.id, row_version: before1.row_version, fields: { position: 'Mudou A1' } },
+      { id: second.id, row_version: before2.row_version, fields: { company_unit_id: foreignUnit.rows[0].id } },
+    ]);
+    expect(res.status).toBe(400);
+    expect(JSON.stringify(res.body)).toContain('Filial não encontrada');
+
+    const after1 = await rowOf(first.id);
+    const after2 = await rowOf(second.id);
+    expect(after1.position).toBe('Original A1');
+    expect(after1.row_version).toBe(before1.row_version);
+    expect(after2.company_unit_id).toBe(unitAId);
+    expect(after2.row_version).toBe(before2.row_version);
+  });
+
+  it('rollback no meio do lote: CPF duplicado (23505) na mudança 2 desfaz a mudança 1 já escrita', async () => {
+    const first = await createEmp('Rollback B1', { position: 'Original B1' });
+    const second = await createEmp('Rollback B2');
+    const third = await createEmp('Rollback B3');
+    const before1 = await rowOf(first.id);
+    const before2 = await rowOf(second.id);
+
+    const res = await bulk(tokenA, [
+      { id: first.id, row_version: before1.row_version, fields: { position: 'Mudou B1' } },
+      { id: second.id, row_version: before2.row_version, fields: { cpf: third.cpf } },
+    ]);
+    expect(res.status).toBe(409);
+    expect(JSON.stringify(res.body)).toContain('Registro duplicado');
+
+    const after1 = await rowOf(first.id);
+    const after2 = await rowOf(second.id);
+    expect(after1.position).toBe('Original B1');
+    expect(after1.row_version).toBe(before1.row_version);
+    expect(after2.cpf).toBe(before2.cpf);
+    expect(after2.row_version).toBe(before2.row_version);
+  });
 });
