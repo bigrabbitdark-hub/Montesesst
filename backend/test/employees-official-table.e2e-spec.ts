@@ -69,8 +69,16 @@ describe('Funcionários: campos oficiais (e2e)', () => {
     expect(JSON.stringify(second.body)).toContain('Matrícula eSocial já cadastrada nesta empresa');
   });
 
+  it('CPF repetido no mesmo tenant dá 409 com mensagem em português', async () => {
+    const first = await post({ full_name: 'Fabi', cpf: '40000007994' });
+    expect(first.status).toBe(201);
+    const second = await post({ full_name: 'Fabi 2', cpf: '40000007994' });
+    expect(second.status).toBe(409);
+    expect(JSON.stringify(second.body)).toContain('Registro duplicado');
+  });
+
   it('update normaliza e valida os campos oficiais', async () => {
-    const created = await post({ full_name: 'Edu', cpf: '74008365047' });
+    const created = await post({ full_name: 'Edu', cpf: '40000004030' });
     expect(created.status).toBe(201);
     const id = created.body.id;
 
