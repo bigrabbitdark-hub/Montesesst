@@ -32,11 +32,18 @@ export class CompanyUnitsController {
     return req.withTenantContext((client: any) =>
       this.companyUnits.create(client, tenantId, {
         name: dto.name,
+        cnpj: dto.cnpj,
         address_street: dto.address_street,
         address_number: dto.address_number,
         address_city: dto.address_city,
         address_state: dto.address_state,
         address_zip: dto.address_zip,
+        legal_name: dto.legal_name,
+        notes: dto.notes,
+        address_neighborhood: dto.address_neighborhood,
+        address_complement: dto.address_complement,
+        cnae_code: dto.cnae_code,
+        cnae_description: dto.cnae_description,
       }),
     );
   }
