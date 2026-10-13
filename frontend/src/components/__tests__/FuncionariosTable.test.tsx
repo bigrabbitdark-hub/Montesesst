@@ -60,6 +60,16 @@ describe('FuncionariosTable', () => {
     expect(fetchMock.mock.calls[0][0]).toBe('/api/employees/table?limit=50&offset=0&tenant_id=t-1');
   });
 
+  it('refreshKey recarrega do backend e companyUnitId vai na consulta', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(resp({ items: [linha()], total: 1 }));
+    vi.stubGlobal('fetch', fetchMock);
+    const { rerender } = render(<FuncionariosTable companyUnitId="u2" refreshKey={0} />);
+    await screen.findByDisplayValue('Ana Teste');
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/employees/table?limit=50&offset=0&company_unit_id=u2');
+    rerender(<FuncionariosTable companyUnitId="u2" refreshKey={1} />);
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+  });
+
   it('Editar tabela habilita inputs; sem alterações Confirmar fica desabilitado', async () => {
     await abrir(vi.fn().mockResolvedValue(resp({ items: [linha()], total: 1 })));
     expect((screen.getByLabelText('Função/Cargo Ana Teste') as HTMLInputElement).disabled).toBe(true);

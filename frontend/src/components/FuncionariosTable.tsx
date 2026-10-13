@@ -21,7 +21,16 @@ function displayValue(row: EmployeeTableRow, key: keyof EmployeeTableRow, type: 
   return v == null ? '' : String(v);
 }
 
-export function FuncionariosTable({ tenantId }: { tenantId?: string }) {
+export function FuncionariosTable({
+  tenantId,
+  companyUnitId,
+  refreshKey = 0,
+}: {
+  tenantId?: string;
+  companyUnitId?: string;
+  /** Muda para forçar um recarregamento a partir do backend (ex.: após cadastrar). */
+  refreshKey?: number;
+}) {
   const [original, setOriginal] = useState<EmployeeTableRow[]>([]);
   const [total, setTotal] = useState(0);
   const [offset, setOffset] = useState(0);
@@ -38,6 +47,7 @@ export function FuncionariosTable({ tenantId }: { tenantId?: string }) {
       setLoading(true);
       const token = localStorage.getItem('montese_token');
       let url = `/api/employees/table?limit=${PAGE_SIZE}&offset=${nextOffset}`;
+      if (companyUnitId) url += `&company_unit_id=${encodeURIComponent(companyUnitId)}`;
       if (tenantId) url += `&tenant_id=${encodeURIComponent(tenantId)}`;
       try {
         const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
@@ -55,12 +65,12 @@ export function FuncionariosTable({ tenantId }: { tenantId?: string }) {
         setLoading(false);
       }
     },
-    [tenantId],
+    [tenantId, companyUnitId],
   );
 
   useEffect(() => {
     void load(0);
-  }, [load]);
+  }, [load, refreshKey]);
 
   function valueOf(row: EmployeeTableRow, key: keyof EmployeeTableRow, type: string): string {
     return draft[row.id]?.[key] ?? displayValue(row, key, type);

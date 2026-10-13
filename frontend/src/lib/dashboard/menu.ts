@@ -29,7 +29,7 @@ export const MENU_SETORES: MenuSetor[] = [
   ]},
   { titulo: 'Empresa', itens: [
     { href: '/empresa/onboarding', label: 'Empresas', icon: Building2, implemented: true },
-    { href: '/empresa/em-construcao?item=Funcionários', label: 'Funcionários', icon: Users, implemented: false },
+    { href: '/empresa/funcionarios', label: 'Funcionários', icon: Users, implemented: true },
     { href: '/empresa/documentos', label: 'Documentos', icon: FileText, implemented: true },
     { href: '/empresa/inspecoes', label: 'Relatório de visita técnica', icon: ClipboardCheck, implemented: true },
   ]},

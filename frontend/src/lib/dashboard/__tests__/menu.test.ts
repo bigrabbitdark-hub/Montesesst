@@ -16,7 +16,7 @@ const HREFS_ESPERADOS = [
   '/dashboard-v2',
   '/empresa/assistente',
   '/empresa/onboarding',
-  '/empresa/em-construcao?item=Funcionários',
+  '/empresa/funcionarios',
   '/empresa/documentos',
   '/empresa/inspecoes',
   '/empresa/cipa',
@@ -54,6 +54,11 @@ describe('menu do dashboard', () => {
   it('mantém a rota existente (links antigos continuam válidos) e está implementado', () => {
     const item = MENU_ITEMS.find((i) => i.label === 'Relatório de visita técnica');
     expect(item?.href).toBe('/empresa/inspecoes');
+    expect(item?.implemented).toBe(true);
+  });
+  it('Funcionários aponta para a tabela oficial e está implementado', () => {
+    const item = MENU_ITEMS.find((i) => i.label === 'Funcionários');
+    expect(item?.href).toBe('/empresa/funcionarios');
     expect(item?.implemented).toBe(true);
   });
   it('não sobra o item antigo "Inspeções" nem duplicata da mesma rota', () => {
@@ -119,6 +124,7 @@ describe('cobertura do menu (nenhuma página da empresa fica órfã)', () => {
     '/empresa/agendamentos', '/empresa/mapa-sst', '/empresa/pente-fino', '/empresa/equipamentos-incendio',
     '/empresa/brigada', '/empresa/checklist-prevencao', '/empresa/simulados', '/empresa/cipa',
     '/empresa/cipa/eleicao', '/empresa/cipa/capacitacao', '/empresa/onboarding',
+    '/empresa/funcionarios',
   ])('%s está no menu novo', (href) => {
     expect(hrefs).toContain(href);
   });

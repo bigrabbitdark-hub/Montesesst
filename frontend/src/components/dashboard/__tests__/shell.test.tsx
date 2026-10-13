@@ -43,7 +43,7 @@ describe('DashboardSidebar', () => {
 const SETORES = [
   { titulo: 'Empresa', links: [
     ['Empresas', '/empresa/onboarding'],
-    ['Funcionários', '/empresa/em-construcao?item=Funcionários'],
+    ['Funcionários', '/empresa/funcionarios'],
     ['Documentos', '/empresa/documentos'],
     ['Relatório de visita técnica', '/empresa/inspecoes'],
   ] },
