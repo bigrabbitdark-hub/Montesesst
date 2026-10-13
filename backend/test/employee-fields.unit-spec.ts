@@ -75,3 +75,20 @@ describe('normalizeEmployeeInput', () => {
     expect(Object.keys(errors).sort()).toEqual(['cbo_code', 'cpf', 'sex']);
   });
 });
+
+describe('endurecimento: não inventar dados', () => {
+  it('isValidCpf aceita só dígitos e separadores . - e espaço', () => {
+    expect(isValidCpf('529.982.247-25abc')).toBe(false);
+    expect(isValidCpf('abc52998224725')).toBe(false);
+    expect(isValidCpf('529 982 247 25')).toBe(true);
+    expect(normalizeEmployeeInput({ cpf: '529.982.247-25abc' }).errors.cpf).toBe('CPF inválido');
+    expect(normalizeEmployeeInput({ cpf: '529.982.247-25' }).values.cpf).toBe('52998224725');
+  });
+  it('normalizeCbo rejeita letras e decimais', () => {
+    expect(normalizeCbo('12ab34').ok).toBe(false);
+    expect(normalizeCbo(51210.5).ok).toBe(false);
+    expect(normalizeCbo('51210.5').ok).toBe(false);
+    expect(normalizeCbo(' 51210 ')).toEqual({ ok: true, value: '051210' });
+    expect(normalizeCbo(51210)).toEqual({ ok: true, value: '051210' });
+  });
+});

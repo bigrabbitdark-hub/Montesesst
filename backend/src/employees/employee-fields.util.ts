@@ -3,6 +3,7 @@ export type FieldResult<T> = { ok: true; value: T } | { ok: false; message: stri
 export const onlyDigits = (v: string): string => v.replace(/\D/g, '');
 
 export function isValidCpf(raw: string): boolean {
+  if (!/^[\d.\-\s]+$/.test(raw)) return false;
   const d = onlyDigits(raw);
   if (d.length !== 11 || /^(\d)\1{10}$/.test(d)) return false;
   for (const len of [9, 10]) {
@@ -14,7 +15,8 @@ export function isValidCpf(raw: string): boolean {
 }
 
 export function normalizeCbo(raw: unknown): FieldResult<string> {
-  const d = onlyDigits(String(raw ?? ''));
+  const s = String(raw ?? '').trim();
+  const d = /^\d+$/.test(s) ? s : '';
   if (d.length === 0 || d.length > 6) return { ok: false, message: 'CBO deve ter até 6 dígitos' };
   return { ok: true, value: d.padStart(6, '0') };
 }
