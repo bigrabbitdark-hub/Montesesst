@@ -171,4 +171,62 @@ describe('FuncionariosTable', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Próxima' }));
     await waitFor(() => expect(fetchMock.mock.calls[1][0]).toBe('/api/employees/table?limit=50&offset=50'));
   });
+
+  it('CPF mascarado editado é enviado só com 11 dígitos', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(resp({ items: [linha()], total: 1 }))
+      .mockResolvedValueOnce(resp({ updated: 1, items: [] }))
+      .mockResolvedValueOnce(resp({ items: [linha()], total: 1 }));
+    await abrir(fetchMock);
+    fireEvent.click(screen.getByRole('button', { name: 'Editar tabela' }));
+    fireEvent.change(screen.getByLabelText('CPF Ana Teste'), { target: { value: '111.444.777-35' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar alterações' }));
+    await screen.findByText('Alterações salvas');
+    const body = JSON.parse((chamadas(fetchMock, 'PATCH')[0][1] as RequestInit).body as string);
+    expect(body.changes[0].fields).toEqual({ cpf: '11144477735' });
+  });
+
+  describe('Atualizar tabela durante a edição', () => {
+    const MSG = 'Você tem alterações não confirmadas. Atualizar vai descartá-las. Continuar?';
+    async function comRascunho() {
+      const fetchMock = vi.fn()
+        .mockResolvedValueOnce(resp({ items: [linha()], total: 1 }))
+        .mockResolvedValue(resp({ items: [linha()], total: 1 }));
+      await abrir(fetchMock);
+      fireEvent.click(screen.getByRole('button', { name: 'Editar tabela' }));
+      fireEvent.change(screen.getByLabelText('Função/Cargo Ana Teste'), { target: { value: 'Outra' } });
+      return fetchMock;
+    }
+
+    it('recusando, não faz GET e mantém o rascunho', async () => {
+      const fetchMock = await comRascunho();
+      const confirmMock = vi.fn().mockReturnValue(false);
+      vi.stubGlobal('confirm', confirmMock);
+      fireEvent.click(screen.getByRole('button', { name: 'Atualizar tabela' }));
+      expect(confirmMock).toHaveBeenCalledWith(MSG);
+      expect(chamadas(fetchMock, 'GET')).toHaveLength(1);
+      expect((screen.getByLabelText('Função/Cargo Ana Teste') as HTMLInputElement).value).toBe('Outra');
+    });
+
+    it('aceitando, refaz o GET e descarta o rascunho', async () => {
+      const fetchMock = await comRascunho();
+      vi.stubGlobal('confirm', vi.fn().mockReturnValue(true));
+      fireEvent.click(screen.getByRole('button', { name: 'Atualizar tabela' }));
+      await waitFor(() => expect(chamadas(fetchMock, 'GET')).toHaveLength(2));
+      await waitFor(() =>
+        expect((screen.getByLabelText('Função/Cargo Ana Teste') as HTMLInputElement).value).toBe('Soldadora'),
+      );
+    });
+
+    it('sem alterações atualiza direto, sem perguntar', async () => {
+      const fetchMock = vi.fn().mockResolvedValue(resp({ items: [linha()], total: 1 }));
+      await abrir(fetchMock);
+      const confirmMock = vi.fn();
+      vi.stubGlobal('confirm', confirmMock);
+      fireEvent.click(screen.getByRole('button', { name: 'Editar tabela' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Atualizar tabela' }));
+      await waitFor(() => expect(chamadas(fetchMock, 'GET')).toHaveLength(2));
+      expect(confirmMock).not.toHaveBeenCalled();
+    });
+  });
 });

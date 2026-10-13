@@ -103,6 +103,12 @@ export function FuncionariosTable({ tenantId }: { tenantId?: string }) {
   }
 
   async function refresh() {
+    if (
+      hasChanges &&
+      !window.confirm('Você tem alterações não confirmadas. Atualizar vai descartá-las. Continuar?')
+    ) {
+      return;
+    }
     setSuccess('');
     setError('');
     setFieldErrors({});
@@ -129,6 +135,8 @@ export function FuncionariosTable({ tenantId }: { tenantId?: string }) {
           }
         } else if (col.type === 'sex') {
           next[col.key] = typed === '' ? null : typed;
+        } else if (col.key === 'cpf') {
+          next[col.key] = draft[row.id][col.key].replace(/\D/g, '');
         } else {
           next[col.key] = draft[row.id][col.key];
         }
