@@ -11,6 +11,7 @@ import { EmployeesModule } from './employees/employees.module';
 import { TechniciansModule } from './technicians/technicians.module';
 import { PartnersModule } from './partners/partners.module';
 import { TenantsModule } from './tenants/tenants.module';
+import { CnpjLookupModule } from './cnpj-lookup/cnpj-lookup.module';
 import { CompanyUnitsModule } from './company-units/company-units.module';
 import { TenantTechniciansModule } from './tenant-technicians/tenant-technicians.module';
 import { DocumentsModule } from './documents/documents.module';
@@ -70,6 +71,7 @@ import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
     TechniciansModule,
     PartnersModule,
     TenantsModule,
+    CnpjLookupModule,
     CompanyUnitsModule,
     TenantTechniciansModule,
     DocumentsModule,

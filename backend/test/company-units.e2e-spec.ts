@@ -37,6 +37,7 @@ describe('CRUD /company-units (e2e)', () => {
       .set('Authorization', `Bearer ${token}`)
       .send({
         name: 'Sede',
+        cnpj: '12.345.678/0002-76',
         address_street: 'Rua das Flores',
         address_number: '100',
         address_city: 'Criciúma',
@@ -77,6 +78,7 @@ describe('CRUD /company-units (e2e)', () => {
       .set('Authorization', `Bearer ${token}`)
       .send({
         name: 'Filial Com Funcionário',
+        cnpj: '12345678000357',
         address_street: 'Rua Vínculo',
         address_city: 'Criciúma',
         address_state: 'SC',
@@ -155,7 +157,7 @@ describe('CRUD /company-units (e2e)', () => {
     const createRes = await request(app.getHttpServer())
       .post('/company-units')
       .set('Authorization', `Bearer ${token}`)
-      .send({ name: 'Filial Idempotencia', address_street: 'Rua X', address_city: 'Criciúma', address_state: 'SC', address_zip: '88804000' });
+      .send({ name: 'Filial Idempotencia', cnpj: '12345678000438', address_street: 'Rua X', address_city: 'Criciúma', address_state: 'SC', address_zip: '88804000' });
     const id = createRes.body.id;
 
     expect((await request(app.getHttpServer()).delete(`/company-units/${id}`).set('Authorization', `Bearer ${token}`)).status).toBe(200);
