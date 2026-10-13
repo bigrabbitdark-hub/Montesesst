@@ -199,7 +199,7 @@ export function FuncionariosTable({
   const btn =
     'rounded-md px-4 py-2 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-dash-primary disabled:cursor-not-allowed disabled:opacity-50';
   const inputCls =
-    'w-full min-w-[8rem] rounded-md border border-dash-border-soft bg-dash-card px-2 py-1.5 text-sm text-dash-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-dash-primary disabled:border-transparent disabled:bg-transparent data-[changed=true]:border-dash-status-warn-text data-[changed=true]:bg-dash-status-warn-bg';
+    'w-full min-w-[8rem] rounded-md border border-dash-border-soft bg-dash-card px-2 py-1.5 text-sm text-dash-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-dash-primary disabled:border-transparent disabled:bg-transparent data-[changed=true]:border-dash-status-warn-text! data-[changed=true]:bg-dash-status-warn-bg';
 
   return (
     <section className="flex flex-col gap-4" aria-label="Tabela oficial de funcionários">
