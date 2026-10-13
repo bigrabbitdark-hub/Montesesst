@@ -1,5 +1,6 @@
 import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PoolClient } from 'pg';
+import { normalizeEmployeeInput } from './employee-fields.util';
 import { mapPgError } from '../common/pg-error.util';
 import { buildSafeSetClause } from '../common/safe-update.util';
 import { parseEmployeesCsv, ParsedCsvRow } from './csv-import.util';
@@ -17,6 +18,10 @@ const UPDATABLE_FIELDS = [
   'company_unit_id',
   'position_id',
   'status',
+  'esocial_registration',
+  'sex',
+  'cbo_code',
+  'activity_description',
 ] as const;
 
 export interface Employee {
@@ -29,6 +34,10 @@ export interface Employee {
   position: string | null;
   admission_date: string | null;
   company_unit_id: string | null;
+  esocial_registration: string | null;
+  sex: 'F' | 'M' | null;
+  cbo_code: string | null;
+  activity_description: string | null;
   status: string;
   created_at: string;
   updated_at: string;
@@ -41,6 +50,10 @@ interface CreateEmployeeData {
   position?: string;
   admission_date?: string;
   company_unit_id?: string;
+  esocial_registration?: string;
+  sex?: string;
+  cbo_code?: string;
+  activity_description?: string;
 }
 
 interface UpdateEmployeeData {
@@ -52,6 +65,10 @@ interface UpdateEmployeeData {
   company_unit_id?: string;
   position_id?: string;
   status?: string;
+  esocial_registration?: string;
+  sex?: string;
+  cbo_code?: string;
+  activity_description?: string;
 }
 
 export interface ImportRowError {
@@ -107,20 +124,41 @@ export class EmployeesService {
     if (data.company_unit_id) {
       await this.assertCompanyUnitBelongsToTenant(client, data.company_unit_id, tenantId);
     }
-    const result = await client.query<Employee>(
-      `INSERT INTO employees (tenant_id, full_name, cpf, birth_date, position, admission_date, company_unit_id)
-       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
-      [
-        tenantId,
-        data.full_name,
-        data.cpf,
-        data.birth_date ?? null,
-        data.position ?? null,
-        data.admission_date ?? null,
-        data.company_unit_id ?? null,
-      ],
-    );
-    return result.rows[0];
+    const { values, errors } = normalizeEmployeeInput({
+      full_name: data.full_name,
+      cpf: data.cpf,
+      birth_date: data.birth_date,
+      position: data.position,
+      admission_date: data.admission_date,
+      sex: data.sex,
+      cbo_code: data.cbo_code,
+      esocial_registration: data.esocial_registration,
+      activity_description: data.activity_description,
+    });
+    if (Object.keys(errors).length) throw new BadRequestException(Object.values(errors).join('; '));
+    try {
+      const result = await client.query<Employee>(
+        `INSERT INTO employees (tenant_id, full_name, cpf, birth_date, position, admission_date, company_unit_id,
+                                esocial_registration, sex, cbo_code, activity_description)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *`,
+        [
+          tenantId,
+          values.full_name,
+          values.cpf,
+          values.birth_date ?? null,
+          values.position ?? null,
+          values.admission_date ?? null,
+          data.company_unit_id ?? null,
+          values.esocial_registration ?? null,
+          values.sex ?? null,
+          values.cbo_code ?? null,
+          values.activity_description ?? null,
+        ],
+      );
+      return result.rows[0];
+    } catch (err) {
+      mapPgError(err);
+    }
   }
 
   async findAll(client: PoolClient, tenantId?: string): Promise<Employee[]> {
@@ -143,7 +181,9 @@ export class EmployeesService {
     return employee;
   }
 
-  async update(client: PoolClient, id: string, data: UpdateEmployeeData, callerRole: string): Promise<Employee> {
+  async update(client: PoolClient, id: string, rawData: UpdateEmployeeData, callerRole: string): Promise<Employee> {
+    const { values: data, errors } = normalizeEmployeeInput(rawData as Record<string, unknown>);
+    if (Object.keys(errors).length) throw new BadRequestException(Object.values(errors).join('; '));
     if (data.status === 'ativo') {
       const existing = await client.query<{ tenant_id: string; status: string }>(
         'SELECT tenant_id, status FROM employees WHERE id = $1',
@@ -162,7 +202,7 @@ export class EmployeesService {
         id,
       ]);
       if (existing.rowCount === 0) throw new NotFoundException('Funcionário não encontrado');
-      await this.assertCompanyUnitBelongsToTenant(client, data.company_unit_id, existing.rows[0].tenant_id);
+      await this.assertCompanyUnitBelongsToTenant(client, data.company_unit_id as string, existing.rows[0].tenant_id);
     }
     if (data.position_id) {
       // Mesmo raciocínio de company_unit_id acima: um position_id de outro
@@ -174,7 +214,7 @@ export class EmployeesService {
       ]);
       if (existing.rowCount === 0) throw new NotFoundException('Funcionário não encontrado');
       const positionResult = await client.query('SELECT id FROM positions WHERE id = $1 AND tenant_id = $2', [
-        data.position_id,
+        data.position_id as string,
         existing.rows[0].tenant_id,
       ]);
       if (positionResult.rowCount === 0) throw new BadRequestException('Cargo não encontrado');
@@ -182,10 +222,15 @@ export class EmployeesService {
     const { setClauses, values } = buildSafeSetClause(data, UPDATABLE_FIELDS, 2);
     if (setClauses.length === 0) return this.findOne(client, id);
 
-    const result = await client.query<Employee>(
-      `UPDATE employees SET ${setClauses.join(', ')} WHERE id = $1 RETURNING *`,
-      [id, ...values],
-    );
+    let result;
+    try {
+      result = await client.query<Employee>(
+        `UPDATE employees SET ${setClauses.join(', ')} WHERE id = $1 RETURNING *`,
+        [id, ...values],
+      );
+    } catch (err) {
+      mapPgError(err);
+    }
     const employee = result.rows[0];
     if (!employee) throw new NotFoundException('Funcionário não encontrado');
     return employee;

@@ -88,7 +88,7 @@ describe('CRUD /company-units (e2e)', () => {
     const employeeRes = await request(app.getHttpServer())
       .post('/employees')
       .set('Authorization', `Bearer ${token}`)
-      .send({ full_name: 'Func Vinculado À Filial', cpf: '12312312399', company_unit_id: linkedUnitId });
+      .send({ full_name: 'Func Vinculado À Filial', cpf: '11144477735', company_unit_id: linkedUnitId });
     expect(employeeRes.status).toBe(201);
     const employeeId = employeeRes.body.id;
 

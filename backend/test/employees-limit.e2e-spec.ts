@@ -64,7 +64,7 @@ describe('Limite de funcionário por plano (e2e)', () => {
     const res = await request(app.getHttpServer())
       .post('/employees')
       .set('Authorization', `Bearer ${token}`)
-      .send({ full_name: 'Funcionário 11', cpf: '40000000099' });
+      .send({ full_name: 'Funcionário 11', cpf: '40000000043' });
 
     expect(res.status).toBe(403);
     expect(res.body.message).toBe('Limite de 10 funcionários do plano atingido. Faça upgrade para adicionar mais.');
@@ -116,7 +116,7 @@ describe('Limite de funcionário por plano (e2e)', () => {
     const res = await request(app.getHttpServer())
       .post('/employees')
       .set('Authorization', `Bearer ${token}`)
-      .send({ full_name: 'Funcionário Via Admin', cpf: '40000002999', tenant_id: tenant.tenantId });
+      .send({ full_name: 'Funcionário Via Admin', cpf: '40000002925', tenant_id: tenant.tenantId });
 
     expect(res.status).toBe(201);
   });
@@ -134,7 +134,7 @@ describe('Limite de funcionário por plano (e2e)', () => {
     const res = await request(app.getHttpServer())
       .post('/employees')
       .set('Authorization', `Bearer ${token}`)
-      .send({ full_name: 'Funcionário 16 Sem Plano', cpf: '40000003999' });
+      .send({ full_name: 'Funcionário 16 Sem Plano', cpf: '40000003069' });
 
     expect(res.status).toBe(201);
   });
@@ -157,7 +157,7 @@ describe('Limite de funcionário por plano (e2e)', () => {
     const res = await request(app.getHttpServer())
       .post('/employees')
       .set('Authorization', `Bearer ${token}`)
-      .send({ full_name: 'Funcionário 11 Com Premium Ativo', cpf: '40000004999' });
+      .send({ full_name: 'Funcionário 11 Com Premium Ativo', cpf: '40000004030' });
 
     expect(res.status).toBe(201);
   });
@@ -254,7 +254,7 @@ describe('Limite de funcionário por plano (e2e)', () => {
     const res = await request(app.getHttpServer())
       .post('/employees')
       .set('Authorization', `Bearer ${token}`)
-      .send({ full_name: 'Funcionário 11 Com Enterprise Ativo', cpf: '40000007999' });
+      .send({ full_name: 'Funcionário 11 Com Enterprise Ativo', cpf: '40000007994' });
 
     expect(res.status).toBe(201);
   });

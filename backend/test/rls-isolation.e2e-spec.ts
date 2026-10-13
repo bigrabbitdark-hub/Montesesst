@@ -4,6 +4,18 @@ import request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { TestDb, TestTenantFixture } from './db-test-helper';
 
+// CPF aleatório com dígitos verificadores válidos (POST /employees valida o CPF).
+function randomValidCpf(): string {
+  const d = Array.from({ length: 9 }, () => Math.floor(Math.random() * 10));
+  if (d.every((x) => x === d[0])) d[8] = (d[0] + 1) % 10;
+  for (const len of [9, 10]) {
+    let sum = 0;
+    for (let i = 0; i < len; i++) sum += d[i] * (len + 1 - i);
+    d.push(((sum * 10) % 11) % 10);
+  }
+  return d.join('');
+}
+
 describe('Isolamento multi-tenant via RLS (e2e)', () => {
   let app: INestApplication;
   let db: TestDb;
@@ -58,7 +70,7 @@ describe('Isolamento multi-tenant via RLS (e2e)', () => {
       .set('Authorization', `Bearer ${tokenA}`)
       .send({
         full_name: 'Funcionário Novo',
-        cpf: String(Math.floor(10000000000 + Math.random() * 89999999999)),
+        cpf: randomValidCpf(),
         tenant_id: tenantB.tenantId,
       });
 

@@ -69,7 +69,7 @@ describe('employees.company_unit_id (e2e)', () => {
     const res = await request(app.getHttpServer())
       .post('/employees')
       .set('Authorization', `Bearer ${tokenA}`)
-      .send({ full_name: 'Func A', cpf: '11122233344', company_unit_id: unitAId });
+      .send({ full_name: 'Func A', cpf: '11122233396', company_unit_id: unitAId });
 
     expect(res.status).toBe(201);
     expect(res.body.company_unit_id).toBe(unitAId);
@@ -79,7 +79,7 @@ describe('employees.company_unit_id (e2e)', () => {
     const res = await request(app.getHttpServer())
       .post('/employees')
       .set('Authorization', `Bearer ${tokenA}`)
-      .send({ full_name: 'Func Malicioso', cpf: '55566677788', company_unit_id: unitBId });
+      .send({ full_name: 'Func Malicioso', cpf: '55566677720', company_unit_id: unitBId });
 
     expect(res.status).toBe(400);
   });
@@ -100,7 +100,7 @@ describe('employees.company_unit_id (e2e)', () => {
       .set('Authorization', `Bearer ${tokenAdmin}`)
       .send({
         full_name: 'Func Cross Tenant Via Admin',
-        cpf: '99988877766',
+        cpf: '99988877714',
         tenant_id: tenantAId,
         company_unit_id: unitBId,
       });
