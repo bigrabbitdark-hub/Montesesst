@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { AiConfigModule } from '../ai-config/ai-config.module';
 import { DocumentsModule } from '../documents/documents.module';
 import { CommitteesController } from './committees.controller';
 import { CommitteesService } from './committees.service';
@@ -23,7 +24,7 @@ import { SipatController } from './sipat.controller';
 import { SipatService } from './sipat.service';
 
 @Module({
-  imports: [DocumentsModule],
+  imports: [DocumentsModule, AiConfigModule],
   controllers: [CommitteesController, MeetingsController, MembersController, PendenciasController, ElectionsController, TrainingsController, DdsController, SipatController],
   providers: [
     CommitteesService,

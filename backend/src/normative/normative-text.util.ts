@@ -53,7 +53,7 @@ export function decodeHtmlBuffer(buffer: Buffer, contentType: string): string {
   for (const rotulo of [doHeader, doMeta]) {
     if (!rotulo) continue;
     try {
-      return new TextDecoder(rotulo).decode(buffer);
+      return decode(new TextDecoder(rotulo), buffer);
     } catch {
       // rótulo desconhecido: tenta o próximo
     }
@@ -61,8 +61,49 @@ export function decodeHtmlBuffer(buffer: Buffer, contentType: string): string {
   try {
     return new TextDecoder('utf-8', { fatal: true }).decode(buffer);
   } catch {
-    return new TextDecoder('windows-1252').decode(buffer);
+    return decode(new TextDecoder('windows-1252'), buffer);
   }
+}
+
+// O TextDecoder do Node 20 (o da imagem de produção) decodifica 'windows-1252' (e os rótulos iso-8859-1/latin1, que o
+// WHATWG mapeia para ele) como ISO-8859-1: os bytes 0x80–0x9F viram controles C1 em vez de "–", "—", "“", "”", "€"…
+// No Planalto isso troca o travessão do inciso ("III \x96 colisões", CLT art. 193) por um caractere invisível.
+// Os 5 bytes sem caractere no windows-1252 (0x81, 0x8D, 0x8F, 0x90, 0x9D) ficam como estão.
+const CP1252_80_9F = '€\u0081‚ƒ„…†‡ˆ‰Š‹Œ\u008DŽ\u008F\u0090‘’“”•–—˜™š›œ\u009DžŸ';
+function decode(decoder: TextDecoder, buffer: Buffer): string {
+  const text = decoder.decode(buffer);
+  return decoder.encoding === 'windows-1252' ? text.replace(/[\u0080-\u009f]/g, (c) => CP1252_80_9F[c.charCodeAt(0) - 0x80]) : text;
+}
+
+// Entidades HTML no TEXTO já sem tags (modo Planalto, ver extractHtmlText): o Planalto escreve `&quot;`, `&#150;`
+// (meia-risca pela tabela windows-1252, como o HTML5 faz para 128–159) e `a&#768;` (acento grave combinante) — sem
+// decodificar, isso ficava no literal do dispositivo. Uma passada só ("&amp;lt;" vira o texto "&lt;"). Entidade
+// nomeada desconhecida fica como está; código inválido (0, substituto, > U+10FFFF) vira U+FFFD, como no HTML5. Espaço
+// ou quebra vindos de entidade viram espaço comum (não criam linha). Medição nas 3 páginas de 2026-10-09: só `&quot;`
+// (185/6/76 em CLT/Lei 8.213/Decreto 3.048), `&#150;` (36/8/0) e `&#768;` (0/2/0) sobravam no texto.
+const ENTIDADES_NOMEADAS: Record<string, string> = {
+  quot: '"', amp: '&', lt: '<', gt: '>', apos: "'", nbsp: ' ',
+  ordm: 'º', ordf: 'ª', deg: '°', sect: '§', para: '¶', middot: '·', laquo: '«', raquo: '»',
+  ndash: '–', mdash: '—', lsquo: '‘', rsquo: '’', ldquo: '“', rdquo: '”', hellip: '…', bull: '•', euro: '€',
+  aacute: 'á', Aacute: 'Á', agrave: 'à', Agrave: 'À', acirc: 'â', Acirc: 'Â', atilde: 'ã', Atilde: 'Ã',
+  eacute: 'é', Eacute: 'É', ecirc: 'ê', Ecirc: 'Ê', iacute: 'í', Iacute: 'Í', oacute: 'ó', Oacute: 'Ó',
+  ocirc: 'ô', Ocirc: 'Ô', otilde: 'õ', Otilde: 'Õ', uacute: 'ú', Uacute: 'Ú', uuml: 'ü', Uuml: 'Ü',
+  ccedil: 'ç', Ccedil: 'Ç',
+};
+export function decodeHtmlEntities(text: string): string {
+  return text.replace(/&(?:#(\d{1,8})|#[xX]([0-9a-fA-F]{1,7})|([a-zA-Z][a-zA-Z0-9]{1,31}));/g, (ent, dec, hex, nome) => {
+    let c: string;
+    if (nome !== undefined) {
+      if (!Object.prototype.hasOwnProperty.call(ENTIDADES_NOMEADAS, nome)) return ent;
+      c = ENTIDADES_NOMEADAS[nome];
+    } else {
+      const n = dec !== undefined ? parseInt(dec, 10) : parseInt(hex, 16);
+      if (n === 0 || n > 0x10ffff || (n >= 0xd800 && n <= 0xdfff)) c = '�';
+      else if (n >= 0x80 && n <= 0x9f) c = CP1252_80_9F[n - 0x80];
+      else c = String.fromCodePoint(n);
+    }
+    return /\s/.test(c) && c !== ' ' ? ' ' : c;
+  });
 }
 
 // O pdf-parse junta as páginas com marcadores "-- n of N --": um PDF escaneado de ~8 páginas passaria do

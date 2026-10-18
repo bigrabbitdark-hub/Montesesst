@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+# Instala os agentes e skills do Montese no nível de usuário (/root/.claude), para valer
+# em QUALQUER worktree do Orca (o .claude/ do projeto é ignorado pelo git).
+# Seguro para repetir. Só toca agentes montese-* e as skills da pasta skills/ (perf-*, montese, relatorio, auditoria...).
+set -euo pipefail
+D="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+mkdir -p /root/.claude/agents /root/.claude/skills /root/.montese/logs
+cp -f "$D"/agentes/montese-*.md /root/.claude/agents/
+for s in "$D"/skills/*/; do
+  n="$(basename "$s")"; mkdir -p "/root/.claude/skills/$n"; cp -f "$s"SKILL.md "/root/.claude/skills/$n/"
+done
+chmod +x "$D"/montese "$D"/delegar "$D"/revisar "$D"/nova "$D"/status "$D"/ver "$D"/aprovar "$D"/rodar "$D"/configurar-minimax "$D"/configurar-openrouter "$D"/testar "$D"/instalar
+echo "Instalado: $(ls /root/.claude/agents/montese-*.md | wc -l) agentes, $(ls -d "$D"/skills/*/ | wc -l) skills."

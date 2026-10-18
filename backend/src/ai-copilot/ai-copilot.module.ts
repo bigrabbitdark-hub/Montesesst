@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { AiConfigModule } from '../ai-config/ai-config.module';
 import { FIELD_REPORT_EXTRACTOR } from './field-report-extractor.interface';
 import { MiniMaxExtractorService } from './minimax-extractor.service';
 import { OpenRouterExtractorService } from './openrouter-extractor.service';
@@ -9,6 +10,7 @@ import { AiCopilotController } from './ai-copilot.controller';
 // continua pronto e testado, só não é o binding ativo — trocar de volta é
 // mudar só a linha `useClass` abaixo.
 @Module({
+  imports: [AiConfigModule],
   controllers: [AiCopilotController],
   providers: [
     MiniMaxExtractorService,

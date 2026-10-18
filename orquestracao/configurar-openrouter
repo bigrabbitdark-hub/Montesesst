@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+# Guarda a chave do OpenRouter com segurança. Rode você mesmo; a chave nunca vai para o chat nem para o git.
+# Fica em /root/.montese/openrouter.env (permissão 600), FORA do repositório.
+set -euo pipefail
+
+echo "Antes de colar a chave, no site do OpenRouter (openrouter.ai) → Settings → Privacy:"
+echo "  - DESLIGUE as opções que permitem que seus prompts sejam usados para treino/publicação."
+echo "  (Isso reduz os modelos grátis disponíveis, mas protege o código do projeto.)"
+echo
+read -r -s -p "Cole a chave do OpenRouter (começa com sk-or-; não aparece na tela): " KEY; echo
+[ -n "$KEY" ] || { echo "Chave vazia. Nada foi salvo."; exit 1; }
+case "$KEY" in sk-or-*) ;; *) echo "Aviso: a chave não começa com sk-or-. Confira se é a chave certa.";; esac
+
+mkdir -p /root/.montese
+umask 077
+{
+  printf 'OPENROUTER_API_KEY=%q\n' "$KEY"
+  echo 'OPENROUTER_BASE_URL=https://openrouter.ai/api'
+  echo 'OPENROUTER_MODEL=nvidia/nemotron-3-super-120b-a12b:free'
+} > /root/.montese/openrouter.env
+chmod 600 /root/.montese/openrouter.env
+
+echo "Salvo em /root/.montese/openrouter.env (somente root lê)."
+echo "Para trocar o modelo grátis, edite OPENROUTER_MODEL nesse arquivo."
+echo "Teste agora: $(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/testar"

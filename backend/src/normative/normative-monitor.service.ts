@@ -6,7 +6,8 @@ import { NormativeDocumentsService } from './normative-documents.service';
 import { EmailService } from '../common/email/email.service';
 import { MonitorEvent, buildMonitorAlertEmail } from './normative-monitor-email';
 import { fetchPublic, readBodyCapped } from '../common/url/public-url.util';
-import { MONITOR_FETCH_HEADERS, decodeHtmlBuffer, meaningfulLength, suspiciousExtractionReason } from './normative-text.util';
+import { MONITOR_FETCH_HEADERS, decodeHtmlBuffer, decodeHtmlEntities, meaningfulLength, suspiciousExtractionReason } from './normative-text.util';
+import { htmlToTextDroppingStruck } from './html-struck';
 
 // As páginas de norma do gov.br/trabalho (CMS Plone) têm cabeçalho, menu de
 // navegação e rodapé institucional enormes em volta do texto real da norma
@@ -22,7 +23,35 @@ import { MONITOR_FETCH_HEADERS, decodeHtmlBuffer, meaningfulLength, suspiciousEx
 // As fronteiras de tag são as mesmas da regra antiga (uma passada só com `<[^>]+>`); sem flag g, o test() não guarda estado.
 const BLOCK_TAG_RE = /^<\/?(?:br|p|div|li|tr|h[1-6]|table|ul|ol|blockquote|section|article|pre)\b/i;
 
-export function extractHtmlText(html: string): string {
+export interface ExtractHtmlOptions {
+  // Descarta o texto riscado (<strike>, <s>, text-decoration: line-through): redação revogada (ver html-struck.ts).
+  dropStruck?: boolean;
+  // Quebra de linha do código-fonte vira espaço, como no navegador; só elementos de bloco quebram linha. Sem isso o
+  // Planalto parte o número do artigo ("Art.\n191 - …").
+  htmlWhitespace?: boolean;
+  // Decodifica as entidades HTML do texto (`&quot;`, `&#150;`, `a&#768;`…) e normaliza para NFC (o acento combinante
+  // vira a letra acentuada, "a&#768;" → "à"), ver decodeHtmlEntities.
+  decodeEntities?: boolean;
+}
+
+// Só para o planalto.gov.br (extractOptionsForUrl): as demais fontes mantêm a saída — e o content_hash — de sempre.
+export const PLANALTO_EXTRACT_OPTIONS: Readonly<ExtractHtmlOptions> = Object.freeze({
+  dropStruck: true,
+  htmlWhitespace: true,
+  decodeEntities: true,
+});
+
+export function extractOptionsForUrl(url: string): Readonly<ExtractHtmlOptions> {
+  let host: string;
+  try {
+    host = new URL(url).hostname.toLowerCase();
+  } catch {
+    return {};
+  }
+  return host === 'planalto.gov.br' || host.endsWith('.planalto.gov.br') ? PLANALTO_EXTRACT_OPTIONS : {};
+}
+
+export function extractHtmlText(html: string, opts: Readonly<ExtractHtmlOptions> = {}): string {
   const startMatch = html.match(/<div[^>]*id=["']content-core["'][^>]*>/i);
   let scoped = html;
   if (startMatch) {
@@ -30,11 +59,13 @@ export function extractHtmlText(html: string): string {
     const endIndex = html.indexOf('viewlet-below-content', start);
     scoped = endIndex !== -1 ? html.slice(start, endIndex) : html.slice(start);
   }
-  return scoped
-    .replace(/<script[\s\S]*?<\/script>/gi, ' ')
-    .replace(/<style[\s\S]*?<\/style>/gi, ' ')
-    .replace(/<[^>]+>/g, (m) => (BLOCK_TAG_RE.test(m) ? '\n' : ' '))
-    .replace(/&nbsp;/g, ' ')
+  let semScript = scoped.replace(/<script[\s\S]*?<\/script>/gi, ' ').replace(/<style[\s\S]*?<\/style>/gi, ' ');
+  if (opts.htmlWhitespace) semScript = semScript.replace(/\r\n|\r|\n/g, ' ');
+  const comQuebras = opts.dropStruck
+    ? htmlToTextDroppingStruck(semScript, BLOCK_TAG_RE)
+    : semScript.replace(/<[^>]+>/g, (m) => (BLOCK_TAG_RE.test(m) ? '\n' : ' '));
+  const semNbsp = comQuebras.replace(/&nbsp;/g, ' ');
+  return (opts.decodeEntities ? decodeHtmlEntities(semNbsp).normalize('NFC') : semNbsp)
     .split('\n')
     .map((line) => line.replace(/[^\S\n]+/g, ' ').trim())
     .filter((line) => line.length > 0)
@@ -248,7 +279,7 @@ export class NormativeMonitorService {
       }
       mimeType = 'application/pdf';
     } else {
-      text = extractHtmlText(decodeHtmlBuffer(buffer, contentType));
+      text = extractHtmlText(decodeHtmlBuffer(buffer, contentType), extractOptionsForUrl(url));
       mimeType = 'text/html';
     }
     return { text, mimeType, buffer, statusCode: response.status };

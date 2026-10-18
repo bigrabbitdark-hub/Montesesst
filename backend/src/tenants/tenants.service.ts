@@ -21,6 +21,11 @@ const UPDATABLE_FIELDS = [
   'address_city',
   'address_state',
   'address_zip',
+  'notes',
+  'address_neighborhood',
+  'address_complement',
+  'cnae_code',
+  'cnae_description',
 ] as const;
 
 // Campos que precisam estar TODOS presentes (endereço completo, mesma
@@ -94,6 +99,11 @@ export interface Tenant {
   address_city: string | null;
   address_state: string | null;
   address_zip: string | null;
+  notes: string | null;
+  address_neighborhood: string | null;
+  address_complement: string | null;
+  cnae_code: string | null;
+  cnae_description: string | null;
   logo_file_key: string | null;
   created_at: string;
   updated_at: string;
@@ -110,6 +120,11 @@ interface UpdateTenantData {
   address_city?: string;
   address_state?: string;
   address_zip?: string;
+  notes?: string;
+  address_neighborhood?: string;
+  address_complement?: string;
+  cnae_code?: string;
+  cnae_description?: string;
 }
 
 // tenants NÃO tem RLS própria (ver Global Constraints do plano) — este

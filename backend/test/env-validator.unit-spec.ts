@@ -20,6 +20,7 @@ const validEnv = (): NodeJS.ProcessEnv => ({
   R2_SECRET_ACCESS_KEY: 's'.repeat(64),
   R2_BUCKET: 'montese-docs',
   PUBLIC_APP_URL: 'https://montesesst.com.br',
+  AI_CONFIG_ENCRYPTION_KEY: 'ab'.repeat(32),
 });
 
 describe('collectEnvErrors', () => {
@@ -42,6 +43,7 @@ describe('collectEnvErrors', () => {
     'R2_SECRET_ACCESS_KEY',
     'R2_BUCKET',
     'PUBLIC_APP_URL',
+    'AI_CONFIG_ENCRYPTION_KEY',
   ])('variável ausente (%s) é reportada pelo nome', (name) => {
     const env = validEnv();
     delete env[name];
@@ -92,9 +94,19 @@ describe('collectEnvErrors', () => {
     expect(errors).toHaveLength(2);
   });
 
+  it('AI_CONFIG_ENCRYPTION_KEY com formato errado (não 64 hex) é recusada', () => {
+    const env = validEnv();
+    for (const bad of ['muito-curto', 'ab'.repeat(32) + 'g', '']) {
+      env.AI_CONFIG_ENCRYPTION_KEY = bad;
+      expect(collectEnvErrors(env).join('\n')).toContain('AI_CONFIG_ENCRYPTION_KEY:');
+    }
+    env.AI_CONFIG_ENCRYPTION_KEY = 'ab'.repeat(32);
+    expect(collectEnvErrors(env)).toEqual([]);
+  });
+
   it('acumula todos os erros de uma vez (o operador corrige tudo numa só tentativa)', () => {
     const errors = collectEnvErrors({ NODE_ENV: 'production' });
-    expect(errors).toHaveLength(14);
+    expect(errors).toHaveLength(15);
   });
 
   it('PUBLIC_APP_URL: recusa http://, barra no final e o texto "undefined" (o link do e-mail sairia quebrado ou sem TLS)', () => {

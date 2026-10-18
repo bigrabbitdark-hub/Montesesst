@@ -4,10 +4,16 @@ import { RateLimit } from '../common/rate-limit/rate-limit.decorator';
 import { envInt } from '../common/env';
 import { PenteFinoComparisonService } from './pente-fino-comparison.service';
 import { RunPenteFinoDto } from './dto/run-pente-fino.dto';
+import { buildSstAuditPdf } from './sst-audit-pdf.service';
+import { SstAuditService } from './sst-audit.service';
+import { TenantContext } from '../common/database/database.service';
 
 @Controller('pente-fino')
 export class PenteFinoController {
-  constructor(private readonly comparison: PenteFinoComparisonService) {}
+  constructor(
+    private readonly comparison: PenteFinoComparisonService,
+    private readonly sstAudit: SstAuditService,
+  ) {}
 
   @Roles('empresa', 'tecnico', 'parceiro')
   // Teto próprio, bem mais apertado que o limite global de 300/300s: cada
@@ -15,7 +21,9 @@ export class PenteFinoController {
   // exame, até 60s cada, mais até 4 do checklist preliminar de PGR/PCMSO/
   // LTCAT/LIP, Fase 27, mais 1 de agentes do LIP, Fase 28) mais os downloads
   // no R2. Mesmo padrão/convenção de env de POST /documents/classify-batch
-  // (Fase 21).
+  // (Fase 21). Com include_pdf somam-se as chamadas de extração de fatos da
+  // auditoria cruzada (lotes de até 8 páginas/16.000 caracteres, no máximo 2
+  // em paralelo, com cache por sha256 do documento).
   @RateLimit({
     limit: envInt('PENTE_FINO_RUN_RATE_LIMIT_MAX', 5),
     windowSeconds: envInt('PENTE_FINO_RUN_RATE_LIMIT_WINDOW_SECONDS', 3600),
@@ -23,14 +31,22 @@ export class PenteFinoController {
   })
   @UsePipes(new ValidationPipe({ transform: true, whitelist: true, forbidNonWhitelisted: true }))
   @Post('run')
-  run(@Body() dto: RunPenteFinoDto, @Req() req: any) {
+  async run(@Body() dto: RunPenteFinoDto, @Req() req: any) {
     const user = req.user;
-    // `tenantId` aqui é só o ALVO (qual empresa o técnico/parceiro quer
-    // analisar) — vem do corpo, então é controlado por quem chama e NUNCA
-    // pode virar contexto de RLS. Por isso o usuário autenticado vai
-    // separado: é dele (do JWT) que o service monta o TenantContext.
     const tenantId = user.role === 'tecnico' || user.role === 'parceiro' ? dto.tenant_id : user.tenantId;
     if (!tenantId) throw new BadRequestException('tenant_id é obrigatório');
-    return this.comparison.run(tenantId, user);
+
+    const report = await this.comparison.run(tenantId, user);
+    if (!dto.include_pdf) return report;
+
+    const ctx: TenantContext = { userId: user.id, tenantId: user.tenantId ?? undefined, role: user.role };
+    const sstAuditReport = await this.sstAudit.build(ctx, tenantId, report);
+    const pdf = await buildSstAuditPdf(sstAuditReport);
+    return {
+      audit_report: report,
+      sst_audit_report: sstAuditReport,
+      pdf_base64: pdf.toString('base64'),
+      pdf_file_name: `auditoria-montese-${Date.now()}.pdf`,
+    };
   }
 }

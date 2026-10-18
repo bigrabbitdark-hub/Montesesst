@@ -1,0 +1,355 @@
+{
+  "schema_version": 1,
+  "descricao": "Regras interpretativas da área previdenciária (aposentadoria especial, LTCAT, PPP, agentes nocivos), TODAS em rascunho. Cada regra liga dispositivos literais da Lei 8.213/1991, do Decreto 3.048/1999 e da CLT, na redação vigente extraída do Planalto (sem texto riscado). 'interpretacao' é rascunho a ser revisado por profissional habilitado e não é norma. Importar com: npm run db:import-normative-rules -- db/seed-data/normative-rules/previdenciario.json (dry-run por padrão).",
+  "fonte": {
+    "normas": ["LEI-8213", "DEC-3048", "CLT"],
+    "textos": "backend/test/fixtures/normative/previdenciario/ (trechos reais, inclusive o art. 188-P do Decreto 3.048; origem, data e sha256 no README.md da pasta)",
+    "extracao": "decodeHtmlBuffer(buf, 'text/html; charset=iso-8859-1') + extractHtmlText(html, PLANALTO_EXTRACT_OPTIONS) (texto riscado descartado, entidades HTML decodificadas) + parseProvisions(texto, 'lei')",
+    "baixado_em": "2026-10-09",
+    "observacao": "Produção não tem nenhuma destas normas vigente: as ligações só resolvem depois que os textos forem aprovados e os dispositivos gerados. O art. 70 do Decreto 3.048 está revogado (Decreto 10.410/2020) e não tem dispositivo. As tabelas de conversão (art. 66 § 2º, achatada; art. 188-P § 5º, imagem) não são reproduzidas."
+  },
+  "rules": [
+    {
+      "rule_key": "PREV-APOSENTADORIA-ESPECIAL-LEI",
+      "area": "previdenciario",
+      "categoria": "aposentadoria_especial",
+      "agente_ou_atividade": "Aposentadoria especial: condições e comprovação (Lei 8.213)",
+      "metodo_avaliacao": "nao_aplicavel",
+      "criterio": "Lei 8.213 art. 57: a aposentadoria especial será devida, uma vez cumprida a carência, ao segurado que tiver trabalhado sujeito a condições especiais que prejudiquem a saúde ou a integridade física, durante 15, 20 ou 25 anos, conforme dispuser a lei. Lei 8.213 art. 57 §3: a concessão depende de comprovação, perante o INSS, do tempo de trabalho permanente, não ocasional nem intermitente, em condições especiais, durante o período mínimo fixado. Lei 8.213 art. 57 §4: o segurado deverá comprovar, além do tempo de trabalho, exposição aos agentes nocivos químicos, físicos, biológicos ou associação de agentes prejudiciais à saúde ou à integridade física, pelo período equivalente ao exigido para a concessão.",
+      "interpretacao": "[RASCUNHO — não revisado por profissional habilitado] Pela Lei 8.213 art. 57 e §§ 3º e 4º, há duas comprovações distintas: o tempo de trabalho permanente, não ocasional nem intermitente, em condições especiais, e a exposição aos agentes nocivos pelo período exigido. O art. 57 da Lei, no texto desta base, não menciona idade nem pontos; esses requisitos aparecem no Decreto 3.048: idade mínima no art. 64, incisos I a III (ver PREV-APOSENTADORIA-ESPECIAL-DECRETO), e, no art. 188-P, pontos (idade + tempo de contribuição) e tempo de efetiva exposição para os filiados ao RGPS até 13 de novembro de 2019, \"ressalvado o direito de opção\" pelas aposentadorias dos arts. 51, 64 e 188-I a 188-L (ver PREV-APOSENTADORIA-ESPECIAL-TRANSICAO). Qual dessas regras se aplica a cada segurado não se conclui destes textos: exige revisão profissional.",
+      "exige_revisao_profissional": true,
+      "status": "rascunho",
+      "provisions": [
+        { "norma": "LEI-8213", "anexo": "", "item_path": "art. 57", "papel": "fundamento", "contem": "sujeito a condições especiais que prejudiquem a saúde ou a integridade física, durante 15 (quinze), 20 (vinte) ou 25 (vinte e cinco) anos, conforme dispuser a lei" },
+        { "norma": "LEI-8213", "anexo": "", "item_path": "art. 57 §3", "papel": "criterio", "contem": "do tempo de trabalho permanente, não ocasional nem intermitente, em condições especiais" },
+        { "norma": "LEI-8213", "anexo": "", "item_path": "art. 57 §4", "papel": "criterio", "contem": "exposição aos agentes nocivos químicos, físicos, biológicos ou associação de agentes prejudiciais à saúde ou à integridade física" }
+      ]
+    },
+    {
+      "rule_key": "PREV-APOSENTADORIA-ESPECIAL-DECRETO",
+      "area": "previdenciario",
+      "categoria": "aposentadoria_especial",
+      "agente_ou_atividade": "Aposentadoria especial: requisitos do Regulamento (Decreto 3.048)",
+      "metodo_avaliacao": "nao_aplicavel",
+      "criterio": "Decreto 3.048 art. 64: a aposentadoria especial será devida ao segurado empregado, trabalhador avulso e contribuinte individual (este somente quando cooperado filiado a cooperativa de trabalho ou de produção) que comprove o exercício de atividades com efetiva exposição a agentes químicos, físicos e biológicos prejudiciais à saúde, ou a associação desses agentes, de forma permanente, não ocasional nem intermitente, vedada a caracterização por categoria profissional ou ocupação, durante, no mínimo, quinze, vinte ou vinte e cinco anos, e que cumprir os requisitos: Decreto 3.048 art. 64 inc. I: cinquenta e cinco anos de idade, quando se tratar de atividade especial de quinze anos de contribuição; Decreto 3.048 art. 64 inc. II: cinquenta e oito anos de idade, quando se tratar de atividade especial de vinte anos de contribuição; Decreto 3.048 art. 64 inc. III: sessenta anos de idade, quando se tratar de atividade especial de vinte e cinco anos de contribuição.",
+      "interpretacao": "[RASCUNHO — não revisado por profissional habilitado] O Decreto 3.048 art. 64 exige efetiva exposição (não basta a categoria profissional ou a ocupação) e associa a cada tempo de atividade especial uma idade mínima (incisos I a III). O mesmo Decreto, no art. 188-P, prevê para os segurados filiados ao RGPS até 13 de novembro de 2019 a aposentadoria especial por pontos (somatório de idade e tempo de contribuição) com tempo mínimo de efetiva exposição, \"ressalvado o direito de opção pelas aposentadorias de que tratam os art. 51, art. 64 e art. 188-I ao 188-L\" (ver PREV-APOSENTADORIA-ESPECIAL-TRANSICAO). Qual regra se aplica a cada segurado não se conclui destes textos. A Lei 8.213 art. 57, no texto desta base, não menciona idade; a relação entre os dois textos exige revisão profissional.",
+      "exige_revisao_profissional": true,
+      "status": "rascunho",
+      "provisions": [
+        { "norma": "DEC-3048", "anexo": "", "item_path": "art. 64", "papel": "fundamento", "contem": "vedada a caracterização por categoria profissional ou ocupação, durante, no mínimo, quinze, vinte ou vinte e cinco anos" },
+        { "norma": "DEC-3048", "anexo": "", "item_path": "art. 64 inc. I", "papel": "criterio", "contem": "cinquenta e cinco anos de idade, quando se tratar de atividade especial de quinze anos de contribuição" },
+        { "norma": "DEC-3048", "anexo": "", "item_path": "art. 64 inc. II", "papel": "criterio", "contem": "cinquenta e oito anos de idade, quando se tratar de atividade especial de vinte anos de contribuição" },
+        { "norma": "DEC-3048", "anexo": "", "item_path": "art. 64 inc. III", "papel": "criterio", "contem": "sessenta anos de idade, quando se tratar de atividade especial de vinte e cinco anos de contribuição" }
+      ]
+    },
+    {
+      "rule_key": "PREV-APOSENTADORIA-ESPECIAL-TRANSICAO",
+      "area": "previdenciario",
+      "categoria": "aposentadoria_especial",
+      "agente_ou_atividade": "Aposentadoria especial por pontos para filiados ao RGPS até 13/11/2019 (Decreto 3.048 art. 188-P)",
+      "metodo_avaliacao": "nao_aplicavel",
+      "criterio": "Decreto 3.048 art. 188-P: ressalvado o direito de opção pelas aposentadorias de que tratam os arts. 51, 64 e 188-I ao 188-L, uma vez cumprido o período de carência exigido, a aposentadoria especial será devida ao segurado empregado, trabalhador avulso e contribuinte individual (este último somente quando cooperado filiado a cooperativa de trabalho ou de produção), filiados ao RGPS até 13 de novembro de 2019, quando o somatório da sua idade e do seu tempo de contribuição e o tempo de efetiva exposição forem, respectivamente, de: Decreto 3.048 art. 188-P inc. I: sessenta e seis pontos e quinze anos de efetiva exposição; Decreto 3.048 art. 188-P inc. II: setenta e seis pontos e vinte anos de efetiva exposição; Decreto 3.048 art. 188-P inc. III: oitenta e seis pontos e vinte e cinco anos de efetiva exposição. Decreto 3.048 art. 188-P §1: a idade e o tempo de contribuição serão apurados em dias para o cálculo do somatório de pontos. Decreto 3.048 art. 188-P §4: a concessão dependerá da comprovação, durante os períodos mínimos exigidos: Decreto 3.048 art. 188-P §4 inc. I: do tempo de trabalho permanente, não ocasional nem intermitente; Decreto 3.048 art. 188-P §4 inc. II: da efetiva exposição do segurado a agentes químicos, físicos e biológicos prejudiciais à saúde ou à integridade física, ou a associação desses agentes, comprovada na forma prevista nos arts. 64 ao 68.",
+      "excecoes": "Decreto 3.048 art. 188-P (caput): \"Ressalvado o direito de opção pelas aposentadorias de que tratam os art. 51, art. 64 e art. 188-I ao 188-L\".",
+      "interpretacao": "[RASCUNHO — não revisado por profissional habilitado] O Decreto 3.048 art. 188-P prevê, para os segurados filiados ao RGPS até 13 de novembro de 2019, a aposentadoria especial pelo somatório de idade e tempo de contribuição (66, 76 ou 86 pontos; idade e tempo de contribuição apurados em dias, § 1º) com tempo mínimo de efetiva exposição (15, 20 ou 25 anos), ressalvado o direito de opção pelas aposentadorias dos arts. 51, 64 e 188-I a 188-L. A comprovação do tempo permanente e da efetiva exposição segue os arts. 64 a 68 (§ 4º). Este texto não diz qual opção é mais vantajosa nem conclui quem se enquadra: a análise do caso concreto exige profissional habilitado. Os §§ 2º (data de início) e 3º (valor) do art. 188-P não estão nesta regra.",
+      "exige_revisao_profissional": true,
+      "status": "rascunho",
+      "provisions": [
+        { "norma": "DEC-3048", "anexo": "", "item_path": "art. 188-P", "papel": "fundamento", "contem": "filiados ao RGPS até 13 de novembro de 2019, quando o somatório da sua idade e do seu tempo de contribuição e o tempo de efetiva exposição forem" },
+        { "norma": "DEC-3048", "anexo": "", "item_path": "art. 188-P inc. I", "papel": "criterio", "contem": "sessenta e seis pontos e quinze anos de efetiva exposição" },
+        { "norma": "DEC-3048", "anexo": "", "item_path": "art. 188-P inc. II", "papel": "criterio", "contem": "setenta e seis pontos e vinte anos de efetiva exposição" },
+        { "norma": "DEC-3048", "anexo": "", "item_path": "art. 188-P inc. III", "papel": "criterio", "contem": "oitenta e seis pontos e vinte e cinco anos de efetiva exposição" },
+        { "norma": "DEC-3048", "anexo": "", "item_path": "art. 188-P §1", "papel": "metodo", "contem": "A idade e o tempo de contribuição serão apurados em dias para o cálculo do somatório de pontos a que se refere o caput" },
+        { "norma": "DEC-3048", "anexo": "", "item_path": "art. 188-P §4", "papel": "criterio", "contem": "dependerá da comprovação, durante os períodos mínimos exigidos" },
+        { "norma": "DEC-3048", "anexo": "", "item_path": "art. 188-P §4 inc. I", "papel": "criterio", "contem": "do tempo de trabalho permanente, não ocasional nem intermitente" },
+        { "norma": "DEC-3048", "anexo": "", "item_path": "art. 188-P §4 inc. II", "papel": "criterio", "contem": "comprovada na forma prevista nos art. 64 ao art. 68" }
+      ]
+    },
+    {
+      "rule_key": "PREV-EFETIVA-EXPOSICAO",
+      "area": "previdenciario",
+      "categoria": "exposicao",
+      "agente_ou_atividade": "Efetiva exposição: eliminação, neutralização e limites de tolerância",
+      "metodo_avaliacao": "misto",
+      "criterio": "Decreto 3.048 art. 64 §1: a efetiva exposição a agente prejudicial à saúde configura-se quando, mesmo após a adoção das medidas de controle previstas na legislação trabalhista, a nocividade não seja eliminada ou neutralizada. Decreto 3.048 art. 64 §1-A inc. I: eliminação é a adoção de medidas de controle que efetivamente impossibilitem a exposição ao agente prejudicial à saúde no ambiente de trabalho. Decreto 3.048 art. 64 §1-A inc. II: neutralização é a adoção de medidas de controle que reduzam a intensidade, a concentração ou a dose do agente prejudicial à saúde ao limite de tolerância previsto no Regulamento ou, na sua ausência, na legislação trabalhista. Decreto 3.048 art. 64 §2: a exposição deverá superar os limites de tolerância estabelecidos segundo critérios quantitativos ou estar caracterizada de acordo com os critérios da avaliação qualitativa de que trata o § 2º do art. 68.",
+      "interpretacao": "[RASCUNHO — não revisado por profissional habilitado] Pelo Decreto 3.048 art. 64 §§ 1º, 1º-A e 2º, a efetiva exposição se configura quando a nocividade permanece depois das medidas de controle; eliminar é impossibilitar a exposição e neutralizar é reduzi-la ao limite de tolerância. A caracterização é quantitativa (acima do limite de tolerância) ou qualitativa (art. 68 § 2º; ver PREV-AVALIACAO-QUALITATIVA). O texto não diz qual medida de controle elimina ou neutraliza em cada caso: isso depende de avaliação técnica.",
+      "exige_revisao_profissional": true,
+      "status": "rascunho",
+      "provisions": [
+        { "norma": "DEC-3048", "anexo": "", "item_path": "art. 64 §1", "papel": "fundamento", "contem": "mesmo após a adoção das medidas de controle previstas na legislação trabalhista, a nocividade não seja eliminada ou neutralizada" },
+        { "norma": "DEC-3048", "anexo": "", "item_path": "art. 64 §1-A inc. I", "papel": "criterio", "contem": "eliminação - a adoção de medidas de controle que efetivamente impossibilitem a exposição ao agente prejudicial à saúde" },
+        { "norma": "DEC-3048", "anexo": "", "item_path": "art. 64 §1-A inc. II", "papel": "criterio", "contem": "neutralização - a adoção de medidas de controle que reduzam a intensidade, a concentração ou a dose do agente prejudicial à saúde ao limite de tolerância" },
+        { "norma": "DEC-3048", "anexo": "", "item_path": "art. 64 §2", "papel": "metodo", "contem": "deverá superar os limites de tolerância estabelecidos segundo critérios quantitativos ou estar caracterizada de acordo com os critérios da avaliação qualitativa" }
+      ]
+    },
+    {
+      "rule_key": "PREV-TRABALHO-PERMANENTE",
+      "area": "previdenciario",
+      "categoria": "exposicao",
+      "agente_ou_atividade": "Tempo de trabalho permanente (exposição não ocasional nem intermitente)",
+      "metodo_avaliacao": "nao_aplicavel",
+      "criterio": "Decreto 3.048 art. 65: considera-se tempo de trabalho permanente aquele exercido de forma não ocasional nem intermitente, no qual a exposição do empregado, do trabalhador avulso ou do cooperado ao agente nocivo seja indissociável da produção do bem ou da prestação do serviço. Decreto 3.048 art. 65 §único: aplica-se o caput aos períodos de descanso determinados pela legislação trabalhista, inclusive férias, e aos de percepção de salário-maternidade, desde que, à data do afastamento, o segurado estivesse exposto aos fatores de risco de que trata o art. 68. Lei 8.213 art. 57 §3: a concessão depende da comprovação do tempo de trabalho permanente, não ocasional nem intermitente, em condições especiais.",
+      "interpretacao": "[RASCUNHO — não revisado por profissional habilitado] O tempo de trabalho permanente exigido pela Lei 8.213 art. 57 § 3º é definido pelo Decreto 3.048 art. 65: a exposição tem de ser indissociável da produção do bem ou da prestação do serviço. O parágrafo único estende a regra a descansos legais, férias e salário-maternidade, desde que houvesse exposição na data do afastamento.",
+      "exige_revisao_profissional": true,
+      "status": "rascunho",
+      "provisions": [
+        { "norma": "DEC-3048", "anexo": "", "item_path": "art. 65", "papel": "fundamento", "contem": "seja indissociável da produção do bem ou da prestação do serviço" },
+        { "norma": "DEC-3048", "anexo": "", "item_path": "art. 65 §único", "papel": "criterio", "contem": "aos períodos de descanso determinados pela legislação trabalhista, inclusive ao período de férias, e aos de percepção de salário-maternidade" },
+        { "norma": "LEI-8213", "anexo": "", "item_path": "art. 57 §3", "papel": "fundamento", "contem": "do tempo de trabalho permanente, não ocasional nem intermitente, em condições especiais" }
+      ]
+    },
+    {
+      "rule_key": "PREV-AGENTES-NOCIVOS-RELACAO",
+      "area": "previdenciario",
+      "categoria": "agentes_nocivos",
+      "agente_ou_atividade": "Relação dos agentes nocivos considerados para aposentadoria especial",
+      "metodo_avaliacao": "nao_aplicavel",
+      "criterio": "Lei 8.213 art. 58: a relação dos agentes nocivos químicos, físicos e biológicos ou associação de agentes prejudiciais à saúde ou à integridade física considerados para fins de concessão da aposentadoria especial será definida pelo Poder Executivo. Decreto 3.048 art. 68: essa relação é aquela constante do Anexo IV. Decreto 3.048 art. 68 §1: a Secretaria Especial de Previdência e Trabalho do Ministério da Economia promoverá estudos com base em critérios técnicos e científicos para atualização periódica do Anexo IV.",
+      "interpretacao": "[RASCUNHO — não revisado por profissional habilitado] A lista de agentes que contam para aposentadoria especial é a do Anexo IV do Decreto 3.048 (art. 68), por delegação da Lei 8.213 art. 58. O Anexo IV NÃO está nesta base de dispositivos: enquadrar um agente exige consultar o Anexo IV vigente.",
+      "exige_revisao_profissional": true,
+      "status": "rascunho",
+      "provisions": [
+        { "norma": "LEI-8213", "anexo": "", "item_path": "art. 58", "papel": "fundamento", "contem": "considerados para fins de concessão da aposentadoria especial de que trata o artigo anterior será definida pelo Poder Executivo" },
+        { "norma": "DEC-3048", "anexo": "", "item_path": "art. 68", "papel": "criterio", "contem": "é aquela constante do Anexo IV" },
+        { "norma": "DEC-3048", "anexo": "", "item_path": "art. 68 §1", "papel": "criterio", "contem": "para atualização periódica do disposto no Anexo IV" }
+      ]
+    },
+    {
+      "rule_key": "PREV-AGENTES-CANCERIGENOS",
+      "area": "previdenciario",
+      "categoria": "agentes_nocivos",
+      "agente_ou_atividade": "Agentes reconhecidamente cancerígenos para humanos",
+      "metodo_avaliacao": "qualitativo",
+      "criterio": "Decreto 3.048 art. 68 §4: os agentes reconhecidamente cancerígenos para humanos, listados pela Secretaria Especial de Previdência e Trabalho do Ministério da Economia, serão avaliados em conformidade com o disposto nos §§ 2º e 3º do art. 68 e no caput do art. 64 e, caso sejam adotadas as medidas de controle previstas na legislação trabalhista que eliminem a nocividade, será descaracterizada a efetiva exposição.",
+      "interpretacao": "[RASCUNHO — não revisado por profissional habilitado] Para os cancerígenos listados, o Decreto 3.048 art. 68 § 4º remete à avaliação qualitativa (§ 2º), ao documento baseado em laudo (§ 3º) e ao caput do art. 64, e só menciona descaracterização quando as medidas de controle ELIMINAM a nocividade. A lista dos agentes não está nesta base.",
+      "exige_revisao_profissional": true,
+      "status": "rascunho",
+      "provisions": [
+        { "norma": "DEC-3048", "anexo": "", "item_path": "art. 68 §4", "papel": "criterio", "contem": "que eliminem a nocividade, será descaracterizada a efetiva exposição" }
+      ]
+    },
+    {
+      "rule_key": "PREV-AVALIACAO-QUALITATIVA",
+      "area": "previdenciario",
+      "categoria": "exposicao",
+      "agente_ou_atividade": "Avaliação qualitativa de riscos e agentes prejudiciais à saúde",
+      "metodo_avaliacao": "qualitativo",
+      "criterio": "Decreto 3.048 art. 68 §2: a avaliação qualitativa de riscos e agentes prejudiciais à saúde será comprovada pela descrição: Decreto 3.048 art. 68 §2 inc. I: das circunstâncias de exposição ocupacional a determinado agente ou associação de agentes prejudiciais à saúde presentes no ambiente de trabalho durante toda a jornada de trabalho; Decreto 3.048 art. 68 §2 inc. II: de todas as fontes e possibilidades de liberação dos agentes mencionados no inciso I; Decreto 3.048 art. 68 §2 inc. III: dos meios de contato ou exposição dos trabalhadores, as vias de absorção, a intensidade da exposição, a frequência e a duração do contato.",
+      "interpretacao": "[RASCUNHO — não revisado por profissional habilitado] Quando a caracterização for qualitativa, o Decreto 3.048 art. 68 § 2º pede três descrições: circunstâncias de exposição durante toda a jornada, fontes e possibilidades de liberação, e meios de contato, vias de absorção, intensidade, frequência e duração.",
+      "exige_revisao_profissional": true,
+      "status": "rascunho",
+      "provisions": [
+        { "norma": "DEC-3048", "anexo": "", "item_path": "art. 68 §2", "papel": "fundamento", "contem": "A avaliação qualitativa de riscos e agentes prejudiciais à saúde será comprovada pela descrição" },
+        { "norma": "DEC-3048", "anexo": "", "item_path": "art. 68 §2 inc. I", "papel": "metodo", "contem": "das circunstâncias de exposição ocupacional a determinado agente ou associação de agentes prejudiciais à saúde presentes no ambiente de trabalho durante toda a jornada de trabalho" },
+        { "norma": "DEC-3048", "anexo": "", "item_path": "art. 68 §2 inc. II", "papel": "metodo", "contem": "de todas as fontes e possibilidades de liberação dos agentes mencionados no inciso I" },
+        { "norma": "DEC-3048", "anexo": "", "item_path": "art. 68 §2 inc. III", "papel": "metodo", "contem": "dos meios de contato ou exposição dos trabalhadores, as vias de absorção, a intensidade da exposição, a frequência e a duração do contato" }
+      ]
+    },
+    {
+      "rule_key": "PREV-METODOLOGIA-AVALIACAO-AMBIENTAL",
+      "area": "previdenciario",
+      "categoria": "exposicao",
+      "agente_ou_atividade": "Metodologia e procedimentos das avaliações ambientais",
+      "metodo_avaliacao": "misto",
+      "criterio": "Decreto 3.048 art. 68 §12: nas avaliações ambientais deverão ser considerados, além do disposto no Anexo IV, a metodologia e os procedimentos de avaliação estabelecidos pela Fundação Jorge Duprat Figueiredo de Segurança e Medicina do Trabalho - FUNDACENTRO. Decreto 3.048 art. 68 §13: na hipótese de não terem sido estabelecidos pela FUNDACENTRO a metodologia e os procedimentos de avaliação, caberá ao Ministério da Economia indicar outras instituições para estabelecê-los.",
+      "interpretacao": "[RASCUNHO — não revisado por profissional habilitado] As avaliações ambientais consideram o Anexo IV e a metodologia/procedimentos da FUNDACENTRO; na falta deles, os de instituições indicadas pelo Ministério da Economia (Decreto 3.048 art. 68 §§ 12 e 13). As metodologias em si não estão nesta base.",
+      "exige_revisao_profissional": true,
+      "status": "rascunho",
+      "provisions": [
+        { "norma": "DEC-3048", "anexo": "", "item_path": "art. 68 §12", "papel": "metodo", "contem": "a metodologia e os procedimentos de avaliação estabelecidos pela Fundação Jorge Duprat Figueiredo de Segurança e Medicina do Trabalho - FUNDACENTRO" },
+        { "norma": "DEC-3048", "anexo": "", "item_path": "art. 68 §13", "papel": "metodo", "contem": "caberá ao Ministério da Economia indicar outras instituições para estabelecê-los" }
+      ]
+    },
+    {
+      "rule_key": "PREV-LTCAT-COMPROVACAO-EXPOSICAO",
+      "area": "previdenciario",
+      "categoria": "ltcat",
+      "agente_ou_atividade": "Comprovação da efetiva exposição por documento baseado em laudo técnico (LTCAT)",
+      "metodo_avaliacao": "nao_aplicavel",
+      "criterio": "Lei 8.213 art. 58 §1: a comprovação da efetiva exposição do segurado aos agentes nocivos será feita mediante formulário, na forma estabelecida pelo INSS, emitido pela empresa ou seu preposto, com base em laudo técnico de condições ambientais do trabalho expedido por médico do trabalho ou engenheiro de segurança do trabalho nos termos da legislação trabalhista. Decreto 3.048 art. 68 §3: a comprovação será feita por meio de documento, em meio físico ou eletrônico, emitido pela empresa ou por seu preposto com base em laudo técnico de condições ambientais do trabalho expedido por médico do trabalho ou engenheiro de segurança do trabalho.",
+      "interpretacao": "[RASCUNHO — não revisado por profissional habilitado] A exposição se comprova por um documento emitido pela empresa (formulário na forma do INSS; em meio físico ou eletrônico, pelo Decreto) que se apoia num laudo técnico de condições ambientais do trabalho expedido por médico do trabalho ou engenheiro de segurança do trabalho. São dois documentos: o laudo e o documento de comprovação.",
+      "exige_revisao_profissional": true,
+      "status": "rascunho",
+      "provisions": [
+        { "norma": "LEI-8213", "anexo": "", "item_path": "art. 58 §1", "papel": "fundamento", "contem": "mediante formulário, na forma estabelecida pelo Instituto Nacional do Seguro Social - INSS, emitido pela empresa ou seu preposto, com base em laudo técnico de condições ambientais do trabalho expedido por médico do trabalho ou engenheiro de segurança do trabalho" },
+        { "norma": "DEC-3048", "anexo": "", "item_path": "art. 68 §3", "papel": "criterio", "contem": "será feita por meio de documento, em meio físico ou eletrônico, emitido pela empresa ou por seu preposto com base em laudo técnico de condições ambientais do trabalho" }
+      ]
+    },
+    {
+      "rule_key": "PREV-LTCAT-TECNOLOGIA-PROTECAO",
+      "area": "previdenciario",
+      "categoria": "ltcat",
+      "agente_ou_atividade": "Conteúdo do laudo técnico: tecnologia de proteção coletiva ou individual",
+      "metodo_avaliacao": "nao_aplicavel",
+      "criterio": "Lei 8.213 art. 58 §2: do laudo técnico deverão constar informação sobre a existência de tecnologia de proteção coletiva ou individual que diminua a intensidade do agente agressivo a limites de tolerância e recomendação sobre a sua adoção pelo estabelecimento. Decreto 3.048 art. 68 §5: o laudo técnico conterá informações sobre a existência de tecnologia de proteção coletiva ou individual e sobre a sua eficácia e será elaborado com observância às normas editadas pela Secretaria Especial de Previdência e Trabalho do Ministério da Economia e aos procedimentos adotados pelo INSS. Decreto 3.048 art. 64 §1: a efetiva exposição a agente prejudicial à saúde configura-se quando, mesmo após a adoção das medidas de controle previstas na legislação trabalhista, a nocividade não seja eliminada ou neutralizada. Decreto 3.048 art. 64 §1-A inc. I: eliminação é a adoção de medidas de controle que efetivamente impossibilitem a exposição ao agente prejudicial à saúde no ambiente de trabalho. Decreto 3.048 art. 64 §1-A inc. II: neutralização é a adoção de medidas de controle que reduzam a intensidade, a concentração ou a dose do agente prejudicial à saúde ao limite de tolerância previsto no Regulamento ou, na sua ausência, na legislação trabalhista.",
+      "interpretacao": "[RASCUNHO — não revisado por profissional habilitado] Do laudo técnico devem constar informação sobre a existência de tecnologia de proteção coletiva ou individual que diminua a intensidade do agente agressivo a limites de tolerância e recomendação sobre a sua adoção pelo estabelecimento respectivo (Lei 8.213 art. 58 § 2º), e informações sobre a existência dessa tecnologia e sobre a sua eficácia (Decreto 3.048 art. 68 § 5º). O que configura a efetiva exposição depois das medidas de controle está no Decreto 3.048 art. 64 § 1º (a nocividade não ser eliminada ou neutralizada mesmo após a adoção das medidas de controle previstas na legislação trabalhista), com as definições de eliminação e de neutralização do § 1º-A, incisos I e II (ver PREV-EFETIVA-EXPOSICAO). Aplicar essas definições a uma proteção concreta depende de avaliação técnica.",
+      "exige_revisao_profissional": true,
+      "status": "rascunho",
+      "provisions": [
+        { "norma": "LEI-8213", "anexo": "", "item_path": "art. 58 §2", "papel": "criterio", "contem": "informação sobre a existência de tecnologia de proteção coletiva ou individual que diminua a intensidade do agente agressivo a limites de tolerância e recomendação sobre a sua adoção" },
+        { "norma": "DEC-3048", "anexo": "", "item_path": "art. 68 §5", "papel": "criterio", "contem": "conterá informações sobre a existência de tecnologia de proteção coletiva ou individual e sobre a sua eficácia" },
+        { "norma": "DEC-3048", "anexo": "", "item_path": "art. 64 §1", "papel": "fundamento", "contem": "mesmo após a adoção das medidas de controle previstas na legislação trabalhista, a nocividade não seja eliminada ou neutralizada" },
+        { "norma": "DEC-3048", "anexo": "", "item_path": "art. 64 §1-A inc. I", "papel": "criterio", "contem": "eliminação - a adoção de medidas de controle que efetivamente impossibilitem a exposição ao agente prejudicial à saúde" },
+        { "norma": "DEC-3048", "anexo": "", "item_path": "art. 64 §1-A inc. II", "papel": "criterio", "contem": "neutralização - a adoção de medidas de controle que reduzam a intensidade, a concentração ou a dose do agente prejudicial à saúde ao limite de tolerância" }
+      ]
+    },
+    {
+      "rule_key": "PREV-LTCAT-ATUALIZADO",
+      "area": "previdenciario",
+      "categoria": "ltcat",
+      "agente_ou_atividade": "Laudo técnico mantido atualizado",
+      "metodo_avaliacao": "nao_aplicavel",
+      "criterio": "Lei 8.213 art. 58 §3: a empresa que não mantiver laudo técnico atualizado com referência aos agentes nocivos existentes no ambiente de trabalho de seus trabalhadores (ou que emitir documento de comprovação de efetiva exposição em desacordo com o respectivo laudo) estará sujeita à penalidade prevista no art. 133 da Lei. Decreto 3.048 art. 68 §6: a empresa que não mantiver laudo técnico atualizado com referência aos agentes existentes no ambiente de trabalho prejudiciais à saúde de seus trabalhadores (ou que emitir documento em desacordo com o laudo) incorrerá na infração a que se refere a alínea n do inciso II do caput do art. 283 do Decreto.",
+      "interpretacao": "[RASCUNHO — não revisado por profissional habilitado] A empresa tem de manter o laudo técnico atualizado em relação aos agentes existentes no ambiente de trabalho. As consequências estão nos dispositivos a que os textos remetem (Lei 8.213 art. 133; Decreto 3.048 art. 283, II, n), que NÃO estão nesta base: valores e gradação não devem ser inferidos.",
+      "exige_revisao_profissional": true,
+      "status": "rascunho",
+      "provisions": [
+        { "norma": "LEI-8213", "anexo": "", "item_path": "art. 58 §3", "papel": "criterio", "contem": "A empresa que não mantiver laudo técnico atualizado com referência aos agentes nocivos existentes no ambiente de trabalho" },
+        { "norma": "DEC-3048", "anexo": "", "item_path": "art. 68 §6", "papel": "criterio", "contem": "A empresa que não mantiver laudo técnico atualizado com referência aos agentes existentes no ambiente de trabalho prejudiciais à saúde" }
+      ]
+    },
+    {
+      "rule_key": "PREV-LTCAT-CESSAO-MAO-DE-OBRA",
+      "area": "previdenciario",
+      "categoria": "ltcat",
+      "agente_ou_atividade": "Cooperativa de trabalho e empresa contratada (cessão ou empreitada de mão de obra)",
+      "metodo_avaliacao": "nao_aplicavel",
+      "criterio": "Decreto 3.048 art. 68 §11: a cooperativa de trabalho e a empresa contratada para prestar serviços mediante cessão ou empreitada de mão de obra atenderão ao disposto nos §§ 3º, 4º e 5º com base nos laudos técnicos de condições ambientais de trabalho emitidos pela empresa contratante, quando o serviço for prestado em estabelecimento da contratante.",
+      "interpretacao": "[RASCUNHO — não revisado por profissional habilitado] Quando o serviço é prestado no estabelecimento da contratante, a cooperativa ou a contratada usa os laudos técnicos emitidos pela contratante para cumprir os §§ 3º, 4º e 5º do art. 68 do Decreto 3.048.",
+      "exige_revisao_profissional": true,
+      "status": "rascunho",
+      "provisions": [
+        { "norma": "DEC-3048", "anexo": "", "item_path": "art. 68 §11", "papel": "criterio", "contem": "com base nos laudos técnicos de condições ambientais de trabalho emitidos pela empresa contratante, quando o serviço for prestado em estabelecimento da contratante" }
+      ]
+    },
+    {
+      "rule_key": "PREV-CRUZAMENTO-LAUDO-DOCUMENTO",
+      "area": "previdenciario",
+      "categoria": "cruzamento_documental",
+      "agente_ou_atividade": "Coerência entre o documento de comprovação da exposição e o laudo técnico",
+      "metodo_avaliacao": "nao_aplicavel",
+      "criterio": "Lei 8.213 art. 58 §3: a empresa que emitir documento de comprovação de efetiva exposição em desacordo com o respectivo laudo estará sujeita à penalidade prevista no art. 133 da Lei. Decreto 3.048 art. 68 §6: a empresa que emitir documento de comprovação de efetiva exposição em desacordo com o referido laudo incorrerá na infração a que se refere a alínea n do inciso II do caput do art. 283. Decreto 3.048 art. 68 §7: o INSS estabelecerá os procedimentos para concessão de aposentadoria especial, podendo, se necessário, confirmar as informações contidas nos documentos mencionados nos §§ 2º e 3º.",
+      "interpretacao": "[RASCUNHO — não revisado por profissional habilitado] O documento de comprovação da exposição tem de estar de acordo com o laudo técnico em que se baseia (Lei 8.213 art. 58 § 3º; Decreto 3.048 art. 68 § 6º), e o INSS pode confirmar as informações desses documentos (art. 68 § 7º). Base para conferir, documento a documento, se o que um afirma está no outro.",
+      "exige_revisao_profissional": true,
+      "status": "rascunho",
+      "provisions": [
+        { "norma": "LEI-8213", "anexo": "", "item_path": "art. 58 §3", "papel": "criterio", "contem": "emitir documento de comprovação de efetiva exposição em desacordo com o respectivo laudo" },
+        { "norma": "DEC-3048", "anexo": "", "item_path": "art. 68 §6", "papel": "criterio", "contem": "emitir documento de comprovação de efetiva exposição em desacordo com o referido laudo" },
+        { "norma": "DEC-3048", "anexo": "", "item_path": "art. 68 §7", "papel": "fundamento", "contem": "podendo, se necessário, confirmar as informações contidas nos documentos mencionados" }
+      ]
+    },
+    {
+      "rule_key": "PREV-PPP",
+      "area": "previdenciario",
+      "categoria": "ppp",
+      "agente_ou_atividade": "Perfil profissiográfico previdenciário (PPP)",
+      "metodo_avaliacao": "nao_aplicavel",
+      "criterio": "Lei 8.213 art. 58 §4: a empresa deverá elaborar e manter atualizado perfil profissiográfico abrangendo as atividades desenvolvidas pelo trabalhador e fornecer a este, quando da rescisão do contrato de trabalho, cópia autêntica desse documento. Decreto 3.048 art. 68 §8: a empresa deverá elaborar e manter atualizado o perfil profissiográfico previdenciário, ou o documento eletrônico que venha a substituí-lo, no qual deverão ser contempladas as atividades desenvolvidas durante o período laboral, garantido ao trabalhador o acesso às informações nele contidas, sob pena das sanções da alínea h do inciso I do caput do art. 283. Decreto 3.048 art. 68 §9: considera-se perfil profissiográfico previdenciário o documento que contenha o histórico laboral do trabalhador, elaborado de acordo com o modelo instituído pelo INSS. Decreto 3.048 art. 68 §10: o trabalhador ou o seu preposto terá acesso às informações prestadas pela empresa sobre o seu perfil profissiográfico previdenciário e poderá solicitar a retificação de informações que estejam em desacordo com a realidade do ambiente de trabalho.",
+      "interpretacao": "[RASCUNHO — não revisado por profissional habilitado] A empresa elabora e mantém atualizado o PPP (histórico laboral, no modelo do INSS), fornece cópia autêntica na rescisão (Lei 8.213 art. 58 § 4º), garante acesso às informações e o trabalhador pode pedir retificação (Decreto 3.048 art. 68 §§ 8º a 10). O Decreto prevê documento eletrônico que venha a substituir o PPP, mas não fixa data nem formato: isso não está nestes textos.",
+      "exige_revisao_profissional": true,
+      "status": "rascunho",
+      "provisions": [
+        { "norma": "LEI-8213", "anexo": "", "item_path": "art. 58 §4", "papel": "fundamento", "contem": "elaborar e manter atualizado perfil profissiográfico abrangendo as atividades desenvolvidas pelo trabalhador e fornecer a este, quando da rescisão do contrato de trabalho, cópia autêntica desse documento" },
+        { "norma": "DEC-3048", "anexo": "", "item_path": "art. 68 §8", "papel": "criterio", "contem": "elaborar e manter atualizado o perfil profissiográfico previdenciário, ou o documento eletrônico que venha a substituí-lo" },
+        { "norma": "DEC-3048", "anexo": "", "item_path": "art. 68 §9", "papel": "criterio", "contem": "o documento que contenha o histórico laboral do trabalhador, elaborado de acordo com o modelo instituído pelo INSS" },
+        { "norma": "DEC-3048", "anexo": "", "item_path": "art. 68 §10", "papel": "criterio", "contem": "poderá, inclusive, solicitar a retificação de informações que estejam em desacordo com a realidade do ambiente de trabalho" }
+      ]
+    },
+    {
+      "rule_key": "PREV-CARACTERIZACAO-LEGISLACAO-EPOCA",
+      "area": "previdenciario",
+      "categoria": "exposicao",
+      "agente_ou_atividade": "Caracterização e comprovação do tempo especial pela legislação da época do serviço",
+      "metodo_avaliacao": "nao_aplicavel",
+      "criterio": "Decreto 3.048 art. 188-P §6: a caracterização e a comprovação do tempo de atividade sob condições especiais obedecerão ao disposto na legislação em vigor à época da prestação do serviço.",
+      "interpretacao": "[RASCUNHO — não revisado por profissional habilitado] Pelo Decreto 3.048 art. 188-P § 6º, a caracterização e a comprovação do tempo de atividade sob condições especiais seguem a legislação em vigor à época em que o serviço foi prestado. Relevante para o laudo técnico e o documento de comprovação da exposição (LTCAT/PPP) que abrangem períodos passados: o critério de cada período é o da legislação daquela época. Qual era essa legislação em cada período não está nesta base e não deve ser inferido.",
+      "exige_revisao_profissional": true,
+      "status": "rascunho",
+      "provisions": [
+        { "norma": "DEC-3048", "anexo": "", "item_path": "art. 188-P §6", "papel": "fundamento", "contem": "obedecerão ao disposto na legislação em vigor à época da prestação do serviço" }
+      ]
+    },
+    {
+      "rule_key": "PREV-CONVERSAO-ESPECIAL-COMUM",
+      "area": "previdenciario",
+      "categoria": "aposentadoria_especial",
+      "agente_ou_atividade": "Conversão de tempo especial em tempo comum e o seu limite temporal",
+      "metodo_avaliacao": "nao_aplicavel",
+      "criterio": "Lei 8.213 art. 57 §5: o tempo de trabalho exercido sob condições especiais que sejam ou venham a ser consideradas prejudiciais à saúde ou à integridade física será somado, após a respectiva conversão ao tempo de trabalho exercido em atividade comum, segundo critérios estabelecidos pelo Ministério da Previdência e Assistência Social, para efeito de concessão de qualquer benefício. Decreto 3.048 art. 188-P §5: a conversão de tempo de atividade sob condições especiais em tempo de atividade comum aplica-se somente ao trabalho prestado até 13 de novembro de 2019, em conformidade com a tabela do próprio parágrafo.",
+      "excecoes": "Decreto 3.048 art. 188-P § 5º: a conversão de tempo especial em tempo comum \"aplica-se somente ao trabalho prestado até 13 de novembro de 2019\".",
+      "interpretacao": "[RASCUNHO — não revisado por profissional habilitado] A Lei 8.213 art. 57 § 5º prevê somar o tempo especial ao tempo comum após conversão. O Decreto 3.048 art. 188-P § 5º diz que essa conversão \"aplica-se somente ao trabalho prestado até 13 de novembro de 2019\". A tabela de conversão do § 5º é uma IMAGEM na página do Planalto e não foi extraída: os fatores não são reproduzidos aqui e devem ser lidos na fonte oficial. Não confundir com a soma de atividades especiais diferentes do art. 66 do Decreto (ver PREV-SOMA-ATIVIDADES-ESPECIAIS).",
+      "exige_revisao_profissional": true,
+      "status": "rascunho",
+      "provisions": [
+        { "norma": "LEI-8213", "anexo": "", "item_path": "art. 57 §5", "papel": "fundamento", "contem": "será somado, após a respectiva conversão ao tempo de trabalho exercido em atividade comum" },
+        { "norma": "DEC-3048", "anexo": "", "item_path": "art. 188-P §5", "papel": "excecao", "contem": "A conversão de tempo de atividade sob condições especiais em tempo de atividade comum aplica-se somente ao trabalho prestado até 13 de novembro de 2019" }
+      ]
+    },
+    {
+      "rule_key": "PREV-SOMA-ATIVIDADES-ESPECIAIS",
+      "area": "previdenciario",
+      "categoria": "aposentadoria_especial",
+      "agente_ou_atividade": "Soma de períodos em atividades especiais diferentes (Decreto 3.048 art. 66)",
+      "metodo_avaliacao": "nao_aplicavel",
+      "criterio": "Decreto 3.048 art. 66: para o segurado que houver exercido duas ou mais atividades sujeitas a agentes químicos, físicos e biológicos prejudiciais à saúde, ou a associação desses agentes, sem completar em quaisquer delas o prazo mínimo exigido para a aposentadoria especial, os respectivos períodos de exercício serão somados após conversão, hipótese em que será considerada a atividade preponderante para efeito de enquadramento. Decreto 3.048 art. 66 §1: não serão considerados os períodos em que a atividade exercida não estava sujeita a condições especiais, observado o art. 70. Decreto 3.048 art. 66 §2: a conversão será feita segundo a tabela do próprio parágrafo. Decreto 3.048 art. 66 §3: a atividade preponderante é aquela pela qual o segurado tenha contribuído por mais tempo, antes da conversão, e servirá como parâmetro para definir o tempo mínimo necessário para a aposentadoria especial e para a conversão.",
+      "excecoes": "O Decreto 3.048 art. 66 § 1º remete ao art. 70, que no texto vigente está revogado (Decreto 10.410/2020) e não tem dispositivo nesta base.",
+      "interpretacao": "[RASCUNHO — não revisado por profissional habilitado] Quando o segurado exerceu duas ou mais atividades especiais sem completar o prazo mínimo em nenhuma delas, o Decreto 3.048 art. 66 manda somar os períodos após conversão, considerada a atividade preponderante (§ 3º: a de maior tempo de contribuição antes da conversão, parâmetro para o tempo mínimo e para a conversão). A tabela do § 2º converte entre os tempos de 15, 20 e 25 anos (\"De 15 anos\", \"Para 20\"…); ela sai achatada na extração (uma célula por linha) e os fatores NÃO são reproduzidos aqui: ler na fonte oficial. É mecanismo diferente da conversão de tempo especial em tempo comum (ver PREV-CONVERSAO-ESPECIAL-COMUM).",
+      "exige_revisao_profissional": true,
+      "status": "rascunho",
+      "provisions": [
+        { "norma": "DEC-3048", "anexo": "", "item_path": "art. 66", "papel": "criterio", "contem": "os respectivos períodos de exercício serão somados após conversão, hipótese em que será considerada a atividade preponderante" },
+        { "norma": "DEC-3048", "anexo": "", "item_path": "art. 66 §1", "papel": "excecao", "contem": "não serão considerados os períodos em que a atividade exercida não estava sujeita a condições especiais" },
+        { "norma": "DEC-3048", "anexo": "", "item_path": "art. 66 §2", "papel": "metodo", "contem": "A conversão de que trata o caput será feita segundo a tabela abaixo" },
+        { "norma": "DEC-3048", "anexo": "", "item_path": "art. 66 §3", "papel": "criterio", "contem": "aquela pela qual o segurado tenha contribuído por mais tempo, antes da conversão" }
+      ]
+    },
+    {
+      "rule_key": "PREV-FINANCIAMENTO-ACRESCIMO",
+      "area": "previdenciario",
+      "categoria": "aposentadoria_especial",
+      "agente_ou_atividade": "Financiamento da aposentadoria especial: acréscimo de alíquotas",
+      "metodo_avaliacao": "nao_aplicavel",
+      "criterio": "Lei 8.213 art. 57 §6: o benefício será financiado com os recursos da contribuição de que trata o inciso II do art. 22 da Lei 8.212/1991, cujas alíquotas serão acrescidas de doze, nove ou seis pontos percentuais, conforme a atividade exercida pelo segurado a serviço da empresa permita a concessão de aposentadoria especial após quinze, vinte ou vinte e cinco anos de contribuição, respectivamente. Lei 8.213 art. 57 §7: o acréscimo incide exclusivamente sobre a remuneração do segurado sujeito às condições especiais referidas no caput.",
+      "interpretacao": "[RASCUNHO — não revisado por profissional habilitado] Pela Lei 8.213 art. 57 §§ 6º e 7º, a atividade que permite aposentadoria especial gera acréscimo na contribuição da empresa (12, 9 ou 6 pontos percentuais para 15, 20 ou 25 anos), só sobre a remuneração dos segurados expostos. A contribuição-base (Lei 8.212 art. 22, II) não está nesta base.",
+      "exige_revisao_profissional": true,
+      "status": "rascunho",
+      "provisions": [
+        { "norma": "LEI-8213", "anexo": "", "item_path": "art. 57 §6", "papel": "fundamento", "contem": "cujas alíquotas serão acrescidas de doze, nove ou seis pontos percentuais" },
+        { "norma": "LEI-8213", "anexo": "", "item_path": "art. 57 §7", "papel": "criterio", "contem": "incide exclusivamente sobre a remuneração do segurado sujeito às condições especiais" }
+      ]
+    },
+    {
+      "rule_key": "PREV-RETORNO-ATIVIDADE-ESPECIAL",
+      "area": "previdenciario",
+      "categoria": "aposentadoria_especial",
+      "agente_ou_atividade": "Aposentado especial que continua ou volta a atividade com agentes nocivos",
+      "metodo_avaliacao": "nao_aplicavel",
+      "criterio": "Lei 8.213 art. 57 §8: aplica-se o disposto no art. 46 ao segurado aposentado nos termos do art. 57 que continuar no exercício de atividade ou operação que o sujeite aos agentes nocivos constantes da relação referida no art. 58. Decreto 3.048 art. 69 §único: o segurado que retornar ao exercício de atividade ou operação que o sujeite aos riscos e agentes nocivos constantes do Anexo IV, ou nele permanecer, na mesma ou em outra empresa, será imediatamente notificado da cessação do pagamento de sua aposentadoria especial, no prazo de sessenta dias contado da data de emissão da notificação, salvo comprovação, nesse prazo, de que o exercício dessa atividade ou operação foi encerrado.",
+      "interpretacao": "[RASCUNHO — não revisado por profissional habilitado] Continuar ou voltar a atividade com agentes nocivos do Anexo IV depois da aposentadoria especial tem consequência prevista nos textos (Lei 8.213 art. 57 § 8º, que remete ao art. 46 da própria Lei 8.213, não ligado a esta regra; Decreto 3.048 art. 69, parágrafo único). Relevante para a empresa que contrata ou mantém aposentado especial em função exposta.",
+      "exige_revisao_profissional": true,
+      "status": "rascunho",
+      "provisions": [
+        { "norma": "LEI-8213", "anexo": "", "item_path": "art. 57 §8", "papel": "fundamento", "contem": "Aplica-se o disposto no art. 46 ao segurado aposentado nos termos deste artigo" },
+        { "norma": "DEC-3048", "anexo": "", "item_path": "art. 69 §único", "papel": "criterio", "contem": "será imediatamente notificado da cessação do pagamento de sua aposentadoria especial" }
+      ]
+    },
+    {
+      "rule_key": "PREV-DISTINCAO-INSALUBRIDADE-APOSENTADORIA-ESPECIAL",
+      "area": "previdenciario",
+      "categoria": "cruzamento_documental",
+      "agente_ou_atividade": "Insalubridade (CLT) e aposentadoria especial (Lei 8.213): textos distintos",
+      "metodo_avaliacao": "nao_aplicavel",
+      "criterio": "CLT art. 189: serão consideradas atividades ou operações insalubres aquelas que exponham os empregados a agentes nocivos à saúde, acima dos limites de tolerância fixados em razão da natureza e da intensidade do agente e do tempo de exposição aos seus efeitos. CLT art. 192: o trabalho em condições insalubres, acima dos limites de tolerância estabelecidos pelo Ministério do Trabalho, assegura a percepção de adicional de 40%, 20% e 10% do salário-mínimo da região, segundo os graus máximo, médio e mínimo. Lei 8.213 art. 57: a aposentadoria especial é devida ao segurado que tiver trabalhado sujeito a condições especiais que prejudiquem a saúde ou a integridade física, durante 15, 20 ou 25 anos. Lei 8.213 art. 58: a relação dos agentes nocivos considerados para a aposentadoria especial será definida pelo Poder Executivo. Decreto 3.048 art. 64 §1: a efetiva exposição a agente prejudicial à saúde configura-se quando, mesmo após a adoção das medidas de controle previstas na legislação trabalhista, a nocividade não seja eliminada ou neutralizada. Decreto 3.048 art. 64 §1-A inc. II: neutralização é a adoção de medidas de controle que reduzam a intensidade, a concentração ou a dose do agente prejudicial à saúde ao limite de tolerância previsto no Regulamento ou, na sua ausência, na legislação trabalhista.",
+      "interpretacao": "[RASCUNHO — não revisado por profissional habilitado] Os textos citados estão em diplomas diferentes e têm efeitos diferentes: a CLT (arts. 189 e 192) define atividade insalubre pelos limites de tolerância e dá direito a adicional salarial; a Lei 8.213 (arts. 57 e 58) trata de benefício previdenciário, com relação própria de agentes definida pelo Poder Executivo. Há pontes literais entre eles no Decreto 3.048: o art. 64 § 1º configura a efetiva exposição pelas \"medidas de controle previstas na legislação trabalhista\", e o § 1º-A, inciso II, remete ao limite de tolerância \"previsto neste Regulamento ou, na sua ausência, na legislação trabalhista\". Os textos citados não dizem, eles próprios, que um enquadramento implica o outro; a relação entre o laudo de insalubridade e o documento de comprovação da exposição previdenciária exige revisão profissional.",
+      "exige_revisao_profissional": true,
+      "status": "rascunho",
+      "provisions": [
+        { "norma": "CLT", "anexo": "", "item_path": "art. 189", "papel": "fundamento", "contem": "exponham os empregados a agentes nocivos à saúde, acima dos limites de tolerância fixados em razão da natureza e da intensidade do agente e do tempo de exposição aos seus efeitos" },
+        { "norma": "CLT", "anexo": "", "item_path": "art. 192", "papel": "fundamento", "contem": "assegura a percepção de adicional respectivamente de 40% (quarenta por cento), 20% (vinte por cento) e 10% (dez por cento) do salário-mínimo da região" },
+        { "norma": "LEI-8213", "anexo": "", "item_path": "art. 57", "papel": "fundamento", "contem": "sujeito a condições especiais que prejudiquem a saúde ou a integridade física" },
+        { "norma": "LEI-8213", "anexo": "", "item_path": "art. 58", "papel": "fundamento", "contem": "será definida pelo Poder Executivo" },
+        { "norma": "DEC-3048", "anexo": "", "item_path": "art. 64 §1", "papel": "fundamento", "contem": "mesmo após a adoção das medidas de controle previstas na legislação trabalhista, a nocividade não seja eliminada ou neutralizada" },
+        { "norma": "DEC-3048", "anexo": "", "item_path": "art. 64 §1-A inc. II", "papel": "fundamento", "contem": "ao limite de tolerância previsto neste Regulamento ou, na sua ausência, na legislação trabalhista" }
+      ]
+    }
+  ]
+}

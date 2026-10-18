@@ -1,0 +1,166 @@
+{
+  "schema_version": 1,
+  "descricao": "Regras interpretativas da área de saúde ocupacional que dependem da CLT, da NR-01 vigente ou da LGPD (exame médico e toxicológico da CLT, comunicação de resultados, dispensa do PCMSO para MEI/ME/EPP, doença relacionada ao trabalho e notificação, dados pessoais sensíveis), TODAS em rascunho. Cada regra liga ao menos um dispositivo literal da CLT (arts. 168 e 169), da NR-01 (só os subitens que citam o PCMSO) ou da LGPD (Lei 13.709: arts. 5, 11, 46 e 48), e pode ligar também a NR-07 (texto vigente). As regras só da NR-07 estão em saude-ocupacional-nr07.json. 'interpretacao' é rascunho a ser revisado por profissional habilitado (médico do trabalho; para a LGPD, profissional jurídico) e não é norma. Importar com: npm run db:import-normative-rules -- db/seed-data/normative-rules/saude-ocupacional.json (dry-run por padrão).",
+  "fonte": {
+    "normas": ["NR-07", "NR-01", "CLT", "LEI-13709"],
+    "textos": "backend/test/fixtures/normative/saude-ocupacional/ (trechos reais da NR-07, da CLT e da LGPD; origem, data e sha256 no README.md da pasta) e backend/test/fixtures/normative/NR-01-vigente-2026-05-26.txt (NR-01 vigente)",
+    "extracao": "NR-07 e NR-01: texto extraído do PDF oficial + parseProvisions(texto, 'nr'). CLT e LGPD: decodeHtmlBuffer(buf, 'text/html; charset=iso-8859-1') + extractHtmlText(html, PLANALTO_EXTRACT_OPTIONS) + parseProvisions(texto, 'lei')",
+    "baixado_em": "2026-10-10",
+    "observacao": "Fora desta base por não haver literal nestes textos: prazo do evento S-2220 do eSocial, leiautes/MOS, notas orientativas, tabelas do eSocial, regulamentos da autoridade nacional e listas de exames complementares que não constem da NR-07. As ligações à LGPD só resolvem depois que a fonte LEI-13709 for cadastrada, aprovada e tiver dispositivos gerados; as da CLT, depois que a CLT for aprovada e tiver dispositivos gerados. As da NR-01 exigem a NR-01 vigente (2026-05-26) ingerida: contra a NR-01 ANTERIOR, as ligações 1.8.6, 1.8.7 e 1.8.8 resolvem com o mesmo `contem`, e só a 1.8.7.1 falha (na redação anterior o mesmo texto é o 1.8.6.1; no PDF de 26/05/2026 ele aparece como 1.8.7.1, antes do 1.8.7 — INFERIDO: provável erro de numeração do PDF). As regras que dependem só da NR-07 estão em saude-ocupacional-nr07.json."
+  },
+  "rules": [
+    {
+      "rule_key": "SAU-CLT-EXAME-MEDICO-OBRIGATORIO",
+      "area": "saude_ocupacional",
+      "categoria": "exames_ocupacionais",
+      "agente_ou_atividade": "Exame médico obrigatório por conta do empregador (CLT art. 168)",
+      "metodo_avaliacao": "nao_aplicavel",
+      "criterio": "CLT art. 168: será obrigatório exame médico, por conta do empregador, nas condições estabelecidas neste artigo e nas instruções complementares a serem expedidas pelo Ministério do Trabalho: CLT art. 168 inc. I: a admissão; CLT art. 168 inc. II: na demissão; CLT art. 168 inc. III: periodicamente. CLT art. 168 §1: o Ministério do Trabalho baixará instruções relativas aos casos em que serão exigíveis exames: a) por ocasião da demissão; b) complementares. CLT art. 168 §2: outros exames complementares poderão ser exigidos, a critério médico, para apuração da capacidade ou aptidão física e mental do empregado para a função que deva exercer. CLT art. 168 §3: o Ministério do Trabalho estabelecerá, de acordo com o risco da atividade e o tempo de exposição, a periodicidade dos exames médicos.",
+      "interpretacao": "[RASCUNHO — não revisado por profissional habilitado] A CLT torna o exame médico obrigatório e a cargo do empregador na admissão, na demissão e periodicamente (art. 168, incisos I a III), e remete ao Ministério do Trabalho as instruções sobre exames na demissão e complementares (§ 1º) e a periodicidade (§ 3º); exames complementares adicionais ficam a critério médico (§ 2º). INFERIDO, a confirmar na revisão profissional: a NR-07 desta base não cita o art. 168, e a correspondência entre as instruções a que a CLT remete e os exames e prazos da NR-07 não está nestes textos.",
+      "exige_revisao_profissional": true,
+      "status": "rascunho",
+      "provisions": [
+        { "norma": "CLT", "anexo": "", "item_path": "art. 168", "papel": "fundamento", "contem": "Será obrigatório exame médico, por conta do empregador" },
+        { "norma": "CLT", "anexo": "", "item_path": "art. 168 inc. I", "papel": "criterio", "contem": "a admissão;" },
+        { "norma": "CLT", "anexo": "", "item_path": "art. 168 inc. II", "papel": "criterio", "contem": "na demissão;" },
+        { "norma": "CLT", "anexo": "", "item_path": "art. 168 inc. III", "papel": "criterio", "contem": "periodicamente." },
+        { "norma": "CLT", "anexo": "", "item_path": "art. 168 §1", "papel": "criterio", "contem": "baixará instruções relativas aos casos em que serão exigíveis exames" },
+        { "norma": "CLT", "anexo": "", "item_path": "art. 168 §2", "papel": "criterio", "contem": "Outros exames complementares poderão ser exigidos, a critério médico, para apuração da capacidade ou aptidão física e mental do empregado" },
+        { "norma": "CLT", "anexo": "", "item_path": "art. 168 §3", "papel": "criterio", "contem": "de acordo com o risco da atividade e o tempo de exposição, a periodicidade dos exames médicos" }
+      ]
+    },
+    {
+      "rule_key": "SAU-COMUNICACAO-RESULTADOS-EXAMES",
+      "area": "saude_ocupacional",
+      "categoria": "exames_ocupacionais",
+      "agente_ou_atividade": "Informação ao empregado sobre exames e resultados",
+      "metodo_avaliacao": "nao_aplicavel",
+      "criterio": "CLT art. 168 §5: o resultado dos exames médicos, inclusive o exame complementar, será comunicado ao trabalhador, observados os preceitos da ética médica. NR-07 7.5.16: os empregados devem ser informados, durante o exame clínico, das razões da realização dos exames complementares previstos nesta NR e do significado dos resultados de tais exames.",
+      "interpretacao": "[RASCUNHO — não revisado por profissional habilitado] O trabalhador recebe a comunicação do resultado dos exames, inclusive complementares, observada a ética médica (CLT art. 168 § 5º), e é informado no exame clínico das razões dos exames complementares e do significado dos resultados (NR-07 7.5.16).",
+      "exige_revisao_profissional": true,
+      "status": "rascunho",
+      "provisions": [
+        { "norma": "CLT", "anexo": "", "item_path": "art. 168 §5", "papel": "fundamento", "contem": "O resultado dos exames médicos, inclusive o exame complementar, será comunicado ao trabalhador, observados os preceitos da ética médica" },
+        { "norma": "NR-07", "anexo": "", "item_path": "7.5.16", "papel": "criterio", "contem": "das razões da realização dos exames complementares previstos nesta NR e do significado dos resultados de tais exames" }
+      ]
+    },
+    {
+      "rule_key": "SAU-CLT-EXAME-TOXICOLOGICO-MOTORISTA",
+      "area": "saude_ocupacional",
+      "categoria": "exames_ocupacionais",
+      "agente_ou_atividade": "Exame toxicológico de motorista profissional (CLT art. 168 §§ 6º e 7º)",
+      "metodo_avaliacao": "nao_aplicavel",
+      "criterio": "CLT art. 168 §6: serão exigidos exames toxicológicos, previamente à admissão e por ocasião do desligamento, quando se tratar de motorista profissional, assegurados o direito à contraprova em caso de resultado positivo e a confidencialidade dos resultados dos respectivos exames. CLT art. 168 §7: para os fins do disposto no § 6º, será obrigatório exame toxicológico com janela de detecção mínima de 90 (noventa) dias, específico para substâncias psicoativas que causem dependência ou, comprovadamente, comprometam a capacidade de direção, podendo ser utilizado para essa finalidade o exame toxicológico previsto na Lei nº 9.503, de 23 de setembro de 1997 - Código de Trânsito Brasileiro, desde que realizado nos últimos 60 (sessenta) dias.",
+      "interpretacao": "[RASCUNHO — não revisado por profissional habilitado] Para motorista profissional, a CLT exige exame toxicológico antes da admissão e no desligamento, com contraprova e confidencialidade dos resultados (art. 168 § 6º), com janela de detecção mínima de 90 (noventa) dias, podendo ser aproveitado o exame do Código de Trânsito Brasileiro realizado nos últimos 60 (sessenta) dias (§ 7º). O § 6º traz a nota \"(Vide Lei nº 14.599, de 2023)\", que remete a texto fora desta base: o alcance atual exige revisão profissional.",
+      "exige_revisao_profissional": true,
+      "status": "rascunho",
+      "provisions": [
+        { "norma": "CLT", "anexo": "", "item_path": "art. 168 §6", "papel": "fundamento", "contem": "Serão exigidos exames toxicológicos, previamente à admissão e por ocasião do desligamento, quando se tratar de motorista profissional" },
+        { "norma": "CLT", "anexo": "", "item_path": "art. 168 §7", "papel": "criterio", "contem": "será obrigatório exame toxicológico com janela de detecção mínima de 90 (noventa) dias" }
+      ]
+    },
+    {
+      "rule_key": "SAU-DISPENSA-PCMSO-MEI-ME-EPP",
+      "area": "saude_ocupacional",
+      "categoria": "excecao",
+      "agente_ou_atividade": "Dispensa de elaboração do PCMSO para MEI, ME e EPP (NR-01 1.8.6)",
+      "metodo_avaliacao": "nao_aplicavel",
+      "criterio": "NR-01 1.8.6: o MEI, a ME e a EPP, graus de risco 1 e 2, que declararem as informações digitais na forma do subitem 1.6.1 e não identificarem exposições ocupacionais a agentes físicos, químicos, biológicos e riscos relacionados a fatores ergonômicos, ficam dispensados de elaboração do Programa de Controle Médico de Saúde Ocupacional - PCMSO. NR-01 1.8.7.1: a dispensa do PCMSO não desobriga a empresa da realização dos exames médicos e emissão do Atestado de Saúde Ocupacional - ASO. NR-01 1.8.7: os graus de risco 1 e 2 mencionados nos subitens 1.8.4 e 1.8.6 são os previstos na NR-04 (SESMT). NR-01 1.8.8: o empregador é o responsável pela prestação das informações previstas nos subitens 1.8.4 e 1.8.6.",
+      "interpretacao": "[RASCUNHO — não revisado por profissional habilitado] A dispensa do PCMSO está na NR-01 1.8.6 e depende, cumulativamente, de: ser MEI, ME ou EPP; grau de risco 1 ou 2 (o da NR-04, conforme 1.8.7); declarar as informações digitais na forma do 1.6.1; e não identificar exposições a agentes físicos, químicos, biológicos e riscos relacionados a fatores ergonômicos. A prestação dessas informações é responsabilidade do empregador (1.8.8). A dispensa não alcança os exames médicos nem a emissão do ASO (1.8.7.1). Se uma organização se enquadra exige revisão profissional. NOTA AO REVISOR: no PDF oficial da NR-01 de 26/05/2026, o subitem \"A dispensa do PCMSO não desobriga… exames médicos e emissão do ASO\" aparece numerado 1.8.7.1 e ANTES do 1.8.7; na redação anterior da NR-01 o mesmo texto era o 1.8.6.1. INFERIDO: provável erro de numeração do PDF. Se o MTE corrigir a numeração, a ligação ao 1.8.7.1 deixa de resolver e esta regra deve ir para 'revisar'.",
+      "exige_revisao_profissional": true,
+      "status": "rascunho",
+      "provisions": [
+        { "norma": "NR-01", "anexo": "", "item_path": "1.8.6", "papel": "fundamento", "contem": "ficam dispensados de elaboração do Programa de Controle Médico de Saúde Ocupacional - PCMSO" },
+        { "norma": "NR-01", "anexo": "", "item_path": "1.8.7.1", "papel": "excecao", "contem": "A dispensa do PCMSO não desobriga a empresa da realização dos exames médicos e emissão do Atestado de Saúde Ocupacional - ASO" },
+        { "norma": "NR-01", "anexo": "", "item_path": "1.8.7", "papel": "criterio", "contem": "Os graus de riscos 1 e 2 mencionados nos subitens 1.8.4 e 1.8.6 são os previstos na Norma" },
+        { "norma": "NR-01", "anexo": "", "item_path": "1.8.8", "papel": "criterio", "contem": "O empregador é o responsável pela prestação das informações previstas nos subitens 1.8.4 e 1.8.6" }
+      ]
+    },
+    {
+      "rule_key": "SAU-DOENCA-OCUPACIONAL-CONDUTAS-NOTIFICACAO",
+      "area": "saude_ocupacional",
+      "categoria": "pcmso",
+      "agente_ou_atividade": "Doença relacionada ao trabalho: condutas da organização e notificação",
+      "metodo_avaliacao": "nao_aplicavel",
+      "criterio": "NR-07 7.5.19.5: constatada ocorrência ou agravamento de doença relacionada ao trabalho ou alteração que revele disfunção orgânica por meio dos exames complementares do Quadro 2 do Anexo I, dos demais Anexos desta NR ou dos exames complementares incluídos com base no subitem 7.5.18 da presente NR, caberá à organização, após informada pelo médico responsável pelo PCMSO: a) emitir a Comunicação de Acidente do Trabalho - CAT; b) afastar o empregado da situação, ou do trabalho, quando necessário; c) encaminhar o empregado à Previdência Social, quando houver afastamento do trabalho superior a 15 (quinze) dias, para avaliação de incapacidade e definição da conduta previdenciária; d) reavaliar os riscos ocupacionais e as medidas de prevenção pertinentes no PGR. CLT art. 169: será obrigatória a notificação das doenças profissionais e das produzidas em virtude de condições especiais de trabalho, comprovadas ou objeto de suspeita, de conformidade com as instruções expedidas pelo Ministério do Trabalho.",
+      "interpretacao": "[RASCUNHO — não revisado por profissional habilitado] Constatada pelos exames indicados no 7.5.19.5 a ocorrência ou o agravamento de doença relacionada ao trabalho (ou disfunção orgânica), a organização, informada pelo médico responsável, emite a CAT, afasta o empregado quando necessário, encaminha-o à Previdência Social se o afastamento for superior a 15 (quinze) dias e reavalia riscos e medidas no PGR (NR-07 7.5.19.5). A CLT torna obrigatória a notificação das doenças profissionais, comprovadas ou objeto de suspeita, conforme instruções do Ministério do Trabalho (art. 169). O sistema não conclui se há doença relacionada ao trabalho.",
+      "exige_revisao_profissional": true,
+      "status": "rascunho",
+      "provisions": [
+        { "norma": "NR-07", "anexo": "", "item_path": "7.5.19.5", "papel": "fundamento", "contem": "caberá à organização, após informada pelo médico responsável pelo PCMSO" },
+        { "norma": "CLT", "anexo": "", "item_path": "art. 169", "papel": "fundamento", "contem": "Será obrigatória a notificação das doenças profissionais e das produzidas em virtude de condições especiais de trabalho, comprovadas ou objeto de suspeita" }
+      ]
+    },
+    {
+      "rule_key": "SAU-LGPD-DADO-SAUDE-SENSIVEL",
+      "area": "saude_ocupacional",
+      "categoria": "privacidade_dados",
+      "agente_ou_atividade": "Dado referente à saúde como dado pessoal sensível (LGPD art. 5)",
+      "metodo_avaliacao": "nao_aplicavel",
+      "criterio": "LGPD art. 5 inc. I: dado pessoal: informação relacionada a pessoa natural identificada ou identificável. LGPD art. 5 inc. II: dado pessoal sensível: dado pessoal sobre origem racial ou étnica, convicção religiosa, opinião política, filiação a sindicato ou a organização de caráter religioso, filosófico ou político, dado referente à saúde ou à vida sexual, dado genético ou biométrico, quando vinculado a uma pessoa natural.",
+      "interpretacao": "[RASCUNHO — não revisado por profissional habilitado] Pela definição da LGPD (art. 5º, II), dado referente à saúde vinculado a uma pessoa natural é dado pessoal sensível. Dados de exames, ASO e prontuário de um empregado identificado se referem à saúde de pessoa natural identificada (art. 5º, I); o tratamento desses dados segue as hipóteses do art. 11 (ver SAU-LGPD-HIPOTESES-TRATAMENTO-SENSIVEL). O enquadramento de cada dado concreto exige revisão profissional.",
+      "exige_revisao_profissional": true,
+      "status": "rascunho",
+      "provisions": [
+        { "norma": "LEI-13709", "anexo": "", "item_path": "art. 5 inc. I", "papel": "criterio", "contem": "dado pessoal: informação relacionada a pessoa natural identificada ou identificável" },
+        { "norma": "LEI-13709", "anexo": "", "item_path": "art. 5 inc. II", "papel": "fundamento", "contem": "dado referente à saúde ou à vida sexual" }
+      ]
+    },
+    {
+      "rule_key": "SAU-LGPD-HIPOTESES-TRATAMENTO-SENSIVEL",
+      "area": "saude_ocupacional",
+      "categoria": "privacidade_dados",
+      "agente_ou_atividade": "Hipóteses de tratamento de dados pessoais sensíveis e vedação de uso compartilhado de dados de saúde (LGPD art. 11)",
+      "metodo_avaliacao": "nao_aplicavel",
+      "criterio": "LGPD art. 11: o tratamento de dados pessoais sensíveis somente poderá ocorrer nas seguintes hipóteses: LGPD art. 11 inc. I: quando o titular ou seu responsável legal consentir, de forma específica e destacada, para finalidades específicas; LGPD art. 11 inc. II: sem fornecimento de consentimento do titular, nas hipóteses em que for indispensável para: a) cumprimento de obrigação legal ou regulatória pelo controlador; b) tratamento compartilhado de dados necessários à execução, pela administração pública, de políticas públicas previstas em leis ou regulamentos; c) realização de estudos por órgão de pesquisa, garantida, sempre que possível, a anonimização dos dados pessoais sensíveis; d) exercício regular de direitos, inclusive em contrato e em processo judicial, administrativo e arbitral, este último nos termos da Lei nº 9.307, de 23 de setembro de 1996 (Lei de Arbitragem); e) proteção da vida ou da incolumidade física do titular ou de terceiro; f) tutela da saúde, exclusivamente, em procedimento realizado por profissionais de saúde, serviços de saúde ou autoridade sanitária; ou g) garantia da prevenção à fraude e à segurança do titular, nos processos de identificação e autenticação de cadastro em sistemas eletrônicos, resguardados os direitos mencionados no art. 9º desta Lei e exceto no caso de prevalecerem direitos e liberdades fundamentais do titular que exijam a proteção dos dados pessoais. LGPD art. 11 §4: é vedada a comunicação ou o uso compartilhado entre controladores de dados pessoais sensíveis referentes à saúde com objetivo de obter vantagem econômica, exceto nas hipóteses relativas a prestação de serviços de saúde, de assistência farmacêutica e de assistência à saúde, desde que observado o § 5º deste artigo, incluídos os serviços auxiliares de diagnose e terapia, em benefício dos interesses dos titulares de dados, e para permitir: LGPD art. 11 §4 inc. I: a portabilidade de dados quando solicitada pelo titular; ou LGPD art. 11 §4 inc. II: as transações financeiras e administrativas resultantes do uso e da prestação dos serviços de que trata este parágrafo.",
+      "interpretacao": "[RASCUNHO — não revisado por profissional habilitado] Dado pessoal sensível só pode ser tratado nas hipóteses do art. 11: com consentimento específico e destacado (inciso I) ou, sem consentimento, quando indispensável para uma das finalidades das alíneas a a g do inciso II. O § 4º veda a comunicação ou o uso compartilhado de dados sensíveis referentes à saúde entre controladores com objetivo de vantagem econômica, salvo as exceções do próprio parágrafo. Qual hipótese ampara cada tratamento de dados de saúde ocupacional não se conclui destes textos: exige revisão profissional.",
+      "exige_revisao_profissional": true,
+      "status": "rascunho",
+      "provisions": [
+        { "norma": "LEI-13709", "anexo": "", "item_path": "art. 11", "papel": "fundamento", "contem": "O tratamento de dados pessoais sensíveis somente poderá ocorrer nas seguintes hipóteses" },
+        { "norma": "LEI-13709", "anexo": "", "item_path": "art. 11 inc. I", "papel": "criterio", "contem": "quando o titular ou seu responsável legal consentir, de forma específica e destacada, para finalidades específicas" },
+        { "norma": "LEI-13709", "anexo": "", "item_path": "art. 11 inc. II", "papel": "criterio", "contem": "sem fornecimento de consentimento do titular, nas hipóteses em que for indispensável para" },
+        { "norma": "LEI-13709", "anexo": "", "item_path": "art. 11 §4", "papel": "criterio", "contem": "É vedada a comunicação ou o uso compartilhado entre controladores de dados pessoais sensíveis referentes à saúde com objetivo de obter vantagem econômica" },
+        { "norma": "LEI-13709", "anexo": "", "item_path": "art. 11 §4 inc. I", "papel": "excecao", "contem": "a portabilidade de dados quando solicitada pelo titular" },
+        { "norma": "LEI-13709", "anexo": "", "item_path": "art. 11 §4 inc. II", "papel": "excecao", "contem": "as transações financeiras e administrativas resultantes do uso e da prestação dos serviços de que trata este parágrafo" }
+      ]
+    },
+    {
+      "rule_key": "SAU-LGPD-SEGURANCA-DADOS",
+      "area": "saude_ocupacional",
+      "categoria": "privacidade_dados",
+      "agente_ou_atividade": "Medidas de segurança para proteção de dados pessoais (LGPD art. 46)",
+      "metodo_avaliacao": "nao_aplicavel",
+      "criterio": "LGPD art. 46: os agentes de tratamento devem adotar medidas de segurança, técnicas e administrativas aptas a proteger os dados pessoais de acessos não autorizados e de situações acidentais ou ilícitas de destruição, perda, alteração, comunicação ou qualquer forma de tratamento inadequado ou ilícito. LGPD art. 46 §1: a autoridade nacional poderá dispor sobre padrões técnicos mínimos para tornar aplicável o disposto no caput, considerados a natureza das informações tratadas, as características específicas do tratamento e o estado atual da tecnologia, especialmente no caso de dados pessoais sensíveis, assim como os princípios previstos no caput do art. 6º. LGPD art. 46 §2: as medidas de que trata o caput deverão ser observadas desde a fase de concepção do produto ou do serviço até a sua execução.",
+      "interpretacao": "[RASCUNHO — não revisado por profissional habilitado] Quem trata dados pessoais deve adotar medidas de segurança técnicas e administrativas contra acessos não autorizados e situações acidentais ou ilícitas (art. 46), desde a concepção do produto ou serviço até a execução (§ 2º); padrões técnicos mínimos podem ser dispostos pela autoridade nacional, especialmente para dados sensíveis (§ 1º). Esta base não contém tais padrões: quais medidas bastam exige revisão profissional.",
+      "exige_revisao_profissional": true,
+      "status": "rascunho",
+      "provisions": [
+        { "norma": "LEI-13709", "anexo": "", "item_path": "art. 46", "papel": "fundamento", "contem": "devem adotar medidas de segurança, técnicas e administrativas aptas a proteger os dados pessoais de acessos não autorizados" },
+        { "norma": "LEI-13709", "anexo": "", "item_path": "art. 46 §1", "papel": "criterio", "contem": "especialmente no caso de dados pessoais sensíveis" },
+        { "norma": "LEI-13709", "anexo": "", "item_path": "art. 46 §2", "papel": "criterio", "contem": "deverão ser observadas desde a fase de concepção do produto ou do serviço até a sua execução" }
+      ]
+    },
+    {
+      "rule_key": "SAU-LGPD-COMUNICACAO-INCIDENTE",
+      "area": "saude_ocupacional",
+      "categoria": "privacidade_dados",
+      "agente_ou_atividade": "Comunicação de incidente de segurança com dados pessoais (LGPD art. 48)",
+      "metodo_avaliacao": "nao_aplicavel",
+      "criterio": "LGPD art. 48: o controlador deverá comunicar à autoridade nacional e ao titular a ocorrência de incidente de segurança que possa acarretar risco ou dano relevante aos titulares. LGPD art. 48 §1: a comunicação será feita em prazo razoável, conforme definido pela autoridade nacional, e deverá mencionar, no mínimo: LGPD art. 48 §1 inc. I: a descrição da natureza dos dados pessoais afetados; LGPD art. 48 §1 inc. II: as informações sobre os titulares envolvidos; LGPD art. 48 §1 inc. III: a indicação das medidas técnicas e de segurança utilizadas para a proteção dos dados, observados os segredos comercial e industrial; LGPD art. 48 §1 inc. IV: os riscos relacionados ao incidente; LGPD art. 48 §1 inc. V: os motivos da demora, no caso de a comunicação não ter sido imediata; e LGPD art. 48 §1 inc. VI: as medidas que foram ou que serão adotadas para reverter ou mitigar os efeitos do prejuízo.",
+      "interpretacao": "[RASCUNHO — não revisado por profissional habilitado] Incidente de segurança que possa acarretar risco ou dano relevante aos titulares é comunicado pelo controlador à autoridade nacional e ao titular (art. 48), em prazo razoável conforme definido pela autoridade nacional e com o conteúdo mínimo dos incisos I a VI do § 1º. O número de dias desse prazo não está no texto da Lei nesta base. Se um incidente concreto atinge o limiar de risco ou dano relevante exige revisão profissional.",
+      "exige_revisao_profissional": true,
+      "status": "rascunho",
+      "provisions": [
+        { "norma": "LEI-13709", "anexo": "", "item_path": "art. 48", "papel": "fundamento", "contem": "deverá comunicar à autoridade nacional e ao titular a ocorrência de incidente de segurança que possa acarretar risco ou dano relevante aos titulares" },
+        { "norma": "LEI-13709", "anexo": "", "item_path": "art. 48 §1", "papel": "criterio", "contem": "A comunicação será feita em prazo razoável, conforme definido pela autoridade nacional" },
+        { "norma": "LEI-13709", "anexo": "", "item_path": "art. 48 §1 inc. I", "papel": "criterio", "contem": "a descrição da natureza dos dados pessoais afetados" },
+        { "norma": "LEI-13709", "anexo": "", "item_path": "art. 48 §1 inc. II", "papel": "criterio", "contem": "as informações sobre os titulares envolvidos" },
+        { "norma": "LEI-13709", "anexo": "", "item_path": "art. 48 §1 inc. III", "papel": "criterio", "contem": "a indicação das medidas técnicas e de segurança utilizadas para a proteção dos dados" },
+        { "norma": "LEI-13709", "anexo": "", "item_path": "art. 48 §1 inc. IV", "papel": "criterio", "contem": "os riscos relacionados ao incidente" },
+        { "norma": "LEI-13709", "anexo": "", "item_path": "art. 48 §1 inc. V", "papel": "criterio", "contem": "os motivos da demora, no caso de a comunicação não ter sido imediata" },
+        { "norma": "LEI-13709", "anexo": "", "item_path": "art. 48 §1 inc. VI", "papel": "criterio", "contem": "as medidas que foram ou que serão adotadas para reverter ou mitigar os efeitos do prejuízo" }
+      ]
+    }
+  ]
+}

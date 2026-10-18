@@ -1,4 +1,5 @@
-import { BadGatewayException, Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
+import { BadGatewayException, Inject, Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
+import { AiConfigService } from '../ai-config/ai-config.service';
 import { ChecklistItemSuggestion, FieldReportExtractor } from './field-report-extractor.interface';
 import { buildChatCompletionBody, filterValidSuggestions, parseChatCompletionToolCall } from './checklist-extraction-shared';
 
@@ -6,13 +7,17 @@ import { buildChatCompletionBody, filterValidSuggestions, parseChatCompletionToo
 export class MiniMaxExtractorService implements FieldReportExtractor {
   private readonly logger = new Logger(MiniMaxExtractorService.name);
 
+  // @Inject(ClasseConcreta) explícito: mesma causa raiz do fix em
+  // MiniMaxNormativeAnswerService / AiUsageLogService — sem isto, sob tsx
+  // (esbuild não emite design:paramtypes), `this.aiConfig` chegaria undefined.
+  constructor(@Inject(AiConfigService) private readonly aiConfig: AiConfigService) {}
+
   async extract(reportText: string): Promise<ChecklistItemSuggestion[]> {
-    const apiKey = process.env.MINIMAX_API_KEY;
+    const { apiKey, model } = await this.aiConfig.getResolved('minimax');
     if (!apiKey) {
       throw new ServiceUnavailableException('Copiloto de IA ainda não está disponível');
     }
 
-    const model = process.env.MINIMAX_MODEL || 'MiniMax-M3';
     let response: Response;
     try {
       response = await fetch('https://api.minimax.io/v1/chat/completions', {

@@ -1,0 +1,128 @@
+#!/usr/bin/env bash
+# Liga a fila: planeja as tarefas novas, executa as aprovadas (até MAX_PARALELO ao mesmo tempo),
+# faz a revisão independente e avisa quando está pronto. Deixe numa aba do terminal. Ctrl+C para parar.
+set -uo pipefail
+. "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
+mkdir -p "$FILA_DIR" "$TASKS_DIR" "$WORK_ROOT" "$LOG_DIR"
+
+uid_of() { cat "$FILA_DIR/$1/uid" 2>/dev/null || echo "$1"; }
+conta() { # conta tarefas em um estado
+  local n=0 d
+  for d in "$FILA_DIR"/*/; do [ -d "$d" ] || continue; [ "$(cat "$d/estado" 2>/dev/null)" = "$1" ] && n=$((n+1)); done
+  echo "$n"
+}
+em_execucao() { echo $(( $(conta executando) + $(conta revisando) )); }
+principal_rodando() {
+  local d
+  for d in "$FILA_DIR"/*/; do [ -d "$d" ] || continue
+    case "$(cat "$d/estado" 2>/dev/null)" in executando|revisando) [ "$(cat "$d/modo")" = principal ] && return 0;; esac
+  done; return 1
+}
+
+planejar() {
+  local id="$1" d="$FILA_DIR/$1" brief
+  log "[$id] planejando..."
+  brief="OBJETIVO: produzir o PLANO da tarefa abaixo. SOMENTE LEITURA; não altere arquivos.
+TAREFA DO PROPRIETÁRIO:
+$(cat "$d/tarefa.md")
+
+ENTREGUE em português simples, nesta ordem:
+1. Objetivo.
+2. Contexto encontrado (caminhos reais; o que já existe e pode ser reaproveitado).
+3. Fatias: para cada uma, o dono (backend, frontend, banco-rls, normativo-ia, qa, seguranca, performance), os arquivos prováveis e o critério de aceite verificável.
+4. RISCO: BAIXO, MEDIO ou ALTO. É ALTO se envolver schema/RLS, login/papéis, pagamento, upload, IA, dados pessoais ou servidor/infra. Explique.
+5. Perguntas ao proprietário (se houver).
+ARQUIVOS_ALTERADOS: nenhum"
+  ( cd "$REPO" && PARENT_TASK="$(uid_of "$id")" "$ORQ_DIR/delegar" planejador <<<"$brief" ) > "$d/plano.md" 2>>"$d/log"
+  estado_set "$id" aguardando-aprovacao
+  log "[$id] PLANO PRONTO. Leia:  /opt/Montese/orquestracao/ver $id   Aprove:  /opt/Montese/orquestracao/aprovar $id"
+}
+
+executar() {
+  local id="$1" d="$FILA_DIR/$1" modo wd branch cfg provider model prompt
+  modo="$(cat "$d/modo")"
+  if [ "$modo" = "principal" ]; then
+    wd="$REPO"
+  else
+    branch="agente/tarefa-$id"; wd="$WORK_ROOT/$id"
+    if [ ! -d "$wd" ]; then
+      if git -C "$REPO" show-ref --verify --quiet "refs/heads/$branch"; then
+        git -C "$REPO" worktree add "$wd" "$branch" >>"$d/log" 2>&1
+      else
+        git -C "$REPO" worktree add -b "$branch" "$wd" HEAD >>"$d/log" 2>&1
+      fi || { estado_set "$id" falhou; log "[$id] FALHOU ao criar a cópia isolada (veja $d/log)"; return; }
+      for sub in backend frontend; do
+        [ -d "$REPO/$sub/node_modules" ] && [ ! -e "$wd/$sub/node_modules" ] && ln -s "$REPO/$sub/node_modules" "$wd/$sub/node_modules"
+      done
+      # esconde os atalhos do git status (o .gitignore só cobre pasta, não atalho)
+      EXC="$(git -C "$wd" rev-parse --git-path info/exclude)"; case "$EXC" in /*) ;; *) EXC="$wd/$EXC";; esac
+      for sub in backend frontend; do grep -qx "$sub/node_modules" "$EXC" 2>/dev/null || echo "$sub/node_modules" >> "$EXC"; done
+    fi
+  fi
+  echo "$wd" > "$d/workdir"
+  log "[$id] executando em $wd (modo $modo)"
+
+  cfg="$(agent_cfg montese-orquestrador)"; provider="${cfg%% *}"; model="${cfg##* }"
+  prompt="TAREFA $id (aprovada pelo proprietário).
+PASTA DE TRABALHO: $wd
+
+PEDIDO:
+$(cat "$d/tarefa.md")
+
+PLANO APROVADO:
+$(cat "$d/plano.md")
+
+Execute o plano delegando cada fatia ao agente dono com o comando $ORQ_DIR/delegar, sempre com briefing no contrato (OBJETIVO, CONTEXTO, ESCOPO, ARQUIVOS, CRITÉRIOS, TESTES, AUTORIZAÇÕES, BLOQUEIO). Delegue fatias dependentes em ordem. A revisão independente será feita automaticamente depois; você NÃO a faz. Se algo exigir autorização que o plano não cobre, pare e responda 'BLOQUEADO:' com o motivo. Ao final entregue um relatório curto (o que foi feito, o que foi verificado, o que não foi, riscos). Nada de commit."
+  (
+    setup_provider "$provider" "$model" || exit 1
+    cd "$wd"
+    PARENT_TASK="$(uid_of "$id")" "$CLAUDE_BIN" -p "$prompt" --agent montese-orquestrador --model "$MODEL_ARG" \
+      --permission-mode acceptEdits \
+      --allowedTools "Read" "Grep" "Glob" "TodoWrite" "Bash($ORQ_DIR/delegar:*)" \
+                     "Bash(git status:*)" "Bash(git diff:*)" "Bash(git log:*)" "Bash(ls:*)" \
+      --disallowedTools "${DENIED_TOOLS[@]}" \
+      --append-system-prompt "Você é o chefe em execução autônoma de um plano JÁ aprovado. Não peça confirmação; delegue e confira evidências." \
+      </dev/null > "$d/resultado.md" 2>>"$d/log"
+  )
+  estado_set "$id" revisando
+  log "[$id] revisão independente..."
+  : > "$d/revisao.md"
+  local md did ag par
+  for md in "$TASKS_DIR"/*/; do
+    [ -f "$md/meta.env" ] || continue
+    did="$(basename "$md")"
+    ag="$(grep '^AGENT=' "$md/meta.env" | cut -d= -f2)"; par="$(grep '^PARENT=' "$md/meta.env" | cut -d= -f2)"
+    [ "$par" = "$(uid_of "$id")" ] || continue
+    # revisa QUALQUER delegação que tenha alterado arquivos (o 'revisar' ignora as que não alteraram nada)
+    { echo "### Revisão QA da delegação $did ($ag)"; "$ORQ_DIR/revisar" "$did" qa 2>&1; echo; } >> "$d/revisao.md"
+    case "$ag" in montese-backend|montese-banco-rls|montese-normativo-ia|montese-qa)
+      { echo "### Revisão de SEGURANÇA da delegação $did ($ag)"; "$ORQ_DIR/revisar" "$did" seguranca 2>&1; echo; } >> "$d/revisao.md";;
+    esac
+  done
+  estado_set "$id" concluida
+  log "[$id] PRONTA PARA VOCÊ REVISAR:  /opt/Montese/orquestracao/ver $id   (nada foi commitado)"
+}
+
+# recuperação de execuções interrompidas
+for d in "$FILA_DIR"/*/; do [ -d "$d" ] || continue; id="$(basename "$d")"
+  case "$(estado_get "$id")" in
+    planejando) estado_set "$id" nova;;
+    executando|revisando) estado_set "$id" interrompida; log "[$id] marcada como interrompida (rodar foi parado no meio)";;
+  esac
+done
+
+trap 'trap - INT TERM; echo; log "parando a fila..."; kill 0 2>/dev/null; exit 0' INT TERM
+log "▶ Fila ligada. Máximo de $MAX_PARALELO tarefas executando ao mesmo tempo. Ctrl+C para parar."
+while true; do
+  for d in "$FILA_DIR"/*/; do
+    [ -d "$d" ] || continue
+    id="$(basename "$d")"; est="$(cat "$d/estado" 2>/dev/null)"
+    if [ "$est" = "nova" ] && [ "$(conta planejando)" -lt 2 ]; then
+      estado_set "$id" planejando; ( planejar "$id" ) &
+    elif [ "$est" = "aprovada" ] && [ "$(em_execucao)" -lt "$MAX_PARALELO" ]; then
+      if [ "$(cat "$d/modo")" = "principal" ] && principal_rodando; then continue; fi
+      estado_set "$id" executando; ( executar "$id" ) &
+    fi
+  done
+  sleep 5
+done

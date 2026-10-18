@@ -1,0 +1,270 @@
+{
+  "schema_version": 1,
+  "descricao": "Regras interpretativas GRO/PGR (NR-01), TODAS em rascunho. Cada regra liga itens literais da NR-01 vigente a partir de 26/05/2026; 'interpretacao' é rascunho a ser revisado por profissional habilitado e não é norma. Importar com: npm run db:import-normative-rules (dry-run por padrão).",
+  "fonte": {
+    "norma": "NR-01",
+    "texto": "backend/test/fixtures/normative/NR-01-vigente-2026-05-26.txt",
+    "pdf_oficial": "…/normas-regulamentadoras-vigentes/nr-01-atualizada-2025-i-3.pdf",
+    "sha256_pdf": "39e0ced67472db5f6f93235ce5532701247a1b7dddf39fb866c379e605b32a21",
+    "sha256_texto": "afaf953765022672dd058ba385ace393be6b88f5612cbb03a8e5219a2d662fb0",
+    "vigencia_do_texto": "a partir de 26/05/2026",
+    "observacao": "Produção ainda tem a NR-01 anterior (db/seed-data/normative-sources/NR-01.txt): as ligações só resolvem depois que o texto vigente for aprovado e os dispositivos gerados."
+  },
+  "rules": [
+    {
+      "rule_key": "PGR-DOCUMENTOS-MINIMOS",
+      "area": "gro_pgr",
+      "categoria": "estrutura_pgr",
+      "agente_ou_atividade": "Constituição e documentos mínimos do PGR",
+      "metodo_avaliacao": "nao_aplicavel",
+      "criterio": "NR-01 1.5.3.1.1: o gerenciamento de riscos ocupacionais deve constituir um Programa de Gerenciamento de Riscos - PGR. 1.5.3.1.1.1: o PGR deve ser implementado por estabelecimento, podendo ser por unidade operacional, setor ou atividade. 1.5.7.1: o PGR deve conter, no mínimo, a) inventário de riscos e b) plano de ação. 1.5.7.2: os documentos integrantes do PGR devem ser elaborados sob a responsabilidade da organização, respeitado o disposto nas demais NR, datados e assinados. 1.5.7.2.1: devem estar sempre disponíveis aos trabalhadores interessados, aos sindicatos representantes das categorias profissionais e à Inspeção do Trabalho.",
+      "interpretacao": "[RASCUNHO — não revisado por profissional habilitado] Pelo 1.5.7.1, o conteúdo mínimo do PGR são dois documentos: inventário de riscos e plano de ação. Pelos 1.5.7.2 e 1.5.7.2.1, esses documentos são datados, assinados e ficam disponíveis a trabalhadores interessados, sindicatos e Inspeção do Trabalho.",
+      "exige_revisao_profissional": true,
+      "status": "rascunho",
+      "provisions": [
+        { "norma": "NR-01", "anexo": "", "item_path": "1.5.3.1.1", "papel": "fundamento", "contem": "deve constituir um Programa de Gerenciamento de Riscos - PGR" },
+        { "norma": "NR-01", "anexo": "", "item_path": "1.5.3.1.1.1", "papel": "criterio", "contem": "deve ser implementado por estabelecimento" },
+        { "norma": "NR-01", "anexo": "", "item_path": "1.5.7.1", "papel": "criterio", "contem": "O PGR deve conter, no mínimo, os seguintes documentos" },
+        { "norma": "NR-01", "anexo": "", "item_path": "1.5.7.2", "papel": "criterio", "contem": "respeitado o disposto nas demais Normas Regulamentadoras, datados e assinados" },
+        { "norma": "NR-01", "anexo": "", "item_path": "1.5.7.2.1", "papel": "criterio", "contem": "aos sindicatos representantes das categorias profissionais" }
+      ]
+    },
+    {
+      "rule_key": "GRO-HIERARQUIA-MEDIDAS",
+      "area": "gro_pgr",
+      "categoria": "controle_riscos",
+      "agente_ou_atividade": "Ordem de prioridade das medidas de prevenção",
+      "metodo_avaliacao": "nao_aplicavel",
+      "criterio": "NR-01 1.4.1 alínea g: implementar medidas de prevenção, ouvidos os trabalhadores, na ordem de prioridade: I. eliminação dos fatores de risco; II. minimização e controle dos fatores de risco, com a adoção de medidas de proteção coletiva; III. minimização e controle dos fatores de risco, com a adoção de medidas administrativas ou de organização do trabalho; IV. adoção de medidas de proteção individual. 1.5.3.2 alínea e: implementar medidas de prevenção de acordo com a classificação de risco e na ordem de prioridade da alínea g do 1.4.1. 1.5.5.1.2: quando comprovada a inviabilidade técnica da proteção coletiva, ou quando esta não for suficiente ou estiver em fase de estudo, planejamento ou implantação, ou ainda em caráter complementar ou emergencial, adotar outras medidas na hierarquia: a) medidas de caráter administrativo ou de organização do trabalho; b) utilização de EPI.",
+      "interpretacao": "[RASCUNHO — não revisado por profissional habilitado] A proteção individual é a última prioridade da ordem do 1.4.1 g (inciso IV). Pelo 1.5.5.1.2, medidas administrativas e, depois, EPI entram nas situações ali listadas (proteção coletiva comprovadamente inviável, insuficiente, em estudo/planejamento/implantação, ou em caráter complementar ou emergencial).",
+      "exige_revisao_profissional": true,
+      "status": "rascunho",
+      "provisions": [
+        { "norma": "NR-01", "anexo": "", "item_path": "1.4.1", "papel": "criterio", "contem": "ouvidos os trabalhadores, de acordo com a seguinte ordem de prioridade" },
+        { "norma": "NR-01", "anexo": "", "item_path": "1.5.3.2", "papel": "fundamento", "contem": "de acordo com a classificação de risco e na ordem de" },
+        { "norma": "NR-01", "anexo": "", "item_path": "1.5.5.1.2", "papel": "criterio", "contem": "deverão ser adotadas outras medidas, obedecendo-se a seguinte hierarquia" }
+      ]
+    },
+    {
+      "rule_key": "GRO-MEDIDAS-QUANDO-ADOTAR",
+      "area": "gro_pgr",
+      "categoria": "controle_riscos",
+      "agente_ou_atividade": "Situações que exigem medidas de prevenção",
+      "metodo_avaliacao": "nao_aplicavel",
+      "criterio": "NR-01 1.5.5.1.1: a organização deve adotar medidas de prevenção para eliminar, reduzir ou controlar os riscos sempre que: a) exigências previstas em NR e em dispositivos legais determinarem; b) a classificação dos riscos ocupacionais assim determinar, conforme subitem 1.5.4.4.3; c) houver evidências de associação entre as lesões e os agravos à saúde dos trabalhadores e os riscos e as situações de trabalho identificados; d) os resultados das análises de acidentes e doenças concluírem por esta necessidade. 1.5.5.1.3: a implantação de medidas de prevenção deve ser acompanhada de informação aos trabalhadores quanto aos procedimentos a serem adotados e limitações das medidas.",
+      "interpretacao": "[RASCUNHO — não revisado por profissional habilitado] Reúne as situações das alíneas a–d do 1.5.5.1.1 em que o texto exige medidas de prevenção, e o dever de informar os trabalhadores ao implantá-las (1.5.5.1.3). Como as alíneas se combinam é ponto para o revisor.",
+      "exige_revisao_profissional": true,
+      "status": "rascunho",
+      "provisions": [
+        { "norma": "NR-01", "anexo": "", "item_path": "1.5.5.1.1", "papel": "criterio", "contem": "os resultados das análises de acidentes e doenças concluírem por esta necessidade" },
+        { "norma": "NR-01", "anexo": "", "item_path": "1.5.5.1.3", "papel": "criterio", "contem": "deve ser acompanhada de informação aos trabalhadores" },
+        { "norma": "NR-01", "anexo": "", "item_path": "1.5.4.4.3", "papel": "fundamento", "contem": "os riscos ocupacionais devem ser classificados para fins de identificar" }
+      ]
+    },
+    {
+      "rule_key": "GRO-LEVANTAMENTO-PRELIMINAR",
+      "area": "gro_pgr",
+      "categoria": "identificacao_perigos",
+      "agente_ou_atividade": "Levantamento preliminar de perigos e riscos",
+      "metodo_avaliacao": "nao_aplicavel",
+      "criterio": "NR-01 1.5.4.2.1: o levantamento preliminar de perigos e riscos deve ser realizado a) antes do início do funcionamento do estabelecimento ou novas instalações; b) para as atividades existentes; c) nas mudanças e introdução de novos processos ou atividades de trabalho. 1.5.4.2.1.1: serve para identificar situações em que é possível evitar ou eliminar perigos e situações de risco ocupacional evidente que exigem medidas de redução ou controle imediatas. 1.5.4.2.1.2: se o perigo não puder ser evitado ou eliminado, implementar a identificação de perigos e avaliação de riscos (1.5.4.3 e 1.5.4.4). 1.5.4.2.1.3: se não for possível adotar medidas imediatas para o risco evidente, as medidas devem ser inseridas no plano de ação e o risco registrado no inventário. 1.5.4.2.1.4: a critério da organização, o levantamento preliminar pode estar contemplado na etapa de identificação de perigos.",
+      "interpretacao": "[RASCUNHO — não revisado por profissional habilitado] O levantamento preliminar acontece antes de funcionar, para as atividades existentes e a cada mudança ou novo processo (1.5.4.2.1). Perigo que não puder ser evitado ou eliminado segue para identificação e avaliação (1.5.4.2.1.2); risco evidente sem medida imediata vai para o plano de ação e para o inventário (1.5.4.2.1.3).",
+      "exige_revisao_profissional": true,
+      "status": "rascunho",
+      "provisions": [
+        { "norma": "NR-01", "anexo": "", "item_path": "1.5.4.2.1", "papel": "criterio", "contem": "O levantamento preliminar de perigos e riscos deve ser realizado:" },
+        { "norma": "NR-01", "anexo": "", "item_path": "1.5.4.2.1.1", "papel": "criterio", "contem": "identificar situações em que é possível evitar ou eliminar perigos" },
+        { "norma": "NR-01", "anexo": "", "item_path": "1.5.4.2.1.2", "papel": "criterio", "contem": "o perigo não puder ser evitado ou eliminado" },
+        { "norma": "NR-01", "anexo": "", "item_path": "1.5.4.2.1.3", "papel": "criterio", "contem": "as medidas devem ser inseridas no plano de ação" },
+        { "norma": "NR-01", "anexo": "", "item_path": "1.5.4.2.1.4", "papel": "excecao", "contem": "a etapa de levantamento preliminar de perigos e riscos pode estar contemplada" }
+      ]
+    },
+    {
+      "rule_key": "GRO-IDENTIFICACAO-PERIGOS",
+      "area": "gro_pgr",
+      "categoria": "identificacao_perigos",
+      "agente_ou_atividade": "Conteúdo da etapa de identificação de perigos",
+      "metodo_avaliacao": "nao_aplicavel",
+      "criterio": "NR-01 1.5.4.1: o processo de identificação de perigos e avaliação de riscos deve considerar o disposto nas NR e exigências legais de SST. 1.5.4.3.1: a identificação de perigos deve incluir a) descrição dos perigos e possíveis lesões ou agravos à saúde; b) identificação das fontes e/ou circunstâncias; c) indicação do grupo de trabalhadores sujeitos ao perigo, que pode ser constituído por um ou mais trabalhadores. 1.5.4.3.2: deve abordar os perigos externos previsíveis relacionados ao trabalho que possam afetar a saúde e segurança no trabalho.",
+      "interpretacao": "[RASCUNHO — não revisado por profissional habilitado] Para cada perigo, o texto pede descrição (com possíveis lesões ou agravos), fontes ou circunstâncias e o grupo de trabalhadores sujeito a ele (1.5.4.3.1), incluindo perigos externos previsíveis (1.5.4.3.2). Listas de exemplos de perigos que não estão na NR-01 não entram aqui.",
+      "exige_revisao_profissional": true,
+      "status": "rascunho",
+      "provisions": [
+        { "norma": "NR-01", "anexo": "", "item_path": "1.5.4.1", "papel": "fundamento", "contem": "deve considerar o disposto nas NR e exigências legais" },
+        { "norma": "NR-01", "anexo": "", "item_path": "1.5.4.3.1", "papel": "criterio", "contem": "indicação do grupo de trabalhadores sujeitos ao perigo" },
+        { "norma": "NR-01", "anexo": "", "item_path": "1.5.4.3.2", "papel": "criterio", "contem": "deve abordar os perigos externos previsíveis relacionados ao trabalho" }
+      ]
+    },
+    {
+      "rule_key": "GRO-AVALIACAO-NIVEL-RISCO",
+      "area": "gro_pgr",
+      "categoria": "avaliacao_riscos",
+      "agente_ou_atividade": "Avaliação e classificação dos riscos ocupacionais",
+      "metodo_avaliacao": "nao_aplicavel",
+      "criterio": "NR-01 1.5.4.4.1: avaliar os riscos relativos aos perigos identificados. 1.5.4.4.2: para cada risco, indicar o nível de risco, determinado pela combinação da severidade das possíveis lesões ou agravos com a probabilidade de sua ocorrência. 1.5.4.4.2.1: selecionar ferramentas e técnicas adequadas ao risco ou circunstância. 1.5.4.4.2.2: detalhar em documento os critérios de gradação de severidade e de probabilidade, os níveis de risco e os critérios de classificação e de tomada de decisão. 1.5.4.4.3: classificar os riscos para identificar a necessidade de adoção ou manutenção de medidas de prevenção e elaboração do plano de ação. 1.5.4.4.4 e 1.5.4.4.4.1: severidade pela magnitude das possíveis consequências; com mais de uma consequência possível, a de maior magnitude. 1.5.4.4.5 e 1.5.4.4.5.1: probabilidade pela chance de ocorrência, considerando o cumprimento dos requisitos de NR e da legislação. 1.5.4.4.5.2: perigos físicos, químicos e biológicos — comparar o perfil de exposição com valores de referência ou aplicar outros critérios da NR-09, e a eficácia das medidas implementadas. 1.5.4.4.5.4: acidentes — considerar a exposição do trabalhador ao perigo e a eficácia das medidas implementadas.",
+      "interpretacao": "[RASCUNHO — não revisado por profissional habilitado] O nível de risco resulta da combinação da severidade com a probabilidade (1.5.4.4.2), com os critérios registrados em documento (1.5.4.4.2.2) e classificação que decide medidas e plano de ação (1.5.4.4.3). A probabilidade leva em conta a eficácia das medidas já implementadas (1.5.4.4.5.2 e 1.5.4.4.5.4). O texto não fixa uma ferramenta: exige que seja adequada (1.5.4.4.2.1).",
+      "exige_revisao_profissional": true,
+      "status": "rascunho",
+      "provisions": [
+        { "norma": "NR-01", "anexo": "", "item_path": "1.5.4.4.1", "papel": "fundamento", "contem": "A organização deve avaliar os riscos ocupacionais relativos aos perigos identificados" },
+        { "norma": "NR-01", "anexo": "", "item_path": "1.5.4.4.2", "papel": "criterio", "contem": "com a probabilidade de sua ocorrência" },
+        { "norma": "NR-01", "anexo": "", "item_path": "1.5.4.4.2.1", "papel": "metodo", "contem": "selecionar as ferramentas e técnicas de avaliação de riscos" },
+        { "norma": "NR-01", "anexo": "", "item_path": "1.5.4.4.2.2", "papel": "criterio", "contem": "detalhar em documento os critérios das gradações de severidade e de probabilidade" },
+        { "norma": "NR-01", "anexo": "", "item_path": "1.5.4.4.3", "papel": "criterio", "contem": "os riscos ocupacionais devem ser classificados para fins de identificar" },
+        { "norma": "NR-01", "anexo": "", "item_path": "1.5.4.4.4", "papel": "criterio", "contem": "A severidade deve ser estabelecida em razão da magnitude" },
+        { "norma": "NR-01", "anexo": "", "item_path": "1.5.4.4.4.1", "papel": "criterio", "contem": "deve ser selecionada a consequência de maior magnitude" },
+        { "norma": "NR-01", "anexo": "", "item_path": "1.5.4.4.5", "papel": "criterio", "contem": "A probabilidade deve ser estabelecida com base na chance de ocorrência" },
+        { "norma": "NR-01", "anexo": "", "item_path": "1.5.4.4.5.1", "papel": "criterio", "contem": "levar em consideração o cumprimento dos requisitos estabelecidos em NR" },
+        { "norma": "NR-01", "anexo": "", "item_path": "1.5.4.4.5.2", "papel": "metodo", "contem": "decorrentes de perigos físicos, químicos e biológicos" },
+        { "norma": "NR-01", "anexo": "", "item_path": "1.5.4.4.5.4", "papel": "metodo", "contem": "deve considerar a exposição do trabalhador ao perigo" }
+      ]
+    },
+    {
+      "rule_key": "GRO-REVISAO-AVALIACAO",
+      "area": "gro_pgr",
+      "categoria": "revisao",
+      "agente_ou_atividade": "Prazo e gatilhos de revisão da avaliação de riscos",
+      "metodo_avaliacao": "nao_aplicavel",
+      "criterio": "NR-01 1.5.4.4.6: a avaliação de riscos deve constituir um processo contínuo e ser revista a cada dois anos ou quando da ocorrência das seguintes situações: a) após implementação das medidas de prevenção, para avaliação de riscos residuais; b) após inovações e modificações nas tecnologias, ambientes, processos, condições, procedimentos e organização do trabalho que impliquem em novos riscos ou modifiquem os riscos existentes; c) quando identificadas inadequações, insuficiência ou ineficácia das medidas de prevenção; d) na ocorrência de acidentes ou doenças relacionadas ao trabalho; e) quando houver mudança nos requisitos legais aplicáveis; f) após a solicitação justificada dos trabalhadores ou da CIPA, quando houver. A exceção ao prazo de dois anos está no 1.5.4.4.6.1 (ver exceções).",
+      "excecoes": "NR-01 1.5.4.4.6.1: organizações que possuírem certificações em sistema de gestão de SST — o prazo poderá ser de até 3 (três) anos.",
+      "interpretacao": "[RASCUNHO — não revisado por profissional habilitado] A revisão é periódica (a cada dois anos; até três com certificação em sistema de gestão de SST, 1.5.4.4.6.1) e também ocorre em cada situação das alíneas a–f do 1.5.4.4.6. A alínea f (solicitação justificada dos trabalhadores ou da CIPA) não consta do texto anterior a 26/05/2026.",
+      "exige_revisao_profissional": true,
+      "status": "rascunho",
+      "provisions": [
+        { "norma": "NR-01", "anexo": "", "item_path": "1.5.4.4.6", "papel": "criterio", "contem": "f) após a solicitação justificada dos trabalhadores ou da CIPA" },
+        { "norma": "NR-01", "anexo": "", "item_path": "1.5.4.4.6.1", "papel": "excecao", "contem": "o prazo poderá ser de até 3 (três) anos" }
+      ]
+    },
+    {
+      "rule_key": "GRO-PSICOSSOCIAL-ABRANGENCIA",
+      "area": "gro_pgr",
+      "categoria": "psicossocial",
+      "agente_ou_atividade": "Fatores de risco psicossociais no GRO",
+      "metodo_avaliacao": "nao_aplicavel",
+      "criterio": "NR-01 1.5.3.1.4: o gerenciamento de riscos ocupacionais deve abranger os riscos que decorrem dos agentes físicos, químicos, biológicos, riscos de acidentes e riscos relacionados aos fatores ergonômicos, incluindo os fatores de risco psicossociais relacionados ao trabalho. 1.5.3.2.1: a organização deve considerar as condições de trabalho, nos termos da NR-17, incluindo os fatores de risco psicossociais relacionados ao trabalho.",
+      "interpretacao": "[RASCUNHO — não revisado por profissional habilitado] No texto vigente a partir de 26/05/2026, os fatores de risco psicossociais relacionados ao trabalho estão expressamente dentro do gerenciamento de riscos (1.5.3.1.4) e são considerados com as condições de trabalho nos termos da NR-17 (1.5.3.2.1). O texto anterior não menciona fatores psicossociais. Exemplos de fatores psicossociais que não constam da NR-01 não entram aqui.",
+      "exige_revisao_profissional": true,
+      "status": "rascunho",
+      "provisions": [
+        { "norma": "NR-01", "anexo": "", "item_path": "1.5.3.1.4", "papel": "criterio", "contem": "riscos relacionados aos fatores ergonômicos, incluindo os fatores de risco psicossociais" },
+        { "norma": "NR-01", "anexo": "", "item_path": "1.5.3.2.1", "papel": "criterio", "contem": "nos termos da NR-17, incluindo os fatores de risco psicossociais" }
+      ]
+    },
+    {
+      "rule_key": "GRO-PSICOSSOCIAL-PROBABILIDADE",
+      "area": "gro_pgr",
+      "categoria": "psicossocial",
+      "agente_ou_atividade": "Probabilidade nos riscos ergonômicos e psicossociais",
+      "metodo_avaliacao": "nao_aplicavel",
+      "criterio": "NR-01 1.5.4.4.5.3: para a probabilidade de ocorrência das lesões ou agravos à saúde decorrentes de fatores ergonômicos, incluindo os fatores de riscos psicossociais relacionados ao trabalho, a avaliação de risco deve considerar as exigências da atividade de trabalho e a eficácia das medidas de prevenção implementadas.",
+      "interpretacao": "[RASCUNHO — não revisado por profissional habilitado] Para fatores ergonômicos e psicossociais, a probabilidade considera as exigências da atividade de trabalho e a eficácia das medidas já implementadas (1.5.4.4.5.3). O item não define instrumento ou questionário.",
+      "exige_revisao_profissional": true,
+      "status": "rascunho",
+      "provisions": [
+        { "norma": "NR-01", "anexo": "", "item_path": "1.5.4.4.5.3", "papel": "criterio", "contem": "decorrentes de fatores ergonômicos, incluindo os fatores de riscos psicossociais" }
+      ]
+    },
+    {
+      "rule_key": "PGR-INVENTARIO-CONTEUDO",
+      "area": "gro_pgr",
+      "categoria": "inventario",
+      "agente_ou_atividade": "Conteúdo mínimo e atualização do inventário de riscos",
+      "metodo_avaliacao": "nao_aplicavel",
+      "criterio": "NR-01 1.5.7.3.1: os dados da identificação dos perigos e das avaliações dos riscos devem ser consolidados em um inventário de riscos ocupacionais. 1.5.7.3.2: o inventário deve contemplar, no mínimo: a) caracterização dos processos e ambientes de trabalho; b) caracterização das atividades; c) descrição dos perigos, com a identificação das fontes e/ou circunstâncias; d) indicação das possíveis lesões ou agravos à saúde decorrentes da exposição dos trabalhadores aos perigos; e) indicação dos grupos de trabalhadores expostos aos perigos; f) descrição das medidas de prevenção implementadas; g) caracterização da exposição dos trabalhadores aos perigos; h) dados da análise preliminar ou do monitoramento das exposições a agentes físicos, químicos e biológicos e os resultados da avaliação de ergonomia nos termos da NR-17; i) avaliação dos riscos, incluindo a classificação para fins de elaboração do plano de ação. 1.5.7.3.3: o inventário deve ser mantido atualizado. 1.5.7.3.3.1: o histórico das atualizações deve ser mantido por um período mínimo de 20 (vinte) anos ou pelo período estabelecido em normatização específica.",
+      "interpretacao": "[RASCUNHO — não revisado por profissional habilitado] O inventário consolida identificação e avaliação (1.5.7.3.1) e tem nove conteúdos mínimos, alíneas a–i do 1.5.7.3.2. Deve ser mantido atualizado, com histórico das atualizações guardado por no mínimo 20 anos ou pelo prazo de normatização específica (1.5.7.3.3 e 1.5.7.3.3.1).",
+      "exige_revisao_profissional": true,
+      "status": "rascunho",
+      "provisions": [
+        { "norma": "NR-01", "anexo": "", "item_path": "1.5.7.3.1", "papel": "criterio", "contem": "devem ser consolidados em um inventário de riscos ocupacionais" },
+        { "norma": "NR-01", "anexo": "", "item_path": "1.5.7.3.2", "papel": "criterio", "contem": "e) indicação dos grupos de trabalhadores expostos aos perigos" },
+        { "norma": "NR-01", "anexo": "", "item_path": "1.5.7.3.3", "papel": "criterio", "contem": "O inventário de riscos ocupacionais deve ser mantido atualizado" },
+        { "norma": "NR-01", "anexo": "", "item_path": "1.5.7.3.3.1", "papel": "criterio", "contem": "período mínimo de 20 (vinte) anos" }
+      ]
+    },
+    {
+      "rule_key": "PGR-PLANO-ACAO-CONTEUDO",
+      "area": "gro_pgr",
+      "categoria": "plano_acao",
+      "agente_ou_atividade": "Conteúdo do plano de ação",
+      "metodo_avaliacao": "nao_aplicavel",
+      "criterio": "NR-01 1.5.5.2.1: a organização deve elaborar plano de ação, indicando as medidas de prevenção a serem introduzidas, aprimoradas ou mantidas, conforme o subitem 1.5.4.4.3. 1.5.5.2.1.1: o número de trabalhadores possivelmente atingidos deve ser utilizado como critério para aumentar a prioridade de ação. 1.5.5.2.2: para as medidas de prevenção deve ser definido cronograma com responsáveis, formas de acompanhamento e aferição de resultados. 1.5.4.2.1.3: medidas para risco evidente que não puderem ser adotadas de imediato devem ser inseridas no plano de ação.",
+      "interpretacao": "[RASCUNHO — não revisado por profissional habilitado] O plano de ação indica medidas a introduzir, aprimorar ou manter conforme a classificação dos riscos (1.5.5.2.1), com cronograma, responsáveis, formas de acompanhamento e aferição de resultados (1.5.5.2.2); o número de trabalhadores possivelmente atingidos aumenta a prioridade (1.5.5.2.1.1). Tabelas de exemplos de plano de ação que não estão na NR-01 não entram aqui.",
+      "exige_revisao_profissional": true,
+      "status": "rascunho",
+      "provisions": [
+        { "norma": "NR-01", "anexo": "", "item_path": "1.5.5.2.1", "papel": "criterio", "contem": "introduzidas, aprimoradas ou mantidas, conforme o subitem 1.5.4.4.3" },
+        { "norma": "NR-01", "anexo": "", "item_path": "1.5.5.2.1.1", "papel": "criterio", "contem": "deve ser utilizado como critério para aumentar a prioridade de ação" },
+        { "norma": "NR-01", "anexo": "", "item_path": "1.5.5.2.2", "papel": "criterio", "contem": "deve ser definido cronograma com responsáveis" },
+        { "norma": "NR-01", "anexo": "", "item_path": "1.5.4.2.1.3", "papel": "criterio", "contem": "as medidas devem ser inseridas no plano de ação" },
+        { "norma": "NR-01", "anexo": "", "item_path": "1.5.4.4.3", "papel": "fundamento", "contem": "os riscos ocupacionais devem ser classificados para fins de identificar" }
+      ]
+    },
+    {
+      "rule_key": "GRO-ACOMPANHAMENTO-MEDIDAS",
+      "area": "gro_pgr",
+      "categoria": "controle_riscos",
+      "agente_ou_atividade": "Registro e acompanhamento das medidas de prevenção",
+      "metodo_avaliacao": "nao_aplicavel",
+      "criterio": "NR-01 1.5.5.3.1: a implementação das medidas de prevenção e respectivos ajustes devem ser registrados. 1.5.5.3.2: o desempenho das medidas deve ser acompanhado de forma planejada e contemplar a) verificação da execução das ações planejadas e da continuidade de sua aplicação, quando for o caso; b) inspeções dos locais e equipamentos de trabalho; c) monitoramento das condições ambientais e exposições a agentes nocivos, quando aplicável; d) participação dos trabalhadores e da CIPA, quando houver. 1.5.5.3.2.1: as medidas devem ser corrigidas quando os dados do acompanhamento indicarem ineficácia em seu desempenho.",
+      "interpretacao": "[RASCUNHO — não revisado por profissional habilitado] Implementar não encerra o ciclo: a implementação e os ajustes são registrados (1.5.5.3.1), o desempenho é acompanhado de forma planejada (1.5.5.3.2, alíneas a–d) e a medida ineficaz é corrigida (1.5.5.3.2.1).",
+      "exige_revisao_profissional": true,
+      "status": "rascunho",
+      "provisions": [
+        { "norma": "NR-01", "anexo": "", "item_path": "1.5.5.3.1", "papel": "criterio", "contem": "A implementação das medidas de prevenção e respectivos ajustes devem ser registrados" },
+        { "norma": "NR-01", "anexo": "", "item_path": "1.5.5.3.2", "papel": "criterio", "contem": "d) a participação dos trabalhadores e da CIPA, quando houver" },
+        { "norma": "NR-01", "anexo": "", "item_path": "1.5.5.3.2.1", "papel": "criterio", "contem": "devem ser corrigidas quando os dados obtidos no acompanhamento indicarem ineficácia" }
+      ]
+    },
+    {
+      "rule_key": "PGR-DISPENSA-MEI",
+      "area": "gro_pgr",
+      "categoria": "excecao",
+      "agente_ou_atividade": "Dispensa do PGR para o MEI",
+      "metodo_avaliacao": "nao_aplicavel",
+      "criterio": "NR-01 1.8.1: o Microempreendedor Individual - MEI está dispensado de elaborar o PGR. 1.8.5: a dispensa é aplicável quanto à obrigação de elaboração do PGR e não afasta a obrigação de cumprimento, por parte do MEI, ME e EPP, das demais disposições previstas em NR. A dispensa não alcança a organização contratante do MEI (1.8.1.1, ver exceções).",
+      "excecoes": "NR-01 1.8.1.1: a dispensa não alcança a organização contratante do MEI, que deverá incluí-lo nas suas ações de prevenção e no seu PGR, quando este atuar em suas dependências ou local previamente convencionado em contrato.",
+      "interpretacao": "[RASCUNHO — não revisado por profissional habilitado] O MEI não elabora PGR (1.8.1), mas continua obrigado às demais disposições das NR (1.8.5). Quando atua nas dependências da contratante ou em local convencionado em contrato, a contratante o inclui nas suas ações de prevenção e no seu PGR (1.8.1.1).",
+      "exige_revisao_profissional": true,
+      "status": "rascunho",
+      "provisions": [
+        { "norma": "NR-01", "anexo": "", "item_path": "1.8.1", "papel": "criterio", "contem": "O Microempreendedor Individual - MEI está dispensado de elaborar o PGR" },
+        { "norma": "NR-01", "anexo": "", "item_path": "1.8.1.1", "papel": "excecao", "contem": "não alcança a organização contratante do MEI" },
+        { "norma": "NR-01", "anexo": "", "item_path": "1.8.5", "papel": "criterio", "contem": "não afasta a obrigação de cumprimento por parte do MEI, ME e EPP" }
+      ]
+    },
+    {
+      "rule_key": "PGR-DISPENSA-ME-EPP",
+      "area": "gro_pgr",
+      "categoria": "excecao",
+      "agente_ou_atividade": "Dispensa do PGR para ME e EPP de grau de risco 1 e 2",
+      "metodo_avaliacao": "nao_aplicavel",
+      "criterio": "NR-01 1.8.4: as microempresas e empresas de pequeno porte, graus de risco 1 e 2, que no levantamento preliminar de perigos não identificarem exposições ocupacionais a agentes físicos, químicos e biológicos, em conformidade com a NR-9, e declararem as informações digitais na forma do subitem 1.6.1, ficam dispensadas da elaboração do PGR. 1.8.4.1: as informações digitais declaradas devem ser divulgadas junto aos trabalhadores. 1.8.5: a dispensa não afasta o cumprimento das demais disposições previstas em NR. 1.8.7: os graus de risco 1 e 2 são os previstos na NR-04. 1.8.8: o empregador é o responsável pela prestação das informações previstas nos subitens 1.8.4 e 1.8.6. 1.6.1: informações de SST prestadas em formato digital, conforme modelo aprovado pela STRAB, ouvida a SIT.",
+      "interpretacao": "[RASCUNHO — não revisado por profissional habilitado] O 1.8.4 reúne as condições da dispensa: ME ou EPP; grau de risco 1 ou 2 da NR-04 (1.8.7); levantamento preliminar sem exposições a agentes físicos, químicos e biológicos, conforme a NR-9; e declaração das informações digitais (1.6.1), que devem ser divulgadas aos trabalhadores (1.8.4.1). A dispensa é só da elaboração do PGR (1.8.5).",
+      "exige_revisao_profissional": true,
+      "status": "rascunho",
+      "provisions": [
+        { "norma": "NR-01", "anexo": "", "item_path": "1.8.4", "papel": "criterio", "contem": "graus de risco 1 e 2, que no levantamento preliminar de perigos não identificarem" },
+        { "norma": "NR-01", "anexo": "", "item_path": "1.8.4.1", "papel": "criterio", "contem": "devem ser divulgadas junto aos trabalhadores" },
+        { "norma": "NR-01", "anexo": "", "item_path": "1.8.5", "papel": "criterio", "contem": "não afasta a obrigação de cumprimento por parte do MEI, ME e EPP" },
+        { "norma": "NR-01", "anexo": "", "item_path": "1.8.7", "papel": "criterio", "contem": "Os graus de riscos 1 e 2 mencionados nos subitens 1.8.4 e 1.8.6" },
+        { "norma": "NR-01", "anexo": "", "item_path": "1.8.8", "papel": "criterio", "contem": "O empregador é o responsável pela prestação das informações" },
+        { "norma": "NR-01", "anexo": "", "item_path": "1.6.1", "papel": "fundamento", "contem": "As organizações devem prestar informações de segurança e saúde no trabalho" }
+      ]
+    },
+    {
+      "rule_key": "PGR-ME-EPP-FERRAMENTA-OFICIAL",
+      "area": "gro_pgr",
+      "categoria": "excecao",
+      "agente_ou_atividade": "PGR de ME/EPP estruturado com ferramenta(s) de avaliação a serem disponibilizada(s) pela SEPRT",
+      "metodo_avaliacao": "nao_aplicavel",
+      "criterio": "NR-01 1.8.3: as microempresas e empresas de pequeno porte que não forem obrigadas a constituir SESMT e optarem pela utilização de ferramenta(s) de avaliação de risco a serem disponibilizada(s) pela SEPRT, em alternativa às ferramentas e técnicas previstas no subitem 1.5.4.4.2.1, poderão estruturar o PGR considerando o relatório produzido por esta(s) ferramenta(s) e o plano de ação.",
+      "interpretacao": "[RASCUNHO — não revisado por profissional habilitado] É uma forma alternativa de estruturar o PGR (relatório da ferramenta oficial + plano de ação), não uma dispensa: vale para ME e EPP não obrigadas a constituir SESMT que optarem pela ferramenta (1.8.3).",
+      "exige_revisao_profissional": true,
+      "status": "rascunho",
+      "provisions": [
+        { "norma": "NR-01", "anexo": "", "item_path": "1.8.3", "papel": "criterio", "contem": "poderão estruturar o PGR considerando o relatório produzido" },
+        { "norma": "NR-01", "anexo": "", "item_path": "1.5.4.4.2.1", "papel": "fundamento", "contem": "selecionar as ferramentas e técnicas de avaliação de riscos" }
+      ]
+    }
+  ]
+}

@@ -7,6 +7,7 @@ import { splitIntoChunks } from '../common/chunking/chunking.util';
 import { toVectorLiteral } from '../common/vector/vector.util';
 import { normalizeForComparison } from './normative-text.util';
 import { diffParagraphs, ParagraphDiff } from './paragraph-diff.util';
+import { markDocumentProvisionsObsolete } from './provision-lifecycle';
 
 export type NormativeDocumentStatus = 'aguardando_validacao' | 'vigente' | 'rejeitado' | 'substituido';
 
@@ -181,6 +182,7 @@ export class NormativeDocumentsService {
 
     if (previousId) {
       await client.query(`UPDATE normative_documents SET status = 'substituido' WHERE id = $1`, [previousId]);
+      await markDocumentProvisionsObsolete(client, previousId);
     }
     // WHERE ... AND status = 'aguardando_validacao' (não só WHERE id = $1)
     // fecha a lacuna que sobrava mesmo com a checagem acima: duas chamadas
@@ -274,6 +276,7 @@ export class NormativeDocumentsService {
     if (updated.rowCount === 0) {
       throw new ConflictException('O documento deixou de estar vigente; recarregue a lista');
     }
+    await markDocumentProvisionsObsolete(client, documentId);
     await client.query('DELETE FROM normative_document_chunks WHERE document_id = $1', [documentId]);
     return this.findOne(client, documentId);
   }

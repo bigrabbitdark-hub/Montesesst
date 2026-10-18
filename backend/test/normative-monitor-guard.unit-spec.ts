@@ -101,3 +101,27 @@ describe('NormativeMonitorService — cabeçalhos e barreira de extração suspe
     expect(email.send).not.toHaveBeenCalled();
   });
 });
+
+describe('NormativeMonitorService.fetchAndExtract — texto riscado só é descartado no planalto.gov.br', () => {
+  afterEach(() => jest.restoreAllMocks());
+  // SINTÉTICO (mesma marcação das páginas do Planalto).
+  const HTML = '<html><body><p><strike>Art. 1º Redação revogada.</strike></p><p>Art. 1º Redação\nvigente.</p></body></html>';
+
+  it.each(['https://www.planalto.gov.br/ccivil_03/leis/l8213cons.htm', 'https://planalto.gov.br/x.htm', 'http://WWW4.PLANALTO.GOV.BR/x.htm'])(
+    '%s → descarta o riscado e trata a quebra de linha da fonte como espaço',
+    async (url) => {
+      simularFetch(HTML);
+      const { service } = montar(null);
+      expect((await service.fetchAndExtract(url)).text).toBe('Art. 1º Redação vigente.');
+    },
+  );
+
+  it.each(['https://exemplo.gov.br/l8213cons.htm', 'https://planalto.gov.br.exemplo.com/x.htm', 'https://naoplanalto.gov.br/x.htm', 'https://www.gov.br/trabalho/nr.htm'])(
+    '%s → saída de sempre (hash das demais fontes não muda)',
+    async (url) => {
+      simularFetch(HTML);
+      const { service } = montar(null);
+      expect((await service.fetchAndExtract(url)).text).toBe('Art. 1º Redação revogada.\nArt. 1º Redação\nvigente.');
+    },
+  );
+});

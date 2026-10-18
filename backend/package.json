@@ -12,6 +12,8 @@
     "db:embed-sst-checklist": "tsx db/embed-sst-checklist.ts",
     "db:check-checklist-embeddings": "tsx db/check-checklist-embeddings.ts",
     "db:reseed-normative-sources": "tsx db/reseed-normative-sources.ts",
+    "db:generate-provisions": "tsx db/generate-provisions.ts",
+    "db:import-normative-rules": "tsx db/import-normative-rules.ts",
     "eval:lint": "tsx eval/lint-golden.ts",
     "eval:nr": "tsx eval/nr-text.ts",
     "eval:notices": "tsx eval/notices-check.ts",

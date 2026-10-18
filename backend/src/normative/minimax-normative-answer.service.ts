@@ -9,6 +9,7 @@ import {
 } from './normative-answer-provider.interface';
 import { buildRagChatCompletionBody, parseRagToolCall } from './normative-answer-shared';
 import { AiUsageLogService } from '../common/ai-usage/ai-usage-log.service';
+import { AiConfigService } from '../ai-config/ai-config.service';
 
 // Latência medida do MiniMax-M3 (modelo de raciocínio): p95 ~40 s, cauda até ~57 s.
 // O timeout cobre a cauda; cada tentativa tem o seu próprio.
@@ -36,10 +37,21 @@ export class MiniMaxNormativeAnswerService implements NormativeAnswerProvider {
   // (achado do runner de avaliação, Task 9: a chamada acontecia, só o
   // registro do uso em minimax_usage_log é que quebrava). Comportamento
   // idêntico em produção/e2e (nest build/ts-jest emitem o metadado certo).
-  constructor(@Inject(AiUsageLogService) private readonly usageLog: AiUsageLogService) {}
+  constructor(
+    @Inject(AiUsageLogService) private readonly usageLog: AiUsageLogService,
+    @Inject(AiConfigService) private readonly aiConfig: AiConfigService,
+  ) {}
+
+  // Cache do último model resolvido pelo aiConfig (banco → env → default).
+  // Preenchido em `answer()` antes da chamada real; o getter `modelName`
+  // (lido pelo `normative-assistant.service.ts` no trace log) cai pra
+  // env/default se `answer()` ainda não rodou nesta instância. Não há
+  // inconsistência prática: o que vai na requestBody é exatamente
+  // `resolved.model`; o `modelName` é só metadado do log.
+  private _resolvedModel: string | null = null;
 
   get modelName(): string {
-    return process.env.MINIMAX_MODEL || 'MiniMax-M3';
+    return this._resolvedModel ?? process.env.MINIMAX_MODEL ?? 'MiniMax-M3';
   }
 
   async answer(
@@ -51,12 +63,12 @@ export class MiniMaxNormativeAnswerService implements NormativeAnswerProvider {
     attachment?: AttachmentInput,
     systemPrompt?: string,
   ): Promise<NormativeClaim[]> {
-    const apiKey = process.env.MINIMAX_API_KEY;
+    const { apiKey, model } = await this.aiConfig.getResolved('minimax');
     if (!apiKey) {
       throw new ServiceUnavailableException('Assistente ainda não está disponível');
     }
+    this._resolvedModel = model;
 
-    const model = this.modelName;
     const requestBody = buildRagChatCompletionBody(
       model,
       question,

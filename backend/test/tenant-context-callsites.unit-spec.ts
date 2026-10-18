@@ -39,6 +39,16 @@ const ALLOWED: Record<string, { calls: number; motivo: string }> = {
     motivo:
       'O `ctx` é montado uma vez, de `user` (JWT) — nunca do tenantId alvo do corpo, que só entra em queries — com o vínculo técnico/parceiro checado por assigned_tenant_ids_for_current_user(). É o serviço do bug 9af00d1; o comentário do método explica o porquê.',
   },
+  'pente-fino/sst-audit.service.ts': {
+    calls: 1,
+    motivo:
+      'Recebe `ctx` por parâmetro; o único chamador (pente-fino.controller.ts) o monta de req.user (JWT) depois de PenteFinoComparisonService.run ter checado o vínculo técnico/parceiro. O tenantId alvo do corpo só entra como parâmetro de WHERE.',
+  },
+  'pente-fino/sst-audit-facts.service.ts': {
+    calls: 3,
+    motivo:
+      'Recebe `ctx` por parâmetro de SstAuditService, que o recebe do controller (JWT). Nunca monta contexto a partir de dto/body; cache de fatos e leitura de nomes cadastrados rodam sob RLS.',
+  },
   'cipa/ata-ai/ata-ai.service.ts': {
     calls: 4,
     motivo:

@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+# Pré-visualização do frontend de uma tarefa (cópia isolada), só acessível por túnel SSH.
+#   preview ligar 002     sobe o frontend da tarefa 002 em 127.0.0.1:3100
+#   preview parar         desliga tudo
+#   preview status        mostra se está ligado
+# Conecta ao BACKEND REAL (produção). Só olhe; não salve nem apague nada pela tela.
+set -uo pipefail
+. "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
+P=/root/.montese/preview; mkdir -p "$P"
+PORT=3100; FRONT=3101
+
+parar() {
+  for f in proxy next; do
+    [ -f "$P/$f.pid" ] && { kill -TERM -- "-$(cat "$P/$f.pid")" 2>/dev/null || kill -TERM "$(cat "$P/$f.pid")" 2>/dev/null; rm -f "$P/$f.pid"; }
+  done
+  echo "Pré-visualização desligada."
+}
+
+case "${1:-}" in
+  parar) parar ;;
+  status)
+    if [ -f "$P/proxy.pid" ] && kill -0 "$(cat "$P/proxy.pid")" 2>/dev/null; then echo "LIGADA em 127.0.0.1:$PORT (tarefa $(cat "$P/tarefa" 2>/dev/null))"; else echo "desligada"; fi ;;
+  ligar)
+    ID="$(norm_id "${2:?use: preview ligar 002}")"
+    WD="$WORK_ROOT/$ID/frontend"
+    [ -d "$WD" ] || { echo "ERRO: não achei $WD (a tarefa $ID tem cópia isolada?)"; exit 1; }
+    [ -f "$P/proxy.pid" ] && kill -0 "$(cat "$P/proxy.pid")" 2>/dev/null && { echo "Já está ligada. Use: preview parar"; exit 1; }
+    BACK_IP="$(docker inspect montese_backend --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' 2>/dev/null)"
+    [ -n "$BACK_IP" ] || { echo "ERRO: não achei o IP do backend."; exit 1; }
+    curl -s -o /dev/null -m 5 -w "backend /health: HTTP %{http_code}\n" "http://$BACK_IP:4000/health" || { echo "ERRO: backend não respondeu em $BACK_IP:4000"; exit 1; }
+    echo "$ID" > "$P/tarefa"
+    ( cd "$WD" && NEXT_PUBLIC_API_URL=/api NEXT_TELEMETRY_DISABLED=1 setsid nohup node node_modules/next/dist/bin/next dev -H 127.0.0.1 -p $FRONT > "$P/next.log" 2>&1 & echo $! > "$P/next.pid" )
+    ( BACK_HOST="$BACK_IP" BACK_PORT=4000 PREVIEW_PORT=$PORT FRONT_PORT=$FRONT setsid nohup node "$ORQ_DIR/preview-proxy.js" > "$P/proxy.log" 2>&1 & echo $! > "$P/proxy.pid" )
+    echo "Subindo (a primeira abertura de cada página demora um pouco para compilar)..."
+    for i in $(seq 1 40); do
+      c="$(curl -s -o /dev/null -m 5 -w '%{http_code}' "http://127.0.0.1:$PORT/" 2>/dev/null)"
+      [ "$c" = "200" ] || [ "$c" = "307" ] || [ "$c" = "308" ] && { echo "PRONTO: http://127.0.0.1:$PORT (HTTP $c)"; exit 0; }
+      sleep 3
+    done
+    echo "AVISO: não respondeu a tempo. Veja: tail -20 $P/next.log"; exit 1 ;;
+  *) sed -n '2,7p' "${BASH_SOURCE[0]}" ;;
+esac

@@ -1,0 +1,200 @@
+{
+  "schema_version": 1,
+  "descricao": "Regras interpretativas da área de saúde ocupacional cujas ligações são SÓ da NR-07 (texto vigente): PCMSO e integração com o PGR, exames ocupacionais e prazos, ASO, prontuário, relatório analítico e obrigações das MEI/ME/EPP dispensadas do PCMSO (NR-07 7.7), TODAS em rascunho. Separadas de saude-ocupacional.json para poderem ser importadas assim que os dispositivos da NR-07 (já vigente) forem gerados, sem depender da aprovação da CLT, da NR-01 nova nem da LGPD. 'interpretacao' é rascunho a ser revisado por profissional habilitado (médico do trabalho) e não é norma. Importar com: npm run db:import-normative-rules -- db/seed-data/normative-rules/saude-ocupacional-nr07.json (dry-run por padrão).",
+  "fonte": {
+    "normas": ["NR-07"],
+    "textos": "backend/db/seed-data/normative-sources/NR-07.txt (NR-07 vigente inteira) e o recorte backend/test/fixtures/normative/saude-ocupacional/nr-07-itens.txt (origem, data e sha256 no README.md da pasta)",
+    "extracao": "texto extraído do PDF oficial + parseProvisions(texto, 'nr')",
+    "baixado_em": "2026-10-10",
+    "observacao": "Fora desta base por não haver literal neste texto: prazo do evento S-2220 do eSocial, leiautes/MOS, notas orientativas, tabelas do eSocial e listas de exames complementares que não constem da NR-07. Regras com ligação à CLT, à NR-01 ou à LGPD (inclusive as mistas com a NR-07) estão em saude-ocupacional.json."
+  },
+  "rules": [
+    {
+      "rule_key": "SAU-PCMSO-ELABORACAO-RISCOS-PGR",
+      "area": "saude_ocupacional",
+      "categoria": "pcmso",
+      "agente_ou_atividade": "PCMSO: elaboração a partir dos riscos do PGR e conteúdo que a organização deve garantir",
+      "metodo_avaliacao": "nao_aplicavel",
+      "criterio": "NR-07 7.5.1: o PCMSO deve ser elaborado considerando os riscos ocupacionais identificados e classificados pelo PGR. NR-07 7.5.4: a organização deve garantir que o PCMSO: a) descreva os possíveis agravos à saúde relacionados aos riscos ocupacionais identificados e classificados no PGR; b) contenha planejamento de exames médicos clínicos e complementares necessários, conforme os riscos ocupacionais identificados, atendendo ao determinado nos Anexos desta NR; c) contenha os critérios de interpretação e planejamento das condutas relacionadas aos achados dos exames médicos; d) seja conhecido e atendido por todos os médicos que realizarem os exames médicos ocupacionais dos empregados; e) inclua relatório analítico sobre o desenvolvimento do programa, conforme o subitem 7.6.2 desta NR.",
+      "interpretacao": "[RASCUNHO — não revisado por profissional habilitado] O ponto de partida do PCMSO são os riscos ocupacionais que o PGR identificou e classificou (NR-07 7.5.1). O subitem 7.5.4 lista o que a organização deve garantir que o PCMSO contenha: agravos possíveis, planejamento de exames, critérios de interpretação e condutas, conhecimento pelos médicos examinadores e relatório analítico. Se um PCMSO concreto atende a esses itens é avaliação do médico responsável e exige revisão profissional.",
+      "exige_revisao_profissional": true,
+      "status": "rascunho",
+      "provisions": [
+        { "norma": "NR-07", "anexo": "", "item_path": "7.5.1", "papel": "fundamento", "contem": "O PCMSO deve ser elaborado considerando os riscos ocupacionais identificados e classificados pelo PGR" },
+        { "norma": "NR-07", "anexo": "", "item_path": "7.5.4", "papel": "criterio", "contem": "descreva os possíveis agravos à saúde relacionados aos riscos ocupacionais identificados e classificados no PGR" }
+      ]
+    },
+    {
+      "rule_key": "SAU-PCMSO-PGR-INCONSISTENCIAS",
+      "area": "saude_ocupacional",
+      "categoria": "cruzamento_documental_saude",
+      "agente_ou_atividade": "Cruzamento PCMSO × PGR: inconsistências no inventário de riscos e possibilidade de exposição excessiva",
+      "metodo_avaliacao": "qualitativo",
+      "criterio": "NR-07 7.5.5: o médico responsável pelo PCMSO, caso observe inconsistências no inventário de riscos da organização, deve reavaliá-las em conjunto com os responsáveis pelo PGR. NR-07 7.5.19.4: sendo verificada a possibilidade de exposição excessiva a agentes listados no Quadro 1 do Anexo I desta NR, o médico do trabalho responsável pelo PCMSO deve informar o fato aos responsáveis pelo PGR para reavaliação dos riscos ocupacionais e das medidas de prevenção.",
+      "interpretacao": "[RASCUNHO — não revisado por profissional habilitado] A NR-07 prevê dois caminhos do PCMSO para o PGR: inconsistências observadas no inventário de riscos são reavaliadas em conjunto com os responsáveis pelo PGR (7.5.5), e a possibilidade de exposição excessiva a agentes do Quadro 1 do Anexo I é informada a eles para reavaliação dos riscos e das medidas de prevenção (7.5.19.4). Os textos não fixam forma nem prazo para essa reavaliação. Divergência encontrada entre os dois documentos é indício a examinar, não conclusão: exige revisão profissional.",
+      "exige_revisao_profissional": true,
+      "status": "rascunho",
+      "provisions": [
+        { "norma": "NR-07", "anexo": "", "item_path": "7.5.5", "papel": "fundamento", "contem": "caso observe inconsistências no inventário de riscos da organização, deve reavaliá-las em conjunto com os responsáveis pelo PGR" },
+        { "norma": "NR-07", "anexo": "", "item_path": "7.5.19.4", "papel": "criterio", "contem": "deve informar o fato aos responsáveis pelo PGR para reavaliação dos riscos ocupacionais e das medidas de prevenção" }
+      ]
+    },
+    {
+      "rule_key": "SAU-EXAMES-OBRIGATORIOS",
+      "area": "saude_ocupacional",
+      "categoria": "exames_ocupacionais",
+      "agente_ou_atividade": "Exames médicos obrigatórios do PCMSO (admissional, periódico, retorno, mudança de riscos, demissional)",
+      "metodo_avaliacao": "nao_aplicavel",
+      "criterio": "NR-07 7.5.6: o PCMSO deve incluir a realização obrigatória dos exames médicos: a) admissional; b) periódico; c) de retorno ao trabalho; d) de mudança de riscos ocupacionais; e) demissional. NR-07 7.5.7: os exames médicos de que trata o subitem 7.5.6 compreendem exame clínico e exames complementares, realizados de acordo com as especificações desta e de outras NR.",
+      "interpretacao": "[RASCUNHO — não revisado por profissional habilitado] São cinco os exames médicos obrigatórios do PCMSO (NR-07 7.5.6), cada um com exame clínico e exames complementares conforme a NR-07 e outras NR (7.5.7). Prazos e periodicidade de cada exame estão nas regras SAU-EXAME-CLINICO-ADMISSIONAL-PERIODICO, SAU-EXAME-RETORNO-TRABALHO, SAU-EXAME-MUDANCA-RISCO e SAU-EXAME-DEMISSIONAL. Quais exames complementares cabem a cada função depende do PCMSO e dos Anexos: exige revisão profissional.",
+      "exige_revisao_profissional": true,
+      "status": "rascunho",
+      "provisions": [
+        { "norma": "NR-07", "anexo": "", "item_path": "7.5.6", "papel": "fundamento", "contem": "O PCMSO deve incluir a realização obrigatória dos exames médicos" },
+        { "norma": "NR-07", "anexo": "", "item_path": "7.5.7", "papel": "criterio", "contem": "compreendem exame clínico e exames complementares, realizados de acordo com as especificações desta e de outras NR" }
+      ]
+    },
+    {
+      "rule_key": "SAU-EXAME-CLINICO-ADMISSIONAL-PERIODICO",
+      "area": "saude_ocupacional",
+      "categoria": "exames_ocupacionais",
+      "agente_ou_atividade": "Exame clínico admissional e periódico: momento e intervalos",
+      "metodo_avaliacao": "nao_aplicavel",
+      "criterio": "NR-07 7.5.8: o exame clínico deve obedecer aos prazos e à seguinte periodicidade: I - no exame admissional: ser realizado antes que o empregado assuma suas atividades; II - no exame periódico: ser realizado de acordo com os seguintes intervalos: a) para empregados expostos a riscos ocupacionais identificados e classificados no PGR e para portadores de doenças crônicas que aumentem a susceptibilidade a tais riscos: 1. a cada ano ou a intervalos menores, a critério do médico responsável; 2. de acordo com a periodicidade especificada no Anexo IV desta Norma, relativo a empregados expostos a condições hiperbáricas; b) para os demais empregados, o exame clínico deve ser realizado a cada dois anos.",
+      "interpretacao": "[RASCUNHO — não revisado por profissional habilitado] O exame clínico admissional é feito antes de o empregado assumir as atividades. O periódico é feito a cada ano (ou a intervalos menores, a critério do médico responsável) para expostos a riscos identificados e classificados no PGR e para portadores de doenças crônicas que aumentem a susceptibilidade a esses riscos; segue o Anexo IV para condições hiperbáricas; e é feito a cada dois anos para os demais empregados (NR-07 7.5.8). Enquadrar cada empregado num desses intervalos exige o PGR e revisão do médico responsável.",
+      "exige_revisao_profissional": true,
+      "status": "rascunho",
+      "provisions": [
+        { "norma": "NR-07", "anexo": "", "item_path": "7.5.8", "papel": "fundamento", "contem": "O exame clínico deve obedecer aos prazos e à seguinte periodicidade" }
+      ]
+    },
+    {
+      "rule_key": "SAU-EXAME-RETORNO-TRABALHO",
+      "area": "saude_ocupacional",
+      "categoria": "exames_ocupacionais",
+      "agente_ou_atividade": "Exame de retorno ao trabalho",
+      "metodo_avaliacao": "nao_aplicavel",
+      "criterio": "NR-07 7.5.9: no exame de retorno ao trabalho, o exame clínico deve ser realizado antes que o empregado reassuma suas funções, quando ausente por período igual ou superior a 30 (trinta) dias por motivo de doença ou acidente, de natureza ocupacional ou não. NR-07 7.5.9.1: no exame de retorno ao trabalho, a avaliação médica deve definir a necessidade de retorno gradativo ao trabalho.",
+      "interpretacao": "[RASCUNHO — não revisado por profissional habilitado] O exame de retorno é exigido, antes de o empregado reassumir as funções, quando a ausência por doença ou acidente (ocupacional ou não) for igual ou superior a 30 (trinta) dias; a avaliação médica define se o retorno deve ser gradativo (NR-07 7.5.9 e 7.5.9.1).",
+      "exige_revisao_profissional": true,
+      "status": "rascunho",
+      "provisions": [
+        { "norma": "NR-07", "anexo": "", "item_path": "7.5.9", "papel": "fundamento", "contem": "quando ausente por período igual ou superior a 30 (trinta) dias por motivo de doença ou acidente, de natureza ocupacional ou não" },
+        { "norma": "NR-07", "anexo": "", "item_path": "7.5.9.1", "papel": "criterio", "contem": "a avaliação médica deve definir a necessidade de retorno gradativo ao trabalho" }
+      ]
+    },
+    {
+      "rule_key": "SAU-EXAME-MUDANCA-RISCO",
+      "area": "saude_ocupacional",
+      "categoria": "exames_ocupacionais",
+      "agente_ou_atividade": "Exame de mudança de risco ocupacional",
+      "metodo_avaliacao": "nao_aplicavel",
+      "criterio": "NR-07 7.5.10: o exame de mudança de risco ocupacional deve, obrigatoriamente, ser realizado antes da data da mudança, adequando-se o controle médico aos novos riscos.",
+      "interpretacao": "[RASCUNHO — não revisado por profissional habilitado] Quando o empregado muda de risco ocupacional, o exame é feito antes da data da mudança e o controle médico é adequado aos novos riscos (NR-07 7.5.10). O que configura mudança de risco num caso concreto depende do PGR e exige revisão profissional.",
+      "exige_revisao_profissional": true,
+      "status": "rascunho",
+      "provisions": [
+        { "norma": "NR-07", "anexo": "", "item_path": "7.5.10", "papel": "fundamento", "contem": "deve, obrigatoriamente, ser realizado antes da data da mudança, adequando-se o controle médico aos novos riscos" }
+      ]
+    },
+    {
+      "rule_key": "SAU-EXAME-DEMISSIONAL",
+      "area": "saude_ocupacional",
+      "categoria": "exames_ocupacionais",
+      "agente_ou_atividade": "Exame demissional: prazo e hipótese de dispensa",
+      "metodo_avaliacao": "nao_aplicavel",
+      "criterio": "NR-07 7.5.11: no exame demissional, o exame clínico deve ser realizado em até 10 (dez) dias contados do término do contrato, podendo ser dispensado caso o exame clínico ocupacional mais recente tenha sido realizado há menos de 135 (centro e trinta e cinco) dias [grafia da fonte], para as organizações graus de risco 1 e 2, e há menos de 90 (noventa) dias, para as organizações graus de risco 3 e 4.",
+      "excecoes": "NR-07 7.5.11: o exame demissional pode ser dispensado se o exame clínico ocupacional mais recente tiver sido realizado há menos de 135 dias (graus de risco 1 e 2) ou há menos de 90 (noventa) dias (graus de risco 3 e 4).",
+      "interpretacao": "[RASCUNHO — não revisado por profissional habilitado] O exame clínico demissional é feito em até 10 (dez) dias contados do término do contrato; pode ser dispensado quando o exame clínico ocupacional mais recente for de menos de 135 dias (graus de risco 1 e 2) ou de menos de 90 (noventa) dias (graus de risco 3 e 4) (NR-07 7.5.11). O literal da fonte grafa o número por extenso como \"centro e trinta e cinco\". O grau de risco da organização vem de outra norma e não é deduzido aqui: exige revisão profissional.",
+      "exige_revisao_profissional": true,
+      "status": "rascunho",
+      "provisions": [
+        { "norma": "NR-07", "anexo": "", "item_path": "7.5.11", "papel": "fundamento", "contem": "o exame clínico deve ser realizado em até 10 (dez) dias contados do término do contrato" }
+      ]
+    },
+    {
+      "rule_key": "SAU-ASO-EMISSAO",
+      "area": "saude_ocupacional",
+      "categoria": "aso",
+      "agente_ou_atividade": "Emissão e disponibilização do ASO; recibo de exames complementares sem exame clínico",
+      "metodo_avaliacao": "nao_aplicavel",
+      "criterio": "NR-07 7.5.19: para cada exame clínico ocupacional realizado, o médico emitirá Atestado de Saúde Ocupacional - ASO, que deve ser comprovadamente disponibilizado ao empregado, devendo ser fornecido em meio físico quando solicitado. NR-07 7.5.19.3: quando forem realizados exames complementares sem que tenha ocorrido exame clínico, a organização emitirá recibo de entrega do resultado do exame, devendo o recibo ser fornecido ao empregado em meio físico, quando solicitado.",
+      "interpretacao": "[RASCUNHO — não revisado por profissional habilitado] Cada exame clínico ocupacional gera um ASO emitido pelo médico, disponibilizado ao empregado de forma comprovável e fornecido em meio físico quando solicitado (NR-07 7.5.19). Exames complementares sem exame clínico não geram ASO: a organização emite recibo de entrega do resultado (7.5.19.3). O conteúdo mínimo do ASO está em SAU-ASO-CONTEUDO-MINIMO.",
+      "exige_revisao_profissional": true,
+      "status": "rascunho",
+      "provisions": [
+        { "norma": "NR-07", "anexo": "", "item_path": "7.5.19", "papel": "fundamento", "contem": "o médico emitirá Atestado de Saúde Ocupacional - ASO, que deve ser comprovadamente disponibilizado ao empregado" },
+        { "norma": "NR-07", "anexo": "", "item_path": "7.5.19.3", "papel": "criterio", "contem": "a organização emitirá recibo de entrega do resultado do exame" }
+      ]
+    },
+    {
+      "rule_key": "SAU-ASO-CONTEUDO-MINIMO",
+      "area": "saude_ocupacional",
+      "categoria": "aso",
+      "agente_ou_atividade": "Conteúdo mínimo do ASO",
+      "metodo_avaliacao": "nao_aplicavel",
+      "criterio": "NR-07 7.5.19.1: o ASO deve conter no mínimo: a) razão social e CNPJ ou CAEPF da organização; b) nome completo do empregado, o número de seu CPF e sua função; c) a descrição dos perigos ou fatores de risco identificados e classificados no PGR que necessitem de controle médico previsto no PCMSO, ou a sua inexistência; d) indicação e data de realização dos exames ocupacionais clínicos e complementares a que foi submetido o empregado; e) definição de apto ou inapto para a função do empregado; f) o nome e número de registro profissional do médico responsável pelo PCMSO, se houver; g) data, número de registro profissional e assinatura do médico que realizou o exame clínico. NR-07 7.5.19.2: a aptidão para trabalho em atividades específicas, quando assim definido em Normas Regulamentadoras e seus Anexos, deve ser consignada no ASO.",
+      "interpretacao": "[RASCUNHO — não revisado por profissional habilitado] O conteúdo mínimo do ASO está em sete alíneas (a–g; a alínea b reúne três dados) do subitem 7.5.19.1 da NR-07, entre elas os perigos ou fatores de risco do PGR que necessitem de controle médico previsto no PCMSO (ou a sua inexistência) e a definição de apto ou inapto para a função do empregado; a aptidão para atividades específicas é consignada quando outra NR assim definir (7.5.19.2). Conferir a presença desses elementos num ASO não substitui a avaliação médica.",
+      "exige_revisao_profissional": true,
+      "status": "rascunho",
+      "provisions": [
+        { "norma": "NR-07", "anexo": "", "item_path": "7.5.19.1", "papel": "fundamento", "contem": "O ASO deve conter no mínimo" },
+        { "norma": "NR-07", "anexo": "", "item_path": "7.5.19.2", "papel": "criterio", "contem": "quando assim definido em Normas Regulamentadoras e seus Anexos, deve ser consignada no ASO" }
+      ]
+    },
+    {
+      "rule_key": "SAU-PRONTUARIO-MEDICO",
+      "area": "saude_ocupacional",
+      "categoria": "pcmso",
+      "agente_ou_atividade": "Prontuário médico individual: registro, guarda, transferência e meio eletrônico",
+      "metodo_avaliacao": "nao_aplicavel",
+      "criterio": "NR-07 7.6.1: os dados dos exames clínicos e complementares deverão ser registrados em prontuário médico individual sob a responsabilidade do médico responsável pelo PCMSO, ou do médico responsável pelo exame, quando a organização estiver dispensada de PCMSO. NR-07 7.6.1.1: o prontuário do empregado deve ser mantido pela organização, no mínimo, por 20 (vinte) anos após o seu desligamento, exceto em caso de previsão diversa constante nos Anexos desta NR. NR-07 7.6.1.2: em caso de substituição do médico responsável pelo PCMSO, a organização deve garantir que os prontuários médicos sejam formalmente transferidos para seu sucessor. NR-07 7.6.1.3: podem ser utilizados prontuários médicos em meio eletrônico desde que atendidas as exigências do Conselho Federal de Medicina.",
+      "interpretacao": "[RASCUNHO — não revisado por profissional habilitado] Os dados dos exames ficam em prontuário médico individual sob a responsabilidade do médico (7.6.1), mantido pela organização por no mínimo 20 (vinte) anos após o desligamento, salvo previsão diversa nos Anexos (7.6.1.1), transferido formalmente ao sucessor quando o médico responsável muda (7.6.1.2) e admitido em meio eletrônico conforme as exigências do Conselho Federal de Medicina (7.6.1.3).",
+      "exige_revisao_profissional": true,
+      "status": "rascunho",
+      "provisions": [
+        { "norma": "NR-07", "anexo": "", "item_path": "7.6.1", "papel": "fundamento", "contem": "deverão ser registrados em prontuário médico individual sob a responsabilidade do médico responsável pelo PCMSO" },
+        { "norma": "NR-07", "anexo": "", "item_path": "7.6.1.1", "papel": "criterio", "contem": "deve ser mantido pela organização, no mínimo, por 20 (vinte) anos após o seu desligamento" },
+        { "norma": "NR-07", "anexo": "", "item_path": "7.6.1.2", "papel": "criterio", "contem": "a organização deve garantir que os prontuários médicos sejam formalmente transferidos para seu sucessor" },
+        { "norma": "NR-07", "anexo": "", "item_path": "7.6.1.3", "papel": "criterio", "contem": "Podem ser utilizados prontuários médicos em meio eletrônico desde que atendidas as exigências do Conselho Federal de Medicina" }
+      ]
+    },
+    {
+      "rule_key": "SAU-RELATORIO-ANALITICO",
+      "area": "saude_ocupacional",
+      "categoria": "relatorio_analitico",
+      "agente_ou_atividade": "Relatório analítico do PCMSO: periodicidade, conteúdo mínimo e apresentação",
+      "metodo_avaliacao": "nao_aplicavel",
+      "criterio": "NR-07 7.6.2: o médico responsável pelo PCMSO deve elaborar relatório analítico do Programa, anualmente, considerando a data do último relatório, contendo, no mínimo: a) o número de exames clínicos realizados; b) o número e tipos de exames complementares realizados; c) estatística de resultados anormais dos exames complementares, categorizados por tipo do exame e por unidade operacional, setor ou função; d) incidência e prevalência de doenças relacionadas ao trabalho, categorizadas por unidade operacional, setor ou função; e) informações sobre o número, tipo de eventos e doenças informadas nas CAT, emitidas pela organização, referentes a seus empregados; f) análise comparativa em relação ao relatório anterior e discussão sobre as variações nos resultados. NR-07 7.6.3: a organização deve garantir que o médico responsável pelo PCMSO considere, na elaboração do relatório analítico, os dados dos prontuários médicos a ele transferidos, se for o caso. NR-07 7.6.4: caso o médico responsável pelo PCMSO não tenha recebido os prontuários médicos ou considere as informações insuficientes, deve informar o ocorrido no relatório analítico. NR-07 7.6.5: o relatório analítico deve ser apresentado e discutido com os responsáveis por segurança e saúde no trabalho da organização, incluindo a CIPA, quando existente, para que as medidas de prevenção necessárias sejam adotadas na organização. Exceções: NR-07 7.6.6 (relatório apenas com as alíneas \"a\" e \"b\" do 7.6.2, nos limites de grau de risco e número de empregados do subitem) e NR-07 7.7.4 (relatório não exigido para MEI e para ME e EPP dispensadas da elaboração do PCMSO).",
+      "excecoes": "NR-07 7.6.6: as organizações de graus de risco 1 e 2 com até 25 (vinte e cinco) empregados e as de graus de risco 3 e 4 com até 10 (dez) empregados podem elaborar relatório analítico apenas com as informações das alíneas \"a\" e \"b\" do subitem 7.6.2. NR-07 7.7.4: o relatório analítico não será exigido para MEI e para ME e EPP dispensadas da elaboração do PCMSO.",
+      "interpretacao": "[RASCUNHO — não revisado por profissional habilitado] O relatório analítico é anual, contado da data do último relatório, com o conteúdo mínimo das alíneas a a f do 7.6.2; considera os prontuários transferidos (7.6.3), registra se não foram recebidos ou se as informações são insuficientes (7.6.4) e é apresentado e discutido com os responsáveis por SST, incluindo a CIPA quando existente (7.6.5). Organizações pequenas podem fazê-lo só com as alíneas \"a\" e \"b\" (7.6.6, pelos limites de grau de risco e número de empregados do literal) e o relatório não é exigido para MEI nem para ME e EPP dispensadas do PCMSO (7.7.4).",
+      "exige_revisao_profissional": true,
+      "status": "rascunho",
+      "provisions": [
+        { "norma": "NR-07", "anexo": "", "item_path": "7.6.2", "papel": "fundamento", "contem": "deve elaborar relatório analítico do Programa, anualmente, considerando a data do último relatório" },
+        { "norma": "NR-07", "anexo": "", "item_path": "7.6.3", "papel": "criterio", "contem": "considere, na elaboração do relatório analítico, os dados dos prontuários médicos a ele transferidos" },
+        { "norma": "NR-07", "anexo": "", "item_path": "7.6.4", "papel": "criterio", "contem": "considere as informações insuficientes, deve informar o ocorrido no relatório analítico" },
+        { "norma": "NR-07", "anexo": "", "item_path": "7.6.5", "papel": "criterio", "contem": "O relatório analítico deve ser apresentado e discutido com os responsáveis por segurança e saúde no trabalho da organização, incluindo a CIPA, quando existente" },
+        { "norma": "NR-07", "anexo": "", "item_path": "7.6.6", "papel": "excecao", "contem": "podem elaborar relatório analítico apenas com as informações solicitadas nas alíneas" },
+        { "norma": "NR-07", "anexo": "", "item_path": "7.7.4", "papel": "excecao", "contem": "O relatório analítico não será exigido para" }
+      ]
+    },
+    {
+      "rule_key": "SAU-DISPENSADAS-EXAMES-ASO",
+      "area": "saude_ocupacional",
+      "categoria": "exames_ocupacionais",
+      "agente_ou_atividade": "MEI, ME e EPP dispensadas do PCMSO: exames, encaminhamento, informação ao médico e ASO (NR-07 7.7)",
+      "metodo_avaliacao": "nao_aplicavel",
+      "criterio": "NR-07 7.7.1: as MEI, ME e EPP desobrigadas de elaborar PCMSO, de acordo com o subitem 1.8.6 da NR-01, devem realizar e custear exames médicos ocupacionais admissionais, demissionais e periódicos, a cada dois anos, de seus empregados. NR-07 7.7.1.1: os empregados devem ser encaminhados pela organização, para realização dos exames médicos ocupacionais, a: a) médico do trabalho; ou b) serviço médico especializado em medicina do trabalho, devidamente registrado, de acordo com a legislação. NR-07 7.7.2: a organização deve informar, ao médico do trabalho ou ao serviço médico especializado em medicina do trabalho, que está dispensada da elaboração do PCMSO, de acordo com a NR-01, e que a função que o empregado exerce ou irá exercer não apresenta riscos ocupacionais. NR-07 7.7.3: para cada exame clínico ocupacional, o médico que realizou o exame emitirá ASO, que deve ser disponibilizado ao empregado, mediante recibo, em meio físico, quando assim solicitado, e atender ao subitem 7.5.19.1 desta NR.",
+      "interpretacao": "[RASCUNHO — não revisado por profissional habilitado] Mesmo dispensadas do PCMSO (NR-01 1.8.6), MEI, ME e EPP realizam e custeiam exames admissionais, demissionais e periódicos a cada dois anos (NR-07 7.7.1), encaminham os empregados a médico do trabalho ou serviço especializado registrado (7.7.1.1), informam a esse médico a dispensa e que a função não apresenta riscos ocupacionais (7.7.2). Para cada exame clínico ocupacional, o médico que realizou o exame emite ASO, que deve ser disponibilizado ao empregado, mediante recibo, em meio físico, quando assim solicitado, e atender ao subitem 7.5.19.1 (7.7.3). O relatório analítico não lhes é exigido (ver SAU-RELATORIO-ANALITICO, 7.7.4).",
+      "exige_revisao_profissional": true,
+      "status": "rascunho",
+      "provisions": [
+        { "norma": "NR-07", "anexo": "", "item_path": "7.7.1", "papel": "fundamento", "contem": "devem realizar e custear exames médicos ocupacionais admissionais, demissionais e periódicos" },
+        { "norma": "NR-07", "anexo": "", "item_path": "7.7.1.1", "papel": "criterio", "contem": "Os empregados devem ser encaminhados pela organização, para realização dos exames médicos ocupacionais" },
+        { "norma": "NR-07", "anexo": "", "item_path": "7.7.2", "papel": "criterio", "contem": "que está dispensada da elaboração do PCMSO, de acordo com a NR-01, e que a função que o empregado exerce ou irá exercer não apresenta riscos ocupacionais" },
+        { "norma": "NR-07", "anexo": "", "item_path": "7.7.3", "papel": "criterio", "contem": "o médico que realizou o exame emitirá ASO, que deve ser disponibilizado ao empregado, mediante recibo" }
+      ]
+    }
+  ]
+}

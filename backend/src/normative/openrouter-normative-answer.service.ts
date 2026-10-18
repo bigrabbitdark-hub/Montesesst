@@ -1,4 +1,4 @@
-import { BadGatewayException, Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
+import { BadGatewayException, Inject, Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
 import {
   AttachmentInput,
   ChecklistItem,
@@ -8,6 +8,7 @@ import {
   OperationalItem,
 } from './normative-answer-provider.interface';
 import { buildRagChatCompletionBody, parseRagToolCall } from './normative-answer-shared';
+import { AiConfigService } from '../ai-config/ai-config.service';
 
 // Timeout total por tentativa (mesmo valor de sempre deste provedor —
 // nunca medido em produção real porque o fallback está inativo, ver
@@ -26,8 +27,17 @@ const RETRY_MAX_ELAPSED_MS = 27_000;
 export class OpenRouterNormativeAnswerService implements NormativeAnswerProvider {
   private readonly logger = new Logger(OpenRouterNormativeAnswerService.name);
 
+  // @Inject(ClasseConcreta) explícito: mesma causa raiz do fix em
+  // MiniMaxNormativeAnswerService / AiUsageLogService — sem isto, sob tsx
+  // (esbuild não emite design:paramtypes), `this.aiConfig` chegaria undefined.
+  constructor(@Inject(AiConfigService) private readonly aiConfig: AiConfigService) {}
+
+  // Cache do último model resolvido pelo aiConfig. Ver
+  // MiniMaxNormativeAnswerService para o rationale completo.
+  private _resolvedModel: string | null = null;
+
   get modelName(): string {
-    return process.env.OPENROUTER_MODEL || 'anthropic/claude-sonnet-5';
+    return this._resolvedModel ?? process.env.OPENROUTER_MODEL ?? 'anthropic/claude-sonnet-5';
   }
 
   async answer(
@@ -39,12 +49,12 @@ export class OpenRouterNormativeAnswerService implements NormativeAnswerProvider
     attachment?: AttachmentInput,
     systemPrompt?: string,
   ): Promise<NormativeClaim[]> {
-    const apiKey = process.env.OPENROUTER_API_KEY;
+    const { apiKey, model } = await this.aiConfig.getResolved('openrouter');
     if (!apiKey) {
       throw new ServiceUnavailableException('Assistente ainda não está disponível');
     }
+    this._resolvedModel = model;
 
-    const model = this.modelName;
     const requestBody = buildRagChatCompletionBody(
       model,
       question,

@@ -1,0 +1,58 @@
+Art. 64. A aposentadoria especial, uma vez cumprido o período de carência exigido, será devida ao segurado empregado, trabalhador avulso e contribuinte individual, este último somente quando cooperado filiado a cooperativa de trabalho ou de produção, que comprove o exercício de atividades com efetiva exposição a agentes químicos, físicos e biológicos prejudiciais à saúde, ou a associação desses agentes, de forma permanente, não ocasional nem intermitente, vedada a caracterização por categoria profissional ou ocupação, durante, no mínimo, quinze, vinte ou vinte e cinco anos, e que cumprir os seguintes requisitos: (Redação dada pelo Decreto nº 10.410, de 2020).
+I - cinquenta e cinco anos de idade, quando se tratar de atividade especial de quinze anos de contribuição; (Incluído pelo Decreto nº 10.410, de 2020)
+II - cinquenta e oito anos de idade, quando se tratar de atividade especial de vinte anos de contribuição; ou (Incluído pelo Decreto nº 10.410, de 2020)
+III - sessenta anos de idade, quando se tratar de atividade especial de vinte e cinco anos de contribuição. (Incluído pelo Decreto nº 10.410, de 2020)
+§ 1º A efetiva exposição a agente prejudicial à saúde configura-se quando, mesmo após a adoção das medidas de controle previstas na legislação trabalhista, a nocividade não seja eliminada ou neutralizada. (Redação dada pelo Decreto nº 10.410, de 2020).
+§ 1º-A Para fins do disposto no § 1º, considera-se: (Incluído pelo Decreto nº 10.410, de 2020)
+I - eliminação - a adoção de medidas de controle que efetivamente impossibilitem a exposição ao agente prejudicial à saúde no ambiente de trabalho; e (Incluído pelo Decreto nº 10.410, de 2020)
+II - neutralização - a adoção de medidas de controle que reduzam a intensidade, a concentração ou a dose do agente prejudicial à saúde ao limite de tolerância previsto neste Regulamento ou, na sua ausência, na legislação trabalhista. (Incluído pelo Decreto nº 10.410, de 2020)
+§ 2º Para fins do disposto no caput , a exposição aos agentes químicos, físicos e biológicos prejudiciais à saúde, ou a associação desses agentes, deverá superar os limites de tolerância estabelecidos segundo critérios quantitativos ou estar caracterizada de acordo com os critérios da avaliação qualitativa de que trata o § 2º do art. 68. (Incluído pelo Decreto nº 10.410, de 2020)
+Art. 65. Considera-se tempo de trabalho permanente aquele que é exercido de forma não ocasional nem intermitente, no qual a exposição do empregado, do trabalhador avulso ou do cooperado ao agente nocivo seja indissociável da produção do bem ou da prestação do serviço. (Redação dada pelo Decreto nº 8.123, de 2013)
+Parágrafo único. Aplica-se o disposto no caput aos períodos de descanso determinados pela legislação trabalhista, inclusive ao período de férias, e aos de percepção de salário-maternidade, desde que, à data do afastamento, o segurado estivesse exposto aos fatores de risco de que trata o art. 68. (Redação dada pelo Decreto nº 10.410, de 2020)
+Art. 66. Para o segurado que houver exercido duas ou mais atividades sujeitas a agentes químicos, físicos e biológicos prejudiciais à saúde, ou a associação desses agentes, sem completar em quaisquer delas o prazo mínimo exigido para a aposentadoria especial, os respectivos períodos de exercício serão somados após conversão, hipótese em que será considerada a atividade preponderante para efeito de enquadramento. (Redação dada pelo Decreto nº 10.410, de 2020
+§ 1 o Para fins do disposto no caput , não serão considerados os períodos em que a atividade exercida não estava sujeita a condições especiais, observado, nesse caso, o disposto no art. 70. (Redação dada pelo Decreto nº 8.123, de 2013)
+§ 2 o A conversão de que trata o caput será feita segundo a tabela abaixo: (Redação dada pelo Decreto nº 8.123, de 2013)
+Tempo a Converter
+Multiplicadores
+Para 15
+Para 20
+Para 25
+De 15 anos
+-
+1,33
+1,67
+De 20 anos
+0,75
+-
+1,25
+De 25 anos
+0,60
+0,80
+§ 3º A atividade preponderante será aquela pela qual o segurado tenha contribuído por mais tempo, antes da conversão, e servirá como parâmetro para definir o tempo mínimo necessário para a aposentadoria especial e para a conversão. (Incluído pelo Decreto nº 10.410, de 2020)
+Art. 67. O valor da aposentadoria especial corresponderá a sessenta por cento do salário de benefício definido na forma prevista no art. 32, com acréscimo de dois pontos percentuais para cada ano de contribuição que exceder o tempo de vinte anos de contribuição exceto no caso da aposentadoria a que se refere o inciso I do caput do art. 64 e das mulheres, cujo acréscimo será aplicado para cada ano de contribuição que exceder quinze anos de contribuição. (Redação dada pelo Decreto nº 10.410, de 2020)
+Art. 68. A relação dos agentes químicos, físicos, biológicos, e da associação desses agentes, considerados para fins de concessão de aposentadoria especial, é aquela constante do Anexo IV. (Redação dada pelo Decreto nº 10.410, de 2020)
+§ 1º A Secretaria Especial de Previdência e Trabalho do Ministério da Economia promoverá a elaboração de estudos com base em critérios técnicos e científicos para atualização periódica do disposto no Anexo IV. (Redação dada pelo Decreto nº 10.410, de 2020)
+§ 2º A avaliação qualitativa de riscos e agentes prejudiciais à saúde será comprovada pela descrição: (Redação dada pelo Decreto nº 10.410, de 2020)
+I - das circunstâncias de exposição ocupacional a determinado agente ou associação de agentes prejudiciais à saúde presentes no ambiente de trabalho durante toda a jornada de trabalho; (Redação dada pelo Decreto nº 10.410, de 2020)
+II - de todas as fontes e possibilidades de liberação dos agentes mencionados no inciso I; e (Incluído pelo Decreto nº 8.123, de 2013)
+III - dos meios de contato ou exposição dos trabalhadores, as vias de absorção, a intensidade da exposição, a frequência e a duração do contato. (Incluído pelo Decreto nº 8.123, de 2013)
+§ 3º A comprovação da efetiva exposição do segurado a agentes prejudiciais à saúde será feita por meio de documento, em meio físico ou eletrônico, emitido pela empresa ou por seu preposto com base em laudo técnico de condições ambientais do trabalho expedido por médico do trabalho ou engenheiro de segurança do trabalho. (Redação dada pelo Decreto nº 10.410, de 2020)
+§ 4º Os agentes reconhecidamente cancerígenos para humanos, listados pela Secretaria Especial de Previdência e Trabalho do Ministério da Economia, serão avaliados em conformidade com o disposto nos § 2º e § 3º deste artigo e no caput do art. 64 e, caso sejam adotadas as medidas de controle previstas na legislação trabalhista que eliminem a nocividade, será descaracterizada a efetiva exposição. (Redação dada pelo Decreto nº 10.410, de 2020)
+§ 5º O laudo técnico a que se refere o § 3º conterá informações sobre a existência de tecnologia de proteção coletiva ou individual e sobre a sua eficácia e será elaborado com observância às normas editadas pela Secretaria Especial de Previdência e Trabalho do Ministério Economia e aos procedimentos adotados pelo INSS. (Redação dada pelo Decreto nº 10.410, de 2020)
+§ 6º A empresa que não mantiver laudo técnico atualizado com referência aos agentes existentes no ambiente de trabalho prejudiciais à saúde de seus trabalhadores ou que emitir documento de comprovação de efetiva exposição em desacordo com o referido laudo incorrerá na infração a que se refere a alínea “n” do inciso II do caput do art. 283. (Redação dada pelo Decreto nº 10.410, de 2020)
+§ 7 o O INSS estabelecerá os procedimentos para fins de concessão de aposentadoria especial, podendo, se necessário, confirmar as informações contidas nos documentos mencionados nos § 2 o e 3 o . (Redação dada pelo Decreto nº 8.123, de 2013)
+§ 8º A empresa deverá elaborar e manter atualizado o perfil profissiográfico previdenciário, ou o documento eletrônico que venha a substituí-lo, no qual deverão ser contempladas as atividades desenvolvidas durante o período laboral, garantido ao trabalhador o acesso às informações nele contidas, sob pena de sujeição às sanções previstas na alínea “h” do inciso I do caput do art. 283. (Redação dada pelo Decreto nº 10.410, de 2020)
+§ 9º Para fins do disposto no § 8º, considera-se perfil profissiográfico previdenciário o documento que contenha o histórico laboral do trabalhador, elaborado de acordo com o modelo instituído pelo INSS. (Redação dada pelo Decreto nº 10.410, de 2020)
+§ 10. O trabalhador ou o seu preposto terá acesso às informações prestadas pela empresa sobre o seu perfil profissiográfico previdenciário e poderá, inclusive, solicitar a retificação de informações que estejam em desacordo com a realidade do ambiente de trabalho, conforme orientação estabelecida em ato do Ministro de Estado da Economia. (Redação dada pelo Decreto nº 10.410, de 2020)
+§ 11. A cooperativa de trabalho e a empresa contratada para prestar serviços mediante cessão ou empreitada de mão de obra atenderão ao disposto nos §§ 3 o , 4 o e 5 o com base nos laudos técnicos de condições ambientais de trabalho emitidos pela empresa contratante, quando o serviço for prestado em estabelecimento da contratante. (Redação dada pelo Decreto nº 8.123, de 2013)
+§ 12. Nas avaliações ambientais deverão ser considerados, além do disposto no Anexo IV, a metodologia e os procedimentos de avaliação estabelecidos pela Fundação Jorge Duprat Figueiredo de Segurança e Medicina do Trabalho - FUNDACENTRO. (Incluído pelo Decreto nº 8.123, de 2013)
+§ 13. Na hipótese de não terem sido estabelecidos pela FUNDACENTRO a metodologia e os procedimentos de avaliação, caberá ao Ministério da Economia indicar outras instituições para estabelecê-los. (Redação dada pelo Decreto nº 10.410, de 2020)
+Art. 69. A data de início da aposentadoria especial será fixada: (Redação dada pelo Decreto nº 8.123, de 2013)
+I - para o segurado empregado: (Incluído pelo Decreto nº 8.123, de 2013)
+a) a partir da data do desligamento do emprego, quando requerida a aposentadoria especial, até noventa dias após essa data; ou (Incluída pelo Decreto nº 8.123, de 2013)
+b) a partir da data do requerimento, quando não houver desligamento do emprego ou quando a aposentadoria for requerida após o prazo estabelecido na alínea “a”; e (Incluída pelo Decreto nº 8.123, de 2013)
+II - para os demais segurados, a partir da data da entrada do requerimento. (Incluído pelo Decreto nº 8.123, de 2013)
+Parágrafo único. O segurado que retornar ao exercício de atividade ou operação que o sujeite aos riscos e agentes nocivos constantes do Anexo IV, ou nele permanecer, na mesma ou em outra empresa, qualquer que seja a forma de prestação do serviço ou categoria de segurado, será imediatamente notificado da cessação do pagamento de sua aposentadoria especial, no prazo de sessenta dias contado da data de emissão da notificação, salvo comprovação, nesse prazo, de que o exercício dessa atividade ou operação foi encerrado. (Redação dada pelo Decreto nº 8.123, de 2013)
+Art. 70. (Revogado pelo Decreto nº 10.410, de 2020).
+§ 1 o (Revogado pelo Decreto nº 10.410, de 2020).
+§ 2 o (Revogado pelo Decreto nº 10.410, de 2020).

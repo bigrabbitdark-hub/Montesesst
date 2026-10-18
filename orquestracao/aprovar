@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+# Aprova o plano de uma tarefa para os agentes executarem.   ./orquestracao/aprovar 003
+# Para não aprovar:   ./orquestracao/aprovar 003 não
+set -euo pipefail
+. "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
+
+[ -n "${1:-}" ] || { sed -n '2,3p' "${BASH_SOURCE[0]}"; exit 1; }
+ID="$(norm_id "$1")"
+[ -d "$FILA_DIR/$ID" ] || { echo "Tarefa $ID não existe."; exit 1; }
+[ "$(estado_get "$ID")" = "aguardando-aprovacao" ] || { echo "A tarefa $ID está em '$(estado_get "$ID")'. Só dá para aprovar quando estiver ESPERANDO SEU OK."; exit 1; }
+
+if [ "${2:-}" = "não" ] || [ "${2:-}" = "nao" ]; then
+  estado_set "$ID" cancelada; echo "✖ Tarefa $ID cancelada."; exit 0
+fi
+estado_set "$ID" aprovada
+echo "✔ Tarefa $ID aprovada. Se a fila (rodar) estiver ligada, ela começa em instantes."

@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+# Guarda a chave do MiniMax com segurança. Rode você mesmo; a chave nunca vai para o chat nem para o git.
+# A chave fica em /root/.montese/minimax.env (permissão 600), FORA do repositório.
+set -euo pipefail
+
+echo "Região da sua conta MiniMax:"
+echo "  1) Internacional  (api.minimax.io)"
+echo "  2) China          (api.minimaxi.com)"
+read -r -p "Escolha [1]: " R
+case "${R:-1}" in
+  2) URL="https://api.minimaxi.com/anthropic" ;;
+  *) URL="https://api.minimax.io/anthropic" ;;
+esac
+
+read -r -s -p "Cole a chave do MiniMax (não aparece na tela): " KEY; echo
+[ -n "$KEY" ] || { echo "Chave vazia. Nada foi salvo."; exit 1; }
+
+mkdir -p /root/.montese
+umask 077
+{
+  printf 'MINIMAX_API_KEY=%q\n' "$KEY"
+  printf 'MINIMAX_BASE_URL=%s\n' "$URL"
+  printf 'MINIMAX_MODEL=MiniMax-M3\n'
+} > /root/.montese/minimax.env
+chmod 600 /root/.montese/minimax.env
+
+echo "Salvo em /root/.montese/minimax.env (somente root lê)."
+echo "Teste agora: $(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/testar"

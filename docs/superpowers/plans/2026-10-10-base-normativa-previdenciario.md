@@ -1,0 +1,25 @@
+# Base normativa previdenciária Implementation Plan
+
+> Execução task a task (subagent-driven). Formato: objetivo, interfaces e critérios de aceite (desvio declarado do formato com código completo; o implementador é modelo capaz).
+**Goal:** tornar utilizáveis os textos do Planalto (CLT, Lei 8.213, Decreto 3.048) e entregar regras previdenciárias em rascunho ligadas a artigos literais.
+**Spec:** docs/superpowers/specs/2026-10-10-base-normativa-previdenciario-design.md
+
+## Global Constraints
+Sem escrita git; sem formatadores (prettier etc.); sem docker/rede/banco de produção nas tasks (o controlador roda o ensaio em Postgres descartável); só testes unitários + `tsc` + `npm run build` + suíte inteira (única falha aceita: `r2-get-object`); sem subagentes. Tabelas globais sem tenant_id/RLS; rotas só admin. Nunca inventar texto normativo: fixtures são TRECHOS REAIS curtos extraídos pelo pipeline do repositório, com URL, data e sha256 da página no comentário; o resto SINTÉTICO e marcado. Páginas inteiras do Planalto (0,7–3,5 MB) NÃO entram no repositório; ficam no scratchpad `/tmp/claude-0/-opt-Montese/84237a9d-0a38-4b2b-b88a-c5ae84ba8d58/scratchpad/planalto_dl/` (l8213cons.htm, d3048.htm, del5452.htm; baixadas em 2026-10-09 com o User-Agent do monitor). Migrations: `0072` e `0073` NÃO se editam; a nova é `0074`.
+
+## Task 1 — Extração do Planalto + parser de leis + códigos
+- `extractHtmlText(html, opts)`: modo `dropStruck` (descarta `<strike>`, `<s>`, elementos com `text-decoration: line-through`; trata marcações malformadas/não fechadas sem engolir o documento) ativado pelo monitor **apenas** para hosts `*.planalto.gov.br`; mantém "(Redação dada pela…)" do texto vigente. Outras fontes: saída idêntica à atual (teste de regressão).
+- Parser `kind 'lei'` (renomear `clt`→`lei` mantendo compatibilidade dos chamadores/testes): endereços `art. N`, `art. N-A`, `art. N §M`, `§único`, `inc. X`, alíneas dentro do pai; corrigir `Art. 193 - Texto` (hífen com espaço ≠ sufixo), `Art .193`, `Art. 1º`; redação "Revogado" tratada sem gerar dispositivo falso.
+- `resolveKind`: `CLT`, `LEI-<n>`, `DEC-<n>` (norma normalizada em maiúsculas, ex.: `LEI-8213`, `DEC-3048`).
+- **Aceite medido em memória sobre os 3 HTMLs reais:** CLT arts. 189–197, Lei 8.213 arts. 57 e 58 (+ §§ 1º–4º), Decreto 3.048 arts. 64–70 **presentes, sem duplicata, com o literal da redação vigente** (liste cada um com os 80 primeiros caracteres); sem artigo da redação revogada gravado; invariante `slice` com 0 violações; as 36 NRs do seed **idênticas** (parser `nr` intocado); relatório antes/depois por norma (disp., cobertura, anomalias). Se algum artigo-chave não puder ser recuperado de forma determinística, **não liberar** a norma e reportar as linhas do HTML.
+- Só se o aceite passar: acrescentar `CLT`, `LEI-8213`, `DEC-3048` a `GENERATION_ALLOWED_NORMAS` (e `LEI-8212`/`DEC-4882` **não**: sem aceite). Atualizar mensagens/runbook.
+- Testes: trechos reais do HTML (Art. 192/193 da CLT com a redação antiga riscada, Lei 8.213 art. 57 com a antiga riscada, um artigo do Decreto 3.048), regressão das outras fontes, parser.
+
+## Task 2 — Migration `0074` + enums
+`0074_normative_rules_previdenciario.sql`: `area` ganha `previdenciario`; categorias (`aposentadoria_especial`, `ltcat`, `ppp`, `agentes_nocivos`, `esocial`, `cruzamento_documental`, `exposicao`) com CHECK área×categoria (as áreas `lip` e `gro_pgr` e suas categorias inalteradas); aditiva, transacional, **sem DEFAULT**; guarda se a `0073` não foi aplicada. Atualizar `normative-rule-areas.ts`, DTOs e testes (incluindo o teste estático que compara TS×SQL) e o e2e (type-check; o controlador roda).
+
+## Task 3 — Seed previdenciário
+`backend/db/seed-data/normative-rules/previdenciario.json` (área `previdenciario`; todas `rascunho`; `contem` obrigatório; `interpretacao` curta e fiel). Candidatas: Lei 8.213 art. 57 (aposentadoria especial: 15/20/25 anos, condições especiais), art. 58 e §§ (relação de agentes por lei específica; comprovação por formulário baseado em laudo técnico de médico do trabalho/engenheiro de segurança; manutenção do laudo; PPP — **só o que o texto vigente disser**), arts. 64–70 do Decreto 3.048 conforme o texto, e a regra de distinção LIP×previdenciário (ligações CLT 189–192 e Lei 8.213 art. 57). O que o material do proprietário afirma sem literal nessas leis fica fora ou como regra sem ligação com nota. Validação do seed contra **fixtures de trechos reais** (artigos extraídos pelo pipeline novo, com sha256 da página) — mesmo padrão de `gro-pgr-seed.unit-spec.ts`; importador inalterado (confirmar que é agnóstico de norma/área).
+
+## Task 4 — Docs
+`docs/reference/previdenciario-ltcat-ppp-insumos-2026-10-10.md` (resumo do material do proprietário, não normativo; o que é literal vs NÃO VERIFICADO; módulo de produto fora de escopo); runbook (códigos das fontes a editar na tela, ordem: deploy do monitor → editar `code` → verificar agora → conferir tamanho/hash → aprovar → gerar → importar; custo/volume de embeddings; fontes INSS/IN 128 pendentes) e release complementar (migration `0074`, ordem).

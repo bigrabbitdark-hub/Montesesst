@@ -1,4 +1,5 @@
-import { BadGatewayException, Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
+import { BadGatewayException, Inject, Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
+import { AiConfigService } from '../../ai-config/ai-config.service';
 import { AudioTranscriptionService } from './audio-transcription.interface';
 
 // Groq hospeda Whisper (large-v3-turbo) com API compatível com o formato
@@ -13,13 +14,17 @@ import { AudioTranscriptionService } from './audio-transcription.interface';
 export class GroqTranscriptionService implements AudioTranscriptionService {
   private readonly logger = new Logger(GroqTranscriptionService.name);
 
+  // @Inject(ClasseConcreta) explícito: mesma causa raiz do fix em
+  // MiniMaxNormativeAnswerService / AiUsageLogService — sem isto, sob tsx
+  // (esbuild não emite design:paramtypes), `this.aiConfig` chegaria undefined.
+  constructor(@Inject(AiConfigService) private readonly aiConfig: AiConfigService) {}
+
   async transcribe(audio: Buffer, mimetype: string, filename: string): Promise<string> {
-    const apiKey = process.env.GROQ_API_KEY;
+    const { apiKey, model } = await this.aiConfig.getResolved('groq');
     if (!apiKey) {
       throw new ServiceUnavailableException('Transcrição de áudio ainda não está disponível');
     }
 
-    const model = process.env.GROQ_TRANSCRIPTION_MODEL || 'whisper-large-v3-turbo';
     const form = new FormData();
     form.append('file', new Blob([new Uint8Array(audio)], { type: mimetype }), filename);
     form.append('model', model);

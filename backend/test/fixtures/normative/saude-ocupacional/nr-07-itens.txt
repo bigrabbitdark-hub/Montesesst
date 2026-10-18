@@ -1,0 +1,176 @@
+7.5 PLANEJAMENTO
+7.5.1 O PCMSO deve ser elaborado considerando os riscos ocupacionais identificados e classificados
+pelo PGR.
+7.5.2 Inexistindo médico do trabalho na localidade, a organização pode contratar médico de outra
+especialidade como responsável pelo PCMSO.
+7.5.3 O PCMSO deve incluir a avaliação do estado de saúde dos empregados em atividades críticas,
+como definidas nesta Norma, considerando os riscos envolvidos em cada situação e a investigação
+de patologias que possam impedir o exercício de tais atividades com segurança.
+7.5.4 A organização deve garantir que o PCMSO:
+a) descreva os possíveis agravos à saúde relacionados aos riscos ocupacionais identificados e
+classificados no PGR;
+b) contenha planejamento de exames médicos clínicos e complementares necessários, conforme os
+riscos ocupacionais identificados, atendendo ao determinado nos Anexos desta NR;
+c) contenha os critérios de interpretação e planejamento das condutas relacionadas aos achados
+dos exames médicos;
+d) seja conhecido e atendido por todos os médicos que realizarem os exames médicos ocupacionais
+dos empregados;
+e) inclua relatório analítico sobre o desenvolvimento do programa, conforme o subitem 7.6.2 desta
+NR.
+7.5.5 O médico responsável pelo PCMSO, caso observe inconsistências no inventário de riscos da
+organização, deve reavaliá-las em conjunto com os responsáveis pelo PGR.
+7.5.6 O PCMSO deve incluir a realização obrigatória dos exames médicos:
+a) admissional;
+b) periódico;
+c) de retorno ao trabalho;
+
+-- 3 of 39 --
+
+d) de mudança de riscos ocupacionais;
+e) demissional.
+7.5.7 Os exames médicos de que trata o subitem 7.5.6 compreendem exame clínico e exames
+complementares, realizados de acordo com as especificações desta e de outras NR.
+7.5.8 O exame clínico deve obedecer aos prazos e à seguinte periodicidade:
+I - no exame admissional: ser realizado antes que o empregado assuma suas atividades;
+II - no exame periódico: ser realizado de acordo com os seguintes intervalos:
+a) para empregados expostos a riscos ocupacionais identificados e classificados no PGR e para
+portadores de doenças crônicas que aumentem a susceptibilidade a tais riscos:
+1. a cada ano ou a intervalos menores, a critério do médico responsável;
+2. de acordo com a periodicidade especificada no Anexo IV desta Norma, relativo a empregados
+expostos a condições hiperbáricas;
+b) para os demais empregados, o exame clínico deve ser realizado a cada dois anos.
+7.5.9 No exame de retorno ao trabalho, o exame clínico deve ser realizado antes que o empregado
+reassuma suas funções, quando ausente por período igual ou superior a 30 (trinta) dias por motivo
+de doença ou acidente, de natureza ocupacional ou não.
+7.5.9.1 No exame de retorno ao trabalho, a avaliação médica deve definir a necessidade de retorno
+gradativo ao trabalho.
+7.5.10 O exame de mudança de risco ocupacional deve, obrigatoriamente, ser realizado antes da
+data da mudança, adequando-se o controle médico aos novos riscos.
+7.5.11 No exame demissional, o exame clínico deve ser realizado em até 10 (dez) dias contados do
+término do contrato, podendo ser dispensado caso o exame clínico ocupacional mais recente tenha
+sido realizado há menos de 135 (centro e trinta e cinco) dias, para as organizações graus de risco 1
+e 2, e há menos de 90 (noventa) dias, para as organizações graus de risco 3 e 4.
+7.5.12 Os exames complementares laboratoriais previstos nesta NR devem ser executados por
+laboratório que atenda ao disposto na RDC/Anvisa n.º 302/2005, no que se refere aos
+procedimentos de coleta, acondicionamento, transporte e análise, e interpretados com base nos
+critérios constantes nos Anexos desta Norma e são obrigatórios quando:
+a) o levantamento preliminar do PGR indicar a necessidade de medidas de prevenção imediatas;
+b) houver exposições ocupacionais acima dos níveis de ação determinados na NR-09 ou se a
+classificação de riscos do PGR indicar.
+7.5.12.1 O momento da coleta das amostras biológicas deve seguir o determinado nos Quadros 1 e
+2 do Anexo I desta NR.
+
+-- 4 of 39 --
+
+7.5.12.2 Quando a organização realizar o armazenamento e o transporte das amostras, devem ser
+seguidos os procedimentos recomendados pelo laboratório contratado.
+7.5.13 Os exames previstos nos Quadros 1 e 2 do Anexo I desta NR devem ser realizados a cada seis
+meses, podendo ser antecipados ou postergados por até 45 (quarenta e cinco) dias, a critério do
+médico responsável, mediante justificativa técnica, a fim de que os exames sejam realizados em
+situações mais representativas da exposição do empregado ao agente.
+7.5.14 Para as atividades realizadas de forma sazonal, a periodicidade dos exames constantes nos
+Quadros 1 e 2 do Anexo I desta NR pode ser anual, desde que realizada em concomitância com o
+período da execução da atividade.
+7.5.15 Os exames previstos no Quadro 1 do Anexo I desta NR não serão obrigatórios nos exames
+admissional, de retorno ao trabalho, de mudança de risco ocupacional e demissional.
+7.5.16 Os empregados devem ser informados, durante o exame clínico, das razões da realização dos
+exames complementares previstos nesta NR e do significado dos resultados de tais exames.
+7.5.17 No exame admissional, a critério do médico responsável, poderão ser aceitos exames
+complementares realizados nos 90 (noventa) dias anteriores, exceto quando definidos prazos
+diferentes nos Anexos desta NR.
+7.5.18 Podem ser realizados outros exames complementares, a critério do médico responsável,
+desde que relacionados aos riscos ocupacionais classificados no PGR e tecnicamente justificados no
+PCMSO.
+7.5.19 Para cada exame clínico ocupacional realizado, o médico emitirá Atestado de Saúde
+Ocupacional - ASO, que deve ser comprovadamente disponibilizado ao empregado, devendo ser
+fornecido em meio físico quando solicitado.
+7.5.19.1 O ASO deve conter no mínimo:
+a) razão social e CNPJ ou CAEPF da organização;
+b) nome completo do empregado, o número de seu CPF e sua função;
+c) a descrição dos perigos ou fatores de risco identificados e classificados no PGR que necessitem
+de controle médico previsto no PCMSO, ou a sua inexistência;
+d) indicação e data de realização dos exames ocupacionais clínicos e complementares a que foi
+submetido o empregado;
+e) definição de apto ou inapto para a função do empregado;
+f) o nome e número de registro profissional do médico responsável pelo PCMSO, se houver;
+g) data, número de registro profissional e assinatura do médico que realizou o exame clínico.
+7.5.19.2 A aptidão para trabalho em atividades específicas, quando assim definido em Normas
+Regulamentadoras e seus Anexos, deve ser consignada no ASO.
+
+-- 5 of 39 --
+
+7.5.19.3 Quando forem realizados exames complementares sem que tenha ocorrido exame clínico,
+a organização emitirá recibo de entrega do resultado do exame, devendo o recibo ser fornecido ao
+empregado em meio físico, quando solicitado.
+7.5.19.4 Sendo verificada a possibilidade de exposição excessiva a agentes listados no Quadro 1 do
+Anexo I desta NR, o médico do trabalho responsável pelo PCMSO deve informar o fato aos
+responsáveis pelo PGR para reavaliação dos riscos ocupacionais e das medidas de prevenção.
+7.5.19.5 Constatada ocorrência ou agravamento de doença relacionada ao trabalho ou alteração
+que revele disfunção orgânica por meio dos exames complementares do Quadro 2 do Anexo I, dos
+demais Anexos desta NR ou dos exames complementares incluídos com base no subitem 7.5.18 da
+presente NR, caberá à organização, após informada pelo médico responsável pelo PCMSO:
+a) emitir a Comunicação de Acidente do Trabalho - CAT;
+b) afastar o empregado da situação, ou do trabalho, quando necessário;
+c) encaminhar o empregado à Previdência Social, quando houver afastamento do trabalho superior
+a 15 (quinze) dias, para avaliação de incapacidade e definição da conduta previdenciária;
+d) reavaliar os riscos ocupacionais e as medidas de prevenção pertinentes no PGR.
+7.5.19.6 O empregado, em uma das situações previstas nos subitens 7.5.19.4 ou 7.5.19.5, deve ser
+submetido a exame clínico e informado sobre o significado dos exames alterados e condutas
+necessárias.
+7.5.19.6.1 O médico responsável pelo PCMSO deve avaliar a necessidade de realização de exames
+médicos em outros empregados sujeitos às mesmas situações de trabalho.
+7.6 DOCUMENTAÇÃO
+7.6.1 Os dados dos exames clínicos e complementares deverão ser registrados em prontuário
+médico individual sob a responsabilidade do médico responsável pelo PCMSO, ou do médico
+responsável pelo exame, quando a organização estiver dispensada de PCMSO.
+7.6.1.1 O prontuário do empregado deve ser mantido pela organização, no mínimo, por 20 (vinte)
+anos após o seu desligamento, exceto em caso de previsão diversa constante nos Anexos desta NR.
+7.6.1.2 Em caso de substituição do médico responsável pelo PCMSO, a organização deve garantir
+que os prontuários médicos sejam formalmente transferidos para seu sucessor.
+7.6.1.3 Podem ser utilizados prontuários médicos em meio eletrônico desde que atendidas as
+exigências do Conselho Federal de Medicina.
+7.6.2 O médico responsável pelo PCMSO deve elaborar relatório analítico do Programa, anualmente,
+considerando a data do último relatório, contendo, no mínimo:
+a) o número de exames clínicos realizados;
+
+-- 6 of 39 --
+
+b) o número e tipos de exames complementares realizados;
+c) estatística de resultados anormais dos exames complementares, categorizados por tipo do exame
+e por unidade operacional, setor ou função;
+d) incidência e prevalência de doenças relacionadas ao trabalho, categorizadas por unidade
+operacional, setor ou função;
+e) informações sobre o número, tipo de eventos e doenças informadas nas CAT, emitidas pela
+organização, referentes a seus empregados;
+f) análise comparativa em relação ao relatório anterior e discussão sobre as variações nos
+resultados.
+7.6.3 A organização deve garantir que o médico responsável pelo PCMSO considere, na elaboração
+do relatório analítico, os dados dos prontuários médicos a ele transferidos, se for o caso.
+7.6.4 Caso o médico responsável pelo PCMSO não tenha recebido os prontuários médicos ou
+considere as informações insuficientes, deve informar o ocorrido no relatório analítico.
+7.6.5 O relatório analítico deve ser apresentado e discutido com os responsáveis por segurança e
+saúde no trabalho da organização, incluindo a CIPA, quando existente, para que as medidas de
+prevenção necessárias sejam adotadas na organização.
+7.6.6 As organizações de graus de risco 1 e 2 com até 25 (vinte e cinco) empregados e as organizações
+de graus de risco 3 e 4 com até 10 (dez) empregados podem elaborar relatório analítico apenas com
+as informações solicitadas nas alíneas “a” e “b” do subitem 7.6.2.
+7.7.1 As MEI, ME e EPP desobrigadas de elaborar PCMSO, de acordo com o subitem 1.8.6 da NR-01,
+devem realizar e custear exames médicos ocupacionais admissionais, demissionais e periódicos, a
+cada dois anos, de seus empregados.
+7.7.1.1 Os empregados devem ser encaminhados pela organização, para realização dos exames
+médicos ocupacionais, a:
+a) médico do trabalho; ou
+b) serviço médico especializado em medicina do trabalho, devidamente registrado, de acordo com
+a legislação.
+7.7.2 A organização deve informar, ao médico do trabalho ou ao serviço médico especializado em
+medicina do trabalho, que está dispensada da elaboração do PCMSO, de acordo com a NR-01, e que
+a função que o empregado exerce ou irá exercer não apresenta riscos ocupacionais.
+7.7.3 Para cada exame clínico ocupacional, o médico que realizou o exame emitirá ASO, que deve
+ser disponibilizado ao empregado, mediante recibo, em meio físico, quando assim solicitado, e
+
+-- 7 of 39 --
+
+atender ao subitem 7.5.19.1 desta NR.
+7.7.4 O relatório analítico não será exigido para:
+a) Microempreendedores Individuais - MEI;
+b) ME e EPP dispensadas da elaboração do PCMSO.

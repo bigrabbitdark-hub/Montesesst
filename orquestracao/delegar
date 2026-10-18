@@ -1,0 +1,103 @@
+#!/usr/bin/env bash
+# Entrega uma tarefa a UM agente, usando o modelo definido em agentes.conf, sob o contrato de delegação.
+# Se o modelo principal falhar (erro, limite de uso, sem chave), tenta o próximo da cadeia de reserva.
+#
+#   delegar backend "Adicione o endpoint X ..."
+#   delegar frontend -f tarefas/minha-tarefa.md
+#   delegar qa <<'EOF'
+#   briefing em várias linhas (OBJETIVO, ESCOPO, ARQUIVOS, CRITÉRIOS, TESTES, AUTORIZAÇÕES)
+#   EOF
+#
+# Roda na pasta onde você estiver (ex.: uma worktree). Cada delegação recebe um id (D...)
+# e fica registrada em /root/.montese/tarefas/<id>/ (briefing, resultado, meta).
+set -euo pipefail
+. "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
+
+[ $# -ge 1 ] || { sed -n '2,13p' "${BASH_SOURCE[0]}"; exit 1; }
+AGENT="$(agent_name "$1")"; shift
+
+if [ "${1:-}" = "-f" ]; then
+  [ -f "${2:-}" ] || { echo "ERRO: arquivo não encontrado: ${2:-}" >&2; exit 1; }
+  BRIEF="$(cat "$2")"
+elif [ $# -ge 1 ]; then
+  BRIEF="$*"
+else
+  BRIEF="$(cat)"   # lê do stdin (heredoc)
+fi
+[ -n "$BRIEF" ] || { echo "ERRO: briefing vazio." >&2; exit 1; }
+
+CHAIN="$(agent_chain "$AGENT")" || { echo "ERRO: '$AGENT' não está em agentes.conf" >&2; exit 1; }
+[ -n "${DELEGAR_MODEL_OVERRIDE:-}" ] && CHAIN="$DELEGAR_MODEL_OVERRIDE"   # revisão independente: sem reserva
+
+DELEG_ID="D$(date +%y%m%d-%H%M%S)-$RANDOM"
+REG="$TASKS_DIR/$DELEG_ID"
+mkdir -p "$REG" "$LOG_DIR"
+printf '%s\n' "$BRIEF" > "$REG/briefing.md"
+{
+  echo "AGENT=$AGENT"
+  printf 'WORKDIR=%q\n' "$(pwd)"
+  echo "PARENT=${PARENT_TASK:-}"
+  echo "START=$(date +%s)"
+} > "$REG/meta.env"
+
+PROMPT="CONTRATO DE DELEGAÇÃO
+task_id: $DELEG_ID
+agente: $AGENT
+pasta de trabalho: $(pwd)
+
+$BRIEF"
+
+SYS="Você foi acionado pelo orquestrador do Montese SST e roda sem interação. Siga o AGENTS.md e o contrato:
+1) Se o briefing não trouxer objetivo, escopo, critérios de aceitação ou a autorização necessária, NÃO aja: responda 'BLOQUEADO:' e liste o que falta.
+2) Nunca declare que testou sem ter rodado; cole o comando e o resultado real. Rotule VERIFICADO / NÃO VERIFICADO / INFERIDO.
+3) Você não aprova o próprio trabalho; a revisão é feita por outro agente.
+4) Nunca faça commit nem push.
+Responda SÓ com um resumo curto (máx. 30 linhas) neste formato: EXAMINEI / CONCLUSÃO E EVIDÊNCIAS / ALTEREI / TESTES (comando e resultado) / RISCOS / LIMITAÇÕES E DÚVIDAS / PRÓXIMA AÇÃO.
+A ÚLTIMA linha deve ser exatamente: ARQUIVOS_ALTERADOS: caminho1, caminho2   (ou: ARQUIVOS_ALTERADOS: nenhum)."
+
+# Detecta falha do provedor (e não do trabalho): resposta curta com cara de erro de API.
+falha_provedor() {
+  [ "$(wc -c < "$1")" -lt 1500 ] && head -c 800 "$1" | grep -qiE 'API Error|rate.?limit|429|overloaded|quota|insufficient|unauthorized|invalid.*key|credit|ECONN|timed? ?out'
+}
+
+RES="$REG/resultado.md"
+USED=""; RC=1; TRIED=""
+set +e
+while read -r PROVIDER MODEL; do
+  [ -z "$PROVIDER" ] && continue
+  if ! setup_provider "$PROVIDER" "$MODEL"; then
+    echo "⚠ $PROVIDER/$MODEL indisponível; tentando o próximo da cadeia..." >&2
+    TRIED="$TRIED $PROVIDER/$MODEL(indisponivel)"; continue
+  fi
+  echo "▶ $AGENT  [$PROVIDER/$MODEL_ARG]  id=$DELEG_ID  em $(pwd)" >&2
+  "$CLAUDE_BIN" -p "$PROMPT" \
+    --agent "$AGENT" \
+    --model "$MODEL_ARG" \
+    --permission-mode acceptEdits \
+    --allowedTools "${ALLOWED_TOOLS[@]}" \
+    --disallowedTools "${DENIED_TOOLS[@]}" \
+    --append-system-prompt "$SYS" \
+    </dev/null > "$RES" 2>&1
+  RC=$?
+  if [ "$RC" -eq 0 ] && ! falha_provedor "$RES"; then USED="$PROVIDER $MODEL_ARG"; break; fi
+  echo "⚠ $PROVIDER/$MODEL_ARG falhou (código $RC); tentando o próximo da cadeia..." >&2
+  cp "$RES" "$REG/falha-${PROVIDER}.md" 2>/dev/null
+  TRIED="$TRIED $PROVIDER/$MODEL_ARG(falhou)"
+done <<< "$CHAIN"
+set -e
+
+{
+  if [ -n "$USED" ]; then echo "PROVIDER=${USED%% *}"; echo "MODEL=${USED##* }"; fi
+  echo "TENTATIVAS=$TRIED"
+  echo "END=$(date +%s)"
+  echo "EXIT=$RC"
+} >> "$REG/meta.env"
+
+if [ -z "$USED" ]; then
+  echo "✖ Nenhum modelo da cadeia conseguiu responder para $AGENT. Último retorno:" >&2
+  [ -f "$RES" ] && head -c 600 "$RES" >&2
+  exit 1
+fi
+echo "  registro: $REG   (modelo usado: $USED)" >&2
+cp "$RES" "$LOG_DIR/${DELEG_ID}_${AGENT}.log" 2>/dev/null || true
+cat "$RES"

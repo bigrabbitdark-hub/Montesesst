@@ -1,5 +1,5 @@
 import PDFDocument from 'pdfkit';
-import { extractPdfTextFull } from '../src/common/pdf/pdf-text.util';
+import { extractPdfPages, extractPdfTextFull } from '../src/common/pdf/pdf-text.util';
 
 function buildTestPdf(text: string | null): Promise<Buffer> {
   return new Promise((resolve, reject) => {
@@ -12,6 +12,30 @@ function buildTestPdf(text: string | null): Promise<Buffer> {
     doc.end();
   });
 }
+
+function buildMultiPageTestPdf(): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    const doc = new PDFDocument();
+    const chunks: Buffer[] = [];
+    doc.on('data', (chunk) => chunks.push(chunk));
+    doc.on('end', () => resolve(Buffer.concat(chunks)));
+    doc.on('error', reject);
+    doc.text('Evidência da primeira página.');
+    doc.addPage().text('Evidência da segunda página.');
+    doc.end();
+  });
+}
+
+describe('extractPdfPages', () => {
+  it('preserva o número e o texto de cada página na ordem original', async () => {
+    const pdf = await buildMultiPageTestPdf();
+
+    await expect(extractPdfPages(pdf)).resolves.toEqual([
+      { pageNumber: 1, text: 'Evidência da primeira página.' },
+      { pageNumber: 2, text: 'Evidência da segunda página.' },
+    ]);
+  });
+});
 
 describe('extractPdfTextFull', () => {
   it('extrai o texto completo sem truncar em 8000 caracteres', async () => {

@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { AiConfigModule } from '../ai-config/ai-config.module';
 import { OfficialSourcesController } from './official-sources.controller';
 import { OfficialSourcesService } from './official-sources.service';
 import { NormativeDocumentsService } from './normative-documents.service';
@@ -11,6 +12,10 @@ import { NORMATIVE_ANSWER_PROVIDER } from './normative-answer-provider.interface
 import { OpenRouterNormativeAnswerService } from './openrouter-normative-answer.service';
 import { MiniMaxNormativeAnswerService } from './minimax-normative-answer.service';
 import { DashboardModule } from '../dashboard/dashboard.module';
+import { ProvisionsController } from './provisions.controller';
+import { NormativeRulesController } from './normative-rules.controller';
+import { ProvisionsService } from './provisions.service';
+import { NormativeRulesService } from './normative-rules.service';
 
 // Módulo único da Fase 9 (RAG Normativo) — as Tasks 5, 6 e 7 adicionam
 // providers/controllers aqui (monitor, aprovação/indexação, assistente),
@@ -34,14 +39,16 @@ import { DashboardModule } from '../dashboard/dashboard.module';
 // EMBEDDING_PROVIDER sem fechar um ciclo (NormativeModule → DashboardModule
 // → DocumentsModule já existe).
 @Module({
-  imports: [DashboardModule],
-  controllers: [OfficialSourcesController, NormativeDocumentsController, NormativeAssistantController],
+  imports: [DashboardModule, AiConfigModule],
+  controllers: [OfficialSourcesController, NormativeDocumentsController, NormativeAssistantController, ProvisionsController, NormativeRulesController],
   providers: [
     OfficialSourcesService,
     NormativeDocumentsService,
     NormativeMonitorService,
     NormativeAssistantService,
     AssistantQueryLogService,
+    ProvisionsService,
+    NormativeRulesService,
     OpenRouterNormativeAnswerService,
     MiniMaxNormativeAnswerService,
     { provide: NORMATIVE_ANSWER_PROVIDER, useClass: MiniMaxNormativeAnswerService },

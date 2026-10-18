@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+# Mostra a cola dos comandos. Use: ajuda
+cat <<'EOF'
+
+ MONTESE SST — COMANDOS (digite como está, sem ./orquestracao/ na frente)
+
+  nova "o que você precisa"     coloca um pedido na fila   (pode fazer vários)
+  nova --principal "..."        igual, mas enxerga as alterações ainda não commitadas
+  status                        mostra em que etapa está cada pedido
+  ver 1                         lê o plano / resultado / revisão do pedido 1
+  aprovar 1                     dá o OK para os agentes executarem o pedido 1
+  aprovar 1 não                 cancela o pedido 1
+  ajuda                         mostra esta cola
+
+  ETAPAS: na fila → planejando → ESPERANDO SEU OK → agentes trabalhando
+          → revisão independente → PRONTA PARA VOCÊ REVISAR
+
+  Quem faz o commit é VOCÊ. Nenhum agente faz commit nem push.
+  A aba "FILA" precisa ficar aberta (ela é quem faz os agentes trabalharem).
+
+ AGORA, COMO PRIMEIRO TESTE (somente leitura), copie e cole:
+
+  nova --principal "Somente leitura. Resuma o estado atual do projeto Montese SST: o que está pronto, o que está em andamento (veja as alterações não commitadas) e os 5 próximos passos mais importantes, com base no docs/roadmap.md. Não altere nenhum arquivo."
+
+EOF

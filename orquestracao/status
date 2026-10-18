@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+# Mostra a fila de tarefas e em que etapa cada uma está.
+set -uo pipefail
+. "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
+
+[ -d "$FILA_DIR" ] && ls "$FILA_DIR" | grep -q . || { echo "Fila vazia. Crie uma tarefa:  /opt/Montese/orquestracao/nova \"...\""; exit 0; }
+printf '%-5s %-22s %-10s %s\n' "ID" "ETAPA" "MODO" "TAREFA"
+for d in "$FILA_DIR"/*/; do
+  id="$(basename "$d")"
+  est="$(cat "$d/estado" 2>/dev/null)"
+  case "$est" in
+    nova) txt="na fila";;
+    planejando) txt="planejando...";;
+    aguardando-aprovacao) txt="ESPERANDO SEU OK";;
+    aprovada) txt="aprovada, na fila";;
+    executando) txt="agentes trabalhando";;
+    revisando) txt="revisão independente";;
+    concluida) txt="PRONTA PARA VOCÊ REVISAR";;
+    interrompida) txt="interrompida";;
+    falhou) txt="falhou";;
+    cancelada) txt="cancelada";;
+    *) txt="$est";;
+  esac
+  printf '%-5s %-22s %-10s %s\n' "$id" "$txt" "$(cat "$d/modo" 2>/dev/null)" "$(head -1 "$d/tarefa.md" | cut -c1-60)"
+done

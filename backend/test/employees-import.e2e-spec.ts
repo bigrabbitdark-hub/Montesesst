@@ -28,6 +28,7 @@ describe('POST /employees/import (e2e)', () => {
       .set('Authorization', `Bearer ${token}`)
       .send({
         name: 'Sede',
+        cnpj: '12345678000276',
         address_street: 'Rua Import',
         address_city: 'Criciúma',
         address_state: 'SC',

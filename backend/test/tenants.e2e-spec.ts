@@ -127,6 +127,55 @@ describe('GET/PATCH /tenants/me (e2e)', () => {
     expect(unitsAfterSecond.rows[0].address_number).toBe('02');
   });
 
+  it('observação e campos do CNPJ persistem após salvar e reler (edição), sem mexer em trade_name', async () => {
+    const res = await request(app.getHttpServer())
+      .patch('/tenants/me')
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        notes: 'Obra com 3 turnos',
+        address_neighborhood: 'Centro',
+        address_complement: 'Sala 4',
+        cnae_code: '4120400',
+        cnae_description: 'Construção de edifícios',
+      });
+    expect(res.status).toBe(200);
+
+    const lido = await request(app.getHttpServer()).get('/tenants/me').set('Authorization', `Bearer ${token}`);
+    expect(lido.body).toMatchObject({
+      notes: 'Obra com 3 turnos',
+      address_neighborhood: 'Centro',
+      address_complement: 'Sala 4',
+      cnae_code: '4120400',
+      cnae_description: 'Construção de edifícios',
+      trade_name: 'Diogo Construção',
+    });
+
+    const editado = await request(app.getHttpServer())
+      .patch('/tenants/me')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ notes: 'Observação editada' });
+    expect(editado.body.notes).toBe('Observação editada');
+    expect(editado.body.cnae_code).toBe('4120400');
+  });
+
+  it('rejeita CNAE fora do formato e observação gigante com 400', async () => {
+    const a = await request(app.getHttpServer())
+      .patch('/tenants/me')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ cnae_code: '123' });
+    expect(a.status).toBe(400);
+    const b = await request(app.getHttpServer())
+      .patch('/tenants/me')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ notes: 'x'.repeat(2001) });
+    expect(b.status).toBe(400);
+  });
+
+  it('GET /cnpj-lookup: CNPJ inválido → 400 sem chamar a fonte; sem login é permitido (rota pública)', async () => {
+    const res = await request(app.getHttpServer()).get('/cnpj-lookup/11222333000182');
+    expect(res.status).toBe(400);
+  });
+
   it('bloqueia role sem permissão (tecnico) com 403', async () => {
     const tecnico = await db.createUserWithRole('tecnico', 'Tecnico Onboarding');
     const loginRes = await request(app.getHttpServer())

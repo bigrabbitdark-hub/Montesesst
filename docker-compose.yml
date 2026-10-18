@@ -99,6 +99,12 @@ services:
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
       GOOGLE_TOKEN_ENCRYPTION_KEY: ${GOOGLE_TOKEN_ENCRYPTION_KEY}
+      ESOCIAL_CERT_ENCRYPTION_KEY: ${ESOCIAL_CERT_ENCRYPTION_KEY:-}
+      # Chave mestra pgcrypto do painel /admin/ia (cifra ai_provider_configs).
+      # validateProductionEnv() exige 64 hex (32 bytes) — gerar com
+      # `openssl rand -hex 32` e guardar no .env da VPS. Trocar esta chave
+      # invalida todas as configs de provider já salvas no banco.
+      AI_CONFIG_ENCRYPTION_KEY: ${AI_CONFIG_ENCRYPTION_KEY}
       APP_BASE_URL: ${APP_BASE_URL:-https://montesesst.com.br}
     depends_on:
       postgres:

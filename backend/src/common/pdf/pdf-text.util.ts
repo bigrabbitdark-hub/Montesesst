@@ -10,6 +10,11 @@ const MAX_ATTACHMENT_TEXT_CHARS = 8000;
 // logger de módulo com o nome do arquivo como contexto.
 const logger = new Logger('AttachmentTextUtil');
 
+export interface PdfPageText {
+  pageNumber: number;
+  text: string;
+}
+
 // Devolve null quando o PDF não tem nenhum texto real extraível (ex.:
 // documento escaneado, sem camada de texto) — o chamador decide como
 // comunicar isso ao usuário, esta função só relata "não achei texto".
@@ -49,14 +54,19 @@ export async function extractPdfText(buffer: Buffer): Promise<string | null> {
 // pra caber no orçamento de contexto de uma única pergunta anexada.
 // Mesma extração (pageJoiner: '' pelo mesmo motivo), só sem truncar.
 export async function extractPdfTextFull(buffer: Buffer): Promise<string | null> {
+  const pages = await extractPdfPages(buffer);
+  const trimmed = pages.map((page) => page.text).join('').trim();
+  return trimmed.length === 0 ? null : trimmed;
+}
+
+export async function extractPdfPages(buffer: Buffer): Promise<PdfPageText[]> {
   const parser = new PDFParse({ data: buffer });
   try {
-    const { text } = await parser.getText({ pageJoiner: '' });
-    const trimmed = text.trim();
-    return trimmed.length === 0 ? null : trimmed;
+    const result = await parser.getText({ pageJoiner: '' });
+    return result.pages.map((page) => ({ pageNumber: page.num, text: page.text.trim() }));
   } catch (err) {
-    logger.warn(`Falha ao extrair texto completo de PDF: ${(err as Error).message}`);
-    return null;
+    logger.warn(`Falha ao extrair páginas de PDF: ${(err as Error).message}`);
+    return [];
   } finally {
     await parser.destroy();
   }

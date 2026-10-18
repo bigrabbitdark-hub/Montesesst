@@ -103,6 +103,13 @@ describe('decodeHtmlBuffer', () => {
     expect(decodeHtmlBuffer(Buffer.from(T, 'utf8'), 'text/html; charset=xx-inexistente')).toBe(T);
     expect(decodeHtmlBuffer(Buffer.from(T, 'latin1'), 'text/html; charset=xx-inexistente')).toBe(T);
   });
+  it('bytes 0x80–0x9F viram a pontuação do windows-1252 (o Node 20 devolve controles C1 U+0080–U+009F)', () => {
+    // SINTÉTICO, com os bytes reais do Planalto: "III \x96 colisões" (CLT art. 193, inciso III) e aspas \x93…\x94.
+    const b = Buffer.from([...Buffer.from('III ', 'latin1'), 0x96, ...Buffer.from(' colisões ', 'latin1'), 0x93, 0x61, 0x94, 0x80, 0x81]);
+    for (const ct of ['text/html', 'text/html; charset=iso-8859-1', 'text/html; charset=windows-1252']) {
+      expect(decodeHtmlBuffer(b, ct)).toBe('III – colisões “a”€\u0081');
+    }
+  });
 });
 
 describe('meaningfulLength', () => {

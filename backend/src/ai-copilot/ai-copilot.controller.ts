@@ -1,4 +1,5 @@
-import { Controller, Get, Logger } from '@nestjs/common';
+import { Controller, Get, Inject, Logger } from '@nestjs/common';
+import { AiConfigService } from '../ai-config/ai-config.service';
 import { Roles } from '../common/decorators/roles.decorator';
 
 export interface AiUsageResponse {
@@ -24,10 +25,15 @@ const DASHBOARD_URL = 'https://openrouter.ai/settings/credits';
 export class AiCopilotController {
   private readonly logger = new Logger(AiCopilotController.name);
 
+  // @Inject(ClasseConcreta) explícito: mesma causa raiz do fix em
+  // MiniMaxNormativeAnswerService / AiUsageLogService — sem isto, sob tsx
+  // (esbuild não emite design:paramtypes), `this.aiConfig` chegaria undefined.
+  constructor(@Inject(AiConfigService) private readonly aiConfig: AiConfigService) {}
+
   @Roles('admin')
   @Get('usage')
   async usage(): Promise<AiUsageResponse> {
-    const apiKey = process.env.OPENROUTER_API_KEY;
+    const { apiKey } = await this.aiConfig.getResolved('openrouter');
     if (!apiKey) {
       return { configured: false, provider: 'openrouter', dashboard_url: DASHBOARD_URL };
     }

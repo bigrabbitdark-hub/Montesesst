@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+# Confere se cada modelo usado em agentes.conf (principais e reservas) responde. Não altera nada.
+set -uo pipefail
+. "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
+
+ok=0; fail=0; skip=0
+PARES="$(for a in $(awk '$1 !~ /^#/ && NF>=3 {print $1}' "$CONF"); do agent_chain "$a"; done | sort -u)"
+while read -r provider model; do
+  [ -z "$provider" ] && continue
+  (
+    if ! setup_provider "$provider" "$model" 2>/dev/null; then printf '• %-10s %-45s ... SEM CHAVE (pulado)\n' "$provider" "$model"; exit 2; fi
+    printf '• %-10s %-45s ... ' "$provider" "$MODEL_ARG"
+    out="$(timeout 120 "$CLAUDE_BIN" -p "Responda apenas a palavra: OK" --model "$MODEL_ARG" \
+           --permission-mode default --allowedTools "" </dev/null 2>&1 | tail -3)"
+    if echo "$out" | grep -qi "ok"; then echo "FUNCIONA"; exit 0; else echo "FALHOU"; echo "   $out" | cut -c1-200; exit 1; fi
+  )
+  case $? in 0) ok=$((ok+1));; 2) skip=$((skip+1));; *) fail=$((fail+1));; esac
+done <<< "$PARES"
+
+echo "---"; echo "Funcionando: $ok   Com falha: $fail   Sem chave (pulados): $skip"
+[ "$fail" -eq 0 ]

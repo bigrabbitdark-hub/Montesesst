@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+# Mostra os detalhes de uma tarefa: pedido, plano, resultado, revisões e onde estão os arquivos.
+#   ./orquestracao/ver 003
+set -uo pipefail
+. "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
+
+[ -n "${1:-}" ] || { sed -n '2,4p' "${BASH_SOURCE[0]}"; exit 1; }
+ID="$(norm_id "$1")"; D="$FILA_DIR/$ID"
+[ -d "$D" ] || { echo "Tarefa $ID não existe. Veja:  /opt/Montese/orquestracao/status"; exit 1; }
+
+echo "════ TAREFA $ID — etapa: $(cat "$D/estado") — modo: $(cat "$D/modo")"
+echo "──── PEDIDO";    cat "$D/tarefa.md"
+[ -s "$D/plano.md" ]     && { echo; echo "──── PLANO";     cat "$D/plano.md"; }
+[ -s "$D/resultado.md" ] && { echo; echo "──── RESULTADO DO CHEFE"; cat "$D/resultado.md"; }
+[ -s "$D/revisao.md" ]   && { echo; echo "──── REVISÕES INDEPENDENTES"; cat "$D/revisao.md"; }
+if [ -f "$D/workdir" ]; then
+  W="$(cat "$D/workdir")"
+  echo; echo "──── ONDE ESTÃO AS MUDANÇAS: $W"
+  echo "Ver o que mudou:   git -C \"$W\" status -sb   e   git -C \"$W\" diff"
+fi

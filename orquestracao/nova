@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+# Coloca uma tarefa na fila.
+#   ./orquestracao/nova "Descreva o que precisa"
+#   ./orquestracao/nova -f tarefas/minha.md
+#   ./orquestracao/nova --principal "..."   (trabalha na pasta principal, sem cópia isolada)
+#
+# Por padrão cada tarefa roda numa cópia isolada (worktree) do projeto, só com o que já foi COMMITADO.
+# Se a tarefa depende de alterações ainda não commitadas, use --principal (roda uma de cada vez).
+set -euo pipefail
+. "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
+
+MODO="worktree"; TEXTO=""
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --principal) MODO="principal"; shift;;
+    -f) [ -f "${2:-}" ] || { echo "ERRO: arquivo não encontrado: ${2:-}" >&2; exit 1; }; TEXTO="$(cat "$2")"; shift 2;;
+    *) TEXTO="${TEXTO:+$TEXTO }$1"; shift;;
+  esac
+done
+[ -n "$TEXTO" ] || { sed -n '2,8p' "${BASH_SOURCE[0]}"; exit 1; }
+
+mkdir -p "$FILA_DIR"
+ULT="$(ls "$FILA_DIR" 2>/dev/null | sort | tail -1)"
+ID="$(norm_id "$(( 10#${ULT:-0} + 1 ))")"
+D="$FILA_DIR/$ID"; mkdir -p "$D"
+printf '%s\n' "$TEXTO" > "$D/tarefa.md"
+echo "$MODO" > "$D/modo"
+echo "$(date +%s)-$RANDOM" > "$D/uid"   # identificador único (o número da fila pode ser reaproveitado)
+estado_set "$ID" nova
+
+echo "✔ Tarefa $ID na fila (modo: $MODO)."
+PEND="$(git -C "$REPO" status --porcelain 2>/dev/null | wc -l)"
+if [ "$MODO" = "worktree" ] && [ "$PEND" -gt 0 ]; then
+  echo "⚠ O projeto tem $PEND alteração(ões) não commitada(s). A cópia isolada NÃO as enxerga."
+  echo "  Se a tarefa depende delas, cancele e use:  ./orquestracao/nova --principal \"...\""
+fi
+echo
+echo "Próximos passos:"
+echo "  1) Em OUTRA aba do terminal, deixe ligado:  /opt/Montese/orquestracao/rodar"
+echo "  2) Veja o plano quando ficar pronto:         /opt/Montese/orquestracao/ver $ID"
+echo "  3) Se concordar, aprove:                     /opt/Montese/orquestracao/aprovar $ID"

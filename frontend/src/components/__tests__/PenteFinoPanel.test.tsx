@@ -67,8 +67,25 @@ describe('PenteFinoPanel no Assistente', () => {
     expect(screen.getByText(/Página não capturada/)).toBeTruthy();
     expect(fetchMock).toHaveBeenCalledWith(
       '/api/pente-fino/run',
-      expect.objectContaining({ method: 'POST' }),
+      expect.objectContaining({ method: 'POST', body: JSON.stringify({ include_pdf: true }) }),
     );
+  });
+
+  it('mostra botão de download quando a resposta traz PDF em base64', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      response({
+        audit_report: report,
+        pdf_base64: btoa('dummy-pdf-content'),
+        pdf_file_name: 'auditoria-montese.pdf',
+      }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<PenteFinoPanel presentation="assistant" />);
+    fireEvent.click(screen.getByRole('button', { name: 'Executar Auditoria Montese' }));
+
+    expect(await screen.findByText('Ruído contínuo: valores divergentes a esclarecer.')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Baixar PDF' })).toBeTruthy();
   });
 
   it('informa o limite de execuções sem apresentar achados antigos como atuais', async () => {

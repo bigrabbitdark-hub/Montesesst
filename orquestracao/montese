@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+# Abre o orquestrador chefe do Montese SST. Este é o ÚNICO comando que você precisa.
+#
+#   ./orquestracao/montese                      abre o chefe e você conversa
+#   ./orquestracao/montese "Corrigir X no Y"    já abre com a tarefa
+#   ./orquestracao/montese -f tarefas/x.md      abre com a tarefa de um arquivo
+#
+# O chefe entende o pedido, monta o plano e entrega cada parte ao agente certo
+# (cada um com o modelo definido em agentes.conf).
+set -euo pipefail
+. "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
+
+TASK=""
+if [ "${1:-}" = "-f" ]; then
+  [ -f "${2:-}" ] || { echo "ERRO: arquivo não encontrado: ${2:-}" >&2; exit 1; }
+  TASK="$(cat "$2")"
+elif [ $# -ge 1 ]; then
+  TASK="$*"
+fi
+
+AGENT="montese-orquestrador"
+CFG="$(agent_cfg "$AGENT")" || { echo "ERRO: '$AGENT' não está em agentes.conf" >&2; exit 1; }
+PROVIDER="${CFG%% *}"; MODEL="${CFG##* }"
+setup_provider "$PROVIDER" "$MODEL" || exit 1
+
+echo "▶ Orquestrador chefe [$PROVIDER/$MODEL] em $(pwd)" >&2
+echo "  agentes e modelos: $CONF" >&2
+
+ARGS=(--agent "$AGENT" --model "$MODEL_ARG"
+      --allowedTools "Read" "Grep" "Glob" "TodoWrite"
+                     "Bash($ORQ_DIR/delegar:*)" "Bash(git status:*)" "Bash(git diff:*)" "Bash(git log:*)"
+                     "Bash(git worktree list:*)" "Bash(ls:*)" "Bash(docker ps:*)" "Bash($ORQ_DIR/revisar:*)"
+      --disallowedTools "${DENIED_TOOLS[@]}")
+
+if [ -n "$TASK" ]; then
+  exec "$CLAUDE_BIN" "${ARGS[@]}" "TAREFA DO PROPRIETÁRIO:
+$TASK"
+else
+  exec "$CLAUDE_BIN" "${ARGS[@]}"
+fi

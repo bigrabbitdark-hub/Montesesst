@@ -1,4 +1,19 @@
 import { OpenRouterNormativeAnswerService } from '../src/normative/openrouter-normative-answer.service';
+import { AiConfigService } from '../src/ai-config/ai-config.service';
+
+// Mock do AiConfigService — devolve sempre apiKey + model fixos, sem
+// tocar em banco/env. O teste continua puro (sem rede/banco), só que
+// agora a chave e o modelo vêm via injeção, não de process.env.
+function makeAiConfigMock(): AiConfigService {
+  return {
+    getResolved: async () => ({
+      provider: 'openrouter' as const,
+      apiKey: 'sk-or-fake-key-for-unit-test',
+      model: 'anthropic/claude-sonnet-5',
+      baseUrl: null,
+    }),
+  } as unknown as AiConfigService;
+}
 
 // Achado da auditoria do Assistente (2026-09-28, item 015): o MiniMax
 // (provedor ativo) repete a chamada uma vez quando o tool call vem
@@ -70,7 +85,7 @@ describe('OpenRouterNormativeAnswerService — retry em tool call inválido (uni
       .mockResolvedValueOnce(jsonResponse(VALID_TOOL_CALL_BODY));
     global.fetch = fetchMock as unknown as typeof fetch;
 
-    const service = new OpenRouterNormativeAnswerService();
+    const service = new OpenRouterNormativeAnswerService(makeAiConfigMock());
     const claims = await service.answer('pergunta', [{ id: 'c1', content: 'trecho' }], [], [], []);
 
     expect(fetchMock).toHaveBeenCalledTimes(2);
@@ -85,7 +100,7 @@ describe('OpenRouterNormativeAnswerService — retry em tool call inválido (uni
       .mockResolvedValueOnce(jsonResponse(INVALID_TOOL_CALL_BODY));
     global.fetch = fetchMock as unknown as typeof fetch;
 
-    const service = new OpenRouterNormativeAnswerService();
+    const service = new OpenRouterNormativeAnswerService(makeAiConfigMock());
     const claims = await service.answer('pergunta', [{ id: 'c1', content: 'trecho' }], [], [], []);
 
     expect(fetchMock).toHaveBeenCalledTimes(2);
@@ -96,7 +111,7 @@ describe('OpenRouterNormativeAnswerService — retry em tool call inválido (uni
     const fetchMock = jest.fn().mockResolvedValueOnce(jsonResponse(VALID_TOOL_CALL_BODY));
     global.fetch = fetchMock as unknown as typeof fetch;
 
-    const service = new OpenRouterNormativeAnswerService();
+    const service = new OpenRouterNormativeAnswerService(makeAiConfigMock());
     const claims = await service.answer('pergunta', [{ id: 'c1', content: 'trecho' }], [], [], []);
 
     expect(fetchMock).toHaveBeenCalledTimes(1);

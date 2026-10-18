@@ -1,0 +1,66 @@
+#!/usr/bin/env bash
+# Revisão INDEPENDENTE do trabalho de uma delegação.
+#   revisar <id_da_delegacao> [qa|seguranca]
+#
+# O revisor olha o diff real (não confia no relato do implementador) e NUNCA usa o mesmo
+# modelo de quem implementou: se for o mesmo, o modelo do revisor é trocado.
+set -euo pipefail
+. "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
+
+ID="${1:-}"; ROLE="${2:-qa}"
+[ -n "$ID" ] || { sed -n '2,7p' "${BASH_SOURCE[0]}"; exit 1; }
+REG="$TASKS_DIR/$ID"
+[ -f "$REG/meta.env" ] || { echo "ERRO: delegação '$ID' não encontrada em $TASKS_DIR" >&2; exit 1; }
+case "$ROLE" in qa|seguranca) ;; *) echo "ERRO: papel deve ser qa ou seguranca" >&2; exit 1;; esac
+
+# shellcheck disable=SC1090
+. "$REG/meta.env"
+IMPL_AGENT="$AGENT"; IMPL_PROVIDER="$PROVIDER"; IMPL_MODEL="$MODEL"; W="$WORKDIR"
+
+LINHA="$(grep -h '^ARQUIVOS_ALTERADOS:' "$REG/resultado.md" | tail -1 | sed 's/^ARQUIVOS_ALTERADOS: *//')"
+if [ -z "$LINHA" ] || [ "$LINHA" = "nenhum" ]; then
+  echo "ℹ $ID ($IMPL_AGENT): sem arquivos alterados declarados; nada a revisar."
+  exit 0
+fi
+
+# monta o diff real dos arquivos declarados
+DIFF="$REG/diff-$ROLE.patch"; : > "$DIFF"
+IFS=',' read -ra ARQS <<< "$LINHA"
+for f in "${ARQS[@]}"; do
+  f="$(echo "$f" | xargs)"; [ -n "$f" ] || continue
+  if git -C "$W" ls-files --error-unmatch -- "$f" >/dev/null 2>&1; then
+    git -C "$W" diff HEAD -- "$f" >> "$DIFF" 2>/dev/null || true
+  elif [ -f "$W/$f" ]; then
+    { echo "### ARQUIVO NOVO: $f"; head -c 20000 "$W/$f"; echo; } >> "$DIFF"
+  else
+    echo "### NÃO ENCONTRADO NA PASTA: $f" >> "$DIFF"
+  fi
+done
+head -c 150000 "$DIFF" > "$DIFF.cut" && mv "$DIFF.cut" "$DIFF"
+
+R_AGENT="montese-qa"; [ "$ROLE" = "seguranca" ] && R_AGENT="montese-seguranca"
+R_CFG="$(agent_cfg "$R_AGENT")"; RP="${R_CFG%% *}"; RM="${R_CFG##* }"
+if [ "$RP" = "$IMPL_PROVIDER" ] && [ "$RM" = "$IMPL_MODEL" ]; then
+  if [ "$RP" = "claude" ]; then [ "$RM" = "opus" ] && RM="sonnet" || RM="opus"; else RP="claude"; RM="sonnet"; fi
+  echo "ℹ Revisor com modelo diferente do implementador: $RP/$RM (implementador: $IMPL_PROVIDER/$IMPL_MODEL)" >&2
+fi
+
+OUT="$REG/revisao-$ROLE.md"
+echo "▶ Revisão ($ROLE) da delegação $ID [$IMPL_AGENT] por $R_AGENT [$RP/$RM]" >&2
+
+cd "$W"
+DELEGAR_MODEL_OVERRIDE="$RP $RM" PARENT_TASK="${PARENT:-}" "$ORQ_DIR/delegar" "$R_AGENT" <<EOF | tee "$OUT"
+OBJETIVO: revisar de forma INDEPENDENTE e adversarial o trabalho do agente $IMPL_AGENT (delegação $ID).
+ESCOPO: apenas os arquivos do diff abaixo. Não edite nada.
+NÃO CONFIE no relato do implementador: confirme no diff. Procure regressões, falhas de permissão/tenant, casos extremos, dados inconsistentes e afirmações sem evidência. Rode somente testes permitidos e reporte o resultado real.
+CRITÉRIO DE ACEITE: o diff cumpre o pedido sem violar o AGENTS.md.
+TERMINE a seção CONCLUSÃO com uma linha exata: VEREDITO: APROVADO | APROVADO COM RESSALVAS | REPROVADO
+
+=== RELATO DO IMPLEMENTADOR (alegação, não prova) ===
+$(head -c 6000 "$REG/resultado.md")
+
+=== DIFF REAL ===
+$(cat "$DIFF")
+EOF
+
+echo "──"; grep -h '^VEREDITO:' "$OUT" | tail -1 || echo "VEREDITO: (não encontrado — leia $OUT)"

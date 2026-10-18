@@ -42,6 +42,12 @@ const REQUIRED = [
   // ninguém é avisado; https porque o link carrega token; sem barra final porque o
   // código concatena `${PUBLIC_APP_URL}/caminho`.
   ['PUBLIC_APP_URL', (v: string) => /^https:\/\/\S+$/.test(v) && !v.endsWith('/'), 'deve ser uma URL https:// sem barra no final'],
+  // Chave mestra pgcrypto (Fase IA Admin) — cifra api_key em
+  // ai_provider_configs. Mesma forma do GOOGLE_TOKEN_ENCRYPTION_KEY
+  // (64 hex = 32 bytes via openssl rand -hex 32). Trocar esta chave sem
+  // re-cifrar o banco invalida TODAS as configs salvas — fazer isso
+  // intencionalmente.
+  ['AI_CONFIG_ENCRYPTION_KEY', (v: string) => /^[0-9a-f]{64}$/i.test(v), '64 caracteres hex (32 bytes) — gerar com `openssl rand -hex 32`'],
 ] as const;
 
 // Inclui os placeholders que os serviços usam como fallback quando a variável
