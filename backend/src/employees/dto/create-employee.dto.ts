@@ -1,6 +1,6 @@
 import { IsISO8601, IsOptional, IsString, IsUUID, Matches, MaxLength, MinLength } from 'class-validator';
 import { DATE_ONLY, NO_NUL } from '../../epi/dto/epi-dto-rules';
-import { BlankToNull, IsCpf, IsRegistrationNumber, OnlyDigits, Trim } from './employee-dto-rules';
+import { BlankToNull, IsCboInput, IsCpf, IsRegistrationNumber, OnlyDigits, Trim } from './employee-dto-rules';
 
 // Validadores reais de class-validator (o ValidationPipe global usa whitelist + forbidNonWhitelisted:
 // propriedade sem decorator é rejeitada). O serviço revalida e normaliza tudo com normalizeEmployeeInput
@@ -22,7 +22,8 @@ export class CreateEmployeeDto {
 
   // Campos do modelo oficial: formato validado e normalizado por normalizeEmployeeInput
   // (sexo 'f'/'m' vira 'F'/'M'; CBO aceita número e recupera o zero à esquerda).
-  @IsOptional() sex?: string;
-  @IsOptional() cbo_code?: string;
-  @IsOptional() activity_description?: string;
+  // Formato fino (F/M, 6 dígitos) em normalizeEmployeeInput; aqui tipo e tamanho (objeto/array => 400).
+  @IsOptional() @IsString() @MaxLength(20) @Matches(NO_NUL) sex?: string;
+  @IsOptional() @IsCboInput() cbo_code?: string | number;
+  @IsOptional() @IsString() @MaxLength(2000) @Matches(NO_NUL) activity_description?: string;
 }

@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { sessionExpired } from '@/lib/auth';
 import {
   FIELD_LABELS,
   formatChangedAt,
@@ -37,6 +38,7 @@ export function FuncionarioHistoricoDrawer({
         });
         const body = await res.json().catch(() => ({}));
         if (mine !== seq.current) return; // resposta superada
+        if (res.status === 401) return sessionExpired();
         if (!res.ok) return setState('erro');
         const next: HistoryItem[] = body.items ?? [];
         setItems((prev) => (offset === 0 ? next : [...prev, ...next]));

@@ -1,6 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { FuncionariosTable } from '../FuncionariosTable';
+import { sessionExpired } from '@/lib/auth';
+
+vi.mock('@/lib/auth', async (orig) => ({ ...(await orig<typeof import('@/lib/auth')>()), sessionExpired: vi.fn() }));
 
 const COLUNAS = [
   'Qtde', 'Funcionário', 'Matrícula (eSocial)', 'CPF', 'Data de nascimento', 'Sexo',
@@ -72,9 +75,14 @@ describe('FuncionariosTable', () => {
 
   it('Editar tabela habilita inputs; sem alterações Confirmar fica desabilitado', async () => {
     await abrir(vi.fn().mockResolvedValue(resp({ items: [linha()], total: 1 })));
-    expect((screen.getByLabelText('Função/Cargo Ana Teste') as HTMLInputElement).disabled).toBe(true);
+    // Modo leitura: somente leitura e focável pelo teclado (não desabilitado).
+    const cargo = () => screen.getByLabelText('Função/Cargo Ana Teste') as HTMLInputElement;
+    expect(cargo().readOnly).toBe(true);
+    expect(cargo().disabled).toBe(false);
+    expect(cargo().getAttribute('aria-readonly')).toBe('true');
     fireEvent.click(screen.getByRole('button', { name: 'Editar tabela' }));
-    expect((screen.getByLabelText('Função/Cargo Ana Teste') as HTMLInputElement).disabled).toBe(false);
+    expect(cargo().readOnly).toBe(false);
+    expect(cargo().getAttribute('aria-readonly')).toBeNull();
     expect((screen.getByRole('button', { name: 'Confirmar alterações' }) as HTMLButtonElement).disabled).toBe(true);
     expect(screen.getByRole('button', { name: 'Cancelar' })).toBeTruthy();
   });
@@ -357,5 +365,73 @@ describe('FuncionariosTable', () => {
     );
     fireEvent.click(screen.getByRole('button', { name: 'Fechar' }));
     expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  describe('onda de segurança: rascunho, sessão e acessibilidade', () => {
+    async function comRascunho() {
+      await abrir(vi.fn().mockResolvedValue(resp({ items: [linha()], total: 1 })));
+      fireEvent.click(screen.getByRole('button', { name: 'Editar tabela' }));
+      fireEvent.change(screen.getByLabelText('Função/Cargo Ana Teste'), { target: { value: 'Outro cargo' } });
+    }
+
+    it('com alterações pendentes, beforeunload é bloqueado; sem alterações, não', async () => {
+      await comRascunho();
+      const ev = new Event('beforeunload', { cancelable: true });
+      window.dispatchEvent(ev);
+      expect(ev.defaultPrevented).toBe(true);
+      fireEvent.click(screen.getByRole('button', { name: 'Cancelar' }));
+      const ev2 = new Event('beforeunload', { cancelable: true });
+      window.dispatchEvent(ev2);
+      expect(ev2.defaultPrevented).toBe(false);
+    });
+
+    it('clique em link interno com rascunho pede confirmação; recusar cancela a navegação', async () => {
+      await comRascunho();
+      const link = document.createElement('a');
+      link.href = '/empresa/epi';
+      link.textContent = 'EPI';
+      document.body.appendChild(link);
+      const navegou = vi.fn((e: MouseEvent) => e.preventDefault()); // listener do "roteador" (bolha)
+      document.body.addEventListener('click', navegou);
+      const confirmMock = vi.fn().mockReturnValueOnce(false).mockReturnValueOnce(true);
+      vi.stubGlobal('confirm', confirmMock);
+      fireEvent.click(link);
+      expect(confirmMock).toHaveBeenCalledWith(expect.stringContaining('alterações não confirmadas'));
+      expect(navegou).not.toHaveBeenCalled();
+      fireEvent.click(link);
+      expect(navegou).toHaveBeenCalledTimes(1);
+      document.body.removeEventListener('click', navegou);
+      link.remove();
+    });
+
+    it('sem rascunho, link interno não pede confirmação', async () => {
+      await abrir(vi.fn().mockResolvedValue(resp({ items: [linha()], total: 1 })));
+      const link = document.createElement('a');
+      link.href = '/empresa/epi';
+      document.body.appendChild(link);
+      const confirmMock = vi.fn();
+      vi.stubGlobal('confirm', confirmMock);
+      link.addEventListener('click', (e) => e.preventDefault());
+      fireEvent.click(link);
+      expect(confirmMock).not.toHaveBeenCalled();
+      link.remove();
+    });
+
+    it('401 ao carregar chama sessionExpired (volta ao login) e não mostra "Unauthorized"', async () => {
+      const spy = vi.mocked(sessionExpired);
+      spy.mockClear();
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue(resp({ message: 'Unauthorized' }, 401)));
+      render(<FuncionariosTable />);
+      await waitFor(() => expect(spy).toHaveBeenCalled());
+      expect(screen.queryByText('Unauthorized')).toBeNull();
+    });
+
+    it('botões e campos têm alvo de 44px e texto de 16px', async () => {
+      await abrir(vi.fn().mockResolvedValue(resp({ items: [linha()], total: 1 })));
+      for (const el of [screen.getByRole('button', { name: 'Editar tabela' }), screen.getByLabelText('Função/Cargo Ana Teste'), screen.getByRole('button', { name: 'Histórico de Ana Teste' })]) {
+        expect(el.className).toContain('min-h-11');
+        expect(el.className).toContain('text-base');
+      }
+    });
   });
 });

@@ -35,3 +35,16 @@ export const IsRegistrationNumber = (options?: ValidationOptions) =>
     { name: 'isRegistrationNumber', validator: { validate: (v) => typeof v === 'string' && REGISTRATION_NUMBER_RE.test(v) } },
     { message: 'Matrícula inválida (1 a 30 caracteres: letras, dígitos, ponto, hífen ou sublinhado; sem espaços)', ...options },
   );
+
+// CBO: texto ('051210') ou número inteiro vindo de planilha/Excel (51210, o zero à esquerda é restaurado por
+// normalizeCbo). Objeto, array, booleano e número não inteiro são recusados (400), nunca viram "[object Object]".
+export const IsCboInput = (options?: ValidationOptions) =>
+  ValidateBy(
+    {
+      name: 'isCboInput',
+      validator: {
+        validate: (v) => (typeof v === 'string' && v.length <= 10) || (typeof v === 'number' && Number.isSafeInteger(v) && v >= 0),
+      },
+    },
+    { message: 'CBO deve ter 6 dígitos (ex.: 717510)', ...options },
+  );

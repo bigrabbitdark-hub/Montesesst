@@ -45,10 +45,10 @@ describe('POST /employees/import (e2e)', () => {
   it('importa linhas válidas e reporta erro por linha nas inválidas, sem travar as demais', async () => {
     const csv = [
       'nome,cpf,cargo,filial',
-      'Funcionário Um,11122233301,Operador,Sede',
+      'Funcionário Um,11122233124,Operador,Sede',
       'Sem CPF Válido,123,Operador,Sede',
-      'Filial Errada,11122233302,Operador,Filial Que Não Existe',
-      'Funcionário Dois,11122233303,Técnico,Sede',
+      'Filial Errada,11122233205,Operador,Filial Que Não Existe',
+      'Funcionário Dois,11122233396,Técnico,Sede',
     ].join('\n');
 
     const res = await request(app.getHttpServer())
@@ -66,8 +66,8 @@ describe('POST /employees/import (e2e)', () => {
   it('CPF duplicado numa linha não trava as linhas seguintes (prova do SAVEPOINT)', async () => {
     const csv = [
       'nome,cpf,cargo,filial',
-      'Duplicado,11122233301,Operador,Sede', // já existe do teste anterior
-      'Depois Do Duplicado,11122233304,Operador,Sede',
+      'Duplicado,11122233124,Operador,Sede', // já existe do teste anterior
+      'Depois Do Duplicado,11122233477,Operador,Sede',
     ].join('\n');
 
     const res = await request(app.getHttpServer())
@@ -83,7 +83,7 @@ describe('POST /employees/import (e2e)', () => {
   it('não deixa linha em branco no meio do arquivo desalinhar o número de linha reportado', async () => {
     const csv = [
       'nome,cpf,cargo,filial', // linha 1
-      'Funcionário Válido,11122233306,Operador,Sede', // linha 2
+      'Funcionário Válido,11122233639,Operador,Sede', // linha 2
       '', // linha 3 — em branco, não deve contar como linha de dado
       'Funcionário CPF Ruim,abc,Operador,Sede', // linha 4 — posição real no arquivo
     ].join('\n');
@@ -102,7 +102,7 @@ describe('POST /employees/import (e2e)', () => {
   });
 
   it('rejeita cabeçalho inválido', async () => {
-    const csv = 'nome,cpf\nFulano,11122233305';
+    const csv = 'nome,cpf\nFulano,11122233558';
 
     const res = await request(app.getHttpServer())
       .post('/employees/import')

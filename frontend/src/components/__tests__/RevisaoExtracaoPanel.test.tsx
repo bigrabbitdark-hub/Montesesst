@@ -2,6 +2,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { RevisaoExtracaoPanel } from '../RevisaoExtracaoPanel';
 import type { Extraction } from '@/lib/employees-ingestion';
+import { sessionExpired } from '@/lib/auth';
+
+vi.mock('@/lib/auth', async (orig) => ({ ...(await orig<typeof import('@/lib/auth')>()), sessionExpired: vi.fn() }));
 
 const resp = (body: unknown, status = 200) =>
   ({ ok: status < 300, status, headers: new Headers(), json: async () => body }) as Response;
@@ -30,7 +33,11 @@ const resolved = () =>
 const lastBody = (f: ReturnType<typeof vi.fn>) => JSON.parse((f.mock.calls.at(-1)?.[1] as RequestInit).body as string);
 
 describe('RevisaoExtracaoPanel', () => {
-  beforeEach(() => localStorage.setItem('montese_token', 'tok'));
+  beforeEach(() => {
+    localStorage.setItem('montese_token', 'tok');
+    // "Confirmar decisões" sem nada marcado pede confirmação; os testes antigos seguem confirmando.
+    vi.stubGlobal('confirm', vi.fn(() => true));
+  });
   afterEach(() => { vi.unstubAllGlobals(); localStorage.clear(); });
 
   it('é uma região rotulada, foca o título e agrupa por seção', () => {
@@ -504,6 +511,65 @@ describe('RevisaoExtracaoPanel', () => {
     it('aviso de IA não aparece com ai_used=false e ai_attempted=true', () => {
       render(<RevisaoExtracaoPanel extraction={novo({}, { method: 'texto', ai_used: false, ai_attempted: true })} onResolved={() => {}} onCancel={() => {}} />);
       expect(screen.queryByText(/apoio de IA/)).toBeNull();
+    });
+  });
+
+  describe('onda de segurança', () => {
+    it('Confirmar com 0 itens marcados pede confirmação; recusada não envia nada', async () => {
+      const f = vi.fn(async () => resp(resolved()));
+      vi.stubGlobal('fetch', f);
+      const confirmMock = vi.fn().mockReturnValueOnce(false).mockReturnValueOnce(true);
+      vi.stubGlobal('confirm', confirmMock);
+      render(<RevisaoExtracaoPanel extraction={extraction()} onResolved={() => {}} onCancel={() => {}} />);
+      fireEvent.click(screen.getByRole('button', { name: 'Confirmar decisões' }));
+      expect(confirmMock.mock.calls[0][0]).toContain('Nenhum item está marcado');
+      expect(f).not.toHaveBeenCalled();
+      fireEvent.click(screen.getByRole('button', { name: 'Confirmar decisões' }));
+      await waitFor(() => expect(f).toHaveBeenCalledTimes(1));
+    });
+
+    it('com item marcado, Confirmar não pede confirmação', async () => {
+      const f = vi.fn(async () => resp(resolved()));
+      vi.stubGlobal('fetch', f);
+      const confirmMock = vi.fn();
+      vi.stubGlobal('confirm', confirmMock);
+      render(<RevisaoExtracaoPanel extraction={extraction()} onResolved={() => {}} onCancel={() => {}} />);
+      fireEvent.click(screen.getByLabelText(/^Cadastrar Ana Ficticia/));
+      fireEvent.click(screen.getByRole('button', { name: 'Confirmar decisões' }));
+      await waitFor(() => expect(f).toHaveBeenCalledTimes(1));
+      expect(confirmMock).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      [{ message: 'Limite de 10 funcionários do plano atingido. Faça upgrade para adicionar mais.' }, 'Limite de 10 funcionários do plano atingido. Faça upgrade para adicionar mais.'],
+      [{ message: 'Forbidden resource' }, 'Você não tem permissão para resolver esta revisão.'],
+      [{}, 'Você não tem permissão para resolver esta revisão.'],
+    ])('403 mostra o motivo do corpo quando existe (%j)', async (body, texto) => {
+      vi.stubGlobal('fetch', vi.fn(async () => resp(body, 403)));
+      render(<RevisaoExtracaoPanel extraction={extraction()} onResolved={() => {}} onCancel={() => {}} />);
+      fireEvent.click(screen.getByLabelText(/^Cadastrar Ana Ficticia/));
+      fireEvent.click(screen.getByRole('button', { name: 'Confirmar decisões' }));
+      await waitFor(() => expect(screen.getByRole('alert').textContent).toBe(texto));
+    });
+
+    it('401 chama sessionExpired (volta ao login) e não mostra "Unauthorized"', async () => {
+      vi.mocked(sessionExpired).mockClear();
+      vi.stubGlobal('fetch', vi.fn(async () => resp({ message: 'Unauthorized' }, 401)));
+      render(<RevisaoExtracaoPanel extraction={extraction()} onResolved={() => {}} onCancel={() => {}} />);
+      fireEvent.click(screen.getByLabelText(/^Cadastrar Ana Ficticia/));
+      fireEvent.click(screen.getByRole('button', { name: 'Confirmar decisões' }));
+      await waitFor(() => expect(sessionExpired).toHaveBeenCalled());
+      expect(document.body.textContent).not.toContain('Unauthorized');
+    });
+
+    it('botões, checkboxes e rótulos com alvo de 44px e texto de 16px', () => {
+      render(<RevisaoExtracaoPanel extraction={extraction()} onResolved={() => {}} onCancel={() => {}} />);
+      const confirmar = screen.getByRole('button', { name: 'Confirmar decisões' });
+      expect(confirmar.className).toContain('min-h-11');
+      expect(confirmar.className).toContain('text-base');
+      const cb = screen.getByLabelText(/^Cadastrar Ana Ficticia/);
+      expect(cb.className).toContain('h-6 w-6');
+      expect(cb.closest('label')?.className).toContain('min-h-11');
     });
   });
 });

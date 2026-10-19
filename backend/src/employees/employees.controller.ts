@@ -22,7 +22,8 @@ import { ColumnMapping } from './spreadsheet-import.util';
 import { Roles } from '../common/decorators/roles.decorator';
 import { RateLimit } from '../common/rate-limit/rate-limit.decorator';
 import { envInt } from '../common/env';
-import { EmployeesService } from './employees.service';
+import { Employee, EmployeesService } from './employees.service';
+import { maskCpf } from '../epi-ficha/cpf-mask.util';
 import { AuditService } from '../common/audit/audit.service';
 import { normalizeEmployeeInput } from './employee-fields.util';
 import { CreateEmployeeDto } from './dto/create-employee.dto';
@@ -251,18 +252,25 @@ export class EmployeesController {
     if ((req.user.role === 'tecnico' || req.user.role === 'parceiro') && !tenantId) {
       throw new BadRequestException('tenant_id é obrigatório');
     }
-    return req.withTenantContext((client: any) => this.employees.findAll(client, tenantId));
+    return req
+      .withTenantContext((client: any) => this.employees.findAll(client, tenantId))
+      .then((rows: Employee[]) => rows.map((r) => this.cpfForRole(r, req.user.role)));
+  }
+
+  // Técnico e parceiro recebem o CPF mascarado (mesma máscara da ficha de EPI); empresa e admin, o completo.
+  // Nenhuma tela de técnico/parceiro usa o CPF de /employees (conferido no frontend em 2026-10-19).
+  private cpfForRole<T extends { cpf: string }>(row: T, role: string): T {
+    return role === 'empresa' || role === 'admin' ? row : { ...row, cpf: maskCpf(row.cpf) };
   }
 
   // Rotas estáticas ('table', 'bulk') DEVEM vir antes de ':id', senão viram parâmetro.
+  // Tabela oficial (CPF completo e dados pessoais): só empresa e admin; técnico/parceiro recebem 403.
+  @Roles('empresa', 'admin')
   @Get('table')
   findTable(
     @Query() q: { tenant_id?: string; company_unit_id?: string; limit?: string; offset?: string },
     @Req() req: any,
   ) {
-    if ((req.user.role === 'tecnico' || req.user.role === 'parceiro') && !q.tenant_id) {
-      throw new BadRequestException('tenant_id é obrigatório');
-    }
     const toInt = (v: string | undefined, label: string): number | undefined => {
       if (v === undefined || v === '') return undefined;
       if (!/^\d+$/.test(v)) throw new BadRequestException(`${label} inválido`);
@@ -325,7 +333,9 @@ export class EmployeesController {
 
   @Get(':id')
   findOne(@Param('id') id: string, @Req() req: any) {
-    return req.withTenantContext((client: any) => this.employees.findOne(client, id));
+    return req
+      .withTenantContext((client: any) => this.employees.findOne(client, id))
+      .then((row: Employee) => this.cpfForRole(row, req.user.role));
   }
 
   @Roles('empresa', 'admin')

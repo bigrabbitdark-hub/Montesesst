@@ -10,9 +10,11 @@ import {
   type EmployeeTableRow,
 } from '@/lib/employees-table';
 import { FuncionarioHistoricoDrawer } from './FuncionarioHistoricoDrawer';
+import { sessionExpired } from '@/lib/auth';
 
 const PAGE_SIZE = 50;
 const DISCARDED_NOTICE = 'As alterações não confirmadas foram descartadas porque a lista foi atualizada.';
+export const LEAVE_WARNING = 'Você tem alterações não confirmadas na tabela. Sair desta página vai descartá-las. Continuar?';
 
 type Draft = Record<string, Record<string, string>>;
 
@@ -61,6 +63,10 @@ export function FuncionariosTable({
         const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
         const body = await res.json().catch(() => ({}));
         if (seq !== loadSeq.current) return; // resposta de uma consulta já superada (troca de filial, recarga)
+        if (res.status === 401) {
+          sessionExpired();
+          return;
+        }
         if (!res.ok) {
           setError(body?.message || 'Não foi possível carregar a tabela de funcionários.');
           return;
@@ -128,6 +134,35 @@ export function FuncionariosTable({
   const hasChanges = original.some((row) =>
     EDITABLE_COLUMNS.some((c) => isChanged(row, c.key, c.type)),
   );
+
+  // Rascunho não se perde sem aviso: fechar/recarregar a aba (beforeunload) e clicar em link interno
+  // (menu, âncoras) pedem confirmação enquanto houver alterações pendentes. A paginação já fica
+  // bloqueada durante a edição. O listener de clique é de captura, antes do roteador do Next.
+  useEffect(() => {
+    if (!hasChanges) return;
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = '';
+    };
+    const onClick = (e: MouseEvent) => {
+      if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+      const a = (e.target as Element | null)?.closest?.('a[href]') as HTMLAnchorElement | null;
+      if (!a || (a.target && a.target !== '_self') || a.hasAttribute('download')) return;
+      const url = new URL(a.href, window.location.href);
+      if (url.origin !== window.location.origin) return;
+      if (url.pathname === window.location.pathname && url.search === window.location.search && url.hash) return; // âncora na mesma página
+      if (!window.confirm(LEAVE_WARNING)) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    };
+    window.addEventListener('beforeunload', onBeforeUnload);
+    document.addEventListener('click', onClick, true);
+    return () => {
+      window.removeEventListener('beforeunload', onBeforeUnload);
+      document.removeEventListener('click', onClick, true);
+    };
+  }, [hasChanges]);
 
   function startEdit() {
     setSuccess('');
@@ -204,6 +239,10 @@ export function FuncionariosTable({
         body: JSON.stringify({ changes }),
       });
       const body = await res.json().catch(() => ({}));
+      if (res.status === 401) {
+        sessionExpired();
+        return;
+      }
       if (!res.ok) {
         const errors = body?.errors && typeof body.errors === 'object' ? body.errors : null;
         if (errors && Object.keys(errors).length > 0) {
@@ -227,10 +266,11 @@ export function FuncionariosTable({
 
   const from = total === 0 ? 0 : offset + 1;
   const to = Math.min(offset + PAGE_SIZE, total);
+  // Alvos de toque com 44px de altura mínima e texto de 16px (acessibilidade).
   const btn =
-    'rounded-md px-4 py-2 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-dash-primary disabled:cursor-not-allowed disabled:opacity-50';
+    'inline-flex min-h-11 items-center justify-center rounded-md px-4 py-2 text-base font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-dash-primary disabled:cursor-not-allowed disabled:opacity-50';
   const inputCls =
-    'w-full min-w-[8rem] rounded-md border border-dash-border-soft bg-dash-card px-2 py-1.5 text-sm text-dash-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-dash-primary disabled:border-transparent disabled:bg-transparent data-[changed=true]:border-dash-status-warn-text! data-[changed=true]:bg-dash-status-warn-bg';
+    'min-h-11 w-full min-w-[8rem] rounded-md border border-dash-border-soft bg-dash-card px-2 py-1.5 text-base text-dash-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-dash-primary disabled:opacity-60 data-[readonly=true]:border-transparent data-[readonly=true]:bg-transparent data-[changed=true]:border-dash-status-warn-text! data-[changed=true]:bg-dash-status-warn-bg';
 
   return (
     <section className="flex flex-col gap-4" aria-label="Tabela oficial de funcionários">
@@ -308,14 +348,17 @@ export function FuncionariosTable({
                       'aria-invalid': err ? true : undefined,
                       'aria-describedby': err ? `err-${cellKey}` : undefined,
                       'data-changed': changed ? 'true' : undefined,
-                      disabled: !editing || saving,
+                      // Modo leitura: focável pelo teclado (aria-readonly), não desabilitado; só "salvando" desabilita.
+                      'aria-readonly': !editing ? true : undefined,
+                      'data-readonly': !editing ? 'true' : undefined,
+                      disabled: saving,
                       className: inputCls,
                     };
                     return (
                       <td key={c.key} className="flex flex-col gap-1 py-1 md:table-cell md:px-2 md:py-2">
                         <span className="text-xs font-semibold text-dash-muted md:hidden">{c.label}</span>
                         {c.type === 'sex' ? (
-                          <select {...common} value={value} onChange={(e) => setCell(row.id, c.key, e.target.value)}>
+                          <select {...common} value={value} onChange={(e) => editing && setCell(row.id, c.key, e.target.value)}>
                             <option value="">(vazio)</option>
                             <option value="F">F</option>
                             <option value="M">M</option>
@@ -324,6 +367,7 @@ export function FuncionariosTable({
                           <input
                             {...common}
                             type="text"
+                            readOnly={!editing}
                             value={value}
                             inputMode={c.type === 'date' ? 'numeric' : undefined}
                             placeholder={c.type === 'date' ? 'DD/MM/AAAA' : undefined}
@@ -345,7 +389,7 @@ export function FuncionariosTable({
                       type="button"
                       onClick={() => setHistoryFor({ id: row.id, name: row.full_name })}
                       aria-label={`Histórico de ${row.full_name}`}
-                      className="rounded-md border border-dash-border-soft px-2 py-1 text-xs font-semibold text-dash-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-dash-primary"
+                      className="inline-flex min-h-11 items-center rounded-md border border-dash-border-soft px-3 py-1 text-base font-semibold text-dash-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-dash-primary"
                     >
                       Ver histórico
                     </button>

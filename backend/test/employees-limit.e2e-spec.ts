@@ -185,10 +185,10 @@ describe('Limite de funcionário por plano (e2e)', () => {
     // últimas devem ser rejeitadas por limite, não por outro motivo.
     const csv =
       'nome,cpf,cargo,filial\n' +
-      `Linha Um,40000005900,Cargo,${unitName}\n` +
-      `Linha Dois,40000005901,Cargo,${unitName}\n` +
-      `Linha Tres,40000005902,Cargo,${unitName}\n` +
-      `Linha Quatro,40000005903,Cargo,${unitName}\n`;
+      `Linha Um,40000590096,Cargo,${unitName}\n` +
+      `Linha Dois,40000590177,Cargo,${unitName}\n` +
+      `Linha Tres,40000590258,Cargo,${unitName}\n` +
+      `Linha Quatro,40000590339,Cargo,${unitName}\n`;
 
     const res = await request(app.getHttpServer())
       .post('/employees/import')
@@ -222,7 +222,7 @@ describe('Limite de funcionário por plano (e2e)', () => {
       .send({ email: adminUser.email, password: adminUser.password });
     const token = login.body.access_token;
 
-    const csv = 'nome,cpf,cargo,filial\n' + `Via Admin,40000006900,Cargo,${unitName}\n`;
+    const csv = 'nome,cpf,cargo,filial\n' + `Via Admin,40000690040,Cargo,${unitName}\n`;
 
     const res = await request(app.getHttpServer())
       .post(`/employees/import?tenant_id=${tenant.tenantId}`)
@@ -280,8 +280,8 @@ describe('Limite de funcionário por plano (e2e)', () => {
 
     const csv =
       'Documento,Nome Completo,Unidade,Função\n' +
-      `40000008900,Linha Um,${unitName},Cargo\n` +
-      `40000008901,Linha Dois,${unitName},Cargo\n`;
+      `40000890057,Linha Um,${unitName},Cargo\n` +
+      `40000890138,Linha Dois,${unitName},Cargo\n`;
 
     const res = await request(app.getHttpServer())
       .post('/employees/import-mapped')

@@ -54,6 +54,10 @@ const isBlank = (v: unknown): boolean => v === null || (typeof v === 'string' &&
 const UUID_FIELDS: Record<string, string> = { company_unit_id: 'Filial inválida', position_id: 'Cargo inválido' };
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const STATUSES = ['ativo', 'inativo', 'pendente'];
+const SCALAR_FIELDS = new Set([
+  'cpf', 'birth_date', 'admission_date', 'sex', 'cbo_code', 'registration_number',
+  'position', 'department', 'activity_description', 'status',
+]);
 
 export function normalizeEmployeeInput(input: Record<string, unknown>): {
   values: Record<string, unknown>;
@@ -65,6 +69,11 @@ export function normalizeEmployeeInput(input: Record<string, unknown>): {
 
   for (const [field, raw] of Object.entries(input)) {
     if (raw === undefined) continue;
+    // Objeto/array/booleano nunca vira texto ("[object Object]"): só string ou número finito (CBO vindo do Excel).
+    if (SCALAR_FIELDS.has(field) && raw !== null && typeof raw !== 'string' && !(typeof raw === 'number' && Number.isFinite(raw))) {
+      errors[field] = 'Valor inválido';
+      continue;
+    }
     switch (field) {
       case 'full_name':
         if (typeof raw !== 'string' || !raw.trim()) errors[field] = 'Nome é obrigatório';

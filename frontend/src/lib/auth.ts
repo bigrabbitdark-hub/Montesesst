@@ -24,6 +24,13 @@ export function getUser(): SessionUser | null {
   }
 }
 
+// Sessão ausente/expirada (401): limpa a sessão local e volta ao login (mesmo padrão das páginas da empresa).
+export function sessionExpired(): void {
+  localStorage.removeItem('montese_token');
+  localStorage.removeItem('montese_user');
+  window.location.href = '/login';
+}
+
 export function logout(): void {
   localStorage.removeItem('montese_token');
   localStorage.removeItem('montese_user');

@@ -1,6 +1,6 @@
 import { IsIn, IsISO8601, IsOptional, IsString, IsUUID, Matches, MaxLength, MinLength, ValidateIf } from 'class-validator';
 import { DATE_ONLY, NO_NUL } from '../../epi/dto/epi-dto-rules';
-import { BlankToNull, IsCpf, IsRegistrationNumber, OnlyDigits, Trim } from './employee-dto-rules';
+import { BlankToNull, IsCboInput, IsCpf, IsRegistrationNumber, OnlyDigits, Trim } from './employee-dto-rules';
 
 // Edição parcial. Ausência da chave = não altera. `null` só é aceito nos campos anuláveis (limpa o campo, via
 // @IsOptional); full_name, cpf e status são NOT NULL e não aceitam null (sem isso o UPDATE falharia com 500).
@@ -29,7 +29,8 @@ export class UpdateEmployeeDto {
   @BlankToNull() @IsOptional() @IsString() @MaxLength(120) @Matches(NO_NUL) department?: string | null;
 
   // Campos do modelo oficial: formato validado e normalizado por normalizeEmployeeInput.
-  @IsOptional() sex?: string | null;
-  @IsOptional() cbo_code?: string | null;
-  @IsOptional() activity_description?: string | null;
+  // Formato fino (F/M, 6 dígitos) em normalizeEmployeeInput; aqui tipo e tamanho (objeto/array => 400).
+  @IsOptional() @IsString() @MaxLength(20) @Matches(NO_NUL) sex?: string | null;
+  @IsOptional() @IsCboInput() cbo_code?: string | number | null;
+  @IsOptional() @IsString() @MaxLength(2000) @Matches(NO_NUL) activity_description?: string | null;
 }

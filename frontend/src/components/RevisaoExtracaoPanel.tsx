@@ -3,12 +3,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { AI_NOTICE, AI_PARTIAL_NOTICE, FIELD_LABELS, statusMessage, UNEXPECTED_RESPONSE, asList, isTextMethod, reasonLabel, safeText, type Extraction, type ExtractionItem, type FieldConflict, type FieldSuggestion } from '@/lib/employees-ingestion';
 import { formatHistoryValue } from '@/lib/employees-history';
+import { sessionExpired } from '@/lib/auth';
 
 type Decision = { line: number; action: 'aplicar' | 'ignorar'; fields?: string[] };
 
+// Alvos de toque com 44px de altura mínima e texto de 16px; checkbox maior e rótulo com a mesma altura.
 const btn =
-  'rounded-md px-4 py-2 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-dash-primary disabled:cursor-not-allowed disabled:opacity-50';
-const checkCls = 'mt-0.5 h-4 w-4 shrink-0 accent-dash-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-dash-primary';
+  'inline-flex min-h-11 items-center justify-center rounded-md px-4 py-2 text-base font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-dash-primary disabled:cursor-not-allowed disabled:opacity-50';
+const checkCls = 'mt-2.5 h-6 w-6 shrink-0 accent-dash-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-dash-primary';
 
 // Texto vindo do documento: sem caracteres de direção/invisíveis e isolado (bdi) para não embaralhar o entorno.
 const B = ({ v }: { v: unknown }) => <span dir="auto">{safeText(v)}</span>;
@@ -23,7 +25,9 @@ const da = (origem: string) => (origem === 'documento' ? 'do documento' : 'da pl
 
 function errorMessage(status: number, data: unknown, origem: string): string {
   const msg = typeof (data as { message?: unknown })?.message === 'string' ? ((data as { message: string }).message) : '';
-  if (status === 403) return 'Você não tem permissão para resolver esta revisão.';
+  // 403 com motivo próprio (ex.: limite de funcionários do plano) mostra o motivo; o 403 genérico do guard
+  // ("Forbidden resource", em inglês) ou sem corpo cai no texto padrão.
+  if (status === 403) return msg && msg !== 'Forbidden resource' ? msg : 'Você não tem permissão para resolver esta revisão.';
   if (status === 409) {
     const base = msg || 'Esta revisão não pode mais ser resolvida.';
     return /reenvie/i.test(base) ? base : `${base} Reenvie ${origem === 'documento' ? 'o documento' : 'a planilha'}.`;
@@ -93,6 +97,10 @@ export function RevisaoExtracaoPanel({
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ decisions }),
       });
+      if (res.status === 401) {
+        sessionExpired();
+        return;
+      }
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         setError(errorMessage(res.status, data, origem));
@@ -117,6 +125,16 @@ export function RevisaoExtracaoPanel({
   }
 
   function confirmar() {
+    // Nada marcado: confirmar ignoraria tudo. Pede confirmação explícita em vez de seguir em silêncio.
+    if (
+      pendentes.length > 0 &&
+      marcados === 0 &&
+      !window.confirm(
+        `Nenhum item está marcado para aplicar. Confirmar vai ignorar ${plural(pendentes.length, 'item', 'itens')} e nada entrará no cadastro. Continuar?`,
+      )
+    ) {
+      return;
+    }
     send(
       pendentes.map((i): Decision => {
         const c = chosen[i.line];
@@ -200,7 +218,7 @@ export function RevisaoExtracaoPanel({
               <ul className="flex flex-col gap-2">
                 {novos.map((i) => (
                   <li key={i.line} className="rounded-md border border-dash-border-soft p-3">
-                    <label className="flex items-start gap-2 text-sm text-dash-primary">
+                    <label className="flex min-h-11 items-start gap-2 text-base text-dash-primary">
                       <input
                         type="checkbox"
                         aria-label={`Cadastrar ${safeText(i.full_name)}${novoFields(i).length > 0 ? ` com ${plural(novoFields(i).length, 'campo', 'campos')}` : ''}, linha ${i.line}`}
@@ -214,7 +232,7 @@ export function RevisaoExtracaoPanel({
                         <span className="ml-2 text-dash-muted">{i.cpf_masked}</span>
                       </span>
                     </label>
-                    <p className="ml-6 text-xs text-dash-muted">Linha {i.line} {da(origem)}</p>
+                    <p className="ml-8 text-xs text-dash-muted">Linha {i.line} {da(origem)}</p>
                     <NovoFields item={i} />
                     <Evidence item={i} />
                   </li>
@@ -287,7 +305,7 @@ function NovoFields({ item }: { item: ExtractionItem }) {
   const fields = novoFields(item);
   const id = `novo-fields-${item.line}`;
   return (
-    <div className="ml-6 mt-2">
+    <div className="ml-8 mt-2">
       <p id={id} className="text-xs font-semibold text-dash-muted">
         Dados que serão cadastrados
       </p>
@@ -376,7 +394,7 @@ function ConflictItem({
                       onChange={(e) => onToggle(item.line, c.field, e.target.checked)}
                     />
                     <div className="min-w-0 text-sm">
-                      <label htmlFor={`${id}-cb`} className="font-semibold text-dash-primary">
+                      <label htmlFor={`${id}-cb`} className="inline-flex min-h-11 items-center text-base font-semibold text-dash-primary">
                         Usar o valor {da(origem)}
                       </label>
                       <p id={id} className="break-words text-dash-primary">
@@ -409,7 +427,7 @@ function ConflictItem({
                       onChange={(e) => onToggle(item.line, sg.field, e.target.checked)}
                     />
                     <div className="min-w-0 text-sm">
-                      <label htmlFor={`${id}-cb`} className="font-semibold text-dash-primary">
+                      <label htmlFor={`${id}-cb`} className="inline-flex min-h-11 items-center text-base font-semibold text-dash-primary">
                         Preencher campo vazio
                       </label>
                       <p id={id} className="break-words text-dash-primary">

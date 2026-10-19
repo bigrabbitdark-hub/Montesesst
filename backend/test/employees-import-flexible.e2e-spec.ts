@@ -85,7 +85,7 @@ describe('POST /employees/import-preview e /employees/import-mapped (e2e)', () =
   });
 
   it('mapped: importa usando o mapeamento confirmado, CPF formatado é normalizado', async () => {
-    const csv = 'Documento,Nome Completo,Unidade,Função\n123.456.789-01,Maria Souza,' + unitName + ',Técnica\n';
+    const csv = 'Documento,Nome Completo,Unidade,Função\n123.456.789-09,Maria Souza,' + unitName + ',Técnica\n';
 
     const res = await request(app.getHttpServer())
       .post('/employees/import-mapped')
@@ -100,7 +100,7 @@ describe('POST /employees/import-preview e /employees/import-mapped (e2e)', () =
     const listRes = await request(app.getHttpServer())
       .get('/employees')
       .set('Authorization', `Bearer ${token}`);
-    expect(listRes.body.some((e: any) => e.cpf === '12345678901')).toBe(true);
+    expect(listRes.body.some((e: any) => e.cpf === '12345678909')).toBe(true);
   });
 
   it('mapped: linha com CPF inválido vira erro, não derruba as demais', async () => {

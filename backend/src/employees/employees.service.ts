@@ -1,6 +1,6 @@
 import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PoolClient } from 'pg';
-import { normalizeEmployeeInput } from './employee-fields.util';
+import { isValidCpf, normalizeEmployeeInput } from './employee-fields.util';
 import { mapPgError } from '../common/pg-error.util';
 import { buildSafeSetClause } from '../common/safe-update.util';
 import { parseEmployeesCsv, ParsedCsvRow } from './csv-import.util';
@@ -69,7 +69,7 @@ interface CreateEmployeeData {
   registration_number?: string | null;
   department?: string | null;
   sex?: string;
-  cbo_code?: string;
+  cbo_code?: string | number;
   activity_description?: string;
 }
 
@@ -85,7 +85,7 @@ interface UpdateEmployeeData {
   registration_number?: string | null;
   department?: string | null;
   sex?: string | null;
-  cbo_code?: string | null;
+  cbo_code?: string | number | null;
   activity_description?: string | null;
 }
 
@@ -549,8 +549,9 @@ export class EmployeesService {
         erros.push({ linha: row.line, motivo: 'Nome é obrigatório' });
         continue;
       }
-      if (!/^\d{11}$/.test(row.cpf)) {
-        erros.push({ linha: row.line, motivo: 'CPF inválido (precisa ter 11 dígitos)' });
+      // Mesma regra de POST/PATCH: 11 dígitos E dígito verificador válido.
+      if (!/^\d{11}$/.test(row.cpf) || !isValidCpf(row.cpf)) {
+        erros.push({ linha: row.line, motivo: 'CPF inválido (11 dígitos com dígito verificador válido)' });
         continue;
       }
       const unitId = unitsByName.get(row.company_unit_name);

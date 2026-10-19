@@ -132,3 +132,19 @@ describe('normalizeEmployeeInput — matrícula única e setor (merge com a fich
     expect(normalizeEmployeeInput({ esocial_registration: 'M-1' })).toEqual({ values: {}, errors: {} });
   });
 });
+
+describe('normalizeEmployeeInput — tipos (onda de segurança)', () => {
+  it('objeto, array e booleano nunca viram texto', () => {
+    for (const field of ['position', 'department', 'activity_description', 'sex', 'cbo_code', 'registration_number', 'birth_date', 'cpf', 'status']) {
+      for (const raw of [{ a: 1 }, ['x'], true]) {
+        const r = normalizeEmployeeInput({ [field]: raw });
+        expect([field, r.values[field], typeof r.errors[field]]).toEqual([field, undefined, 'string']);
+      }
+    }
+  });
+
+  it('número continua aceito onde faz sentido (CBO do Excel) e null limpa', () => {
+    expect(normalizeEmployeeInput({ cbo_code: 51210 }).values).toEqual({ cbo_code: '051210' });
+    expect(normalizeEmployeeInput({ position: null, sex: null }).values).toEqual({ position: null, sex: null });
+  });
+});
