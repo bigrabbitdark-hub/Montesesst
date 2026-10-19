@@ -9,12 +9,14 @@ import {
   Post,
   Query,
   Req,
+  StreamableFile,
   UsePipes,
   ValidationPipe,
 } from '@nestjs/common';
 import { Roles } from '../common/decorators/roles.decorator';
 import { RateLimit } from '../common/rate-limit/rate-limit.decorator';
 import { envInt } from '../common/env';
+import { buildBlankInspectionPdf } from './inspection-pdf.util';
 import { InspectionsService } from './inspections.service';
 import { CreateInspectionDto } from './dto/create-inspection.dto';
 import { UpdateInspectionDto } from './dto/update-inspection.dto';
@@ -44,6 +46,18 @@ export class InspectionsController {
       throw new BadRequestException('tenant_id é obrigatório');
     }
     return req.withTenantContext((client: any) => this.inspections.findAll(client, tenantId));
+  }
+
+  // Modelo em branco do relatório (PDF) para o técnico levar à visita.
+  // Declarada ANTES de ':id' para não ser capturada como id. Qualquer
+  // usuário autenticado pode baixar: não contém dado de nenhum tenant.
+  @Get('modelo-pdf')
+  async blankTemplate() {
+    const buffer = await buildBlankInspectionPdf();
+    return new StreamableFile(buffer, {
+      type: 'application/pdf',
+      disposition: 'attachment; filename="modelo-relatorio-visita-tecnica.pdf"',
+    });
   }
 
   @Get(':id')

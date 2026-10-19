@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { DocumentsPanel } from '@/components/DocumentsPanel';
 import { EpiResumoCard } from '@/components/epi/EpiResumoCard';
+import { BlankTemplateButton } from '@/components/inspecoes/BlankTemplateButton';
 
 interface InspectionRow {
   id: string;
@@ -212,7 +213,14 @@ export default function TecnicoEmpresaDocumentosPage() {
       </section>
 
       <section className="mt-10 rounded-lg border border-brand-100 p-6">
-        <h2 className="text-lg font-bold text-brand-900">Relatórios de visita técnica</h2>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="text-lg font-bold text-brand-900">Relatórios de visita técnica</h2>
+          <BlankTemplateButton />
+        </div>
+        <p className="mt-1 text-sm text-brand-700">
+          Escolha a filial e inicie a visita para preencher o checklist no sistema. Prefere levar em papel? Baixe o
+          modelo em branco.
+        </p>
         <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-end">
           <label className="flex flex-1 flex-col gap-1 text-sm text-brand-900">
             Filial
@@ -252,7 +260,7 @@ export default function TecnicoEmpresaDocumentosPage() {
             disabled={creating}
             className="rounded-md bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50"
           >
-            {creating ? 'Criando...' : 'Nova inspeção'}
+            {creating ? 'Criando...' : 'Iniciar visita (nova inspeção)'}
           </button>
         </div>
         {error && <p className="mt-2 text-sm text-red-600">{error}</p>}

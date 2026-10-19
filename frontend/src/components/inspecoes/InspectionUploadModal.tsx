@@ -133,20 +133,28 @@ export function InspectionUploadModal({
       >
         <h2 className="text-lg font-bold text-brand-900">Anexar relatório de visita</h2>
         <p className="mt-1 text-sm text-brand-700">
-          Selecione a inspeção a qual o PDF será vinculado. O envio exige escolher uma inspeção existente.
+          Escolha a visita técnica (inspeção) a que este PDF pertence. A visita é registrada pelo técnico; o PDF
+          fica vinculado a ela.
         </p>
+        {inspections.length === 0 && (
+          <p role="status" className="mt-3 rounded-md bg-yellow-50 p-3 text-sm text-yellow-800">
+            Nenhuma visita registrada ainda. Peça ao técnico responsável para registrar a visita no sistema; depois
+            você poderá anexar o relatório aqui.
+          </p>
+        )}
 
         {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
 
         <label className="mt-4 flex flex-col gap-1 text-sm text-brand-900">
-          Inspeção
+          Visita técnica
           <select
             required
+            disabled={inspections.length === 0}
             value={inspectionId}
             onChange={(e) => setInspectionId(e.target.value)}
             className="rounded-md border border-brand-100 px-3 py-2"
           >
-            <option value="">Selecione uma inspeção</option>
+            <option value="">Selecione uma visita</option>
             {inspections.map((insp) => (
               <option key={insp.id} value={insp.id}>
                 {formatDate(insp.visited_at)} — {insp.status === 'concluida' ? 'Concluída' : 'Rascunho'}

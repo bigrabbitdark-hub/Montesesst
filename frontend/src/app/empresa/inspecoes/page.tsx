@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { DashSkin } from '@/components/dashboard/DashSkin';
+import { BlankTemplateButton } from '@/components/inspecoes/BlankTemplateButton';
 import {
   InspectionAttachmentsList,
   type InspectionAnexo,
@@ -268,14 +269,21 @@ function EmpresaInspecoesPageContent() {
     <div className="mx-auto max-w-4xl px-4 py-8 sm:px-8">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-bold text-brand-900">Relatório de visita técnica</h1>
-        <button
-          type="button"
-          onClick={() => setModalOpen(true)}
-          className="rounded-md bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700"
-        >
-          Anexar relatório
-        </button>
+        <div className="flex flex-wrap items-start gap-2">
+          <BlankTemplateButton />
+          <button
+            type="button"
+            onClick={() => setModalOpen(true)}
+            className="rounded-md bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700"
+          >
+            Anexar relatório
+          </button>
+        </div>
       </div>
+      <p className="mt-2 text-sm text-brand-700">
+        O técnico registra a visita no sistema e o relatório em PDF é gerado ao concluir. Se a visita foi feita em
+        papel, baixe o modelo, preencha e anexe o PDF preenchido à visita correspondente.
+      </p>
       {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
 
       <section className="mt-6 rounded-lg border border-brand-100 p-6">

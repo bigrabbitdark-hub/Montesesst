@@ -2,6 +2,7 @@ import { join } from 'path';
 import PDFDocument from 'pdfkit';
 import type PDFKit from 'pdfkit';
 import { InspectionDetail } from './inspections.service';
+import { CHECKLIST_ITEMS } from './checklist-items.const';
 
 interface InspectionPdfContext {
   tenantName: string;
@@ -156,6 +157,76 @@ export function buildInspectionPdf(inspection: InspectionDetail, ctx: Inspection
     doc.fontSize(11);
     doc.text(`Técnico responsável: ${inspection.technician_signature_name ?? 'não assinado'}`);
     doc.text(`Responsável pela empresa: ${inspection.company_signature_name ?? 'não assinado'}`);
+
+    doc.end();
+  });
+}
+
+// Modelo em BRANCO do relatório, para o técnico imprimir e preencher na
+// visita. Usa a mesma fonte de verdade do relatório real (CHECKLIST_ITEMS,
+// BLOCK_LABELS) e a mesma identidade visual, então nunca diverge do que o
+// sistema gera ao concluir a inspeção. Não recebe nenhum dado de tenant.
+export function buildBlankInspectionPdf(): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    const doc = new PDFDocument({ margins: { top: 50, left: 50, right: 50, bottom: 80 } });
+    const chunks: Buffer[] = [];
+    doc.on('data', (chunk) => chunks.push(chunk));
+    doc.on('end', () => resolve(Buffer.concat(chunks)));
+    doc.on('error', reject);
+
+    drawPageChrome(doc);
+    doc.on('pageAdded', () => drawPageChrome(doc));
+
+    const line = (label: string) => doc.fontSize(11).text(`${label}: ______________________________________________`);
+
+    doc.fontSize(18).text('RELATÓRIO DE VISITA TÉCNICA', { align: 'center' });
+    doc.fontSize(12).text('Segurança do Trabalho — modelo para preenchimento', { align: 'center' });
+    doc.moveDown();
+
+    doc.fontSize(13).text('1. Identificação');
+    line('Empresa');
+    line('CNPJ');
+    line('Filial / endereço');
+    line('Data da visita');
+    line('Horário (início / fim)');
+    line('Responsável pela empresa');
+    doc.moveDown();
+
+    doc.fontSize(10).fillColor('#555555').text('Marque C (conforme), NC (não conforme) ou NA (não se aplica).');
+    doc.fillColor('#000000').moveDown(0.5);
+
+    for (const block of ['documentacao', 'epis', 'instalacoes', 'maquinas'] as const) {
+      doc.fontSize(13).text(BLOCK_LABELS[block]);
+      doc.fontSize(11);
+      for (const item of CHECKLIST_ITEMS.filter((i) => i.block === block)) {
+        doc.text(`[  ] C   [  ] NC   [  ] NA    ${item.item_label}`);
+        doc.text('Observação: ________________________________________________', { indent: 20 });
+      }
+      doc.moveDown();
+    }
+
+    doc.fontSize(13).text('Conscientização (DDS)');
+    line('Tema abordado');
+    line('Nº de participantes');
+    line('Pontos reforçados');
+    doc.moveDown();
+
+    doc.fontSize(13).text('Não conformidades identificadas');
+    doc.fontSize(11);
+    for (let i = 1; i <= 3; i++) {
+      doc.text(`${i}. Descrição: ______________________________________________`);
+      doc.text('Prazo: ____ / ____ / ______     Responsável: ______________________', { indent: 20 });
+    }
+    doc.moveDown();
+
+    doc.fontSize(13).text('Recomendações gerais');
+    doc.fontSize(11);
+    for (let i = 0; i < 3; i++) doc.text('_______________________________________________________________');
+    doc.moveDown();
+
+    doc.fontSize(13).text('Assinaturas');
+    line('Técnico responsável');
+    line('Responsável pela empresa');
 
     doc.end();
   });
