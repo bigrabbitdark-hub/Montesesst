@@ -1,6 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { AnexarDocumentoPanel } from '../AnexarDocumentoPanel';
+import { sessionExpired } from '@/lib/auth';
+
+vi.mock('@/lib/auth', async (orig) => ({ ...(await orig<typeof import('@/lib/auth')>()), sessionExpired: vi.fn() }));
 
 const resp = (body: unknown, status = 200) =>
   ({ ok: status < 300, status, headers: new Headers(), json: async () => body }) as Response;
@@ -189,6 +192,19 @@ describe('AnexarDocumentoPanel', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Enviar e analisar' }));
     await waitFor(() => expect(screen.getByRole('alert').textContent).toContain('Não foi possível enviar a planilha'));
     expect(screen.getByRole('alert').textContent).not.toContain('stack');
+    expect(onDone).not.toHaveBeenCalled();
+  });
+
+  it('401 no envio chama sessionExpired (volta ao login) e não mostra "Unauthorized"', async () => {
+    vi.mocked(sessionExpired).mockClear();
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(resp({ message: 'Unauthorized' }, 401)));
+    const onDone = vi.fn();
+    render(<AnexarDocumentoPanel units={units} onDone={onDone} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Anexar documento' }));
+    pick(xlsx());
+    fireEvent.click(screen.getByRole('button', { name: 'Enviar e analisar' }));
+    await waitFor(() => expect(sessionExpired).toHaveBeenCalled());
+    expect(document.body.textContent).not.toContain('Unauthorized');
     expect(onDone).not.toHaveBeenCalled();
   });
 

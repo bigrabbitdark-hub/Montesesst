@@ -1,19 +1,19 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { FuncionariosTable } from '../FuncionariosTable';
+import { FuncionariosTable, LEAVE_WARNING } from '../FuncionariosTable';
 import { sessionExpired } from '@/lib/auth';
 
 vi.mock('@/lib/auth', async (orig) => ({ ...(await orig<typeof import('@/lib/auth')>()), sessionExpired: vi.fn() }));
 
 const COLUNAS = [
   'Qtde', 'Funcionário', 'Matrícula (eSocial)', 'CPF', 'Data de nascimento', 'Sexo',
-  'Função/Cargo', 'Data de admissão', 'CBO', 'Descrição da atividade', 'Histórico',
+  'Função/Cargo', 'Setor', 'Data de admissão', 'CBO', 'Descrição da atividade', 'Histórico',
 ];
 
 function linha(over: Record<string, unknown> = {}) {
   return {
     id: 'e1', sequence: 7, row_version: '3', full_name: 'Ana Teste', registration_number: '00012345678',
-    cpf: '52998224725', birth_date: '1990-02-03', sex: 'F', position: 'Soldadora', admission_date: '2020-01-05',
+    cpf: '52998224725', birth_date: '1990-02-03', sex: 'F', position: 'Soldadora', department: 'Produção', admission_date: '2020-01-05',
     cbo_code: '051210', activity_description: null, company_unit_id: null, status: 'active', ...over,
   };
 }
@@ -108,6 +108,22 @@ describe('FuncionariosTable', () => {
     });
     await waitFor(() => expect(chamadas(fetchMock, 'GET')).toHaveLength(2));
     expect(screen.getByRole('button', { name: 'Editar tabela' })).toBeTruthy();
+  });
+
+  it('coluna Setor: mostra o valor e envia department no lote (vazio limpa)', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(resp({ items: [linha()], total: 1 }))
+      .mockResolvedValueOnce(resp({ updated: 1, items: [linha({ department: null, row_version: '4' })] }))
+      .mockResolvedValueOnce(resp({ items: [linha({ department: null, row_version: '4' })], total: 1 }));
+    await abrir(fetchMock);
+    expect(screen.getByDisplayValue('Produção')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Editar tabela' }));
+    fireEvent.change(screen.getByLabelText('Setor Ana Teste'), { target: { value: '' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar alterações' }));
+    await screen.findByText('Alterações salvas');
+    expect(JSON.parse((chamadas(fetchMock, 'PATCH')[0][1] as RequestInit).body as string)).toEqual({
+      changes: [{ id: 'e1', row_version: '3', fields: { department: '' } }],
+    });
   });
 
   it('converte data DD/MM/AAAA para ISO no envio', async () => {
@@ -377,8 +393,11 @@ describe('FuncionariosTable', () => {
     it('com alterações pendentes, beforeunload é bloqueado; sem alterações, não', async () => {
       await comRascunho();
       const ev = new Event('beforeunload', { cancelable: true });
+      // returnValue como propriedade comum (como em BeforeUnloadEvent): o aviso precisa de texto não vazio.
+      Object.defineProperty(ev, 'returnValue', { value: '', writable: true });
       window.dispatchEvent(ev);
       expect(ev.defaultPrevented).toBe(true);
+      expect((ev as unknown as { returnValue: string }).returnValue).toBe(LEAVE_WARNING);
       fireEvent.click(screen.getByRole('button', { name: 'Cancelar' }));
       const ev2 = new Event('beforeunload', { cancelable: true });
       window.dispatchEvent(ev2);

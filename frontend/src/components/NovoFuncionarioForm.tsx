@@ -1,6 +1,7 @@
 'use client';
 
 import { FormEvent, useRef, useState } from 'react';
+import { sessionExpired } from '@/lib/auth';
 import { brToIso } from '@/lib/employees-table';
 
 export interface UnitOption {
@@ -110,6 +111,10 @@ export function NovoFuncionarioForm({
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify(payload),
       });
+      if (res.status === 401) {
+        sessionExpired();
+        return;
+      }
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         const msg = Array.isArray(data?.message) ? data.message.join('; ') : data?.message;

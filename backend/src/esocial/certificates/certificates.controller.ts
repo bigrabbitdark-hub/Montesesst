@@ -14,7 +14,8 @@ import {
   ValidationPipe,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { CertificatesService } from './certificates.service';
+import { CertificatesService, CertificateSummary } from './certificates.service';
+import { maskCpfDeep } from '../../common/pii/mask-cpf-deep.util';
 import { UploadCertificateDto } from './dto/upload-certificate.dto';
 import { Roles } from '../../common/decorators/roles.decorator';
 
@@ -23,6 +24,16 @@ import { Roles } from '../../common/decorators/roles.decorator';
 // Validação real do conteúdo (.pfx/.p12 válido, senha correta, não expirado) acontece
 // dentro do CertificatesService.upload via parsePkcs12 — defesa em profundidade.
 const MAX_PFX_BYTES = 10 * 1024 * 1024;
+
+const isFullView = (role: string) => role === 'empresa' || role === 'admin';
+
+// Técnico (e qualquer papel que não seja empresa/admin): sem subjectDocument (CPF/CNPJ do titular do e-CPF) e com
+// CPF mascarado no subjectCn (o CN do e-CPF costuma ser "NOME:CPF"). Nenhuma tela de técnico usa esses campos;
+// a tela da empresa (EsocialPanel) usa subjectCn e continua recebendo o valor completo.
+function limitedCertificateView(c: CertificateSummary): Omit<CertificateSummary, 'subjectDocument'> {
+  const { subjectDocument: _omit, ...rest } = c;
+  return { ...rest, subjectCn: maskCpfDeep(rest.subjectCn) };
+}
 
 @Controller('esocial/certificates')
 export class CertificatesController {
@@ -48,7 +59,9 @@ export class CertificatesController {
   @Get()
   @Roles('empresa', 'tecnico', 'admin')
   list(@Req() req: any) {
-    return req.withTenantContext((client: any) => this.certificates.list(client));
+    return req
+      .withTenantContext((client: any) => this.certificates.list(client))
+      .then((rows: CertificateSummary[]) => (isFullView(req.user.role) ? rows : rows.map(limitedCertificateView)));
   }
 
   @Delete(':id')

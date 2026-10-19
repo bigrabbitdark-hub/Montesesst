@@ -36,6 +36,20 @@ import { sanitizeTitle } from './employee-text-sanitize';
 import { DOCX_MIME_TYPE } from '../common/docx/docx-text.util';
 
 const XLSX_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+// Projeção de funcionário para técnico/parceiro (GET /employees e GET /employees/:id).
+export interface PartnerEmployeeView {
+  id: string;
+  tenant_id: string;
+  full_name: string;
+  cpf: string;
+  registration_number: string | null;
+  department: string | null;
+  position: string | null;
+  position_id: string | null;
+  company_unit_id: string | null;
+  status: string;
+}
+
 const EMPLOYEE_ID_PIPE = new ParseUUIDPipe({ exceptionFactory: () => new BadRequestException('Identificador de funcionário inválido') });
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -257,10 +271,24 @@ export class EmployeesController {
       .then((rows: Employee[]) => rows.map((r) => this.cpfForRole(r, req.user.role)));
   }
 
-  // Técnico e parceiro recebem o CPF mascarado (mesma máscara da ficha de EPI); empresa e admin, o completo.
-  // Nenhuma tela de técnico/parceiro usa o CPF de /employees (conferido no frontend em 2026-10-19).
-  private cpfForRole<T extends { cpf: string }>(row: T, role: string): T {
-    return role === 'empresa' || role === 'admin' ? row : { ...row, cpf: maskCpf(row.cpf) };
+  // Empresa e admin recebem o registro completo. Técnico e parceiro recebem só a projeção abaixo, com o CPF
+  // mascarado (mesma máscara da ficha de EPI): sem data de nascimento, sexo, CBO, atividade, admissão e campos do
+  // eSocial. Conferido no frontend (2026-10-19): o único consumidor de técnico/parceiro é lib/epi/api.ts
+  // (id, full_name, registration_number, department, position, status); os demais são telas da empresa.
+  private cpfForRole(row: Employee, role: string): Employee | PartnerEmployeeView {
+    if (role === 'empresa' || role === 'admin') return row;
+    return {
+      id: row.id,
+      tenant_id: row.tenant_id,
+      full_name: row.full_name,
+      cpf: maskCpf(row.cpf),
+      registration_number: row.registration_number ?? null,
+      department: row.department ?? null,
+      position: row.position ?? null,
+      position_id: (row as Employee & { position_id?: string | null }).position_id ?? null,
+      company_unit_id: row.company_unit_id ?? null,
+      status: row.status,
+    };
   }
 
   // Rotas estáticas ('table', 'bulk') DEVEM vir antes de ':id', senão viram parâmetro.
