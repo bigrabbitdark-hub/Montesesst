@@ -51,7 +51,7 @@ describe('extractLocalPeople', () => {
     expect(p.cpf).toBe('52998224725');
     expect(p.values).toEqual({
       full_name: 'ANA FICTICIA', birth_date: '03/02/1990', sex: 'F', position: 'SOLDADORA',
-      admission_date: '05/01/2020', cbo_code: '724315', esocial_registration: '00012345678',
+      admission_date: '05/01/2020', cbo_code: '724315', registration_number: '00012345678',
     });
     expect(p.evidence.length).toBeLessThanOrEqual(200);
     expect(p.evidence).toContain('***.***.***-25');

@@ -10,6 +10,7 @@ import { AppModule } from '../src/app.module';
 import { EmployeeIngestionService } from '../src/employees/employee-ingestion.service';
 import { R2Service } from '../src/common/r2/r2.service';
 import { TestDb } from './db-test-helper';
+import { randomValidCnpj } from './helpers/cnpj';
 
 // Contador próprio da rota de upload (RateLimitGuard): esta suíte faz dezenas de uploads do mesmo IP de loopback;
 // zera entre os testes para não receber 429 (mesmo padrão de pente-fino-run.e2e-spec.ts).
@@ -246,7 +247,7 @@ describe('Funcionários: ingestão por documento (e2e)', () => {
     const res = await request(app.getHttpServer())
       .post('/company-units')
       .set(auth(token))
-      .send({ name, address_street: 'Rua T', address_city: 'Criciúma', address_state: 'SC', address_zip: '88801000' });
+      .send({ name, cnpj: randomValidCnpj(), address_street: 'Rua T', address_city: 'Criciúma', address_state: 'SC', address_zip: '88801000' });
     expect(res.status).toBe(201);
     return res.body.id;
   };
@@ -324,7 +325,7 @@ describe('Funcionários: ingestão por documento (e2e)', () => {
   });
 
   it('colisão de matrícula na auto-aplicação vira invalida sem derrubar as outras linhas', async () => {
-    await createEmp(tokenA, { full_name: 'ELISA FICTICIA', cpf: C5, esocial_registration: 'MAT-ING-1', company_unit_id: unitA });
+    await createEmp(tokenA, { full_name: 'ELISA FICTICIA', cpf: C5, registration_number: 'MAT-ING-1', company_unit_id: unitA });
     const a = await createEmp(tokenA, { full_name: 'FABIO FICTICIO', cpf: '98765432100', company_unit_id: unitA });
     const g = await createEmp(tokenA, { full_name: 'GISELE FICTICIA', cpf: '71428793860', company_unit_id: unitA });
     const res = await send(
@@ -339,7 +340,7 @@ describe('Funcionários: ingestão por documento (e2e)', () => {
     expect(res.body.summary).toMatchObject({ applied: 1, invalida: 1 });
     const inv = res.body.items.find((i: any) => i.kind === 'invalida');
     expect(inv.reason).toBe('Matrícula eSocial já cadastrada nesta empresa');
-    expect((await sql('SELECT esocial_registration FROM employees WHERE id = $1', [a.id])).rows[0].esocial_registration).toBeNull();
+    expect((await sql('SELECT registration_number FROM employees WHERE id = $1', [a.id])).rows[0].registration_number).toBeNull();
     expect((await sql('SELECT sex FROM employees WHERE id = $1', [g.id])).rows[0].sex).toBe('F');
   });
 
@@ -546,10 +547,10 @@ describe('Funcionários: ingestão por documento (e2e)', () => {
     expect(res.body.items).toEqual([]);
     expect(res.body.resolved_at).not.toBeNull();
     expect(await empCount(tenantAId)).toBe(before + 1);
-    const e = (await sql(`SELECT id, company_unit_id, sex, position, esocial_registration, to_char(birth_date, 'YYYY-MM-DD') AS birth_date,
+    const e = (await sql(`SELECT id, company_unit_id, sex, position, registration_number, to_char(birth_date, 'YYYY-MM-DD') AS birth_date,
         to_char(admission_date, 'YYYY-MM-DD') AS admission_date, cbo_code, activity_description FROM employees WHERE tenant_id = $1 AND cpf = $2`, [tenantAId, CPF_A])).rows[0];
     expect(e).toMatchObject({
-      company_unit_id: unitA, sex: 'F', position: 'ANALISTA', esocial_registration: 'MAT-RES-1',
+      company_unit_id: unitA, sex: 'F', position: 'ANALISTA', registration_number: 'MAT-RES-1',
       birth_date: '1990-05-17', admission_date: '2020-03-02', cbo_code: '212405', activity_description: 'ANALISE FICTICIA',
     });
     expect((await sql('SELECT count(*) AS n FROM employees WHERE tenant_id = $1 AND cpf = $2', [tenantAId, CPF_B])).rows[0].n).toBe('0');

@@ -159,7 +159,7 @@ describe('verifyAiPeople', () => {
 
   it('aceita campos literais no evidence; CPF vem do refs', () => {
     const r = verifyAiPeople(batch(), [
-      { ...base, full_name: 'Ana Ficticia', position: 'eletricista', admission_date: '2020-01-05', birth_date: '03/02/1990', sex: 'Feminino', cpf: '99999999999', esocial_registration: '123' } as any,
+      { ...base, full_name: 'Ana Ficticia', position: 'eletricista', admission_date: '2020-01-05', birth_date: '03/02/1990', sex: 'Feminino', cpf: '99999999999', registration_number: '123' } as any,
     ]);
     expect(r).toHaveLength(1);
     expect(r[0].cpf).toBe(A);

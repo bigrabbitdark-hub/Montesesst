@@ -1,7 +1,7 @@
 import { Transform } from 'class-transformer';
 import { IsEmail, IsString, MaxLength, MinLength } from 'class-validator';
 import { IsValidCnpj } from '../../common/validators/is-valid-cnpj.decorator';
-import { onlyDigits } from '../../common/validators/cnpj.util';
+import { normalizeCnpj } from '../../common/validators/cnpj.util';
 
 export class RegisterDto {
   @IsString()
@@ -9,9 +9,9 @@ export class RegisterDto {
   @MaxLength(200)
   company_name: string;
 
-  // Aceita CNPJ com ou sem máscara — normaliza pra só dígitos antes de
+  // Aceita CNPJ numérico ou alfanumérico, com ou sem máscara: normaliza (sem pontuação, maiúsculas) antes de
   // validar o dígito verificador e antes de gravar (coluna VARCHAR(14)).
-  @Transform(({ value }) => (typeof value === 'string' ? onlyDigits(value) : value))
+  @Transform(({ value }) => (typeof value === 'string' ? normalizeCnpj(value) : value))
   @IsValidCnpj()
   cnpj: string;
 

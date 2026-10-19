@@ -109,4 +109,24 @@ describe('GET /positions/:id (divergência) e integração com o dashboard (e2e)
     expect(cargoItems.every((i: any) => i.prioridade === 'alta' && i.link === '/empresa/mapa-sst')).toBe(true);
     expect(res.body.status).toBe('critico');
   });
+  it('entrega estornada deixa de contar: o requisito volta a aparecer como divergência de EPI', async () => {
+    const c = (db as any).client;
+    const before = await c.query('SELECT id, signature_status FROM employee_epi_deliveries WHERE employee_id = $1', [employeeId]);
+    expect(before.rows).toHaveLength(1);
+    await c.query(`UPDATE employee_epi_deliveries SET signature_status = 'estornada' WHERE id = $1`, [before.rows[0].id]);
+    try {
+      const res = await request(app.getHttpServer())
+        .get(`/positions/${positionId}`)
+        .set('Authorization', `Bearer ${token}`);
+      expect(res.status).toBe(200);
+      const epiDivs = res.body.employees[0].divergences.filter((d: any) => d.categoria === 'epi');
+      expect(epiDivs).toHaveLength(2);
+      expect(epiDivs.some((d: any) => d.empresa_tem_no_catalogo === true)).toBe(true);
+    } finally {
+      await c.query('UPDATE employee_epi_deliveries SET signature_status = $2 WHERE id = $1', [
+        before.rows[0].id,
+        before.rows[0].signature_status,
+      ]);
+    }
+  });
 });

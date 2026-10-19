@@ -5,7 +5,7 @@ const U1 = '3f2504e0-4f89-41d3-9a0c-0305e82c3301';
 const U2 = '3f2504e0-4f89-41d3-9a0c-0305e82c3302';
 
 const emp = (over: Partial<ExistingEmployee> = {}): ExistingEmployee => ({
-  id: 'e1', cpf: '52998224725', company_unit_id: U1, full_name: 'ANA FICTICIA', esocial_registration: null,
+  id: 'e1', cpf: '52998224725', company_unit_id: U1, full_name: 'ANA FICTICIA', registration_number: null,
   birth_date: null, sex: null, position: null, admission_date: null, cbo_code: null, activity_description: null, ...over,
 });
 const row = (line: number, values: SheetRow['values']): SheetRow => ({ line, values });

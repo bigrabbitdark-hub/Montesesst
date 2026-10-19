@@ -1,5 +1,7 @@
 # Tabela oficial de funcionários — Fatia 3 (ingestão determinística da planilha modelo + revisão)
 
+> **Atualização 2026-10-19 (merge com feat/epi-estoque):** a coluna `esocial_registration` deste plano foi removida; a matrícula única é `employees.registration_number` (0069). Os trechos abaixo já usam o nome novo; a 0080 não cria coluna de matrícula, só CHECK de formato e índice único condicionais (ver o cabeçalho da migration).
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Permitir anexar a planilha modelo "Cadastro de Funcionários" (.xlsx) no setor Funcionários: o sistema lê a planilha sem IA, identifica cada pessoa **só por CPF dentro do tenant**, preenche automaticamente apenas campos vazios de funcionário já cadastrado, e manda **novos funcionários e conflitos para revisão manual**, com histórico (origens `documento` e `revisao`) e sem nunca criar, apagar, unir ou transferir de filial por conta própria.
@@ -50,7 +52,7 @@
 
 **Interfaces — Produces:**
 ```ts
-export const SHEET_FIELDS = ['full_name','esocial_registration','cpf','birth_date','sex','position','admission_date','cbo_code','activity_description'] as const;
+export const SHEET_FIELDS = ['full_name','registration_number','cpf','birth_date','sex','position','admission_date','cbo_code','activity_description'] as const;
 export type SheetField = (typeof SHEET_FIELDS)[number];
 export interface SheetRow { line: number; values: Partial<Record<SheetField, string>> } // line = número da linha na planilha (1-based); valores já como texto, vazios omitidos
 export interface SheetParseResult { rows: SheetRow[]; ignored: number; formatError?: string }
@@ -96,7 +98,7 @@ describe('parseEmployeeSheet', () => {
     expect(res.rows[0]).toEqual({
       line: 10,
       values: {
-        full_name: 'ANA FICTICIA', esocial_registration: '00012345678', cpf: '529.982.247-25',
+        full_name: 'ANA FICTICIA', registration_number: '00012345678', cpf: '529.982.247-25',
         birth_date: '1990-02-03', sex: 'F', position: 'SOLDADORA', admission_date: '2020-01-05',
         cbo_code: '623115', activity_description: 'Solda',
       },
@@ -149,7 +151,7 @@ describe('parseEmployeeSheet', () => {
     const buf = await build((ws) => modelSheet(ws, [[1, 'EDU FICTICIO', 32000006, 52998224725, '', '', '', '', '', '']]));
     const res = await parseEmployeeSheet(buf);
     expect(res.rows[0].values.cpf).toBe('52998224725');
-    expect(res.rows[0].values.esocial_registration).toBe('32000006');
+    expect(res.rows[0].values.registration_number).toBe('32000006');
   });
 
   it('sem cabeçalho reconhecível devolve formatError em português; arquivo corrompido também', async () => {
@@ -176,7 +178,7 @@ import ExcelJS from 'exceljs';
 import { verifyFileContent } from '../common/files/file-content.util';
 
 export const SHEET_FIELDS = [
-  'full_name', 'esocial_registration', 'cpf', 'birth_date', 'sex', 'position', 'admission_date', 'cbo_code', 'activity_description',
+  'full_name', 'registration_number', 'cpf', 'birth_date', 'sex', 'position', 'admission_date', 'cbo_code', 'activity_description',
 ] as const;
 export type SheetField = (typeof SHEET_FIELDS)[number];
 export interface SheetRow { line: number; values: Partial<Record<SheetField, string>> }
@@ -190,7 +192,7 @@ const UNREADABLE = 'Não foi possível ler o arquivo .xlsx — verifique se não
 
 const SYNONYMS: Record<SheetField, string[]> = {
   full_name: ['funcionario', 'nome', 'nome completo', 'colaborador', 'nome do funcionario'],
-  esocial_registration: ['matricula esocial', 'matricula e-social', 'matricula'],
+  registration_number: ['matricula esocial', 'matricula e-social', 'matricula'],
   cpf: ['cpf', 'cpf/mf'],
   birth_date: ['data de nascimento', 'data nascimento', 'nascimento'],
   sex: ['sexo f/m', 'sexo', 'sexo (f/m)'],
@@ -294,8 +296,8 @@ export async function parseEmployeeSheet(buffer: Buffer): Promise<SheetParseResu
 
 **Interfaces — Consumes:** `SheetRow` (Task 1); `normalizeEmployeeInput`, `onlyDigits` (`employee-fields.util.ts`, Fatia 1). **Produces:**
 ```ts
-export const COMPARABLE_FIELDS = ['full_name','esocial_registration','birth_date','sex','position','admission_date','cbo_code','activity_description'] as const;
-export interface ExistingEmployee { id: string; cpf: string; company_unit_id: string | null; full_name: string; esocial_registration: string | null; birth_date: string | null; sex: string | null; position: string | null; admission_date: string | null; cbo_code: string | null; activity_description: string | null }
+export const COMPARABLE_FIELDS = ['full_name','registration_number','birth_date','sex','position','admission_date','cbo_code','activity_description'] as const;
+export interface ExistingEmployee { id: string; cpf: string; company_unit_id: string | null; full_name: string; registration_number: string | null; birth_date: string | null; sex: string | null; position: string | null; admission_date: string | null; cbo_code: string | null; activity_description: string | null }
 export interface FieldConflict { field: string; current: string; proposed: string }
 export type Candidate =
   | { line: number; kind: 'novo'; values: Record<string, string> }                       // values inclui cpf e, se houver, company_unit_id
@@ -315,7 +317,7 @@ const U1 = '3f2504e0-4f89-41d3-9a0c-0305e82c3301';
 const U2 = '3f2504e0-4f89-41d3-9a0c-0305e82c3302';
 
 const emp = (over: Partial<ExistingEmployee> = {}): ExistingEmployee => ({
-  id: 'e1', cpf: '52998224725', company_unit_id: U1, full_name: 'ANA FICTICIA', esocial_registration: null,
+  id: 'e1', cpf: '52998224725', company_unit_id: U1, full_name: 'ANA FICTICIA', registration_number: null,
   birth_date: null, sex: null, position: null, admission_date: null, cbo_code: null, activity_description: null, ...over,
 });
 const row = (line: number, values: SheetRow['values']): SheetRow => ({ line, values });
@@ -406,13 +408,13 @@ import { normalizeEmployeeInput, onlyDigits } from './employee-fields.util';
 import { SheetRow } from './employee-sheet.parser';
 
 export const COMPARABLE_FIELDS = [
-  'full_name', 'esocial_registration', 'birth_date', 'sex', 'position', 'admission_date', 'cbo_code', 'activity_description',
+  'full_name', 'registration_number', 'birth_date', 'sex', 'position', 'admission_date', 'cbo_code', 'activity_description',
 ] as const;
 const TEXT_FIELDS = new Set(['full_name', 'position', 'activity_description']);
 
 export interface ExistingEmployee {
   id: string; cpf: string; company_unit_id: string | null; full_name: string;
-  esocial_registration: string | null; birth_date: string | null; sex: string | null; position: string | null;
+  registration_number: string | null; birth_date: string | null; sex: string | null; position: string | null;
   admission_date: string | null; cbo_code: string | null; activity_description: string | null;
 }
 export interface FieldConflict { field: string; current: string; proposed: string }
@@ -618,14 +620,14 @@ Rotas (`@Roles('empresa','admin')`): `POST /employees/documents` (multipart `fil
   3. **idempotência e igualdade:** reenviar a mesma planilha → nada muda (`unchanged`), nenhuma linha nova de histórico para os campos já iguais.
   4. **outra filial:** funcionário da filial A, planilha enviada com `company_unit_id` da filial B → item `conflito` com `reason='outra_filial'`, `company_unit_id` do funcionário inalterado.
   5. **inválidas sem PII persistida:** linha com CPF inválido e nome fictício `NOME SECRETO FICTICIO` → `invalida`; `SELECT candidates::text FROM employee_document_extractions` não contém `SECRETO` nem o CPF.
-  6. **colisão de matrícula na auto-aplicação:** planilha preenche `esocial_registration` de A com a matrícula já usada por B → linha de A vira `invalida` e a de outro funcionário na mesma planilha é aplicada normalmente.
+  6. **colisão de matrícula na auto-aplicação:** planilha preenche `registration_number` de A com a matrícula já usada por B → linha de A vira `invalida` e a de outro funcionário na mesma planilha é aplicada normalmente.
   7. **formato e permissões:** PDF (mimetype `application/pdf`) → 400 com mensagem sobre enviar `.xlsx`; bytes aleatórios com mimetype xlsx → 400; técnico → 403; sem arquivo → 400; `GET /employees/extractions/:id` do tenant B para extração do A → 404; `GET /employees/extractions?status=requer_revisao` lista só as do próprio tenant; planilha sem cabeçalho → `status='ilegivel'` (201) com `summary` zerado.
 - [ ] **Step 2: Run** → FAIL (rotas inexistentes).
 - [ ] **Step 3: Implementar o serviço** — `employee-ingestion.service.ts`. Pontos obrigatórios (escrever o código completo seguindo o padrão do `EmployeesService`):
   - `hash = sha256(buffer).hex` (`crypto.createHash`).
   - `SELECT * FROM employee_document_extractions WHERE tenant_id=$1 AND document_id=$2 AND content_hash=$3` → se existir, devolve `toPublic(row)` sem reprocessar. Senão `INSERT ... status='processando'`.
   - `parseEmployeeSheet(buffer)`: `formatError` → `status='ilegivel'`, `summary` zerado, retorna; `rows.length===0` → `'sem_dados'`.
-  - Carrega existentes: `SELECT id, cpf, company_unit_id, full_name, esocial_registration, sex, position, cbo_code, activity_description, to_char(birth_date,'YYYY-MM-DD') AS birth_date, to_char(admission_date,'YYYY-MM-DD') AS admission_date FROM employees WHERE tenant_id=$1 AND cpf = ANY($2)` (CPFs já normalizados — normalizar as linhas antes de montar a lista, reutilizando a lógica do classificador; exportar um helper `normalizedCpfs(rows)` do classificador se necessário). Monta `Map` por CPF.
+  - Carrega existentes: `SELECT id, cpf, company_unit_id, full_name, registration_number, sex, position, cbo_code, activity_description, to_char(birth_date,'YYYY-MM-DD') AS birth_date, to_char(admission_date,'YYYY-MM-DD') AS admission_date FROM employees WHERE tenant_id=$1 AND cpf = ANY($2)` (CPFs já normalizados — normalizar as linhas antes de montar a lista, reutilizando a lógica do classificador; exportar um helper `normalizedCpfs(rows)` do classificador se necessário). Monta `Map` por CPF.
   - `await client.query("SELECT set_config('app.change_source','documento',true)")`, depois `classifyRows(rows, map, companyUnitId)`.
   - Para cada `autoApply`: `SAVEPOINT ing_row` → `this.employees.update(client, employee_id, values, actorRole)` → `RELEASE`. Em `HttpException` (ex.: 409 de matrícula) → `ROLLBACK TO SAVEPOINT` e acrescentar `{ line, kind:'invalida', reason: <mensagem do erro> }` aos candidatos (a linha inteira não é aplicada; mensagem sem dados pessoais). Contar `applied` só os bem-sucedidos.
   - `candidates` persistidos: `novo` e `conflito` com seus valores; `invalida` só `{line, kind, reason}`. `summary = { applied, unchanged, novo, conflito, invalida, ignored_rows: parsed.ignored }`.

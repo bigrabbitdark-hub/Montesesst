@@ -4,7 +4,7 @@ import { FIELD_LABELS, formatChangedAt, formatHistoryValue, roleLabel, sourceLab
 describe('employees-history', () => {
   it('rótulos dos 11 campos rastreados', () => {
     expect(FIELD_LABELS.cbo_code).toBe('CBO');
-    expect(FIELD_LABELS.esocial_registration).toBe('Matrícula eSocial');
+    expect(FIELD_LABELS.registration_number).toBe('Matrícula (eSocial)');
     expect(Object.keys(FIELD_LABELS)).toHaveLength(11);
   });
   it('formata valores', () => {

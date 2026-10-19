@@ -1,40 +1,28 @@
-import { IsDefined, IsOptional } from 'class-validator';
+import { IsISO8601, IsOptional, IsString, IsUUID, Matches, MaxLength, MinLength } from 'class-validator';
+import { DATE_ONLY, NO_NUL } from '../../epi/dto/epi-dto-rules';
+import { BlankToNull, IsCpf, IsRegistrationNumber, OnlyDigits, Trim } from './employee-dto-rules';
 
-// Os decorators existem para o ValidationPipe global (whitelist + forbidNonWhitelisted)
-// reconhecer as propriedades; sem eles TODO campo era rejeitado ("property X should not exist").
-// Tipo e formato de cada valor são validados por normalizeEmployeeInput (employee-fields.util.ts).
+// Validadores reais de class-validator (o ValidationPipe global usa whitelist + forbidNonWhitelisted:
+// propriedade sem decorator é rejeitada). O serviço revalida e normaliza tudo com normalizeEmployeeInput
+// (employee-fields.util.ts) e o banco tem CHECKs: defesa em profundidade, sempre 400 e nunca 500.
 export class CreateEmployeeDto {
-  @IsDefined()
-  full_name: string;
-
-  @IsDefined()
-  cpf: string;
-
-  @IsOptional()
-  birth_date?: string;
-
-  @IsOptional()
-  position?: string;
-
-  @IsOptional()
-  admission_date?: string;
-
-  @IsOptional()
-  company_unit_id?: string;
-
+  @Trim() @IsString() @MinLength(1) @MaxLength(200) @Matches(NO_NUL) full_name: string;
+  // Aceita com máscara; grava só dígitos. Exige dígito verificador válido.
+  @OnlyDigits() @IsString() @IsCpf() cpf: string;
+  @IsOptional() @IsString() @Matches(DATE_ONLY) @IsISO8601({ strict: true }) birth_date?: string;
+  @IsOptional() @IsString() @MaxLength(120) @Matches(NO_NUL) position?: string;
+  @IsOptional() @IsString() @Matches(DATE_ONLY) @IsISO8601({ strict: true }) admission_date?: string;
+  @BlankToNull() @IsOptional() @IsUUID() company_unit_id?: string;
+  // Matrícula (eSocial e ficha de EPI): vazio vira null.
+  @BlankToNull() @IsOptional() @IsString() @MaxLength(30) @IsRegistrationNumber() registration_number?: string;
+  // Setor (ficha de EPI): vazio vira null.
+  @BlankToNull() @IsOptional() @IsString() @MaxLength(120) @Matches(NO_NUL) department?: string;
   // Só é lido quando quem cria é role admin (empresa usa sempre o próprio tenant_id do token).
-  @IsOptional()
-  tenant_id?: string;
+  @IsOptional() @IsUUID() tenant_id?: string;
 
-  @IsOptional()
-  esocial_registration?: string;
-
-  @IsOptional()
-  sex?: string;
-
-  @IsOptional()
-  cbo_code?: string;
-
-  @IsOptional()
-  activity_description?: string;
+  // Campos do modelo oficial: formato validado e normalizado por normalizeEmployeeInput
+  // (sexo 'f'/'m' vira 'F'/'M'; CBO aceita número e recupera o zero à esquerda).
+  @IsOptional() sex?: string;
+  @IsOptional() cbo_code?: string;
+  @IsOptional() activity_description?: string;
 }

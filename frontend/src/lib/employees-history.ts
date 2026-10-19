@@ -15,7 +15,7 @@ export const FIELD_LABELS: Record<string, string> = {
   sex: 'Sexo',
   position: 'Função/Cargo',
   admission_date: 'Data de admissão',
-  esocial_registration: 'Matrícula eSocial',
+  registration_number: 'Matrícula (eSocial)',
   cbo_code: 'CBO',
   activity_description: 'Descrição da atividade',
   company_unit_id: 'Filial',

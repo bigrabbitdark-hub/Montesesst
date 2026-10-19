@@ -3,7 +3,7 @@ export interface EmployeeTableRow {
   sequence: number;
   row_version: string;
   full_name: string;
-  esocial_registration: string | null;
+  registration_number: string | null;
   cpf: string;
   birth_date: string | null;
   sex: 'F' | 'M' | null;
@@ -21,7 +21,7 @@ export const EDITABLE_COLUMNS: {
   type: 'text' | 'date' | 'sex' | 'cbo';
 }[] = [
   { key: 'full_name', label: 'Funcionário', type: 'text' },
-  { key: 'esocial_registration', label: 'Matrícula eSocial', type: 'text' },
+  { key: 'registration_number', label: 'Matrícula (eSocial)', type: 'text' },
   { key: 'cpf', label: 'CPF', type: 'text' },
   { key: 'birth_date', label: 'Data de nascimento', type: 'date' },
   { key: 'sex', label: 'Sexo', type: 'sex' },

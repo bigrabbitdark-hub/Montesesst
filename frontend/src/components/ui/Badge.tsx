@@ -9,9 +9,10 @@ const TONE_CLASSES: Record<Tone, string> = {
   epi: 'bg-violet-100 text-dash-status-epi-text',
 };
 
-export function Badge({ tone, children }: { tone: Tone; children: React.ReactNode }) {
+// `large`: texto de 16px (módulo de EPI, onde o selo é a informação principal da linha).
+export function Badge({ tone, large = false, children }: { tone: Tone; large?: boolean; children: React.ReactNode }) {
   return (
-    <span className={`inline-flex items-center rounded-[5px] px-2 py-0.5 text-[11px] font-semibold ${TONE_CLASSES[tone]}`}>
+    <span className={`inline-flex items-center rounded-[5px] px-2 py-0.5 ${large ? 'text-base' : 'text-[11px]'} font-semibold ${TONE_CLASSES[tone]}`}>
       {children}
     </span>
   );

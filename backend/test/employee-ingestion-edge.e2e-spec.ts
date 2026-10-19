@@ -8,6 +8,7 @@ import { configureApp } from '../src/app-setup';
 import { R2Service } from '../src/common/r2/r2.service';
 import { EMPLOYEE_EXTRACTION_PROVIDER } from '../src/employees/employee-extraction-provider.interface';
 import { TestDb } from './db-test-helper';
+import { randomValidCnpj } from './helpers/cnpj';
 import { Paragraph, TextRun } from 'docx';
 import { DOCX_MIME, PDF_MIME, docxFrom, makeCpf, pdfFromLines, P } from './employee-docgen';
 
@@ -62,7 +63,7 @@ describe('Ingestão de cadastro: defeitos de ponta e textos de erro (e2e)', () =
     token = (await request(app.getHttpServer()).post('/auth/login').send({ email: a.email, password: a.password })).body.access_token;
     tokenB = (await request(app.getHttpServer()).post('/auth/login').send({ email: b.email, password: b.password })).body.access_token;
     unitB = (await request(app.getHttpServer()).post('/company-units').set(auth(tokenB))
-      .send({ name: 'Filial Edge B', address_street: 'Rua T', address_city: 'Criciúma', address_state: 'SC', address_zip: '88801000' })).body.id;
+      .send({ name: 'Filial Edge B', cnpj: randomValidCnpj(), address_street: 'Rua T', address_city: 'Criciúma', address_state: 'SC', address_zip: '88801000' })).body.id;
     redis = new Redis(process.env.REDIS_URL as string);
   });
   beforeEach(async () => {

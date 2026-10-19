@@ -39,6 +39,7 @@ describe('employees.company_unit_id (e2e)', () => {
       .set('Authorization', `Bearer ${tokenA}`)
       .send({
         name: 'Sede A',
+        cnpj: '12345678000276',
         address_street: 'Rua A',
         address_city: 'Criciúma',
         address_state: 'SC',
@@ -51,6 +52,7 @@ describe('employees.company_unit_id (e2e)', () => {
       .set('Authorization', `Bearer ${tokenB}`)
       .send({
         name: 'Sede B',
+        cnpj: '12345678000276',
         address_street: 'Rua B',
         address_city: 'Criciúma',
         address_state: 'SC',

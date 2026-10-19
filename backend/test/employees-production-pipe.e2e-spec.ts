@@ -50,7 +50,7 @@ describe('Funcionários com o ValidationPipe real de produção (e2e)', () => {
     admission_date: '2020-01-15',
     sex: 'f',
     cbo_code: '51210',
-    esocial_registration: 'PIPE-1',
+    registration_number: 'PIPE-1',
     activity_description: 'Solda em campo',
   });
 
@@ -70,7 +70,7 @@ describe('Funcionários com o ValidationPipe real de produção (e2e)', () => {
     const res = await request(app.getHttpServer()).post('/employees').set(auth(empresaToken)).send(full('52998224725'));
     log('POST completo empresa', res);
     expect(res.status).toBe(201);
-    expect(res.body).toMatchObject({ sex: 'F', cbo_code: '051210', esocial_registration: 'PIPE-1', activity_description: 'Solda em campo' });
+    expect(res.body).toMatchObject({ sex: 'F', cbo_code: '051210', registration_number: 'PIPE-1', activity_description: 'Solda em campo' });
     empId = res.body.id;
   });
 
@@ -78,7 +78,7 @@ describe('Funcionários com o ValidationPipe real de produção (e2e)', () => {
     const res = await request(app.getHttpServer())
       .post('/employees')
       .set(auth(adminToken))
-      .send({ ...full('12345678909'), esocial_registration: 'PIPE-2', tenant_id: tenantId });
+      .send({ ...full('12345678909'), registration_number: 'PIPE-2', tenant_id: tenantId });
     log('POST completo admin', res);
     expect(res.status).toBe(201);
     expect(res.body.sex).toBe('F');

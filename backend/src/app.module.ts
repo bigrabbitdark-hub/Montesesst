@@ -11,11 +11,14 @@ import { EmployeesModule } from './employees/employees.module';
 import { TechniciansModule } from './technicians/technicians.module';
 import { PartnersModule } from './partners/partners.module';
 import { TenantsModule } from './tenants/tenants.module';
+import { CnpjLookupModule } from './cnpj-lookup/cnpj-lookup.module';
 import { CompanyUnitsModule } from './company-units/company-units.module';
 import { TenantTechniciansModule } from './tenant-technicians/tenant-technicians.module';
 import { DocumentsModule } from './documents/documents.module';
 import { InspectionsModule } from './inspections/inspections.module';
 import { EpiModule } from './epi/epi.module';
+import { EpiFichaModule } from './epi-ficha/epi-ficha.module';
+import { EpiSignatureModule } from './epi-signature/epi-signature.module';
 import { AuditLogModule } from './audit-log/audit-log.module';
 import { OverviewModule } from './overview/overview.module';
 import { SystemStatusModule } from './system-status/system-status.module';
@@ -34,6 +37,8 @@ import { PreventionCorrectiveActionsModule } from './prevention-corrective-actio
 import { PreventionChecklistModule } from './prevention-checklist/prevention-checklist.module';
 import { EmergencyDrillModule } from './emergency-drill/emergency-drill.module';
 import { GoogleCalendarModule } from './google-calendar/google-calendar.module';
+import { AsoModule } from './aso/aso.module';
+import { EsocialModule } from './esocial/esocial.module';
 import { JwtAuthGuard } from './auth/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 import { TenantContextInterceptor } from './common/interceptors/tenant-context.interceptor';
@@ -68,11 +73,14 @@ import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
     TechniciansModule,
     PartnersModule,
     TenantsModule,
+    CnpjLookupModule,
     CompanyUnitsModule,
     TenantTechniciansModule,
     DocumentsModule,
     InspectionsModule,
     EpiModule,
+    EpiFichaModule,
+    EpiSignatureModule,
     AuditLogModule,
     OverviewModule,
     SystemStatusModule,
@@ -91,6 +99,8 @@ import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
     PreventionChecklistModule,
     EmergencyDrillModule,
     GoogleCalendarModule,
+    AsoModule,
+    EsocialModule,
   ],
   providers: [
     // RateLimitGuard (F-22) injeta JsonLoggerService; sem registrá-lo aqui o

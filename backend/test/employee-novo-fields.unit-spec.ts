@@ -10,14 +10,14 @@ describe('toPublic: fields do item novo', () => {
     } as never).items[0].fields;
 
   it('matrícula que NÃO é CPF válido aparece inteira; CPF válido como matrícula é mascarado; datas e ordem fixa', () => {
-    expect(fieldsOf({ esocial_registration: '00012345678', admission_date: '2020-01-05', position: 'SOLDADOR', birth_date: '1988-03-05', cbo_code: '715615' })).toEqual([
+    expect(fieldsOf({ registration_number: '00012345678', admission_date: '2020-01-05', position: 'SOLDADOR', birth_date: '1988-03-05', cbo_code: '715615' })).toEqual([
       { field: 'birth_date', value: '1988-03-05' },
       { field: 'position', value: 'SOLDADOR' },
       { field: 'admission_date', value: '2020-01-05' },
-      { field: 'esocial_registration', value: '00012345678' },
+      { field: 'registration_number', value: '00012345678' },
       { field: 'cbo_code', value: '715615' },
     ]);
-    expect(fieldsOf({ esocial_registration: '52998224725' })).toEqual([{ field: 'esocial_registration', value: '***.***.***-25' }]);
+    expect(fieldsOf({ registration_number: '52998224725' })).toEqual([{ field: 'registration_number', value: '***.***.***-25' }]);
   });
 
   it('CPF embutido (válido ou só formatado) em texto livre é mascarado; número longo que não é CPF fica', () => {

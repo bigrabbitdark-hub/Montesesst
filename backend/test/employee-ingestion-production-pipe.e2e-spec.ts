@@ -7,6 +7,7 @@ import { AppModule } from '../src/app.module';
 import { configureApp } from '../src/app-setup';
 import { R2Service } from '../src/common/r2/r2.service';
 import { TestDb } from './db-test-helper';
+import { randomValidCnpj } from './helpers/cnpj';
 
 const UPLOAD_RATE_LIMIT_KEY = 'ratelimit:EmployeesController.uploadDocument:::ffff:127.0.0.1';
 
@@ -44,7 +45,7 @@ describe('Ingestão de funcionários com o ValidationPipe de produção (e2e)', 
     token = (await request(app.getHttpServer()).post('/auth/login').send({ email: t.email, password: t.password })).body.access_token;
     const u = await request(app.getHttpServer())
       .post('/company-units').set(auth())
-      .send({ name: 'Filial Pipe', address_street: 'Rua T', address_city: 'Criciúma', address_state: 'SC', address_zip: '88801000' });
+      .send({ name: 'Filial Pipe', cnpj: randomValidCnpj(), address_street: 'Rua T', address_city: 'Criciúma', address_state: 'SC', address_zip: '88801000' });
     unitId = u.body.id;
     redis = new Redis(process.env.REDIS_URL as string);
   });

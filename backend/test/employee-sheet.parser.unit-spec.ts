@@ -35,7 +35,7 @@ describe('parseEmployeeSheet', () => {
     expect(res.rows[0]).toEqual({
       line: 10,
       values: {
-        full_name: 'ANA FICTICIA', esocial_registration: '00012345678', cpf: '529.982.247-25',
+        full_name: 'ANA FICTICIA', registration_number: '00012345678', cpf: '529.982.247-25',
         birth_date: '1990-02-03', sex: 'F', position: 'SOLDADORA', admission_date: '2020-01-05',
         cbo_code: '623115', activity_description: 'Solda',
       },
@@ -88,7 +88,7 @@ describe('parseEmployeeSheet', () => {
     const buf = await build((ws) => modelSheet(ws, [[1, 'EDU FICTICIO', 32000006, 52998224725, '', '', '', '', '', '']]));
     const res = await parseEmployeeSheet(buf);
     expect(res.rows[0].values.cpf).toBe('52998224725');
-    expect(res.rows[0].values.esocial_registration).toBe('32000006');
+    expect(res.rows[0].values.registration_number).toBe('32000006');
   });
 
   it('sem cabeçalho reconhecível devolve formatError em português; arquivo corrompido também', async () => {

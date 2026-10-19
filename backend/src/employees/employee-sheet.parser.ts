@@ -2,7 +2,7 @@ import ExcelJS from 'exceljs';
 import { verifyFileContent } from '../common/files/file-content.util';
 
 export const SHEET_FIELDS = [
-  'full_name', 'esocial_registration', 'cpf', 'birth_date', 'sex', 'position', 'admission_date', 'cbo_code', 'activity_description',
+  'full_name', 'registration_number', 'cpf', 'birth_date', 'sex', 'position', 'admission_date', 'cbo_code', 'activity_description',
 ] as const;
 export type SheetField = (typeof SHEET_FIELDS)[number];
 // reviewOnly: campos que nunca são auto-aplicados (texto livre ou IA); evidence: trecho de origem, já mascarado pelo chamador.
@@ -23,7 +23,7 @@ const UNREADABLE = 'Não foi possível ler o arquivo .xlsx — verifique se não
 
 const SYNONYMS: Record<SheetField, string[]> = {
   full_name: ['funcionario', 'nome', 'nome completo', 'colaborador', 'nome do funcionario'],
-  esocial_registration: ['matricula esocial', 'matricula e-social', 'matricula'],
+  registration_number: ['matricula esocial', 'matricula e-social', 'matricula'],
   cpf: ['cpf', 'cpf/mf'],
   birth_date: ['data de nascimento', 'data nascimento', 'nascimento'],
   sex: ['sexo f/m', 'sexo', 'sexo (f/m)'],

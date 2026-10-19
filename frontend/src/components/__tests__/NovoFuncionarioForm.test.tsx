@@ -12,8 +12,12 @@ function posts(fetchMock: ReturnType<typeof vi.fn>) {
   return fetchMock.mock.calls.filter(([, init]) => (init as RequestInit | undefined)?.method === 'POST');
 }
 
+// Rótulos como 'Matrícula (eSocial)' têm parênteses: escapa antes de montar a RegExp.
+const escapar = (t: string) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const rotulo = (label: string) => new RegExp('^' + escapar(label));
+
 function digitar(label: string, value: string) {
-  fireEvent.change(screen.getByLabelText(new RegExp(`^${label}`)), { target: { value } });
+  fireEvent.change(screen.getByLabelText(rotulo(label)), { target: { value } });
 }
 
 function abrir(onCreated = vi.fn(), tenantId?: string) {
@@ -33,8 +37,8 @@ describe('NovoFuncionarioForm', () => {
     render(<NovoFuncionarioForm units={UNITS} onCreated={vi.fn()} />);
     expect(screen.queryByLabelText(/^CPF/)).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Adicionar funcionário' }));
-    for (const l of ['Funcionário', 'CPF', 'Matrícula eSocial', 'Data de nascimento', 'Sexo', 'Função/Cargo', 'Data de admissão', 'CBO', 'Descrição da atividade', 'Filial']) {
-      expect(screen.getByLabelText(new RegExp(`^${l}`))).toBeTruthy();
+    for (const l of ['Funcionário', 'CPF', 'Matrícula (eSocial)', 'Data de nascimento', 'Sexo', 'Função/Cargo', 'Data de admissão', 'CBO', 'Descrição da atividade', 'Filial']) {
+      expect(screen.getByLabelText(rotulo(l))).toBeTruthy();
     }
     expect(screen.queryByText(/Anexar documento/)).toBeNull();
     expect(screen.getByRole('option', { name: 'Filial RJ' })).toBeTruthy();
@@ -68,7 +72,7 @@ describe('NovoFuncionarioForm', () => {
     const onCreated = abrir();
     digitar('Funcionário', 'Ana Teste');
     digitar('CPF', '529.982.247-25');
-    digitar('Matrícula eSocial', '00012345678');
+    digitar('Matrícula (eSocial)', '00012345678');
     digitar('Data de nascimento', '03/02/1990');
     fireEvent.change(screen.getByLabelText(/^Sexo/), { target: { value: 'F' } });
     digitar('CBO', '051210');
@@ -82,7 +86,7 @@ describe('NovoFuncionarioForm', () => {
     expect(JSON.parse((init as RequestInit).body as string)).toEqual({
       full_name: 'Ana Teste',
       cpf: '52998224725',
-      esocial_registration: '00012345678',
+      registration_number: '00012345678',
       birth_date: '1990-02-03',
       sex: 'F',
       cbo_code: '051210',

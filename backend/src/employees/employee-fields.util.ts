@@ -27,9 +27,13 @@ export function normalizeSex(raw: unknown): FieldResult<'F' | 'M'> {
   return v === 'F' || v === 'M' ? { ok: true, value: v } : { ok: false, message: 'Sexo deve ser F ou M' };
 }
 
-export function normalizeEsocialRegistration(raw: unknown): FieldResult<string> {
+// Matrícula única do funcionário (employees.registration_number, 0069): usada pelo eSocial e pela ficha de EPI.
+// Mesma regra da CHECK employees_registration_number_format_check (migration 0080).
+export const REGISTRATION_NUMBER_RE = /^[A-Za-z0-9._-]{1,30}$/;
+
+export function normalizeRegistrationNumber(raw: unknown): FieldResult<string> {
   const v = String(raw ?? '').trim();
-  return /^[A-Za-z0-9._-]{1,30}$/.test(v)
+  return REGISTRATION_NUMBER_RE.test(v)
     ? { ok: true, value: v }
     : { ok: false, message: 'Matrícula eSocial inválida (1 a 30 caracteres, sem espaços)' };
 }
@@ -63,7 +67,10 @@ export function normalizeEmployeeInput(input: Record<string, unknown>): {
     if (raw === undefined) continue;
     switch (field) {
       case 'full_name':
-        typeof raw === 'string' && raw.trim() ? (values[field] = raw.trim()) : (errors[field] = 'Nome é obrigatório');
+        if (typeof raw !== 'string' || !raw.trim()) errors[field] = 'Nome é obrigatório';
+        else if (raw.trim().length > 200) errors[field] = 'Máximo de 200 caracteres';
+        else if (raw.includes('\u0000')) errors[field] = 'Nome inválido';
+        else values[field] = raw.trim();
         break;
       case 'cpf':
         isValidCpf(String(raw)) ? (values[field] = onlyDigits(String(raw))) : (errors[field] = 'CPF inválido');
@@ -78,14 +85,18 @@ export function normalizeEmployeeInput(input: Record<string, unknown>): {
       case 'cbo_code':
         isBlank(raw) ? (values[field] = null) : apply(field, normalizeCbo(raw));
         break;
-      case 'esocial_registration':
-        isBlank(raw) ? (values[field] = null) : apply(field, normalizeEsocialRegistration(raw));
+      case 'registration_number':
+        isBlank(raw) ? (values[field] = null) : apply(field, normalizeRegistrationNumber(raw));
         break;
       case 'position':
+      case 'department':
       case 'activity_description': {
-        const max = field === 'position' ? 200 : 2000;
+        // position/department: 120, o limite dos DTOs (e da CHECK de department, 0082); a regra mais estrita vale também na tabela.
+        const max = field === 'activity_description' ? 2000 : 120;
         const t = isBlank(raw) ? null : String(raw).trim();
-        t !== null && t.length > max ? (errors[field] = `Máximo de ${max} caracteres`) : (values[field] = t);
+        if (t !== null && t.length > max) errors[field] = `Máximo de ${max} caracteres`;
+        else if (t !== null && t.includes('\u0000')) errors[field] = 'Texto inválido';
+        else values[field] = t;
         break;
       }
       case 'status':

@@ -72,7 +72,7 @@ export function detectCadastral(text: string): CadastralVerdict {
 }
 
 // ---------- Rótulos ----------
-type Kind = 'full_name' | 'position' | 'birth_date' | 'admission_date' | 'sex' | 'cbo_code' | 'esocial_registration' | 'cpf';
+type Kind = 'full_name' | 'position' | 'birth_date' | 'admission_date' | 'sex' | 'cbo_code' | 'registration_number' | 'cpf';
 const DATE = String.raw`(\d{1,2}[\/.\-]\d{1,2}[\/.\-]\d{2,4})`;
 const NB = String.raw`(?<![A-Za-zÀ-ÿ0-9])`;
 const SRC: Record<Kind, string> = {
@@ -83,7 +83,7 @@ const SRC: Record<Kind, string> = {
   sex: String.raw`sexo(?:[ \t]*f\/m)?`,
   cbo_code: String.raw`cbo(?![A-Za-zÀ-ÿ])`,
   // "Matrícula" só é rótulo com ':'/'-' ou número logo depois (cargo "Gerente de Matrícula" não se quebra).
-  esocial_registration: String.raw`matr[ií]cula(?:[ \t]+e-?social)?(?=[ \t]*[:\-]|[ \t]+\d)`,
+  registration_number: String.raw`matr[ií]cula(?:[ \t]+e-?social)?(?=[ \t]*[:\-]|[ \t]+\d)`,
   cpf: String.raw`cpf(?![A-Za-zÀ-ÿ0-9])`,
 };
 const KINDS = Object.keys(SRC) as Kind[];
@@ -95,7 +95,7 @@ const VALUE: Partial<Record<Kind, RegExp>> = {
   full_name: /^[A-Za-zÀ-ÿ][A-Za-zÀ-ÿ'. ]*/,
   birth_date: new RegExp(`^${DATE}`), admission_date: new RegExp(`^${DATE}`),
   sex: /^(feminino|masculino|fem|masc|f|m)(?![A-Za-zÀ-ÿ])/i,
-  cbo_code: /^(\d{4}(?:[\-.]?\d{2})?)(?!\d)/, esocial_registration: /^(\d{4,15})(?!\d)/,
+  cbo_code: /^(\d{4}(?:[\-.]?\d{2})?)(?!\d)/, registration_number: /^(\d{4,15})(?!\d)/,
 };
 
 function cleanValue(kind: Kind, raw: string): string | undefined {
@@ -252,8 +252,8 @@ const COLS: Record<string, Kind | 'skip'> = {
   cpf: 'cpf', funcao: 'position', cargo: 'position', 'funcao/cargo': 'position', 'cargo/funcao': 'position',
   admissao: 'admission_date', 'data de admissao': 'admission_date', 'data admissao': 'admission_date',
   nascimento: 'birth_date', 'data de nascimento': 'birth_date', 'data nascimento': 'birth_date',
-  sexo: 'sex', 'sexo f/m': 'sex', cbo: 'cbo_code', matricula: 'esocial_registration', 'matricula esocial': 'esocial_registration',
-  'matricula e-social': 'esocial_registration', qtde: 'skip', item: 'skip', 'descricao da atividade': 'skip',
+  sexo: 'sex', 'sexo f/m': 'sex', cbo: 'cbo_code', matricula: 'registration_number', 'matricula esocial': 'registration_number',
+  'matricula e-social': 'registration_number', qtde: 'skip', item: 'skip', 'descricao da atividade': 'skip',
 };
 const colKind = (t: string): Kind | 'skip' | undefined => {
   if (t.length > 40) return undefined;

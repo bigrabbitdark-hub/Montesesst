@@ -13,7 +13,7 @@ Aba `Plan1`, cabeçalho na linha 8, dados a partir da linha 10 (20 linhas dispon
 |---|---|---|---|
 | Qtde | sequencial | — (calculado na tela) | nunca é identificador |
 | Funcionário | nome | `full_name` (existe) | |
-| Matrícula esocial | matrícula | `esocial_registration` (nova) | texto, 11 dígitos no modelo |
+| Matrícula esocial | matrícula | `registration_number` (existente, 0069; única matrícula — decisão do dono em 2026-10-19) | texto, 11 dígitos no modelo |
 | CPF | CPF | `cpf` (existe) | modelo traz com máscara; banco guarda 11 dígitos |
 | Data de nascimento | | `birth_date` (existe) | `DATE`, sem fuso |
 | Sexo F/M | | `sex` (nova) | `CHECK IN ('F','M')` |
@@ -31,7 +31,7 @@ Empresa e CNPJ vêm do topo da planilha; **filial não consta** — vem do conte
 4. Funcionário **novo** vindo de documento nunca é criado direto: vai para revisão (respeita limite de plano).
 
 ## 4. Banco (migration aditiva, próxima numeração livre — hoje `0080`; ver numeração em PROJECT_STATE item 5)
-- `employees` + 4 colunas nullable; índice único parcial `(tenant_id, esocial_registration) WHERE esocial_registration IS NOT NULL`. Nada removido.
+- `employees` + 3 colunas nullable (`sex`, `cbo_code`, `activity_description`); a matrícula é a coluna existente `registration_number` (0069), sem coluna nova. Sobre ela: CHECK de formato `NOT VALID` e índice único parcial `(tenant_id, registration_number) WHERE registration_number IS NOT NULL`, cada um criado só se os dados atuais permitirem (senão RAISE NOTICE e a regra fica só na aplicação; ver o cabeçalho da 0080). Nada removido.
 - `employee_field_history` (append-only; RLS + FORCE RLS; `REVOKE UPDATE, DELETE, TRUNCATE` da role da aplicação, como `audit_log`): tenant_id, employee_id, field, old_value, new_value (CPF mascarado), actor_user_id, actor_role, source (`cadastro|tabela|documento|revisao`), document_id, extraction_id, changed_at.
 - `employee_document_extractions`: tenant_id, document_id, content_hash, status (`processando|aplicado|requer_revisao|sem_dados|ilegivel|erro`), candidates JSONB (campos, confiança, trecho, resultado do casamento, conflitos), resolved_by/at. Único por (tenant_id, document_id, content_hash) → idempotência. Valores brutos são apagados ao resolver. RLS + FORCE RLS.
 - Aplicação em produção **somente com autorização**; testes em ambiente descartável.

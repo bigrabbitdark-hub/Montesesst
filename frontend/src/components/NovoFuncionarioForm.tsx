@@ -11,7 +11,7 @@ export interface UnitOption {
 const EMPTY = {
   full_name: '',
   cpf: '',
-  esocial_registration: '',
+  registration_number: '',
   birth_date: '',
   sex: '',
   position: '',
@@ -26,7 +26,7 @@ type Errors = Partial<Record<keyof Values, string>>;
 const FIELDS: { key: keyof Values; label: string; required?: boolean; kind: 'text' | 'date' | 'sex' | 'unit' }[] = [
   { key: 'full_name', label: 'Funcionário', required: true, kind: 'text' },
   { key: 'cpf', label: 'CPF', required: true, kind: 'text' },
-  { key: 'esocial_registration', label: 'Matrícula eSocial', kind: 'text' },
+  { key: 'registration_number', label: 'Matrícula (eSocial)', kind: 'text' },
   { key: 'birth_date', label: 'Data de nascimento', kind: 'date' },
   { key: 'sex', label: 'Sexo', kind: 'sex' },
   { key: 'position', label: 'Função/Cargo', kind: 'text' },

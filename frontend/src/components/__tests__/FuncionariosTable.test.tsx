@@ -3,13 +3,13 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { FuncionariosTable } from '../FuncionariosTable';
 
 const COLUNAS = [
-  'Qtde', 'Funcionário', 'Matrícula eSocial', 'CPF', 'Data de nascimento', 'Sexo',
+  'Qtde', 'Funcionário', 'Matrícula (eSocial)', 'CPF', 'Data de nascimento', 'Sexo',
   'Função/Cargo', 'Data de admissão', 'CBO', 'Descrição da atividade', 'Histórico',
 ];
 
 function linha(over: Record<string, unknown> = {}) {
   return {
-    id: 'e1', sequence: 7, row_version: '3', full_name: 'Ana Teste', esocial_registration: '00012345678',
+    id: 'e1', sequence: 7, row_version: '3', full_name: 'Ana Teste', registration_number: '00012345678',
     cpf: '52998224725', birth_date: '1990-02-03', sex: 'F', position: 'Soldadora', admission_date: '2020-01-05',
     cbo_code: '051210', activity_description: null, company_unit_id: null, status: 'active', ...over,
   };

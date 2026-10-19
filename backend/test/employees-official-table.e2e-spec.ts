@@ -3,6 +3,7 @@ import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { TestDb } from './db-test-helper';
+import { randomValidCnpj } from './helpers/cnpj';
 import { isValidCpf } from '../src/employees/employee-fields.util';
 
 const CPF_OK = '52998224725';
@@ -41,7 +42,7 @@ describe('Funcionários: campos oficiais (e2e)', () => {
       full_name: 'Ana Teste',
       cpf: '529.982.247-25',
       sex: 'f',
-      esocial_registration: '00012345678',
+      registration_number: '00012345678',
       cbo_code: '051210',
       position: 'Soldador',
       activity_description: 'Solda em campo',
@@ -50,7 +51,7 @@ describe('Funcionários: campos oficiais (e2e)', () => {
     expect(res.body).toMatchObject({
       cpf: CPF_OK,
       sex: 'F',
-      esocial_registration: '00012345678',
+      registration_number: '00012345678',
       cbo_code: '051210',
       activity_description: 'Solda em campo',
     });
@@ -63,11 +64,42 @@ describe('Funcionários: campos oficiais (e2e)', () => {
   });
 
   it('matrícula repetida no mesmo tenant dá 409', async () => {
-    const first = await post({ full_name: 'Caio', cpf: CPF_OK_2, esocial_registration: 'MAT-DUP-1' });
+    const first = await post({ full_name: 'Caio', cpf: CPF_OK_2, registration_number: 'MAT-DUP-1' });
     expect(first.status).toBe(201);
-    const second = await post({ full_name: 'Duda', cpf: '12345678909', esocial_registration: 'MAT-DUP-1' });
+    const second = await post({ full_name: 'Duda', cpf: '12345678909', registration_number: 'MAT-DUP-1' });
     expect(second.status).toBe(409);
     expect(JSON.stringify(second.body)).toContain('Matrícula eSocial já cadastrada nesta empresa');
+  });
+
+  it('matrícula única (registration_number): PATCH e pré-requisitos do eSocial também dão 409', async () => {
+    const a = await post({ full_name: 'Mat A', cpf: '86288366757', registration_number: 'MAT-UNI-1' });
+    expect(a.status).toBe(201);
+    const b = await post({ full_name: 'Mat B', cpf: '30390919802' });
+    expect(b.status).toBe(201);
+    const patch = await request(app.getHttpServer())
+      .patch(`/employees/${b.body.id}`)
+      .set('Authorization', `Bearer ${empresaToken}`)
+      .send({ registration_number: 'MAT-UNI-1' });
+    expect(patch.status).toBe(409);
+    expect(JSON.stringify(patch.body)).toContain('Matrícula eSocial já cadastrada nesta empresa');
+    // O próprio funcionário pode reenviar a matrícula que já é dele.
+    const same = await request(app.getHttpServer())
+      .patch(`/employees/${a.body.id}`)
+      .set('Authorization', `Bearer ${empresaToken}`)
+      .send({ registration_number: 'MAT-UNI-1', position: 'Soldador' });
+    expect(same.status).toBe(200);
+    const pre = await request(app.getHttpServer())
+      .patch(`/esocial/employees/${b.body.id}/prerequisites`)
+      .set('Authorization', `Bearer ${empresaToken}`)
+      .send({ registrationNumber: 'MAT-UNI-1' });
+    expect(pre.status).toBe(409);
+    const preBad = await request(app.getHttpServer())
+      .patch(`/esocial/employees/${b.body.id}/prerequisites`)
+      .set('Authorization', `Bearer ${empresaToken}`)
+      .send({ registrationNumber: 'MAT 1' });
+    expect(preBad.status).toBe(400);
+    const chk = await (db as any).client.query('SELECT registration_number FROM employees WHERE id = $1', [b.body.id]);
+    expect(chk.rows[0].registration_number).toBeNull();
   });
 
   it('CPF repetido no mesmo tenant dá 409 com mensagem em português', async () => {
@@ -75,7 +107,7 @@ describe('Funcionários: campos oficiais (e2e)', () => {
     expect(first.status).toBe(201);
     const second = await post({ full_name: 'Fabi 2', cpf: '40000007994' });
     expect(second.status).toBe(409);
-    expect(JSON.stringify(second.body)).toContain('Registro duplicado');
+    expect(JSON.stringify(second.body)).toContain('CPF já cadastrado nesta empresa');
   });
 
   it('update normaliza e valida os campos oficiais', async () => {
@@ -131,7 +163,7 @@ describe('Funcionários: tabela oficial e PATCH /employees/bulk (e2e)', () => {
     const res = await request(app.getHttpServer())
       .post('/company-units')
       .set(auth(token))
-      .send({ name, address_street: 'Rua T', address_city: 'Criciúma', address_state: 'SC', address_zip: '88801000' });
+      .send({ name, cnpj: randomValidCnpj(), address_street: 'Rua T', address_city: 'Criciúma', address_state: 'SC', address_zip: '88801000' });
     expect(res.status).toBe(201);
     return res.body.id;
   };
@@ -426,7 +458,7 @@ describe('Funcionários: tabela oficial e PATCH /employees/bulk (e2e)', () => {
       { id: second.id, row_version: before2.row_version, fields: { cpf: third.cpf } },
     ]);
     expect(res.status).toBe(409);
-    expect(JSON.stringify(res.body)).toContain('Registro duplicado');
+    expect(JSON.stringify(res.body)).toContain('CPF já cadastrado nesta empresa');
 
     const after1 = await rowOf(first.id);
     const after2 = await rowOf(second.id);

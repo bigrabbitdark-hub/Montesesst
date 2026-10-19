@@ -1,5 +1,7 @@
 # Tabela oficial de funcionários — Fatia 1 (migration, API, tabela editável, cadastro manual)
 
+> **Atualização 2026-10-19 (merge com feat/epi-estoque):** a coluna `esocial_registration` deste plano foi removida; a matrícula única é `employees.registration_number` (0069). Os trechos abaixo já usam o nome novo; a 0080 não cria coluna de matrícula, só CHECK de formato e índice único condicionais (ver o cabeçalho da migration).
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Estender a tabela `employees` com os 4 campos do modelo Montese e entregar, no setor Funcionários do dashboard, uma tabela oficial com leitura, edição em lote confirmável/cancelável e cadastro manual — sem tabela paralela.
@@ -43,7 +45,7 @@ export const onlyDigits: (v: string) => string;
 export const isValidCpf: (raw: string) => boolean;
 export const normalizeCbo: (raw: unknown) => FieldResult<string>;       // 6 dígitos, padStart
 export const normalizeSex: (raw: unknown) => FieldResult<'F' | 'M'>;
-export const normalizeEsocialRegistration: (raw: unknown) => FieldResult<string>; // texto, 1–30, [A-Za-z0-9._-]
+export const normalizeRegistrationNumber: (raw: unknown) => FieldResult<string>; // texto, 1–30, [A-Za-z0-9._-]
 export const normalizeIsoDate: (raw: unknown) => FieldResult<string>;   // aceita YYYY-MM-DD e DD/MM/YYYY
 export function normalizeEmployeeInput(input: Record<string, unknown>): {
   values: Record<string, unknown>;
@@ -54,7 +56,7 @@ export function normalizeEmployeeInput(input: Record<string, unknown>): {
 - [ ] **Step 1: Write the failing test** — `backend/test/employee-fields.unit-spec.ts`
 ```ts
 import {
-  isValidCpf, normalizeCbo, normalizeSex, normalizeEsocialRegistration,
+  isValidCpf, normalizeCbo, normalizeSex, normalizeRegistrationNumber,
   normalizeIsoDate, normalizeEmployeeInput,
 } from '../src/employees/employee-fields.util';
 
@@ -89,13 +91,13 @@ describe('normalizeSex', () => {
   it('rejeita outros valores', () => expect(normalizeSex('X').ok).toBe(false));
 });
 
-describe('normalizeEsocialRegistration', () => {
+describe('normalizeRegistrationNumber', () => {
   it('mantém zeros à esquerda como texto', () => {
-    expect(normalizeEsocialRegistration('00012345678')).toEqual({ ok: true, value: '00012345678' });
+    expect(normalizeRegistrationNumber('00012345678')).toEqual({ ok: true, value: '00012345678' });
   });
   it('rejeita espaços internos e excesso de tamanho', () => {
-    expect(normalizeEsocialRegistration('12 34').ok).toBe(false);
-    expect(normalizeEsocialRegistration('1'.repeat(31)).ok).toBe(false);
+    expect(normalizeRegistrationNumber('12 34').ok).toBe(false);
+    expect(normalizeRegistrationNumber('1'.repeat(31)).ok).toBe(false);
   });
 });
 
@@ -164,7 +166,7 @@ export function normalizeSex(raw: unknown): FieldResult<'F' | 'M'> {
   return v === 'F' || v === 'M' ? { ok: true, value: v } : { ok: false, message: 'Sexo deve ser F ou M' };
 }
 
-export function normalizeEsocialRegistration(raw: unknown): FieldResult<string> {
+export function normalizeRegistrationNumber(raw: unknown): FieldResult<string> {
   const v = String(raw ?? '').trim();
   return /^[A-Za-z0-9._-]{1,30}$/.test(v)
     ? { ok: true, value: v }
@@ -214,8 +216,8 @@ export function normalizeEmployeeInput(input: Record<string, unknown>): {
       case 'cbo_code':
         isBlank(raw) ? (values[field] = null) : apply(field, normalizeCbo(raw));
         break;
-      case 'esocial_registration':
-        isBlank(raw) ? (values[field] = null) : apply(field, normalizeEsocialRegistration(raw));
+      case 'registration_number':
+        isBlank(raw) ? (values[field] = null) : apply(field, normalizeRegistrationNumber(raw));
         break;
       case 'position':
       case 'activity_description': {
@@ -245,7 +247,7 @@ export function normalizeEmployeeInput(input: Record<string, unknown>): {
 
 **Files:** Create `backend/db/migrations/0080_employees_official_fields.sql`
 
-**Interfaces — Produces:** colunas `employees.esocial_registration TEXT`, `sex CHAR(1)`, `cbo_code VARCHAR(6)`, `activity_description TEXT`, índice único parcial `employees_tenant_esocial_registration_uidx`.
+**Interfaces — Produces:** colunas `employees.registration_number TEXT`, `sex CHAR(1)`, `cbo_code VARCHAR(6)`, `activity_description TEXT`, índice único parcial `employees_tenant_registration_number_uidx`.
 
 - [ ] **Step 1: Escrever a migration**
 ```sql
@@ -254,7 +256,7 @@ export function normalizeEmployeeInput(input: Record<string, unknown>): {
 -- (zeros à esquerda). Colunas novas nascem NULL, então o índice único parcial
 -- não pode colidir com dados legados.
 ALTER TABLE employees
-  ADD COLUMN IF NOT EXISTS esocial_registration TEXT,
+  ADD COLUMN IF NOT EXISTS registration_number TEXT,
   ADD COLUMN IF NOT EXISTS sex CHAR(1),
   ADD COLUMN IF NOT EXISTS cbo_code VARCHAR(6),
   ADD COLUMN IF NOT EXISTS activity_description TEXT;
@@ -262,12 +264,12 @@ ALTER TABLE employees
 ALTER TABLE employees
   ADD CONSTRAINT employees_sex_check CHECK (sex IS NULL OR sex IN ('F', 'M')),
   ADD CONSTRAINT employees_cbo_code_check CHECK (cbo_code IS NULL OR cbo_code ~ '^[0-9]{6}$'),
-  ADD CONSTRAINT employees_esocial_registration_check
-    CHECK (esocial_registration IS NULL OR esocial_registration ~ '^[A-Za-z0-9._-]{1,30}$');
+  ADD CONSTRAINT employees_registration_number_check
+    CHECK (registration_number IS NULL OR registration_number ~ '^[A-Za-z0-9._-]{1,30}$');
 
-CREATE UNIQUE INDEX IF NOT EXISTS employees_tenant_esocial_registration_uidx
-  ON employees (tenant_id, esocial_registration)
-  WHERE esocial_registration IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS employees_tenant_registration_number_uidx
+  ON employees (tenant_id, registration_number)
+  WHERE registration_number IS NOT NULL;
 ```
 (RLS/FORCE RLS da tabela não mudam: colunas novas herdam a policy `employees_isolation`.)
 
@@ -277,7 +279,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS employees_tenant_esocial_registration_uidx
 ```bash
 docker exec -i ensaio_pg psql -v ON_ERROR_STOP=1 --single-transaction -U montese_superuser_ensaio -d montese -f - < backend/db/migrations/0080_employees_official_fields.sql
 ```
-(ajustar usuário/banco ao que o ensaio criou.) Depois, no mesmo banco, três `INSERT`s que **devem falhar**: `sex='X'`, `cbo_code='12345'`, e dois funcionários do mesmo tenant com a mesma `esocial_registration`. Expected: `ERROR: violates check constraint` / `duplicate key` nos três; e dois funcionários com `esocial_registration` NULL passam.
+(ajustar usuário/banco ao que o ensaio criou.) Depois, no mesmo banco, três `INSERT`s que **devem falhar**: `sex='X'`, `cbo_code='12345'`, e dois funcionários do mesmo tenant com a mesma `registration_number`. Expected: `ERROR: violates check constraint` / `duplicate key` nos três; e dois funcionários com `registration_number` NULL passam.
 
 - [ ] **Step 4: Checkpoint** — registrar no relatório final: migration aplicada **somente no ensaio**; produção NÃO VERIFICADO/NÃO APLICADA.
 
@@ -287,17 +289,17 @@ docker exec -i ensaio_pg psql -v ON_ERROR_STOP=1 --single-transaction -U montese
 
 **Files:** Modify `backend/src/employees/employees.service.ts` (interface `Employee`, `UPDATABLE_FIELDS`, `create`, `update`), `dto/create-employee.dto.ts`, `dto/update-employee.dto.ts`, `employees.controller.ts` (`create`); Test `backend/test/employees-official-table.e2e-spec.ts`
 
-**Interfaces — Consumes:** `normalizeEmployeeInput` (Task 1). **Produces:** `EmployeesService.create/update` aceitam `esocial_registration, sex, cbo_code, activity_description` e rejeitam dados inválidos com `BadRequestException`.
+**Interfaces — Consumes:** `normalizeEmployeeInput` (Task 1). **Produces:** `EmployeesService.create/update` aceitam `registration_number, sex, cbo_code, activity_description` e rejeitam dados inválidos com `BadRequestException`.
 
 - [ ] **Step 1: Failing e2e (criação e validação)** — criar `backend/test/employees-official-table.e2e-spec.ts` (estrutura idêntica a `employees-tenant-id.e2e-spec.ts`: `Test.createTestingModule({imports:[AppModule]})`, `TestDb`, login via `/auth/login`). Casos desta task:
 ```ts
 const CPF_OK = '52998224725';
 it('cria funcionário com os campos do modelo e devolve cbo/matrícula como texto', async () => {
   const res = await request(app.getHttpServer()).post('/employees').set('Authorization', `Bearer ${empresaToken}`)
-    .send({ full_name: 'Ana Teste', cpf: '529.982.247-25', sex: 'f', esocial_registration: '00012345678',
+    .send({ full_name: 'Ana Teste', cpf: '529.982.247-25', sex: 'f', registration_number: '00012345678',
             cbo_code: '051210', position: 'Soldador', activity_description: 'Solda em campo' });
   expect(res.status).toBe(201);
-  expect(res.body).toMatchObject({ cpf: CPF_OK, sex: 'F', esocial_registration: '00012345678', cbo_code: '051210' });
+  expect(res.body).toMatchObject({ cpf: CPF_OK, sex: 'F', registration_number: '00012345678', cbo_code: '051210' });
 });
 it('rejeita CPF com dígito verificador inválido (400, mensagem em português)', async () => {
   const res = await request(app.getHttpServer()).post('/employees').set('Authorization', `Bearer ${empresaToken}`)
@@ -305,7 +307,7 @@ it('rejeita CPF com dígito verificador inválido (400, mensagem em português)'
   expect(res.status).toBe(400);
   expect(JSON.stringify(res.body)).toContain('CPF inválido');
 });
-it('matrícula repetida no mesmo tenant dá 409', async () => { /* cria dois com mesma esocial_registration e CPFs distintos válidos; segundo → 409 */ });
+it('matrícula repetida no mesmo tenant dá 409', async () => { /* cria dois com mesma registration_number e CPFs distintos válidos; segundo → 409 */ });
 ```
 (Para o 3º caso gerar um 2º CPF válido, ex. `'11144477735'`.)
 
@@ -314,10 +316,10 @@ it('matrícula repetida no mesmo tenant dá 409', async () => { /* cria dois com
 Expected: FAIL (campos ignorados / CPF inválido aceito). Ler o log do arquivo, nunca `| tail` durante a execução.
 
 - [ ] **Step 3: Implementar**
-  - `Employee` ganha `esocial_registration: string | null; sex: 'F' | 'M' | null; cbo_code: string | null; activity_description: string | null;`.
-  - `UPDATABLE_FIELDS` ganha `'esocial_registration','sex','cbo_code','activity_description'`.
+  - `Employee` ganha `registration_number: string | null; sex: 'F' | 'M' | null; cbo_code: string | null; activity_description: string | null;`.
+  - `UPDATABLE_FIELDS` ganha `'registration_number','sex','cbo_code','activity_description'`.
   - DTOs (`CreateEmployeeDto`/`UpdateEmployeeDto`) ganham os mesmos 4 campos opcionais (`string`).
-  - `create`: no início, `const { values, errors } = normalizeEmployeeInput({ full_name: data.full_name, cpf: data.cpf, birth_date: data.birth_date, position: data.position, admission_date: data.admission_date, sex: data.sex, cbo_code: data.cbo_code, esocial_registration: data.esocial_registration, activity_description: data.activity_description });` e `if (Object.keys(errors).length) throw new BadRequestException(Object.values(errors).join('; '));` — INSERT passa a incluir as 4 colunas novas a partir de `values` (`?? null`). `mapPgError` continua traduzindo 23505 (CPF duplicado); acrescentar tradução de `employees_tenant_esocial_registration_uidx` → `ConflictException('Matrícula eSocial já cadastrada nesta empresa')` (checar `common/pg-error.util.ts` e seguir o padrão local).
+  - `create`: no início, `const { values, errors } = normalizeEmployeeInput({ full_name: data.full_name, cpf: data.cpf, birth_date: data.birth_date, position: data.position, admission_date: data.admission_date, sex: data.sex, cbo_code: data.cbo_code, registration_number: data.registration_number, activity_description: data.activity_description });` e `if (Object.keys(errors).length) throw new BadRequestException(Object.values(errors).join('; '));` — INSERT passa a incluir as 4 colunas novas a partir de `values` (`?? null`). `mapPgError` continua traduzindo 23505 (CPF duplicado); acrescentar tradução de `employees_tenant_registration_number_uidx` → `ConflictException('Matrícula eSocial já cadastrada nesta empresa')` (checar `common/pg-error.util.ts` e seguir o padrão local).
   - `update`: antes de montar o SET, `const { values, errors } = normalizeEmployeeInput(data as Record<string, unknown>);` mesmo tratamento de `errors`; usar `values` no lugar de `data` em `buildSafeSetClause` e nas checagens existentes (`status`, `company_unit_id`, `position_id`).
   - `controller.create`: repassar os 4 campos novos do DTO.
 
@@ -335,7 +337,7 @@ Expected: FAIL (campos ignorados / CPF inválido aceito). Ler o log do arquivo, 
 ```ts
 export interface EmployeeTableRow {
   id: string; sequence: number; row_version: string;
-  full_name: string; esocial_registration: string | null; cpf: string;
+  full_name: string; registration_number: string | null; cpf: string;
   birth_date: string | null; sex: 'F' | 'M' | null; position: string | null;
   admission_date: string | null; cbo_code: string | null; activity_description: string | null;
   company_unit_id: string | null; status: string;

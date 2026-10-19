@@ -98,7 +98,7 @@ const terminal = (status: 'ilegivel' | 'sem_dados' | 'erro', detail: string): Pr
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const EMPTY_SUMMARY: ExtractionSummary = { applied: 0, unchanged: 0, novo: 0, conflito: 0, invalida: 0, ignored_rows: 0 };
 // Campos não-CPF de uma linha nova, em ordem fixa, já normalizados; ≤ 200 caracteres e sem corrida de 9+ dígitos.
-const NOVO_FIELD_ORDER = ['birth_date', 'sex', 'position', 'admission_date', 'esocial_registration', 'cbo_code', 'activity_description'] as const;
+const NOVO_FIELD_ORDER = ['birth_date', 'sex', 'position', 'admission_date', 'registration_number', 'cbo_code', 'activity_description'] as const;
 // Só o que é CPF mascara: CPF VÁLIDO (com ou sem pontuação) vira ***.***.***-DD; CPF formatado, mesmo inválido, vira
 // [CPF removido]. Matrícula/CBO e outros números que não são CPF aparecem INTEIROS (o revisor precisa ver o que será gravado).
 const CPF_SHAPE = /(?<!\d)\d{3}\.?\d{3}\.?\d{3}-?\d{2}(?!\d)/g;
@@ -351,7 +351,7 @@ export class EmployeeIngestionService {
 
     const cpfs = normalizedCpfs(rows);
     const existing = await client.query<ExistingEmployee>(
-      `SELECT e.id, e.cpf, e.company_unit_id, e.full_name, e.esocial_registration, e.sex, e.position, e.cbo_code, e.activity_description,
+      `SELECT e.id, e.cpf, e.company_unit_id, e.full_name, e.registration_number, e.sex, e.position, e.cbo_code, e.activity_description,
               to_char(e.birth_date, 'YYYY-MM-DD') AS birth_date, to_char(e.admission_date, 'YYYY-MM-DD') AS admission_date
          FROM employees e WHERE e.tenant_id = $1 AND e.cpf = ANY($2) ORDER BY e.id FOR UPDATE OF e`,
       [p.tenantId, cpfs],
@@ -466,7 +466,7 @@ export class EmployeeIngestionService {
         const v = c.values;
         await this.employees.create(client, row.tenant_id, {
           full_name: v.full_name, cpf: v.cpf, birth_date: v.birth_date, position: v.position, admission_date: v.admission_date,
-          company_unit_id: v.company_unit_id, esocial_registration: v.esocial_registration, sex: v.sex, cbo_code: v.cbo_code,
+          company_unit_id: v.company_unit_id, registration_number: v.registration_number, sex: v.sex, cbo_code: v.cbo_code,
           activity_description: v.activity_description,
         }, actor.role);
       } else {

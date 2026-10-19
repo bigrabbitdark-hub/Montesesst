@@ -109,6 +109,28 @@ describe('Cadastro — POST /auth/register, GET /auth/confirm (e2e)', () => {
     expect(row.rows[0]).toMatchObject({ tenant_status: 'pendente', user_status: 'pendente' });
   });
 
+  it('aceita CNPJ ALFANUMÉRICO (exemplo oficial da Receita), com máscara e minúsculas, e grava normalizado', async () => {
+    createdCnpjs.push('12ABC34501DE35');
+    const res = await request(app.getHttpServer()).post('/auth/register').send({
+      company_name: 'Empresa Alfanumerica',
+      cnpj: '12.abc.345/01de-35',
+      full_name: 'Responsável Alfa',
+      email: `alfa-${randomUUID()}@teste.montese.local`,
+      password: 'senha-segura-123',
+    });
+    expect(res.status).toBe(201);
+    const row = await db.query('SELECT cnpj FROM tenants WHERE cnpj = $1', ['12ABC34501DE35']);
+    expect(row.rows).toHaveLength(1);
+  });
+
+  it('rejeita CNPJ alfanumérico com dígito verificador errado com 400', async () => {
+    const res = await request(app.getHttpServer()).post('/auth/register').send({
+      company_name: 'Alfa Invalida', cnpj: '12ABC34501DE36', full_name: 'X',
+      email: `alfa2-${randomUUID()}@teste.montese.local`, password: 'senha-segura-123',
+    });
+    expect(res.status).toBe(400);
+  });
+
   it('rejeita CNPJ com dígito verificador inválido com 400', async () => {
     const res = await request(app.getHttpServer()).post('/auth/register').send({
       company_name: 'Empresa Inválida',

@@ -106,6 +106,15 @@ describe('EmBreveCard e KpiCard', () => {
     expect(screen.queryByRole('meter')).toBeNull();
     expect(screen.queryByText(/%/)).toBeNull();
   });
+  it('KpiCard sem `large` mantém os tamanhos originais; com `large` usa 16px', () => {
+    const { unmount } = render(<KpiCard label="Rótulo" value={1} hint="dica" />);
+    expect(screen.getByText('Rótulo').className).toBe('text-sm font-medium text-dash-muted');
+    expect(screen.getByText('dica').className).toBe('text-[13px] text-dash-muted');
+    unmount();
+    render(<KpiCard label="Rótulo" value={1} hint="dica" large />);
+    expect(screen.getByText('Rótulo')).toHaveClass('text-base');
+    expect(screen.getByText('dica')).toHaveClass('text-base');
+  });
   it('KpiCard aceita "—" quando a contagem falhou', () => {
     render(<KpiCard label="Funcionários" value="—" hint="ativos" />);
     expect(screen.getByText('—')).toBeInTheDocument();

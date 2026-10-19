@@ -8,6 +8,7 @@ import {
   HttpException,
   Logger,
   Param,
+  ParseUUIDPipe,
   Patch,
   Post,
   Query,
@@ -34,6 +35,7 @@ import { sanitizeTitle } from './employee-text-sanitize';
 import { DOCX_MIME_TYPE } from '../common/docx/docx-text.util';
 
 const XLSX_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+const EMPLOYEE_ID_PIPE = new ParseUUIDPipe({ exceptionFactory: () => new BadRequestException('Identificador de funcionário inválido') });
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 @Controller('employees')
@@ -176,7 +178,8 @@ export class EmployeesController {
           position: dto.position,
           admission_date: dto.admission_date,
           company_unit_id: dto.company_unit_id,
-          esocial_registration: dto.esocial_registration,
+          registration_number: dto.registration_number,
+          department: dto.department,
           sex: dto.sex,
           cbo_code: dto.cbo_code,
           activity_description: dto.activity_description,
@@ -327,7 +330,8 @@ export class EmployeesController {
 
   @Roles('empresa', 'admin')
   @Patch(':id')
-  update(@Param('id') id: string, @Body() dto: UpdateEmployeeDto, @Req() req: any) {
+  // id que não é UUID vira 400 aqui (antes chegava ao pg como 22P02 e podia virar 500).
+  update(@Param('id', EMPLOYEE_ID_PIPE) id: string, @Body() dto: UpdateEmployeeDto, @Req() req: any) {
     return req.withTenantContext((client: any) => this.employees.update(client, id, dto, req.user.role));
   }
 

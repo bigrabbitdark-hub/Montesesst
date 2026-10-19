@@ -3,6 +3,7 @@ import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { TestDb } from './db-test-helper';
+import { randomValidCnpj } from './helpers/cnpj';
 
 const CPF_A = '52998224725';
 const CPF_B = '11144477735';
@@ -92,6 +93,18 @@ describe('Funcionários: histórico campo a campo (e2e)', () => {
     expect((await history(id)).rowCount).toBe(before + 1);
   });
 
+  it('matrícula única (registration_number) entra no histórico com esse nome de campo', async () => {
+    const created = await create({ full_name: 'Hist Matricula', cpf: '86288366757', registration_number: 'HIST-M1' });
+    expect(created.status).toBe(201);
+    const res = await patch(created.body.id, { registration_number: 'HIST-M2' });
+    expect(res.status).toBe(200);
+    const rows = (await history(created.body.id)).rows.filter((r: any) => r.field === 'registration_number');
+    expect(rows.map((r: any) => [r.old_value, r.new_value])).toEqual(
+      expect.arrayContaining([[null, 'HIST-M1'], ['HIST-M1', 'HIST-M2']]),
+    );
+    expect((await history(created.body.id)).rows.some((r: any) => r.field === 'esocial_registration')).toBe(false);
+  });
+
   it('alteração direta no banco (sem contexto da aplicação) também é registrada, sem ator', async () => {
     const created = await create({ full_name: 'Hist Direto', cpf: '40000007994' });
     await sql(`UPDATE employees SET position = 'Via SQL' WHERE id = $1`, [created.body.id]);
@@ -122,6 +135,7 @@ describe('Funcionários: histórico campo a campo (e2e)', () => {
     // O CSV exige filial existente.
     await request(app.getHttpServer()).post('/company-units').set(auth(t)).send({
       name: 'Sede',
+      cnpj: randomValidCnpj(),
       address_street: 'Rua Import',
       address_city: 'Criciúma',
       address_state: 'SC',

@@ -670,7 +670,7 @@ task + revisão final de todo o branch):
 | 2 | `EpiModule` — CRUD de EPI (criar/listar/detalhe/excluir) + catálogo | ✅ |
 | 3 | Registro e listagem de entregas (`employee_epi_deliveries`) | ✅ |
 | 4 | `GET /employees` ganha filtro `tenant_id` (lacuna pré-existente da Fase 3) | ✅ |
-| 5 | Frontend — `EpisPanel` compartilhado + `/empresa/epis` | ✅ |
+| 5 | Frontend — `EpisPanel` compartilhado + `/empresa/epis` (hoje substituídos; ver nota abaixo) | ✅ |
 | 6 | Frontend técnico — seção EPI na página da empresa | ✅ |
 | 7 | Agenda de vencimentos estendida pra incluir `ca_valid_until` do EPI | ✅ |
 
@@ -716,7 +716,7 @@ trabalho visual não commitado de uma sessão paralela).
 segurança ou corretude hoje):
 - [ ] Lista de entregas do EPI só carrega ao clicar, não junto da lista
       de EPIs.
-- [ ] `/empresa/epis` inalcançável por navegação — mesma lacuna
+- [x] `/empresa/epis` inalcançável por navegação (hoje redireciona para `/empresa/epi`, com menu EPI) — mesma lacuna
       pré-existente de `/empresa/documentos` e `/empresa/inspecoes`.
 - [ ] Helpers de agenda (`formatDate`/`formatMonthLabel`/agrupamento)
       duplicados em 4 arquivos — candidato a extração pra
@@ -727,6 +727,8 @@ segurança ou corretude hoje):
       de EPI (herdado do brief da Task 5).
 - [ ] `DATE`→JSON depende do fuso do servidor — latente, idêntico ao
       comportamento pré-existente de `documents.expires_at`.
+
+> Nota (2026-10-18/19): o `EpisPanel` foi removido e `/empresa/epis` agora redireciona para `/empresa/epi` (módulo EPI, subsistema 4, ainda não commitado). Ver `docs/architecture/epi-telas.md`. As menções acima descrevem o estado histórico da Fase 6.
 
 **Fase 6 fechada por completo em 2026-08-26** (sub-projetos A, B e C
 todos concluídos).

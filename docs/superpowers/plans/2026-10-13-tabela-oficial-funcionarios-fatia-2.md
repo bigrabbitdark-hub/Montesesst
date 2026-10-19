@@ -1,5 +1,7 @@
 # Tabela oficial de funcionários — Fatia 2 (histórico campo a campo)
 
+> **Atualização 2026-10-19 (merge com feat/epi-estoque):** a coluna `esocial_registration` deste plano foi removida; a matrícula única é `employees.registration_number` (0069). Os trechos abaixo já usam o nome novo; a 0080 não cria coluna de matrícula, só CHECK de formato e índice único condicionais (ver o cabeçalho da migration).
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Registrar, campo a campo, quem alterou o quê e quando nos dados cadastrais de `employees`, e mostrar esse histórico numa gaveta da página `/empresa/funcionarios`, visível só à empresa dona e ao admin.
@@ -39,7 +41,7 @@
 
 **Interfaces — Produces:**
 - Tabela `employee_field_history(id, tenant_id, employee_id, field, old_value, new_value, actor_user_id, actor_role, source, changed_at)`.
-- Campos rastreados (valor de `field`): `full_name, cpf, birth_date, sex, position, admission_date, esocial_registration, cbo_code, activity_description, company_unit_id, status`.
+- Campos rastreados (valor de `field`): `full_name, cpf, birth_date, sex, position, admission_date, registration_number, cbo_code, activity_description, company_unit_id, status`.
 - GUC opcional `app.change_source` ∈ `cadastro|tabela|importacao|documento|revisao` (padrão `cadastro`).
 
 - [ ] **Step 1: Escrever o teste que falha** — `backend/test/employee-history.e2e-spec.ts`
@@ -196,7 +198,7 @@ DECLARE
 BEGIN
   FOREACH f IN ARRAY ARRAY[
     'full_name', 'cpf', 'birth_date', 'sex', 'position', 'admission_date',
-    'esocial_registration', 'cbo_code', 'activity_description', 'company_unit_id', 'status'
+    'registration_number', 'cbo_code', 'activity_description', 'company_unit_id', 'status'
   ] LOOP
     o := old_j ->> f;
     n := new_j ->> f;
@@ -412,7 +414,7 @@ import { FIELD_LABELS, formatChangedAt, formatHistoryValue, roleLabel, sourceLab
 describe('employees-history', () => {
   it('rótulos dos 11 campos rastreados', () => {
     expect(FIELD_LABELS.cbo_code).toBe('CBO');
-    expect(FIELD_LABELS.esocial_registration).toBe('Matrícula eSocial');
+    expect(FIELD_LABELS.registration_number).toBe('Matrícula eSocial');
     expect(Object.keys(FIELD_LABELS)).toHaveLength(11);
   });
   it('formata valores', () => {
@@ -443,7 +445,7 @@ export interface HistoryItem {
 
 export const FIELD_LABELS: Record<string, string> = {
   full_name: 'Funcionário', cpf: 'CPF', birth_date: 'Data de nascimento', sex: 'Sexo',
-  position: 'Função/Cargo', admission_date: 'Data de admissão', esocial_registration: 'Matrícula eSocial',
+  position: 'Função/Cargo', admission_date: 'Data de admissão', registration_number: 'Matrícula eSocial',
   cbo_code: 'CBO', activity_description: 'Descrição da atividade', company_unit_id: 'Filial', status: 'Situação',
 };
 

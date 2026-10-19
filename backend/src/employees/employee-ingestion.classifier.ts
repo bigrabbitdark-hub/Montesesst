@@ -2,13 +2,13 @@ import { normalizeEmployeeInput, onlyDigits } from './employee-fields.util';
 import { SheetRow } from './employee-sheet.parser';
 
 export const COMPARABLE_FIELDS = [
-  'full_name', 'esocial_registration', 'birth_date', 'sex', 'position', 'admission_date', 'cbo_code', 'activity_description',
+  'full_name', 'registration_number', 'birth_date', 'sex', 'position', 'admission_date', 'cbo_code', 'activity_description',
 ] as const;
 const TEXT_FIELDS = new Set(['full_name', 'position', 'activity_description']);
 
 export interface ExistingEmployee {
   id: string; cpf: string; company_unit_id: string | null; full_name: string;
-  esocial_registration: string | null; birth_date: string | null; sex: string | null; position: string | null;
+  registration_number: string | null; birth_date: string | null; sex: string | null; position: string | null;
   admission_date: string | null; cbo_code: string | null; activity_description: string | null;
 }
 export interface FieldConflict { field: string; current: string; proposed: string }

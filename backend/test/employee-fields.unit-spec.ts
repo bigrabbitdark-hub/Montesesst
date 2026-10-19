@@ -1,5 +1,5 @@
 import {
-  isValidCpf, normalizeCbo, normalizeSex, normalizeEsocialRegistration,
+  isValidCpf, normalizeCbo, normalizeSex, normalizeRegistrationNumber,
   normalizeIsoDate, normalizeEmployeeInput,
 } from '../src/employees/employee-fields.util';
 
@@ -36,13 +36,13 @@ describe('normalizeSex', () => {
   it('rejeita outros valores', () => expect(normalizeSex('X').ok).toBe(false));
 });
 
-describe('normalizeEsocialRegistration', () => {
+describe('normalizeRegistrationNumber', () => {
   it('mantém zeros à esquerda como texto', () => {
-    expect(normalizeEsocialRegistration('00012345678')).toEqual({ ok: true, value: '00012345678' });
+    expect(normalizeRegistrationNumber('00012345678')).toEqual({ ok: true, value: '00012345678' });
   });
   it('rejeita espaços internos e excesso de tamanho', () => {
-    expect(normalizeEsocialRegistration('12 34').ok).toBe(false);
-    expect(normalizeEsocialRegistration('1'.repeat(31)).ok).toBe(false);
+    expect(normalizeRegistrationNumber('12 34').ok).toBe(false);
+    expect(normalizeRegistrationNumber('1'.repeat(31)).ok).toBe(false);
   });
 });
 
@@ -102,5 +102,33 @@ describe('normalizeEmployeeInput — UUIDs', () => {
     const ok = normalizeEmployeeInput({ company_unit_id: '3F2504E0-4F89-41D3-9A0C-0305E82C3301', position_id: '' });
     expect(ok.errors).toEqual({});
     expect(ok.values).toEqual({ company_unit_id: '3f2504e0-4f89-41d3-9a0c-0305e82c3301', position_id: null });
+  });
+});
+
+describe('normalizeEmployeeInput — matrícula única e setor (merge com a ficha de EPI)', () => {
+  it('registration_number segue a regra oficial; vazio vira null', () => {
+    expect(normalizeEmployeeInput({ registration_number: ' M-0042 ' }).values).toEqual({ registration_number: 'M-0042' });
+    expect(normalizeEmployeeInput({ registration_number: '  ' }).values).toEqual({ registration_number: null });
+    expect(normalizeEmployeeInput({ registration_number: 'M 42' }).errors.registration_number).toBeDefined();
+    expect(normalizeEmployeeInput({ registration_number: 'x'.repeat(31) }).errors.registration_number).toBeDefined();
+    expect(normalizeEmployeeInput({ registration_number: 'x'.repeat(30) }).errors).toEqual({});
+  });
+
+  it('department e position: até 120, sem NUL; vazio vira null', () => {
+    expect(normalizeEmployeeInput({ department: ' Produção ' }).values).toEqual({ department: 'Produção' });
+    expect(normalizeEmployeeInput({ department: '' }).values).toEqual({ department: null });
+    expect(normalizeEmployeeInput({ department: 'y'.repeat(121) }).errors.department).toBeDefined();
+    expect(normalizeEmployeeInput({ department: 'a\u0000b' }).errors.department).toBeDefined();
+    expect(normalizeEmployeeInput({ position: 'p'.repeat(121) }).errors.position).toBeDefined();
+    expect(normalizeEmployeeInput({ position: 'p'.repeat(120) }).errors).toEqual({});
+  });
+
+  it('nome: até 200 e sem NUL', () => {
+    expect(normalizeEmployeeInput({ full_name: 'n'.repeat(201) }).errors.full_name).toBeDefined();
+    expect(normalizeEmployeeInput({ full_name: 'a\u0000b' }).errors.full_name).toBeDefined();
+  });
+
+  it('esocial_registration não é mais campo aceito (ignorado como qualquer chave desconhecida)', () => {
+    expect(normalizeEmployeeInput({ esocial_registration: 'M-1' })).toEqual({ values: {}, errors: {} });
   });
 });

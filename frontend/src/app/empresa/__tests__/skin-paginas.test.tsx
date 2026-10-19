@@ -3,7 +3,6 @@ import { render, screen, waitFor } from '@testing-library/react';
 
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push: vi.fn() }) }));
 vi.mock('@/components/DocumentsPanel', () => ({ DocumentsPanel: () => <div data-testid="painel" /> }));
-vi.mock('@/components/EpisPanel', () => ({ EpisPanel: () => <div data-testid="painel" /> }));
 vi.mock('@/components/AssistantChat', () => ({ AssistantChat: () => <div data-testid="painel" /> }));
 vi.mock('@/components/AssistantSummaryPanel', () => ({ AssistantSummaryPanel: () => <div /> }));
 vi.mock('@/components/PenteFinoPanel', () => ({ PenteFinoPanel: () => <div /> }));
@@ -14,7 +13,6 @@ vi.mock('@/components/EmergencyDrillPanel', () => ({ EmergencyDrillPanel: () => 
 vi.mock('@/components/MapaSstPanel', () => ({ MapaSstPanel: () => <div data-testid="painel" /> }));
 
 import Documentos from '../documentos/page';
-import Epis from '../epis/page';
 import Assistente from '../assistente/page';
 import Brigada from '../brigada/page';
 import Equipamentos from '../equipamentos-incendio/page';
@@ -26,7 +24,6 @@ beforeEach(() => localStorage.setItem('montese_token', 'x'));
 
 describe.each([
   ['Documentos', Documentos, 'Documentos'],
-  ['EPIs', Epis, 'Catálogo de EPI'],
   ['Assistente', Assistente, 'Assistente Montese SST'],
   ['Brigada', Brigada, 'Brigada de incêndio'],
   ['Equipamentos contra incêndio', Equipamentos, 'Equipamentos contra incêndio'],

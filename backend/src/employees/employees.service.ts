@@ -18,11 +18,26 @@ const UPDATABLE_FIELDS = [
   'company_unit_id',
   'position_id',
   'status',
-  'esocial_registration',
+  'registration_number',
+  'department',
   'sex',
   'cbo_code',
   'activity_description',
 ] as const;
+
+// Erros do Postgres de entrada -> HTTP sem expor o texto do pg (tabela/constraint/valor).
+// Tipo, tamanho e NUL já são validados nos DTOs e em normalizeEmployeeInput; isto é defesa em profundidade.
+const PG_BAD_INPUT = new Set(['22P02', '22001', '22007', '22008', '22003', '23502', '22021', '23514']);
+function translateEmployeePgError(err: unknown): never {
+  const e = err as { code?: string; constraint?: string };
+  if (e.code === '23505' && e.constraint && e.constraint.includes('cpf')) {
+    throw new ConflictException('CPF já cadastrado nesta empresa');
+  }
+  // Matrícula repetida (índice employees_tenant_registration_number_uidx) e demais 23505: mapPgError.
+  if (e.code === '23505') return mapPgError(err);
+  if (e.code && PG_BAD_INPUT.has(e.code)) throw new BadRequestException('Dados inválidos');
+  return mapPgError(err);
+}
 
 export interface Employee {
   id: string;
@@ -34,7 +49,8 @@ export interface Employee {
   position: string | null;
   admission_date: string | null;
   company_unit_id: string | null;
-  esocial_registration: string | null;
+  registration_number: string | null;
+  department: string | null;
   sex: 'F' | 'M' | null;
   cbo_code: string | null;
   activity_description: string | null;
@@ -50,7 +66,8 @@ interface CreateEmployeeData {
   position?: string;
   admission_date?: string;
   company_unit_id?: string;
-  esocial_registration?: string;
+  registration_number?: string | null;
+  department?: string | null;
   sex?: string;
   cbo_code?: string;
   activity_description?: string;
@@ -59,16 +76,17 @@ interface CreateEmployeeData {
 interface UpdateEmployeeData {
   full_name?: string;
   cpf?: string;
-  birth_date?: string;
-  position?: string;
-  admission_date?: string;
-  company_unit_id?: string;
-  position_id?: string;
+  birth_date?: string | null;
+  position?: string | null;
+  admission_date?: string | null;
+  company_unit_id?: string | null;
+  position_id?: string | null;
   status?: string;
-  esocial_registration?: string;
-  sex?: string;
-  cbo_code?: string;
-  activity_description?: string;
+  registration_number?: string | null;
+  department?: string | null;
+  sex?: string | null;
+  cbo_code?: string | null;
+  activity_description?: string | null;
 }
 
 export interface EmployeeTableRow {
@@ -76,7 +94,7 @@ export interface EmployeeTableRow {
   sequence: number;
   row_version: string;
   full_name: string;
-  esocial_registration: string | null;
+  registration_number: string | null;
   cpf: string;
   birth_date: string | null;
   sex: 'F' | 'M' | null;
@@ -91,7 +109,7 @@ export interface EmployeeTableRow {
 // Datas saem como texto (nunca Date do JS) e row_version com precisão de
 // microssegundos, para o controle de concorrência otimista da tabela.
 const ROW_VERSION_SQL = `to_char(updated_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"')`;
-const TABLE_COLUMNS = `id, full_name, esocial_registration, cpf,
+const TABLE_COLUMNS = `id, full_name, registration_number, cpf,
   to_char(birth_date,'YYYY-MM-DD') AS birth_date, sex, position,
   to_char(admission_date,'YYYY-MM-DD') AS admission_date, cbo_code, activity_description,
   company_unit_id, status, ${ROW_VERSION_SQL} AS row_version`;
@@ -153,28 +171,48 @@ export class EmployeesService {
     }
   }
 
+  // Unicidade da matrícula por tenant também no código: o índice único parcial da 0080 só é criado se a
+  // produção não tiver matrículas repetidas; enquanto não existir, esta checagem é a garantia (sem trava:
+  // duas gravações simultâneas da mesma matrícula ainda podem passar — o índice fecha essa janela).
+  private async assertRegistrationNumberAvailable(
+    client: PoolClient,
+    tenantId: string,
+    registrationNumber: unknown,
+    employeeId: string | null,
+  ): Promise<void> {
+    if (typeof registrationNumber !== 'string' || registrationNumber === '') return;
+    const dup = await client.query(
+      'SELECT 1 FROM employees WHERE tenant_id = $1 AND registration_number = $2 AND id IS DISTINCT FROM $3 LIMIT 1',
+      [tenantId, registrationNumber, employeeId],
+    );
+    if ((dup.rowCount ?? 0) > 0) throw new ConflictException('Matrícula eSocial já cadastrada nesta empresa');
+  }
+
   async create(client: PoolClient, tenantId: string, data: CreateEmployeeData, callerRole: string): Promise<Employee> {
-    await this.assertEmployeeLimitNotExceeded(client, tenantId, callerRole);
-    if (data.company_unit_id) {
-      await this.assertCompanyUnitBelongsToTenant(client, data.company_unit_id, tenantId);
-    }
+    // Nome e CPF são obrigatórios: null cai na validação (CPF exige dígito verificador válido).
     const { values, errors } = normalizeEmployeeInput({
-      full_name: data.full_name,
-      cpf: data.cpf,
+      full_name: data.full_name ?? null,
+      cpf: data.cpf ?? null,
       birth_date: data.birth_date,
       position: data.position,
       admission_date: data.admission_date,
       sex: data.sex,
       cbo_code: data.cbo_code,
-      esocial_registration: data.esocial_registration,
+      registration_number: data.registration_number,
+      department: data.department,
       activity_description: data.activity_description,
     });
     if (Object.keys(errors).length) throw new BadRequestException(Object.values(errors).join('; '));
+    await this.assertEmployeeLimitNotExceeded(client, tenantId, callerRole);
+    if (data.company_unit_id) {
+      await this.assertCompanyUnitBelongsToTenant(client, data.company_unit_id, tenantId);
+    }
+    await this.assertRegistrationNumberAvailable(client, tenantId, values.registration_number, null);
     try {
       const result = await client.query<Employee>(
         `INSERT INTO employees (tenant_id, full_name, cpf, birth_date, position, admission_date, company_unit_id,
-                                esocial_registration, sex, cbo_code, activity_description)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *`,
+                                registration_number, department, sex, cbo_code, activity_description)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING *`,
         [
           tenantId,
           values.full_name,
@@ -183,7 +221,8 @@ export class EmployeesService {
           values.position ?? null,
           values.admission_date ?? null,
           data.company_unit_id ?? null,
-          values.esocial_registration ?? null,
+          values.registration_number ?? null,
+          values.department ?? null,
           values.sex ?? null,
           values.cbo_code ?? null,
           values.activity_description ?? null,
@@ -191,7 +230,7 @@ export class EmployeesService {
       );
       return result.rows[0];
     } catch (err) {
-      mapPgError(err);
+      translateEmployeePgError(err);
     }
   }
 
@@ -382,6 +421,14 @@ export class EmployeesService {
       ]);
       if (positionResult.rowCount === 0) throw new BadRequestException('Cargo não encontrado');
     }
+    if (typeof data.registration_number === 'string') {
+      // Tenant do funcionário ALVO (admin pode editar de qualquer tenant), como nas checagens acima.
+      const existing = await client.query<{ tenant_id: string }>('SELECT tenant_id FROM employees WHERE id = $1', [
+        id,
+      ]);
+      if (existing.rowCount === 0) throw new NotFoundException('Funcionário não encontrado');
+      await this.assertRegistrationNumberAvailable(client, existing.rows[0].tenant_id, data.registration_number, id);
+    }
     const { setClauses, values } = buildSafeSetClause(data, UPDATABLE_FIELDS, 2);
     if (setClauses.length === 0) return this.findOne(client, id);
 
@@ -392,7 +439,7 @@ export class EmployeesService {
         [id, ...values],
       );
     } catch (err) {
-      mapPgError(err);
+      translateEmployeePgError(err);
     }
     const employee = result.rows[0];
     if (!employee) throw new NotFoundException('Funcionário não encontrado');

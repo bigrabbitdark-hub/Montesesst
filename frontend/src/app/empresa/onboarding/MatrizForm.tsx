@@ -1,8 +1,10 @@
 'use client';
 
-import { FormEvent, useState } from 'react';
+import { FormEvent, useEffect, useState } from 'react';
 
 import { getToken } from '@/lib/auth';
+import { CnpjData } from '@/lib/cnpj';
+import { useCnpjLookup } from '@/lib/useCnpjLookup';
 
 export interface TenantData {
   id: string;
@@ -19,6 +21,11 @@ export interface TenantData {
   address_city: string | null;
   address_state: string | null;
   address_zip: string | null;
+  notes?: string | null;
+  address_neighborhood?: string | null;
+  address_complement?: string | null;
+  cnae_code?: string | null;
+  cnae_description?: string | null;
 }
 
 // Passo 1 do onboarding — o único obrigatório de verdade (não dá pra
@@ -33,18 +40,46 @@ export function MatrizForm({
   onSaved: () => void;
   onLogoChanged: () => void;
 }) {
-  const [tradeName, setTradeName] = useState(tenant.trade_name ?? '');
+  const [notes, setNotes] = useState(tenant.notes ?? '');
   const [sector, setSector] = useState(tenant.sector ?? '');
   const [street, setStreet] = useState(tenant.address_street ?? '');
   const [number, setNumber] = useState(tenant.address_number ?? '');
   const [city, setCity] = useState(tenant.address_city ?? '');
   const [state, setState] = useState(tenant.address_state ?? '');
   const [zip, setZip] = useState(tenant.address_zip ?? '');
+  const [neighborhood, setNeighborhood] = useState(tenant.address_neighborhood ?? '');
+  const [complement, setComplement] = useState(tenant.address_complement ?? '');
+  const [cnaeCode, setCnaeCode] = useState(tenant.cnae_code ?? '');
+  const [cnaeDescription, setCnaeDescription] = useState(tenant.cnae_description ?? '');
   const [contactName, setContactName] = useState(tenant.contact_name ?? '');
   const [contactRole, setContactRole] = useState(tenant.contact_role ?? '');
   const [contactPhone, setContactPhone] = useState(tenant.contact_phone ?? '');
   const [status, setStatus] = useState<'idle' | 'loading' | 'erro'>('idle');
   const [logoStatus, setLogoStatus] = useState<'idle' | 'loading' | 'erro'>('idle');
+
+  // Consulta pelo CNPJ da própria empresa (imutável). Só preenche campo
+  // vazio — o que o usuário já digitou ou que já estava salvo nunca é trocado.
+  const fillIfEmpty = (setter: (updater: (current: string) => string) => void, value: string | null) => {
+    if (value) setter((current) => (current.trim() ? current : value));
+  };
+  const { state: lookupState, lookup } = useCnpjLookup((data: CnpjData) => {
+    fillIfEmpty(setStreet, data.address_street);
+    fillIfEmpty(setNumber, data.address_number);
+    fillIfEmpty(setComplement, data.address_complement);
+    fillIfEmpty(setNeighborhood, data.address_neighborhood);
+    fillIfEmpty(setCity, data.address_city);
+    fillIfEmpty(setState, data.address_state);
+    fillIfEmpty(setZip, data.address_zip);
+    fillIfEmpty(setCnaeCode, data.cnae_code);
+    fillIfEmpty(setCnaeDescription, data.cnae_description);
+  });
+
+  // Automático uma única vez, e só se a matriz ainda não tem endereço nem CNAE.
+  useEffect(() => {
+    const semDados = !tenant.address_street && !tenant.address_city && !tenant.address_zip && !tenant.cnae_code;
+    if (semDados) void lookup(tenant.cnpj);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
@@ -55,13 +90,17 @@ export function MatrizForm({
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({
-          trade_name: tradeName,
+          notes,
           sector: sector || undefined,
           address_street: street,
           address_number: number || undefined,
           address_city: city,
           address_state: state,
           address_zip: zip,
+          address_neighborhood: neighborhood,
+          address_complement: complement,
+          cnae_code: cnaeCode,
+          cnae_description: cnaeDescription,
           contact_name: contactName,
           contact_role: contactRole,
           contact_phone: contactPhone || undefined,
@@ -147,12 +186,29 @@ export function MatrizForm({
             className="rounded-md border border-brand-100 bg-brand-50 px-3 py-2 text-brand-700"
           />
         </label>
+        <div className="flex flex-col gap-1 text-sm text-brand-900" aria-live="polite">
+          <button
+            type="button"
+            onClick={() => lookup(tenant.cnpj, true)}
+            disabled={lookupState.status === 'loading'}
+            className="self-start rounded-md border border-brand-300 px-4 py-2 text-sm font-medium text-brand-700 hover:bg-brand-50 disabled:opacity-50"
+          >
+            {lookupState.status === 'loading' ? 'Consultando CNPJ...' : 'Preencher dados pelo CNPJ'}
+          </button>
+          {lookupState.status === 'erro' && <p className="text-red-600">{lookupState.message}</p>}
+          {lookupState.status === 'done' && (
+            <p className="text-brand-700">
+              Campos vazios preenchidos pela consulta (BrasilAPI / Receita Federal). Confira e corrija antes de salvar.
+            </p>
+          )}
+        </div>
         <label className="flex flex-col gap-1 text-sm text-brand-900">
-          Nome fantasia
-          <input
-            required
-            value={tradeName}
-            onChange={(e) => setTradeName(e.target.value)}
+          Observação (opcional)
+          <textarea
+            rows={3}
+            maxLength={2000}
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
             className="rounded-md border border-brand-100 px-3 py-2"
           />
         </label>
@@ -216,6 +272,22 @@ export function MatrizForm({
           />
         </label>
         <label className="flex flex-col gap-1 text-sm text-brand-900">
+          Complemento (opcional)
+          <input
+            value={complement}
+            onChange={(e) => setComplement(e.target.value)}
+            className="rounded-md border border-brand-100 px-3 py-2"
+          />
+        </label>
+        <label className="flex flex-col gap-1 text-sm text-brand-900">
+          Bairro (opcional)
+          <input
+            value={neighborhood}
+            onChange={(e) => setNeighborhood(e.target.value)}
+            className="rounded-md border border-brand-100 px-3 py-2"
+          />
+        </label>
+        <label className="flex flex-col gap-1 text-sm text-brand-900">
           Cidade
           <input
             required
@@ -240,6 +312,26 @@ export function MatrizForm({
             required
             value={zip}
             onChange={(e) => setZip(e.target.value)}
+            className="rounded-md border border-brand-100 px-3 py-2"
+          />
+        </label>
+
+        <p className="mt-2 text-sm font-medium text-brand-900">Atividade principal (CNAE)</p>
+        <label className="flex flex-col gap-1 text-sm text-brand-900">
+          CNAE principal (opcional)
+          <input
+            inputMode="numeric"
+            maxLength={7}
+            value={cnaeCode}
+            onChange={(e) => setCnaeCode(e.target.value.replace(/\D/g, ''))}
+            className="rounded-md border border-brand-100 px-3 py-2"
+          />
+        </label>
+        <label className="flex flex-col gap-1 text-sm text-brand-900">
+          Descrição do CNAE (opcional)
+          <input
+            value={cnaeDescription}
+            onChange={(e) => setCnaeDescription(e.target.value)}
             className="rounded-md border border-brand-100 px-3 py-2"
           />
         </label>

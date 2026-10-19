@@ -39,7 +39,7 @@ describe('DashboardSidebar parametrizada', () => {
     render(<DashboardSidebar />);
     expect(screen.queryByText('Mais ferramentas')).toBeNull();
     const titulos = screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent);
-    expect(titulos).toEqual(['Empresa', 'CIPA', 'Brigada e Incêndio', 'Segurança', 'Agenda', 'Gestão']);
+    expect(titulos).toEqual(['Empresa', 'CIPA', 'Brigada e Incêndio', 'Segurança', 'EPI', 'Agenda', 'Gestão']);
     expect(screen.getByRole('link', { name: /Documentos/ })).toHaveAttribute('href', '/empresa/documentos');
   });
   it('o menu do técnico não tem headings de setor nem listas aninhadas', () => {

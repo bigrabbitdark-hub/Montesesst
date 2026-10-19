@@ -51,7 +51,7 @@ DECLARE
 BEGIN
   FOREACH f IN ARRAY ARRAY[
     'full_name', 'cpf', 'birth_date', 'sex', 'position', 'admission_date',
-    'esocial_registration', 'cbo_code', 'activity_description', 'company_unit_id', 'status'
+    'registration_number', 'cbo_code', 'activity_description', 'company_unit_id', 'status'
   ] LOOP
     o := old_j ->> f;
     n := new_j ->> f;

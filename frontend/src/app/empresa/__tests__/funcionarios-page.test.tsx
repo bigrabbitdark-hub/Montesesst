@@ -78,7 +78,7 @@ describe('página /empresa/funcionarios', () => {
   it('em edição da tabela, filtro de filial e Adicionar funcionário ficam desabilitados e voltam após cancelar', async () => {
     localStorage.setItem('montese_token', 'x');
     const item = {
-      id: 'e1', sequence: 1, row_version: '1', full_name: 'Ana Teste', esocial_registration: null, cpf: '52998224725',
+      id: 'e1', sequence: 1, row_version: '1', full_name: 'Ana Teste', registration_number: null, cpf: '52998224725',
       birth_date: null, sex: null, position: null, admission_date: null, cbo_code: null, activity_description: null,
       company_unit_id: null, status: 'active',
     };
@@ -135,7 +135,7 @@ describe('página /empresa/funcionarios', () => {
   it('o anexo fica desabilitado durante a edição da tabela e a falha da lista de revisões não quebra a página', async () => {
     localStorage.setItem('montese_token', 'x');
     const item = {
-      id: 'e1', sequence: 1, row_version: '1', full_name: 'Ana Teste', esocial_registration: null, cpf: '52998224725',
+      id: 'e1', sequence: 1, row_version: '1', full_name: 'Ana Teste', registration_number: null, cpf: '52998224725',
       birth_date: null, sex: null, position: null, admission_date: null, cbo_code: null, activity_description: null,
       company_unit_id: null, status: 'active',
     };
