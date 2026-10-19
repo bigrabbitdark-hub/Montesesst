@@ -46,6 +46,20 @@ describe('CompanyDocumentIndexerService', () => {
     it('false pra imagem, mesmo em categoria indexável (sem OCR)', () => {
       expect(service.shouldIndex('pgr', 'image/jpeg')).toBe(false);
     });
+
+    // Etapa 1 do Relatório de Visita Técnica: protege a garantia
+    // de que PDFs de inspeção NUNCA disparam embedding/IA. Este
+    // teste é a "rede" caso alguém adicione 'relatorio_visita' em
+    // INDEXABLE_CATEGORIES por engano no futuro — é a mesma
+    // categoria que InspectionsService.conclude() usa, então a
+    // falha silenciosa seria especialmente perigosa (todo PDF
+    // gerado na conclusão de inspeções iria pro provedor de
+    // embedding, com PII de funcionários e nomes de empresa).
+    it('false pra relatorio_visita em qualquer mimetype suportado — Etapa 1 do Relatório de Visita Técnica (sem IA)', () => {
+      expect(service.shouldIndex('relatorio_visita', 'application/pdf')).toBe(false);
+      expect(service.shouldIndex('relatorio_visita', DOCX_MIME_TYPE)).toBe(false);
+      expect(service.shouldIndex('relatorio_visita', XLSX_MIME_TYPE)).toBe(false);
+    });
   });
 
   describe('extractAndEmbed', () => {

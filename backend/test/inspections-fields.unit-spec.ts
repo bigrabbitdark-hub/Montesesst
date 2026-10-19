@@ -7,7 +7,11 @@ import { NrConformidadeService } from '../src/nr-conformidade/nr-conformidade.se
 
 describe('InspectionsService — filial e identificação', () => {
   let service: InspectionsService;
-  const fakeDocuments = { upload: jest.fn() };
+  // Etapa 1 do Relatório de Visita Técnica: InspectionsService.findOne
+  // agora chama documents.findByInspection() pra montar
+  // `documentos_anexos`. Mock precisa expor esse método — retorna
+  // lista vazia porque os testes desta suíte não exercitam anexos.
+  const fakeDocuments = { upload: jest.fn(), findByInspection: jest.fn().mockResolvedValue([]) };
 
   beforeEach(async () => {
     const moduleRef = await Test.createTestingModule({

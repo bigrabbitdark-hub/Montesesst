@@ -73,6 +73,53 @@ describe('POST /inspections/:id/concluir — gera PDF e indexa como Document (e2
     await app.close();
   });
 
+  it('PDF inclui a identidade visual da Montese (marca d\'água + rodapé) — Etapa 2', async () => {
+    // Sanity check da Etapa 2 do plano: o PDF precisa estar bem maior
+    // do que um PDF só de texto (que fica na faixa de 5-10KB), porque
+    // embute a marca-dagua-montese.png (65KB RGBA) e o rodape-montese
+    // .png (260KB RGB, convertido do webp). Threshold de 200KB é
+    // conservador — PDFs reais ficam na casa de 300-500KB, e mesmo
+    // com compressão pesada do pdfkit, 2 PNGs com essa massa não
+    // cabem em 200KB. Se alguém remover a chamada `drawPageChrome`
+    // no inspection-pdf.util.ts, este teste falha imediatamente.
+    // visited_at=2026-09-20 (vs 2026-09-15 dos outros 2 tests deste
+    // describe) pra isolar — `afterAll` apaga por tenant_id e isso
+    // não diferenciaria, mas o próximo test conta documentos
+    // existentes no `tenant_id` (esperando 1) e dois PDFs com a
+    // mesma data apareceriam juntos.
+    const createRes = await request(app.getHttpServer())
+      .post('/inspections')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ tenant_id: tenantId, visited_at: '2026-09-20', company_unit_id: companyUnitId });
+    const inspectionId = createRes.body.id;
+
+    const concludeRes = await request(app.getHttpServer())
+      .post(`/inspections/${inspectionId}/concluir`)
+      .set('Authorization', `Bearer ${token}`);
+    expect(concludeRes.status).toBe(201);
+
+    const docResult = await (db as any).client.query(
+      `SELECT file_key FROM documents WHERE tenant_id = $1 AND category = 'relatorio_visita' ORDER BY created_at DESC LIMIT 1`,
+      [tenantId],
+    );
+    const getRes = await s3.send(
+      new GetObjectCommand({ Bucket: process.env.R2_BUCKET, Key: docResult.rows[0].file_key }),
+    );
+    const bytes = await getRes.Body!.transformToByteArray();
+    const buffer = Buffer.from(bytes);
+
+    // Confirma que o PDF é realmente um PDF válido (começa com %PDF-)
+    expect(buffer.slice(0, 5).toString('latin1')).toBe('%PDF-');
+    // Confirma que embute imagens (pdfkit marca `/Subtype /Image` no
+    // resource dictionary de cada imagem embutida). Procura a string
+    // binária que sinaliza a presença de pelo menos 1 imagem.
+    expect(buffer.includes(Buffer.from('/Subtype /Image', 'latin1'))).toBe(true);
+    // Confirma que o tamanho está bem acima do mínimo de texto puro
+    // — sanidade final, se alguém trocar as imagens por placeholders
+    // de 1KB, este expect dispara.
+    expect(buffer.length).toBeGreaterThan(200_000);
+  });
+
   it('concluir gera um Document real (categoria relatorio_visita) com o conteúdo certo', async () => {
     const createRes = await request(app.getHttpServer())
       .post('/inspections')
@@ -100,7 +147,11 @@ describe('POST /inspections/:id/concluir — gera PDF e indexa como Document (e2
     expect(concludeRes.body.status).toBe('concluida');
 
     const docResult = await (db as any).client.query(
-      `SELECT * FROM documents WHERE tenant_id = $1 AND category = 'relatorio_visita'`,
+      // Filtra por título (que tem a data YYYY-MM-DD) pra isolar este
+      // test do "PDF inclui a identidade visual" que gera um PDF com
+      // data 2026-09-20. Sem esse filtro, este expect recebe 2 PDFs
+      // (um deste test, um do test anterior com data 2026-09-20).
+      `SELECT * FROM documents WHERE tenant_id = $1 AND category = 'relatorio_visita' AND title LIKE '%2026-09-15%'`,
       [tenantId],
     );
     expect(docResult.rows).toHaveLength(1);
@@ -292,6 +343,14 @@ describe('POST /inspections/:id/concluir — resiliência a erro de SQL dentro d
           // reproduzir isso sem depender de dado inválido específico.
           await client.query('SELECT * FROM tabela_inexistente_de_proposito_neste_teste');
         },
+        // findByInspection é chamado por InspectionsService.findOne()
+        // (linha 274 do service) ao montar `documentos_anexos`. Sem
+        // este stub, o mock retorna `undefined` e a chamada joga
+        // TypeError, transformando o teste de "ROLLBACK silencioso" num
+        // 500 genérico que não tem nada a ver com o que estamos
+        // cobrindo. Mesmo padrão de `findByInspection: jest.fn()` que
+        // já existe em inspections-fields.unit-spec.ts:14.
+        findByInspection: jest.fn().mockResolvedValue([]),
       })
       .compile();
     app = moduleRef.createNestApplication();

@@ -45,6 +45,11 @@ export interface Document {
   uploaded_by_user_id: string;
   uploaded_by_role: string;
   company_unit_id: string | null;
+  // Etapa 1 do Relatório de Visita Técnica: vínculo opcional à
+  // inspeção de origem. NULL em todos os documentos criados antes
+  // da migration 0080 e em todos os documentos de outras categorias
+  // (PGR/PCMSO/Laudo/etc.) que não têm relação com inspeção.
+  inspection_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -98,6 +103,12 @@ interface UploadData {
   uploadedByUserId: string;
   uploadedByRole: 'empresa' | 'tecnico' | 'parceiro';
   companyUnitId?: string;
+  // Etapa 1 do Relatório de Visita Técnica: vínculo opcional à
+  // inspeção de origem. Quando presente, o upload valida que a
+  // inspeção (a) existe e (b) pertence ao mesmo tenant — mesma
+  // defesa em profundidade aplicada ao companyUnitId (a FK no banco
+  // só garante existência, não co-titularidade).
+  inspectionId?: string;
 }
 
 // Linha crua do pg após RETURNING — datas já vêm como string 'AAAA-MM-DD'
@@ -118,6 +129,7 @@ interface DocumentRow {
   uploaded_by_user_id: string;
   uploaded_by_role: string;
   company_unit_id: string | null;
+  inspection_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -188,6 +200,23 @@ export class DocumentsService {
       throw toBadRequest(err);
     }
 
+    // Etapa 1 do Relatório de Visita Técnica: valida que a inspeção
+    // (a) existe e (b) pertence ao mesmo tenant do documento.
+    // Necessário porque a FK no banco (0080_documents_inspection_id)
+    // só garante (a) — a RLS não é executada em INSERTs do próprio
+    // tenant, então sem essa checagem adicional um INSERT com
+    // tenant_id=X e inspection_id=(inspeção de Y) passaria.
+    // defense in depth, mesmo padrão do companyUnitId acima.
+    if (data.inspectionId) {
+      const inspectionCheck = await client.query(
+        'SELECT 1 FROM inspections WHERE id = $1 AND tenant_id = $2',
+        [data.inspectionId, data.tenantId],
+      );
+      if (inspectionCheck.rowCount === 0) {
+        throw new BadRequestException('Inspeção inválida para esta empresa');
+      }
+    }
+
     const id = randomUUID();
     const fileKey = `tenants/${data.tenantId}/documents/${id}/${sanitizeFileName(data.file.originalname)}`;
     await this.r2.putObject(fileKey, data.file.buffer, data.file.mimetype);
@@ -198,12 +227,12 @@ export class DocumentsService {
       const result = await client.query<DocumentRow>(
         `INSERT INTO documents (id, tenant_id, category, title, file_key, file_name, mime_type, size_bytes,
                                 valid_from, expires_at, expires_source, validity_months_applied,
-                                uploaded_by_user_id, uploaded_by_role, company_unit_id)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+                                uploaded_by_user_id, uploaded_by_role, company_unit_id, inspection_id)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
          RETURNING id, tenant_id, category, title, file_key, file_name, mime_type, size_bytes,
                    valid_from::text AS valid_from, expires_at::text AS expires_at,
                    expires_source, validity_months_applied,
-                   uploaded_by_user_id, uploaded_by_role, company_unit_id, created_at, updated_at`,
+                   uploaded_by_user_id, uploaded_by_role, company_unit_id, inspection_id, created_at, updated_at`,
         [
           id,
           data.tenantId,
@@ -220,6 +249,7 @@ export class DocumentsService {
           data.uploadedByUserId,
           data.uploadedByRole,
           data.companyUnitId ?? null,
+          data.inspectionId ?? null,
         ],
       );
       return this.toDocument(result.rows[0], rule?.alert_days ?? DEFAULT_ALERT_DAYS);
@@ -262,6 +292,7 @@ export class DocumentsService {
       uploaded_by_user_id: row.uploaded_by_user_id,
       uploaded_by_role: row.uploaded_by_role,
       company_unit_id: row.company_unit_id,
+      inspection_id: row.inspection_id ?? null,
       created_at: row.created_at,
       updated_at: row.updated_at,
     };
@@ -277,7 +308,7 @@ export class DocumentsService {
               d.valid_from::text AS valid_from,
               d.expires_at::text AS expires_at,
               d.expires_source, d.validity_months_applied,
-              d.uploaded_by_user_id, d.uploaded_by_role, d.company_unit_id, d.created_at, d.updated_at,
+              d.uploaded_by_user_id, d.uploaded_by_role, d.company_unit_id, d.inspection_id, d.created_at, d.updated_at,
               r.alert_days
        FROM documents d
        LEFT JOIN document_validity_rules r ON r.category = d.category
@@ -414,7 +445,7 @@ export class DocumentsService {
               d.valid_from::text AS valid_from,
               d.expires_at::text AS expires_at,
               d.expires_source, d.validity_months_applied,
-              d.uploaded_by_user_id, d.uploaded_by_role, d.company_unit_id, d.created_at, d.updated_at,
+              d.uploaded_by_user_id, d.uploaded_by_role, d.company_unit_id, d.inspection_id, d.created_at, d.updated_at,
               r.alert_days
        FROM documents d
        LEFT JOIN document_validity_rules r ON r.category = d.category
@@ -424,6 +455,32 @@ export class DocumentsService {
     const row = result.rows[0];
     if (!row) throw new NotFoundException('Documento não encontrado');
     return this.toDocument(row, row.alert_days ?? DEFAULT_ALERT_DAYS);
+  }
+
+  // Etapa 1 do Relatório de Visita Técnica: lista os anexos
+  // (documentos) de uma inspeção, na ordem mais recente primeiro.
+  // RLS já isola por tenant do caller — esta query não precisa
+  // repetir a checagem. Chamado por InspectionsService.findOne()
+  // para preencher `documentos_anexos` na resposta do GET
+  // /inspections/:id. A inspeção precisa ser visível ao caller
+  // (checada antes por InspectionsService via RLS de inspections);
+  // aqui, se o caller não pode ver a inspeção, o caller nem chega
+  // até esta query, então não há vazamento por este caminho.
+  async findByInspection(client: PoolClient, inspectionId: string): Promise<Document[]> {
+    const result = await client.query<DocumentListRow>(
+      `SELECT d.id, d.tenant_id, d.category, d.title, d.file_key, d.file_name, d.mime_type, d.size_bytes,
+              d.valid_from::text AS valid_from,
+              d.expires_at::text AS expires_at,
+              d.expires_source, d.validity_months_applied,
+              d.uploaded_by_user_id, d.uploaded_by_role, d.company_unit_id, d.inspection_id, d.created_at, d.updated_at,
+              r.alert_days
+       FROM documents d
+       LEFT JOIN document_validity_rules r ON r.category = d.category
+       WHERE d.inspection_id = $1
+       ORDER BY d.created_at DESC`,
+      [inspectionId],
+    );
+    return result.rows.map((row) => this.toDocument(row, row.alert_days ?? DEFAULT_ALERT_DAYS));
   }
 
   async getDownloadUrl(client: PoolClient, id: string): Promise<{ url: string; file_name: string }> {
@@ -444,7 +501,7 @@ export class DocumentsService {
               d.valid_from::text AS valid_from,
               d.expires_at::text AS expires_at,
               d.expires_source, d.validity_months_applied,
-              d.uploaded_by_user_id, d.uploaded_by_role, d.company_unit_id, d.created_at, d.updated_at,
+              d.uploaded_by_user_id, d.uploaded_by_role, d.company_unit_id, d.inspection_id, d.created_at, d.updated_at,
               r.alert_days
        FROM documents d
        LEFT JOIN document_validity_rules r ON r.category = d.category
@@ -528,7 +585,7 @@ export class DocumentsService {
          RETURNING id, tenant_id, category, title, file_key, file_name, mime_type, size_bytes,
                    valid_from::text AS valid_from, expires_at::text AS expires_at,
                    expires_source, validity_months_applied,
-                   uploaded_by_user_id, uploaded_by_role, company_unit_id, created_at, updated_at`,
+                   uploaded_by_user_id, uploaded_by_role, company_unit_id, inspection_id, created_at, updated_at`,
         [
           id,
           resolved.validFrom,

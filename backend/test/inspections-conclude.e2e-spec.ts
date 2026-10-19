@@ -124,6 +124,45 @@ describe('POST /inspections/:id/concluir (e2e)', () => {
     expect(concludeRes.body.action_plans).toHaveLength(0);
   });
 
+  it('concluir uma inspeção gera um PDF com inspection_id vinculado (Etapa 1 — Relatório de Visita Técnica)', async () => {
+    // Etapa 1 do Relatório de Visita Técnica: a única forma do PDF
+    // auto-gerado por InspectionsService.conclude() aparecer no
+    // "documentos_anexos" do GET /inspections/:id é passando
+    // inspectionId no documents.upload(). Sem essa 1 linha, o PDF
+    // ficava órfão em `documents` (inspection_id = NULL) e nunca
+    // aparecia pra empresa. Este teste cobre a regressão do laço
+    // fechado.
+    const createRes = await request(app.getHttpServer())
+      .post('/inspections')
+      .set('Authorization', `Bearer ${technicianToken}`)
+      .send({ tenant_id: tenantId, visited_at: '2026-08-25', company_unit_id: companyUnitId });
+    const inspectionId = createRes.body.id;
+
+    await request(app.getHttpServer())
+      .post(`/inspections/${inspectionId}/concluir`)
+      .set('Authorization', `Bearer ${technicianToken}`);
+
+    // 1) O documento existe e tem inspection_id correto (vínculo no banco).
+    const docResult = await (db as any).client.query(
+      `SELECT id, inspection_id, category FROM documents
+       WHERE inspection_id = $1 AND category = 'relatorio_visita'`,
+      [inspectionId],
+    );
+    expect(docResult.rowCount).toBe(1);
+    const generatedDocId = docResult.rows[0].id;
+    expect(docResult.rows[0].inspection_id).toBe(inspectionId);
+
+    // 2) O documento aparece em documentos_anexos no GET /inspections/:id
+    //    (a UI da empresa só consegue listar a partir desta rota).
+    const detailRes = await request(app.getHttpServer())
+      .get(`/inspections/${inspectionId}`)
+      .set('Authorization', `Bearer ${empresaToken}`);
+    expect(detailRes.status).toBe(200);
+    expect(detailRes.body.documentos_anexos).toHaveLength(1);
+    expect(detailRes.body.documentos_anexos[0].id).toBe(generatedDocId);
+    expect(detailRes.body.documentos_anexos[0].title).toMatch(/^Relatório de Visita — \d{4}-\d{2}-\d{2}$/);
+  });
+
   it('rejeita concluir de novo uma inspeção já concluída (409)', async () => {
     const createRes = await request(app.getHttpServer())
       .post('/inspections')

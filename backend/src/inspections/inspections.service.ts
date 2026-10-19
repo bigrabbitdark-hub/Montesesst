@@ -29,6 +29,10 @@ export interface Inspection {
   concluded_at: string | null;
   created_at: string;
   updated_at: string;
+  // Etapa 1 do Relatório de Visita Técnica: contagem de PDFs
+  // vinculados a esta inspeção (subquery em findAll). 0 em
+  // inspeções antigas ou em inspeções sem PDF gerado/anexado.
+  documentos_count: number;
 }
 
 export interface ChecklistItem {
@@ -58,6 +62,22 @@ export interface InspectionDetail extends Inspection {
   action_plans: ActionPlan[];
   tenant_cnpj: string;
   company_unit_address: string | null;
+  // Etapa 1 do Relatório de Visita Técnica: PDFs (manuais +
+  // auto-gerados) anexados a esta inspeção, do mais novo pro mais
+  // antigo. Inclui os PDFs gerados por InspectionsService.conclude()
+  // (vinculados via inspection_id) e PDFs anexados manualmente pela
+  // UI da empresa via /documents + inspection_id. PDFs antigos
+  // (gerados antes da migration 0080) NÃO aparecem aqui — eles
+  // existem em `documents` com inspection_id = NULL.
+  documentos_anexos: {
+    id: string;
+    title: string;
+    file_name: string;
+    mime_type: string;
+    size_bytes: number;
+    uploaded_by_role: string;
+    created_at: string;
+  }[];
 }
 
 const INSPECTION_UPDATABLE_FIELDS = [
@@ -164,6 +184,10 @@ export class InspectionsService {
         ...inspection,
         items: itemsResult.rows,
         action_plans: [],
+        // Etapa 1 do Relatório de Visita Técnica: inspeção nova
+        // ainda não tem PDFs anexos (a inclusão acontece na
+        // conclusão ou via upload manual depois).
+        documentos_anexos: [],
         ...identification,
       };
     } catch (err) {
@@ -172,9 +196,23 @@ export class InspectionsService {
   }
 
   async findAll(client: PoolClient, tenantId?: string): Promise<Inspection[]> {
+    // Etapa 1 do Relatório de Visita Técnica: subquery traz a
+    // contagem de PDFs vinculados por inspeção numa só volta ao
+    // banco (evita o clássico N+1 de uma query por inspeção).
+    // LEFT JOIN: inspeções sem nenhum PDF também aparecem, com
+    // count = 0. documents.tenant_id = inspections.tenant_id é
+    // redundante com a RLS ativa, mas é defense in depth (a RLS já
+    // isola a tabela `documents` pelo tenant do caller).
     if (tenantId) {
       const result = await client.query<Inspection>(
-        'SELECT * FROM inspections WHERE tenant_id = $1 ORDER BY visited_at DESC',
+        `SELECT i.*,
+                COALESCE((
+                  SELECT count(*)::int FROM documents d
+                  WHERE d.inspection_id = i.id AND d.tenant_id = i.tenant_id
+                ), 0) AS documentos_count
+         FROM inspections i
+         WHERE i.tenant_id = $1
+         ORDER BY i.visited_at DESC`,
         [tenantId],
       );
       return result.rows;
@@ -182,7 +220,15 @@ export class InspectionsService {
     // Sem filtro: RLS já restringe (admin vê tudo, empresa vê o próprio
     // tenant, técnico vê tenants vinculados via EXISTS contra tenant_technicians,
     // parceiro vê tenants vinculados via EXISTS contra tenant_partners).
-    const result = await client.query<Inspection>('SELECT * FROM inspections ORDER BY visited_at DESC');
+    const result = await client.query<Inspection>(
+      `SELECT i.*,
+              COALESCE((
+                SELECT count(*)::int FROM documents d
+                WHERE d.inspection_id = i.id AND d.tenant_id = i.tenant_id
+              ), 0) AS documentos_count
+       FROM inspections i
+       ORDER BY i.visited_at DESC`,
+    );
     return result.rows;
   }
 
@@ -217,6 +263,24 @@ export class InspectionsService {
       ended_at: endedAt,
       items: itemsResult.rows,
       action_plans: actionPlansResult.rows,
+      // Etapa 1 do Relatório de Visita Técnica: PDFs anexos. RLS já
+      // isola a tabela documents pelo tenant do caller, então esta
+      // lista nunca inclui PDFs de outras empresas. Projeção
+      // reduzida (sem file_key, sem expires_at, sem company_unit_id):
+      // a UI consome via /documents/:id/download pra abrir o PDF
+      // e não precisa de todos os campos do Document. file_name e
+      // mime_type bastam pra identificar e rotular.
+      documentos_anexos: (
+        await this.documents.findByInspection(client, inspection.id)
+      ).map((d) => ({
+        id: d.id,
+        title: d.title,
+        file_name: d.file_name,
+        mime_type: d.mime_type,
+        size_bytes: d.size_bytes,
+        uploaded_by_role: d.uploaded_by_role,
+        created_at: d.created_at,
+      })),
     };
   }
 
@@ -367,6 +431,15 @@ export class InspectionsService {
         uploadedByUserId: userId,
         uploadedByRole: userRole,
         companyUnitId: detail.company_unit_id ?? undefined,
+        // Etapa 1 do Relatório de Visita Técnica: vincula o PDF
+        // auto-gerado à inspeção de origem (a FK no banco e a
+        // validação de mesmo tenant ficam no DocumentsService.upload).
+        // Antes desta migration + 1 linha, o PDF ficava órfão em
+        // `documents` e a UI da empresa não tinha como listar /
+        // baixar a partir da inspeção. PDFs gerados antes da
+        // migration continuam sem inspection_id (NULL) — preserva
+        // histórico, sem backfill especulativo.
+        inspectionId: id,
       });
       await client.query('RELEASE SAVEPOINT pdf_indexing');
     } catch (err) {
