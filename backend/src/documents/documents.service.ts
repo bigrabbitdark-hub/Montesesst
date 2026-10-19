@@ -13,6 +13,8 @@ const ALLOWED_CATEGORIES = [
   'cipa_ata', 'cipa_comunicado', 'cipa_documento_eleitoral', 'cipa_anexo',
   'ltcat', 'lip',
   'relatorio_visita',
+  // Só gravada pelo fluxo de ingestão de cadastro; o DTO do upload genérico não a aceita.
+  'cadastro_funcionarios',
 ];
 
 function sanitizeFileName(name: string): string {

@@ -57,6 +57,7 @@ const ALLOWED: Record<string, { calls: number; motivo: string }> = {
     calls: 2,
     motivo: 'Cron do sistema. Sem entrada de usuário: a lista de tenants sai do próprio banco (role admin).',
   },
+  'employees/employee-extraction-expiry.cron.ts': { calls: 2, motivo: 'Cron do sistema (role admin literal), sem entrada de usuário: expira revisões pendentes e encerra extrações órfãs (RLS da tabela admite admin).' },
   'visits/visit-reminder.cron.ts': { calls: 1, motivo: 'Cron do sistema (role admin), sem entrada de usuário.' },
   'normative/normative-monitor.service.ts': { calls: 1, motivo: 'Cron do sistema (role admin), sem entrada de usuário.' },
   'normative/assistant-query-log.service.ts': { calls: 1, motivo: 'Cron de purga do log (role admin), sem entrada de usuário.' },

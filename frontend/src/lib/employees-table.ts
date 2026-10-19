@@ -69,7 +69,8 @@ export function diffRows(
     for (const col of EDITABLE_COLUMNS) {
       const before = (o[col.key] ?? '') as string;
       const after = (d[col.key] ?? '') as string;
-      if (before !== after) fields[col.key] = after;
+      // Espaços nas pontas não são alteração: o backend aplica trim e o PATCH viraria no-op que muda updated_at.
+      if (before.trim() !== after.trim()) fields[col.key] = after;
     }
     if (Object.keys(fields).length > 0) out.push({ id: o.id, row_version: o.row_version, fields });
   }

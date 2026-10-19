@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   brToIso,
   diffRows,
@@ -9,8 +9,10 @@ import {
   isoToBr,
   type EmployeeTableRow,
 } from '@/lib/employees-table';
+import { FuncionarioHistoricoDrawer } from './FuncionarioHistoricoDrawer';
 
 const PAGE_SIZE = 50;
+const DISCARDED_NOTICE = 'As alterações não confirmadas foram descartadas porque a lista foi atualizada.';
 
 type Draft = Record<string, Record<string, string>>;
 
@@ -25,11 +27,14 @@ export function FuncionariosTable({
   tenantId,
   companyUnitId,
   refreshKey = 0,
+  onEditingChange,
 }: {
   tenantId?: string;
   companyUnitId?: string;
   /** Muda para forçar um recarregamento a partir do backend (ex.: após cadastrar). */
   refreshKey?: number;
+  /** Avisa a página quando a tabela entra ou sai do modo edição. */
+  onEditingChange?: (editing: boolean) => void;
 }) {
   const [original, setOriginal] = useState<EmployeeTableRow[]>([]);
   const [total, setTotal] = useState(0);
@@ -41,9 +46,12 @@ export function FuncionariosTable({
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [historyFor, setHistoryFor] = useState<{ id: string; name: string } | null>(null);
 
+  const loadSeq = useRef(0);
   const load = useCallback(
     async (nextOffset: number) => {
+      const seq = ++loadSeq.current;
       setLoading(true);
       const token = localStorage.getItem('montese_token');
       let url = `/api/employees/table?limit=${PAGE_SIZE}&offset=${nextOffset}`;
@@ -52,6 +60,7 @@ export function FuncionariosTable({
       try {
         const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
         const body = await res.json().catch(() => ({}));
+        if (seq !== loadSeq.current) return; // resposta de uma consulta já superada (troca de filial, recarga)
         if (!res.ok) {
           setError(body?.message || 'Não foi possível carregar a tabela de funcionários.');
           return;
@@ -60,13 +69,36 @@ export function FuncionariosTable({
         setTotal(body.total ?? 0);
         setOffset(nextOffset);
       } catch {
-        setError('Não foi possível carregar a tabela de funcionários.');
+        if (seq === loadSeq.current) setError('Não foi possível carregar a tabela de funcionários.');
       } finally {
-        setLoading(false);
+        if (seq === loadSeq.current) setLoading(false);
       }
     },
     [tenantId, companyUnitId],
   );
+
+  // Defesa em profundidade: se a lista for trocada/recarregada por fora durante a edição,
+  // o rascunho é descartado (nunca fica rascunho de linhas que não estão mais na lista).
+  const editingRef = useRef(false);
+  const lastListKey = useRef({ companyUnitId, refreshKey });
+  useEffect(() => {
+    const last = lastListKey.current;
+    if (last.companyUnitId === companyUnitId && last.refreshKey === refreshKey) return;
+    lastListKey.current = { companyUnitId, refreshKey };
+    if (editingRef.current) {
+      setDraft({});
+      setFieldErrors({});
+      setError('');
+      setEditing(false);
+      setSuccess(DISCARDED_NOTICE);
+    }
+  }, [companyUnitId, refreshKey]);
+
+  useEffect(() => {
+    editingRef.current = editing;
+    onEditingChange?.(editing);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editing]);
 
   useEffect(() => {
     void load(0);
@@ -165,9 +197,8 @@ export function FuncionariosTable({
     setFieldErrors({});
     try {
       const token = localStorage.getItem('montese_token');
-      let url = '/api/employees/bulk';
-      if (tenantId) url += `?tenant_id=${encodeURIComponent(tenantId)}`;
-      const res = await fetch(url, {
+      // O lote vale pelos ids (sob RLS); tenant_id na URL seria ignorado pelo backend e enganoso.
+      const res = await fetch('/api/employees/bulk', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ changes }),
@@ -253,6 +284,7 @@ export function FuncionariosTable({
                     {c.label}
                   </th>
                 ))}
+                <th scope="col" className="px-2 py-2 font-semibold">Histórico</th>
               </tr>
             </thead>
             <tbody className="block md:table-row-group">
@@ -306,6 +338,18 @@ export function FuncionariosTable({
                       </td>
                     );
                   })}
+                  <td className="flex items-center justify-between gap-3 py-1 md:table-cell md:px-2 md:py-2">
+                    <span className="text-xs font-semibold text-dash-muted md:hidden">Histórico</span>
+                    {/* Consultar o histórico não altera nada: fica habilitado também durante a edição. */}
+                    <button
+                      type="button"
+                      onClick={() => setHistoryFor({ id: row.id, name: row.full_name })}
+                      aria-label={`Histórico de ${row.full_name}`}
+                      className="rounded-md border border-dash-border-soft px-2 py-1 text-xs font-semibold text-dash-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-dash-primary"
+                    >
+                      Ver histórico
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -336,6 +380,14 @@ export function FuncionariosTable({
           </button>
         </span>
       </nav>
+
+      {historyFor && (
+        <FuncionarioHistoricoDrawer
+          employeeId={historyFor.id}
+          employeeName={historyFor.name}
+          onClose={() => setHistoryFor(null)}
+        />
+      )}
     </section>
   );
 }

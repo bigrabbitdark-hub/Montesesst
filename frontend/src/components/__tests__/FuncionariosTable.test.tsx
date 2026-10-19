@@ -4,7 +4,7 @@ import { FuncionariosTable } from '../FuncionariosTable';
 
 const COLUNAS = [
   'Qtde', 'Funcionário', 'Matrícula eSocial', 'CPF', 'Data de nascimento', 'Sexo',
-  'Função/Cargo', 'Data de admissão', 'CBO', 'Descrição da atividade',
+  'Função/Cargo', 'Data de admissão', 'CBO', 'Descrição da atividade', 'Histórico',
 ];
 
 function linha(over: Record<string, unknown> = {}) {
@@ -36,7 +36,7 @@ describe('FuncionariosTable', () => {
     localStorage.clear();
   });
 
-  it('carrega o GET, mostra as 10 colunas e Qtde vem de sequence', async () => {
+  it('carrega o GET, mostra as 11 colunas e Qtde vem de sequence', async () => {
     const fetchMock = vi.fn().mockResolvedValue(resp({ items: [linha()], total: 1 }));
     await abrir(fetchMock);
     expect(fetchMock.mock.calls[0][0]).toBe('/api/employees/table?limit=50&offset=0');
@@ -238,5 +238,124 @@ describe('FuncionariosTable', () => {
       await waitFor(() => expect(chamadas(fetchMock, 'GET')).toHaveLength(2));
       expect(confirmMock).not.toHaveBeenCalled();
     });
+  });
+
+  describe('lista atualizada durante a edição (fix round 1)', () => {
+    const AVISO = 'As alterações não confirmadas foram descartadas porque a lista foi atualizada.';
+
+    it('onEditingChange acompanha entrar, cancelar e confirmar', async () => {
+      const fetchMock = vi.fn().mockResolvedValue(resp({ items: [linha()], total: 1 }));
+      vi.stubGlobal('fetch', fetchMock);
+      const onEditingChange = vi.fn();
+      render(<FuncionariosTable onEditingChange={onEditingChange} />);
+      await screen.findByDisplayValue('Ana Teste');
+      fireEvent.click(screen.getByRole('button', { name: 'Editar tabela' }));
+      expect(onEditingChange).toHaveBeenLastCalledWith(true);
+      fireEvent.click(screen.getByRole('button', { name: 'Cancelar' }));
+      expect(onEditingChange).toHaveBeenLastCalledWith(false);
+    });
+
+    it('mudar companyUnitId e refreshKey em edição descarta o rascunho, sai da edição, avisa e não envia nada', async () => {
+      const fetchMock = vi.fn().mockResolvedValue(resp({ items: [linha()], total: 1 }));
+      vi.stubGlobal('fetch', fetchMock);
+      const { rerender } = render(<FuncionariosTable companyUnitId="u1" refreshKey={0} />);
+      await screen.findByDisplayValue('Ana Teste');
+      fireEvent.click(screen.getByRole('button', { name: 'Editar tabela' }));
+      fireEvent.change(screen.getByLabelText('Função/Cargo Ana Teste'), { target: { value: 'Outra' } });
+      rerender(<FuncionariosTable companyUnitId="u2" refreshKey={0} />);
+      await waitFor(() => expect(screen.getByRole('status').textContent).toBe(AVISO));
+      expect(screen.getByRole('button', { name: 'Editar tabela' })).toBeTruthy();
+      expect((screen.getByLabelText('Função/Cargo Ana Teste') as HTMLInputElement).value).toBe('Soldadora');
+      expect(chamadas(fetchMock, 'PATCH')).toHaveLength(0);
+
+      fireEvent.click(screen.getByRole('button', { name: 'Editar tabela' }));
+      fireEvent.change(screen.getByLabelText('Função/Cargo Ana Teste'), { target: { value: 'Nova' } });
+      rerender(<FuncionariosTable companyUnitId="u2" refreshKey={1} />);
+      await waitFor(() => expect(screen.getByRole('status').textContent).toBe(AVISO));
+      expect(screen.queryByRole('button', { name: 'Confirmar alterações' })).toBeNull();
+      expect(chamadas(fetchMock, 'PATCH')).toHaveLength(0);
+    });
+
+    it('rascunho de linha que saiu da lista nunca vai no PATCH', async () => {
+      const a = linha();
+      const b = linha({ id: 'e2', sequence: 8, full_name: 'Bia Teste', row_version: '5' });
+      const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
+        if (init?.method === 'PATCH') return resp({ updated: 1 });
+        if (url.includes('company_unit_id=u2')) return resp({ items: [b], total: 1 });
+        return resp({ items: [a, b], total: 2 });
+      });
+      vi.stubGlobal('fetch', fetchMock);
+      const { rerender } = render(<FuncionariosTable companyUnitId="u1" />);
+      await screen.findByDisplayValue('Ana Teste');
+      fireEvent.click(screen.getByRole('button', { name: 'Editar tabela' }));
+      fireEvent.change(screen.getByLabelText('Função/Cargo Ana Teste'), { target: { value: 'Órfã' } });
+      rerender(<FuncionariosTable companyUnitId="u2" />);
+      await waitFor(() => expect(screen.queryByDisplayValue('Ana Teste')).toBeNull());
+      fireEvent.click(screen.getByRole('button', { name: 'Editar tabela' }));
+      fireEvent.change(screen.getByLabelText('Função/Cargo Bia Teste'), { target: { value: 'Nova função' } });
+      fireEvent.click(screen.getByRole('button', { name: 'Confirmar alterações' }));
+      await waitFor(() => expect(chamadas(fetchMock as unknown as ReturnType<typeof vi.fn>, 'PATCH')).toHaveLength(1));
+      const body = JSON.parse((chamadas(fetchMock as unknown as ReturnType<typeof vi.fn>, 'PATCH')[0][1] as RequestInit).body as string);
+      expect(body.changes.map((c: { id: string }) => c.id)).toEqual(['e2']);
+    });
+
+    it('Anterior e Próxima ficam desabilitados durante a edição', async () => {
+      const fetchMock = vi.fn().mockResolvedValue(resp({ items: [linha()], total: 120 }));
+      vi.stubGlobal('fetch', fetchMock);
+      render(<FuncionariosTable />);
+      await screen.findByDisplayValue('Ana Teste');
+      fireEvent.click(screen.getByRole('button', { name: 'Próxima' }));
+      await waitFor(() => expect(fetchMock.mock.calls[1][0]).toContain('offset=50'));
+      await screen.findByText(/51–100 de 120/);
+      fireEvent.click(screen.getByRole('button', { name: 'Editar tabela' }));
+      expect((screen.getByRole('button', { name: 'Anterior' }) as HTMLButtonElement).disabled).toBe(true);
+      expect((screen.getByRole('button', { name: 'Próxima' }) as HTMLButtonElement).disabled).toBe(true);
+    });
+
+    it('mudar o filtro volta o offset para 0', async () => {
+      const fetchMock = vi.fn().mockResolvedValue(resp({ items: [linha()], total: 120 }));
+      vi.stubGlobal('fetch', fetchMock);
+      const { rerender } = render(<FuncionariosTable />);
+      await screen.findByDisplayValue('Ana Teste');
+      fireEvent.click(screen.getByRole('button', { name: 'Próxima' }));
+      await screen.findByText(/51–100 de 120/);
+      rerender(<FuncionariosTable companyUnitId="u2" />);
+      await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3));
+      expect(fetchMock.mock.calls[2][0]).toBe('/api/employees/table?limit=50&offset=0&company_unit_id=u2');
+    });
+  });
+
+  it('resposta antiga de uma consulta superada não sobrescreve a nova', async () => {
+    let soltarAntiga: (r: Response) => void = () => {};
+    const antiga = new Promise<Response>((r) => (soltarAntiga = r));
+    const fetchMock = vi
+      .fn()
+      .mockReturnValueOnce(antiga)
+      .mockResolvedValueOnce(resp({ items: [linha({ id: 'e2', full_name: 'Bruno Novo' })], total: 1 }));
+    vi.stubGlobal('fetch', fetchMock);
+    const { rerender } = render(<FuncionariosTable companyUnitId="u1" />);
+    rerender(<FuncionariosTable companyUnitId="u2" />);
+    await screen.findByDisplayValue('Bruno Novo');
+    soltarAntiga(resp({ items: [linha({ id: 'e1', full_name: 'Ana Antiga' })], total: 1 }));
+    await new Promise((r) => setTimeout(r, 20));
+    expect(screen.queryByDisplayValue('Ana Antiga')).toBeNull();
+    expect(screen.getByDisplayValue('Bruno Novo')).toBeTruthy();
+  });
+
+  it('Histórico abre a gaveta do funcionário, funciona durante a edição e fecha', async () => {
+    const fetchMock = vi.fn().mockImplementation((url: string) =>
+      Promise.resolve(url.includes('/history') ? resp({ items: [], total: 0 }) : resp({ items: [linha()], total: 1 })),
+    );
+    await abrir(fetchMock);
+    fireEvent.click(screen.getByRole('button', { name: 'Editar tabela' }));
+    const btn = screen.getByRole('button', { name: 'Histórico de Ana Teste' }) as HTMLButtonElement;
+    expect(btn.disabled).toBe(false);
+    fireEvent.click(btn);
+    expect(await screen.findByRole('dialog', { name: 'Histórico de Ana Teste' })).toBeTruthy();
+    await waitFor(() =>
+      expect(fetchMock.mock.calls.map((c) => c[0])).toContain('/api/employees/e1/history?limit=50&offset=0'),
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Fechar' }));
+    expect(screen.queryByRole('dialog')).toBeNull();
   });
 });

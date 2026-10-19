@@ -17,7 +17,8 @@ export function isValidCpf(raw: string): boolean {
 export function normalizeCbo(raw: unknown): FieldResult<string> {
   const s = String(raw ?? '').trim();
   const d = /^\d+$/.test(s) ? s : '';
-  if (d.length === 0 || d.length > 6) return { ok: false, message: 'CBO deve ter até 6 dígitos' };
+  // 5 dígitos = CBO de 6 com o zero à esquerda perdido pelo Excel; menos que isso é digitação, não dado.
+  if (d.length < 5 || d.length > 6) return { ok: false, message: 'CBO deve ter 6 dígitos (ex.: 717510)' };
   return { ok: true, value: d.padStart(6, '0') };
 }
 
@@ -46,7 +47,8 @@ export function normalizeIsoDate(raw: unknown): FieldResult<string> {
 }
 
 const isBlank = (v: unknown): boolean => v === null || (typeof v === 'string' && v.trim() === '');
-const PASS_THROUGH = ['company_unit_id', 'position_id'] as const;
+const UUID_FIELDS: Record<string, string> = { company_unit_id: 'Filial inválida', position_id: 'Cargo inválido' };
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const STATUSES = ['ativo', 'inativo', 'pendente'];
 
 export function normalizeEmployeeInput(input: Record<string, unknown>): {
@@ -90,7 +92,11 @@ export function normalizeEmployeeInput(input: Record<string, unknown>): {
         STATUSES.includes(String(raw)) ? (values[field] = raw) : (errors[field] = 'Situação inválida');
         break;
       default:
-        if ((PASS_THROUGH as readonly string[]).includes(field)) values[field] = isBlank(raw) ? null : raw;
+        if (field in UUID_FIELDS) {
+          if (isBlank(raw)) values[field] = null;
+          else if (typeof raw === 'string' && UUID_RE.test(raw.trim())) values[field] = raw.trim().toLowerCase();
+          else errors[field] = UUID_FIELDS[field];
+        }
     }
   }
   return { values, errors };

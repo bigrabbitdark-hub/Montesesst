@@ -1,0 +1,170 @@
+diff --git a/test/cnpj-fixture.ts b/test/cnpj-fixture.ts
+new file mode 100644
+index 0000000..30e9543
+--- /dev/null
++++ b/test/cnpj-fixture.ts
+@@ -0,0 +1,31 @@
++// CNPJs SINTÉTICOS VÁLIDOS para os testes (a filial exige CNPJ com dígito verificador; a unicidade é
++// por empresa, e o CNPJ da filial não pode ser o da matriz). Raiz fictícia "9" + 7 dígitos derivados
++// da semente; filial "0001". Mesmos seeds geram o mesmo CNPJ; seeds diferentes geram CNPJs diferentes
++// (número: 1:1 até 9.999.999; texto: hash FNV-1a, colisão improvável). Mesmo módulo 11 de
++// src/common/validators/cnpj.util.ts, reimplementado aqui de propósito para o teste não depender do código testado.
++const W12 = [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
++const W13 = [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
++
++function checkDigit(base: string, weights: number[]): number {
++  const sum = base.split('').reduce((acc, d, i) => acc + Number(d) * weights[i], 0);
++  const rest = sum % 11;
++  return rest < 2 ? 0 : 11 - rest;
++}
++
++function seedToNumber(seed: number | string): number {
++  if (typeof seed === 'number') return Math.abs(Math.trunc(seed)) % 10_000_000;
++  let h = 0x811c9dc5;
++  for (let i = 0; i < seed.length; i++) {
++    h ^= seed.charCodeAt(i);
++    h = Math.imul(h, 0x01000193) >>> 0;
++  }
++  return h % 10_000_000;
++}
++
++/** CNPJ numérico válido (14 dígitos, sem máscara), determinístico por semente. */
++export function makeCnpj(seed: number | string): string {
++  const base = `9${String(seedToNumber(seed)).padStart(7, '0')}0001`;
++  const d1 = checkDigit(base, W12);
++  const d2 = checkDigit(base + d1, W13);
++  return `${base}${d1}${d2}`;
++}
+diff --git a/test/cnpj-fixture.unit-spec.ts b/test/cnpj-fixture.unit-spec.ts
+new file mode 100644
+index 0000000..d483b04
+--- /dev/null
++++ b/test/cnpj-fixture.unit-spec.ts
+@@ -0,0 +1,23 @@
++import { isValidCnpj } from '../src/common/validators/cnpj.util';
++import { makeCnpj } from './cnpj-fixture';
++
++describe('makeCnpj (fixture de teste)', () => {
++  it('gera CNPJs numéricos válidos pelo validador real, com 14 dígitos', () => {
++    for (const seed of [0, 1, 2, 9_999_999, 'a', 'filial-1', 'ingestion-x-Filial Ing A', '']) {
++      const c = makeCnpj(seed);
++      expect(c).toMatch(/^\d{14}$/);
++      expect(isValidCnpj(c)).toBe(true);
++    }
++  });
++  it('é determinístico e distinto por semente', () => {
++    expect(makeCnpj('x')).toBe(makeCnpj('x'));
++    const set = new Set<string>();
++    for (let i = 0; i < 5000; i++) set.add(makeCnpj(i));
++    expect(set.size).toBe(5000);
++    expect(makeCnpj('Filial A1')).not.toBe(makeCnpj('Filial A2'));
++  });
++  it('usa raiz fictícia (começa com 9) e filial 0001', () => {
++    expect(makeCnpj('qualquer').slice(0, 1)).toBe('9');
++    expect(makeCnpj('qualquer').slice(8, 12)).toBe('0001');
++  });
++});
+diff --git a/test/employee-history.e2e-spec.ts b/test/employee-history.e2e-spec.ts
+index ad476a3..d245675 100644
+--- a/test/employee-history.e2e-spec.ts
++++ b/test/employee-history.e2e-spec.ts
+@@ -3,6 +3,7 @@ import { Test } from '@nestjs/testing';
+ import request from 'supertest';
+ import { AppModule } from '../src/app.module';
+ import { TestDb } from './db-test-helper';
++import { makeCnpj } from './cnpj-fixture';
+ 
+ const CPF_A = '52998224725';
+ const CPF_B = '11144477735';
+@@ -122,6 +123,7 @@ describe('Funcionários: histórico campo a campo (e2e)', () => {
+     // O CSV exige filial existente.
+     await request(app.getHttpServer()).post('/company-units').set(auth(t)).send({
+       name: 'Sede',
++      cnpj: makeCnpj('history-import-sede'),
+       address_street: 'Rua Import',
+       address_city: 'Criciúma',
+       address_state: 'SC',
+diff --git a/test/employee-ingestion-edge.e2e-spec.ts b/test/employee-ingestion-edge.e2e-spec.ts
+index 9c6d8b7..61d50a5 100644
+--- a/test/employee-ingestion-edge.e2e-spec.ts
++++ b/test/employee-ingestion-edge.e2e-spec.ts
+@@ -8,6 +8,7 @@ import { configureApp } from '../src/app-setup';
+ import { R2Service } from '../src/common/r2/r2.service';
+ import { EMPLOYEE_EXTRACTION_PROVIDER } from '../src/employees/employee-extraction-provider.interface';
+ import { TestDb } from './db-test-helper';
++import { makeCnpj } from './cnpj-fixture';
+ import { Paragraph, TextRun } from 'docx';
+ import { DOCX_MIME, PDF_MIME, docxFrom, makeCpf, pdfFromLines, P } from './employee-docgen';
+ 
+@@ -62,7 +63,7 @@ describe('Ingestão de cadastro: defeitos de ponta e textos de erro (e2e)', () =
+     token = (await request(app.getHttpServer()).post('/auth/login').send({ email: a.email, password: a.password })).body.access_token;
+     tokenB = (await request(app.getHttpServer()).post('/auth/login').send({ email: b.email, password: b.password })).body.access_token;
+     unitB = (await request(app.getHttpServer()).post('/company-units').set(auth(tokenB))
+-      .send({ name: 'Filial Edge B', address_street: 'Rua T', address_city: 'Criciúma', address_state: 'SC', address_zip: '88801000' })).body.id;
++      .send({ name: 'Filial Edge B', cnpj: makeCnpj('edge-filial-b'), address_street: 'Rua T', address_city: 'Criciúma', address_state: 'SC', address_zip: '88801000' })).body.id;
+     redis = new Redis(process.env.REDIS_URL as string);
+   });
+   beforeEach(async () => {
+diff --git a/test/employee-ingestion-production-pipe.e2e-spec.ts b/test/employee-ingestion-production-pipe.e2e-spec.ts
+index 48b18e0..96a0a04 100644
+--- a/test/employee-ingestion-production-pipe.e2e-spec.ts
++++ b/test/employee-ingestion-production-pipe.e2e-spec.ts
+@@ -7,6 +7,7 @@ import { AppModule } from '../src/app.module';
+ import { configureApp } from '../src/app-setup';
+ import { R2Service } from '../src/common/r2/r2.service';
+ import { TestDb } from './db-test-helper';
++import { makeCnpj } from './cnpj-fixture';
+ 
+ const UPLOAD_RATE_LIMIT_KEY = 'ratelimit:EmployeesController.uploadDocument:::ffff:127.0.0.1';
+ 
+@@ -44,7 +45,7 @@ describe('Ingestão de funcionários com o ValidationPipe de produção (e2e)',
+     token = (await request(app.getHttpServer()).post('/auth/login').send({ email: t.email, password: t.password })).body.access_token;
+     const u = await request(app.getHttpServer())
+       .post('/company-units').set(auth())
+-      .send({ name: 'Filial Pipe', address_street: 'Rua T', address_city: 'Criciúma', address_state: 'SC', address_zip: '88801000' });
++      .send({ name: 'Filial Pipe', cnpj: makeCnpj('pipe-filial'), address_street: 'Rua T', address_city: 'Criciúma', address_state: 'SC', address_zip: '88801000' });
+     unitId = u.body.id;
+     redis = new Redis(process.env.REDIS_URL as string);
+   });
+diff --git a/test/employee-ingestion.e2e-spec.ts b/test/employee-ingestion.e2e-spec.ts
+index c38d7b2..376a0fa 100644
+--- a/test/employee-ingestion.e2e-spec.ts
++++ b/test/employee-ingestion.e2e-spec.ts
+@@ -10,6 +10,7 @@ import { AppModule } from '../src/app.module';
+ import { EmployeeIngestionService } from '../src/employees/employee-ingestion.service';
+ import { R2Service } from '../src/common/r2/r2.service';
+ import { TestDb } from './db-test-helper';
++import { makeCnpj } from './cnpj-fixture';
+ 
+ // Contador próprio da rota de upload (RateLimitGuard): esta suíte faz dezenas de uploads do mesmo IP de loopback;
+ // zera entre os testes para não receber 429 (mesmo padrão de pente-fino-run.e2e-spec.ts).
+@@ -246,7 +247,7 @@ describe('Funcionários: ingestão por documento (e2e)', () => {
+     const res = await request(app.getHttpServer())
+       .post('/company-units')
+       .set(auth(token))
+-      .send({ name, address_street: 'Rua T', address_city: 'Criciúma', address_state: 'SC', address_zip: '88801000' });
++      .send({ name, cnpj: makeCnpj(`ingestion-${token.slice(-12)}-${name}`), address_street: 'Rua T', address_city: 'Criciúma', address_state: 'SC', address_zip: '88801000' });
+     expect(res.status).toBe(201);
+     return res.body.id;
+   };
+diff --git a/test/employees-official-table.e2e-spec.ts b/test/employees-official-table.e2e-spec.ts
+index 37ca51a..4b7a75f 100644
+--- a/test/employees-official-table.e2e-spec.ts
++++ b/test/employees-official-table.e2e-spec.ts
+@@ -3,6 +3,7 @@ import { Test } from '@nestjs/testing';
+ import request from 'supertest';
+ import { AppModule } from '../src/app.module';
+ import { TestDb } from './db-test-helper';
++import { makeCnpj } from './cnpj-fixture';
+ import { isValidCpf } from '../src/employees/employee-fields.util';
+ 
+ const CPF_OK = '52998224725';
+@@ -131,7 +132,7 @@ describe('Funcionários: tabela oficial e PATCH /employees/bulk (e2e)', () => {
+     const res = await request(app.getHttpServer())
+       .post('/company-units')
+       .set(auth(token))
+-      .send({ name, address_street: 'Rua T', address_city: 'Criciúma', address_state: 'SC', address_zip: '88801000' });
++      .send({ name, cnpj: makeCnpj(`official-${token.slice(-12)}-${name}`), address_street: 'Rua T', address_city: 'Criciúma', address_state: 'SC', address_zip: '88801000' });
+     expect(res.status).toBe(201);
+     return res.body.id;
+   };

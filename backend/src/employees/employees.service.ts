@@ -259,11 +259,14 @@ export class EmployeesService {
       throw new BadRequestException(`Envie de 1 a ${BULK_MAX_CHANGES} alterações por vez`);
     }
 
+    // Marca a origem das linhas de histórico desta transação (o gatilho lê o GUC; local à transação).
+    await client.query(`SELECT set_config('app.change_source', 'tabela', true)`);
+
     const errors: Record<string, string> = {};
     const normalized: { id: string; row_version: string; values: Record<string, unknown> }[] = [];
     const seen = new Set<string>();
     for (const change of changes) {
-      const id = typeof change?.id === 'string' ? change.id : '';
+      const id = typeof change?.id === 'string' ? change.id.toLowerCase() : '';
       if (!UUID_RE.test(id)) {
         errors['id'] = 'Identificador de funcionário inválido';
         continue;
@@ -313,6 +316,25 @@ export class EmployeesService {
       [ids],
     );
     return { updated: normalized.length, items: items.rows };
+  }
+
+  // Histórico campo a campo. A RLS filtra por tenant/papel: id de outro tenant ou inexistente
+  // devolve a mesma lista vazia (nunca 403/404 que revele existência). actor_user_id não sai.
+  async history(client: PoolClient, id: string, limit: number, offset: number) {
+    if (!UUID_RE.test(id)) throw new BadRequestException('Identificador de funcionário inválido');
+    const total = await client.query<{ count: string }>(
+      'SELECT count(*)::text AS count FROM employee_field_history WHERE employee_id = $1',
+      [id],
+    );
+    const items = await client.query(
+      // ORDER BY qualificado (h.changed_at): sem isso o alias de saída (texto, só segundos) ganha da coluna.
+      `SELECT id, field, old_value, new_value, actor_role, source,
+              to_char(changed_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS changed_at
+         FROM employee_field_history h WHERE employee_id = $1
+        ORDER BY h.changed_at DESC, h.id DESC LIMIT $2 OFFSET $3`,
+      [id, limit, offset],
+    );
+    return { items: items.rows, total: Number(total.rows[0].count) };
   }
 
   async findOne(client: PoolClient, id: string): Promise<Employee> {
@@ -451,6 +473,8 @@ export class EmployeesService {
     rows: (ParsedCsvRow | MappedEmployeeRow)[],
     callerRole: string,
   ): Promise<ImportResult> {
+    // Origem do histórico: vale até o fim da transação do withTenantContext (só a importação roda nela).
+    await client.query(`SELECT set_config('app.change_source', 'importacao', true)`);
     const unitsResult = await client.query<{ id: string; name: string }>(
       'SELECT id, name FROM company_units WHERE tenant_id = $1',
       [tenantId],

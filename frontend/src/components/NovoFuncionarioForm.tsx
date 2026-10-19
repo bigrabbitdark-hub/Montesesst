@@ -40,10 +40,13 @@ export function NovoFuncionarioForm({
   units,
   tenantId,
   onCreated,
+  disabled = false,
 }: {
   units: UnitOption[];
   tenantId?: string;
   onCreated: () => void;
+  /** Bloqueia abrir o cadastro (e oculta o formulário aberto, preservando o digitado). */
+  disabled?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [values, setValues] = useState<Values>(EMPTY);
@@ -139,6 +142,7 @@ export function NovoFuncionarioForm({
               setSuccess('');
               setOpen(true);
             }}
+            disabled={disabled}
             className={`${btn} bg-dash-primary text-white`}
           >
             Adicionar funcionário
@@ -153,6 +157,7 @@ export function NovoFuncionarioForm({
           onSubmit={submit}
           noValidate
           aria-label="Novo funcionário"
+          hidden={disabled}
           className="flex flex-col gap-4 rounded-lg border border-dash-border-soft p-4"
         >
           <h2 className="text-base font-semibold text-dash-primary">Novo funcionário</h2>

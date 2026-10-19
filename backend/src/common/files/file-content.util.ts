@@ -49,7 +49,7 @@ const OFFICE_REQUIRED_ENTRY: Record<string, string> = {
   [XLSX_MIME_TYPE]: 'xl/workbook.xml',
 };
 
-interface ZipEntry {
+export interface ZipEntry {
   name: string;
   method: number;
   compressedSize: number;
@@ -57,9 +57,9 @@ interface ZipEntry {
   encrypted: boolean;
 }
 
-type ZipParse = { ok: true; entries: ZipEntry[] } | { ok: false };
+export type ZipParse = { ok: true; entries: ZipEntry[] } | { ok: false };
 
-function parseZipDirectory(buffer: Buffer, limits: ZipLimits): ZipParse {
+export function parseZipDirectory(buffer: Buffer, limits: ZipLimits): ZipParse {
   if (buffer.length < 22 || buffer.readUInt32LE(0) !== ZIP_LOCAL_HEADER) return { ok: false };
 
   let eocd = -1;
@@ -104,7 +104,7 @@ function parseZipDirectory(buffer: Buffer, limits: ZipLimits): ZipParse {
   return { ok: true, entries };
 }
 
-function entryData(buffer: Buffer, entry: ZipEntry): Buffer | null {
+export function entryData(buffer: Buffer, entry: ZipEntry): Buffer | null {
   const lo = entry.localOffset;
   if (lo + 30 > buffer.length || buffer.readUInt32LE(lo) !== ZIP_LOCAL_HEADER) return null;
   const start = lo + 30 + buffer.readUInt16LE(lo + 26) + buffer.readUInt16LE(lo + 28);
@@ -115,7 +115,7 @@ function entryData(buffer: Buffer, entry: ZipEntry): Buffer | null {
 
 // Descomprime descartando a saída; resolve com o tamanho real, ou -1 se passar
 // do teto (interrompendo na hora — nunca materializa o conteúdo inteiro).
-function inflatedSizeUpTo(data: Buffer, cap: number): Promise<number> {
+export function inflatedSizeUpTo(data: Buffer, cap: number): Promise<number> {
   return new Promise((resolve, reject) => {
     const inflate = createInflateRaw();
     let size = 0;

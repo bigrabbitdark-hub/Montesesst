@@ -37,4 +37,7 @@ describe('employees-table lib', () => {
     const d = diffRows([row()], [row({ position: null })]);
     expect(d[0].fields).toEqual({ position: '' });
   });
+  it('diffRows ignora espaços nas pontas (o backend aplica trim)', () => {
+    expect(diffRows([row()], [row({ position: 'Soldadora  ' })])).toEqual([]);
+  });
 });

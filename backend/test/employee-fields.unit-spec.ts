@@ -23,6 +23,8 @@ describe('normalizeCbo', () => {
   it('rejeita vazio e mais de 6 dígitos', () => {
     expect(normalizeCbo('').ok).toBe(false);
     expect(normalizeCbo('1234567').ok).toBe(false);
+    expect(normalizeCbo('1').ok).toBe(false);
+    expect(normalizeCbo('1234').ok).toBe(false);
   });
 });
 
@@ -90,5 +92,15 @@ describe('endurecimento: não inventar dados', () => {
     expect(normalizeCbo('51210.5').ok).toBe(false);
     expect(normalizeCbo(' 51210 ')).toEqual({ ok: true, value: '051210' });
     expect(normalizeCbo(51210)).toEqual({ ok: true, value: '051210' });
+  });
+});
+
+describe('normalizeEmployeeInput — UUIDs', () => {
+  it('rejeita filial/cargo que não são UUID e normaliza caixa', () => {
+    const bad = normalizeEmployeeInput({ company_unit_id: 'abc', position_id: '1' });
+    expect(bad.errors).toEqual({ company_unit_id: 'Filial inválida', position_id: 'Cargo inválido' });
+    const ok = normalizeEmployeeInput({ company_unit_id: '3F2504E0-4F89-41D3-9A0C-0305E82C3301', position_id: '' });
+    expect(ok.errors).toEqual({});
+    expect(ok.values).toEqual({ company_unit_id: '3f2504e0-4f89-41d3-9a0c-0305e82c3301', position_id: null });
   });
 });

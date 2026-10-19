@@ -331,6 +331,33 @@ describe('Funcionários: tabela oficial e PATCH /employees/bulk (e2e)', () => {
     expect(check.rows[0].position).toBe('Novo');
   });
 
+  it('bulk: filial/cargo que não são UUID dão 400 (não 500) e id em maiúsculas funciona', async () => {
+    const e = await createEmp('Uuid Caso', { position: 'Antes' });
+    const r = await rowOf(e.id);
+    const bad = await bulk(tokenA, [{ id: e.id, row_version: r.row_version, fields: { company_unit_id: 'abc' } }]);
+    expect(bad.status).toBe(400);
+    expect(JSON.stringify(bad.body)).toContain('Filial inválida');
+    const upper = await bulk(tokenA, [{ id: String(e.id).toUpperCase(), row_version: r.row_version, fields: { position: 'Depois' } }]);
+    expect(upper.status).toBe(200);
+    const check = await (db as any).client.query('SELECT position FROM employees WHERE id = $1', [e.id]);
+    expect(check.rows[0].position).toBe('Depois');
+  });
+
+  it('bulk: auditoria registra um evento por funcionário com os nomes dos campos e sem valores', async () => {
+    const e = await createEmp('Audit Caso', { position: 'Antes' });
+    const r = await rowOf(e.id);
+    const res = await bulk(tokenA, [{ id: e.id, row_version: r.row_version, fields: { position: 'SegredoCargoXYZ', sex: 'F' } }]);
+    expect(res.status).toBe(200);
+    const rows = await (db as any).client.query(
+      `SELECT action, resource_type, detail FROM audit_log WHERE resource_id = $1 AND action = 'bulk_update'`,
+      [e.id],
+    );
+    expect(rows.rowCount).toBe(1);
+    expect(rows.rows[0].resource_type).toBe('employees');
+    expect(rows.rows[0].detail).toBe('campos: position, sex');
+    expect(rows.rows[0].detail).not.toContain('SegredoCargoXYZ');
+  });
+
   it('PATCH /employees/bulk rejeita técnico (403) e lote vazio ou > 200 (400)', async () => {
     const forbidden = await bulk(tecnicoToken, [
       { id: '00000000-0000-4000-8000-000000000002', row_version: 'x', fields: { position: 'X' } },
