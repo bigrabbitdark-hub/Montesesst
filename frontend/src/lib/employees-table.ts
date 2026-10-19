@@ -8,6 +8,7 @@ export interface EmployeeTableRow {
   birth_date: string | null;
   sex: 'F' | 'M' | null;
   position: string | null;
+  department: string | null;
   admission_date: string | null;
   cbo_code: string | null;
   activity_description: string | null;
@@ -26,6 +27,7 @@ export const EDITABLE_COLUMNS: {
   { key: 'birth_date', label: 'Data de nascimento', type: 'date' },
   { key: 'sex', label: 'Sexo', type: 'sex' },
   { key: 'position', label: 'Função/Cargo', type: 'text' },
+  { key: 'department', label: 'Setor', type: 'text' },
   { key: 'admission_date', label: 'Data de admissão', type: 'date' },
   { key: 'cbo_code', label: 'CBO', type: 'cbo' },
   { key: 'activity_description', label: 'Descrição da atividade', type: 'text' },

@@ -99,6 +99,7 @@ export interface EmployeeTableRow {
   birth_date: string | null;
   sex: 'F' | 'M' | null;
   position: string | null;
+  department: string | null;
   admission_date: string | null;
   cbo_code: string | null;
   activity_description: string | null;
@@ -110,7 +111,7 @@ export interface EmployeeTableRow {
 // microssegundos, para o controle de concorrência otimista da tabela.
 const ROW_VERSION_SQL = `to_char(updated_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"')`;
 const TABLE_COLUMNS = `id, full_name, registration_number, cpf,
-  to_char(birth_date,'YYYY-MM-DD') AS birth_date, sex, position,
+  to_char(birth_date,'YYYY-MM-DD') AS birth_date, sex, position, department,
   to_char(admission_date,'YYYY-MM-DD') AS admission_date, cbo_code, activity_description,
   company_unit_id, status, ${ROW_VERSION_SQL} AS row_version`;
 

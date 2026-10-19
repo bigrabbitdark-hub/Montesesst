@@ -142,7 +142,8 @@ export function FuncionariosTable({
     if (!hasChanges) return;
     const onBeforeUnload = (e: BeforeUnloadEvent) => {
       e.preventDefault();
-      e.returnValue = '';
+      // Navegadores antigos só mostram o aviso com returnValue não vazio (o texto em si é ignorado pelos atuais).
+      e.returnValue = LEAVE_WARNING;
     };
     const onClick = (e: MouseEvent) => {
       if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;

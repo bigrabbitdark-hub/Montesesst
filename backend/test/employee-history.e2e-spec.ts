@@ -105,6 +105,17 @@ describe('Funcionários: histórico campo a campo (e2e)', () => {
     expect((await history(created.body.id)).rows.some((r: any) => r.field === 'esocial_registration')).toBe(false);
   });
 
+  it('setor (department) entra no histórico com o nome do campo, no cadastro e na edição', async () => {
+    const created = await create({ full_name: 'Hist Setor', cpf: '73646518022', department: 'Manutenção' });
+    expect(created.status).toBe(201);
+    const res = await patch(created.body.id, { department: 'Produção' });
+    expect(res.status).toBe(200);
+    const rows = (await history(created.body.id)).rows.filter((r: any) => r.field === 'department');
+    expect(rows.map((r: any) => [r.old_value, r.new_value])).toEqual(
+      expect.arrayContaining([[null, 'Manutenção'], ['Manutenção', 'Produção']]),
+    );
+  });
+
   it('alteração direta no banco (sem contexto da aplicação) também é registrada, sem ator', async () => {
     const created = await create({ full_name: 'Hist Direto', cpf: '40000007994' });
     await sql(`UPDATE employees SET position = 'Via SQL' WHERE id = $1`, [created.body.id]);

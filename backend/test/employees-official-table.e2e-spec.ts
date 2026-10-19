@@ -282,6 +282,21 @@ describe('Funcionários: tabela oficial e PATCH /employees/bulk (e2e)', () => {
     expect(typeof n1.birth_date).toBe('string');
   });
 
+  it('tabela devolve department (Setor) e o lote altera e limpa o setor', async () => {
+    const e = await createEmp('Setor Caso', { department: 'Almoxarifado' });
+    const r0 = await rowOf(e.id);
+    expect(r0.department).toBe('Almoxarifado');
+    const up = await bulk(tokenA, [{ id: e.id, row_version: r0.row_version, fields: { department: 'Expedição' } }]);
+    expect(up.status).toBe(200);
+    const r1 = await rowOf(e.id);
+    expect(r1.department).toBe('Expedição');
+    const clr = await bulk(tokenA, [{ id: e.id, row_version: r1.row_version, fields: { department: '' } }]);
+    expect(clr.status).toBe(200);
+    expect((await rowOf(e.id)).department).toBeNull();
+    const big = await bulk(tokenA, [{ id: e.id, row_version: (await rowOf(e.id)).row_version, fields: { department: 'x'.repeat(121) } }]);
+    expect(big.status).toBe(400);
+  });
+
   it('duas edições seguidas da mesma linha funcionam com o row_version novo devolvido', async () => {
     const e = await createEmp('Sequencial');
     const v0 = (await rowOf(e.id)).row_version;

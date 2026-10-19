@@ -2,8 +2,14 @@ import { BadRequestException, Body, Controller, Get, Param, ParseUUIDPipe, Post,
 import { Roles } from '../../common/decorators/roles.decorator';
 import { EsocialEventsService } from './esocial-events.service';
 import { CreateEsocialEventDto } from './dto/create-esocial-event.dto';
+import { maskCpfDeep } from '../../common/pii/mask-cpf-deep.util';
 
-// Leitura: empresa, técnico vinculado e admin. Ações que mudam estado ou usam o certificado do
+// Só empresa e admin veem CPF completo; para os demais papéis com leitura (técnico vinculado), todo CPF que
+// aparecer na resposta (inclusive em textos do eSocial: retorno_json, erro_mensagem, histórico) sai mascarado.
+const forRole = <T>(role: string, data: T): T => (role === 'empresa' || role === 'admin' ? data : maskCpfDeep(data));
+
+// Leitura: empresa, técnico vinculado e admin (técnico com CPF mascarado; o XML, que contém cpfTrab e o CPF do
+// médico coordenador, é só de empresa e admin). Ações que mudam estado ou usam o certificado do
 // cliente: SOMENTE a empresa (o tenant sai do JWT via req.withTenantContext, nunca do corpo).
 @Controller('esocial/events')
 export class EsocialEventsController {
@@ -18,23 +24,25 @@ export class EsocialEventsController {
     @Req() req: any,
   ) {
     if (!!asoRecordId === !!accidentId) throw new BadRequestException('Informe asoRecordId ou accidentId (um dos dois)');
-    return req.withTenantContext((c: any) => this.events.diagnose(c, asoRecordId, certificateId, accidentId));
+    return req
+      .withTenantContext((c: any) => this.events.diagnose(c, asoRecordId, certificateId, accidentId))
+      .then((r: unknown) => forRole(req.user.role, r));
   }
 
   @Get()
   @Roles('empresa', 'tecnico', 'admin')
   list(@Req() req: any) {
-    return req.withTenantContext((c: any) => this.events.list(c));
+    return req.withTenantContext((c: any) => this.events.list(c)).then((r: unknown) => forRole(req.user.role, r));
   }
 
   @Get(':id')
   @Roles('empresa', 'tecnico', 'admin')
   get(@Param('id', ParseUUIDPipe) id: string, @Req() req: any) {
-    return req.withTenantContext((c: any) => this.events.get(c, id));
+    return req.withTenantContext((c: any) => this.events.get(c, id)).then((r: unknown) => forRole(req.user.role, r));
   }
 
   @Get(':id/xml')
-  @Roles('empresa', 'tecnico', 'admin')
+  @Roles('empresa', 'admin')
   xml(@Param('id', ParseUUIDPipe) id: string, @Req() req: any) {
     return req.withTenantContext((c: any) => this.events.xml(c, id));
   }

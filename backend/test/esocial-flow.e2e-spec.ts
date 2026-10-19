@@ -170,6 +170,67 @@ describe('eSocial S-2220: fluxo completo (e2e, SOAP e R2 simulados)', () => {
     expect((await http().post(`/esocial/events/${id}/transmit`).set(auth(s.token))).status).toBe(400);
     expect(soap.lotes.length).toBe(before);
   }, 120000);
+  it('CPF por papel: XML só para empresa/admin; técnico vinculado lê o evento com CPF mascarado (inclusive nas ocorrências)', async () => {
+    const s = await scenario('esocial-cpf-papel'); await makeReady(s);
+    const id = (await http().post('/esocial/events').set(auth(s.token)).send({ asoRecordId: s.asoId, certificateId: s.certificateId })).body.id;
+    await http().post(`/esocial/events/${id}/authorize`).set(auth(s.token));
+    // rejeição cujo texto do eSocial cita o CPF (vai para retorno_json, erro_mensagem e histórico)
+    soap.envio = { cdResposta: 401, descResposta: 'Lote incorreto', protocoloEnvio: undefined, ocorrencias: [{ codigo: 'MS0002', descricao: 'Trabalhador 529.982.247-25 (52998224725) sem vínculo', tipo: '1' }] };
+    expect((await http().post(`/esocial/events/${id}/transmit`).set(auth(s.token))).body.status).toBe('rejeitado');
+    soap.envio = { cdResposta: 201, descResposta: 'ok', protocoloEnvio: PROTOCOLO, ocorrencias: [] };
+
+    const tec = await db.createUserWithRole('tecnico', 'tecnico-esocial-cpf');
+    const techId = (await db.rawQuery('INSERT INTO technicians (user_id) VALUES ($1) RETURNING id', [tec.userId]))[0].id;
+    await db.rawQuery('INSERT INTO tenant_technicians (tenant_id, technician_id) VALUES ($1, $2)', [s.t.tenantId, techId]);
+    const tokenT = await login(tec);
+    const adm = await db.createUserWithRole('admin', 'admin-esocial-cpf'); const tokenA = await login(adm);
+
+    // XML (cpfTrab e CPF do médico): técnico 403; empresa e admin 200 com o CPF completo
+    expect((await http().get(`/esocial/events/${id}/xml`).set(auth(tokenT))).status).toBe(403);
+    for (const tok of [s.token, tokenA]) {
+      const x = await http().get(`/esocial/events/${id}/xml`).set(auth(tok));
+      expect(x.status).toBe(200);
+      expect(x.body.xml).toContain(`<cpfTrab>${VALID_CPF}</cpfTrab>`);
+    }
+    // JSON do evento: técnico lê, mas sem CPF completo em lugar nenhum; empresa vê o texto original
+    const gT = await http().get(`/esocial/events/${id}`).set(auth(tokenT));
+    expect(gT.status).toBe(200);
+    const bodyT = JSON.stringify(gT.body);
+    expect(bodyT).not.toContain(VALID_CPF);
+    expect(bodyT).not.toContain('529.982.247-25');
+    expect(gT.body.erro_mensagem).toContain('***.982.247-**');
+    expect(JSON.stringify(gT.body.retorno_json)).toContain('***.982.247-**');
+    const listT = await http().get('/esocial/events').set(auth(tokenT));
+    expect(listT.status).toBe(200);
+    expect(JSON.stringify(listT.body)).not.toContain(VALID_CPF);
+    const gE = await http().get(`/esocial/events/${id}`).set(auth(s.token));
+    expect(gE.body.erro_mensagem).toContain('529.982.247-25');
+
+    // Diagnóstico: técnico lê (200) sem CPF completo. (Os códigos podem diferir dos da empresa: no contexto do
+    // técnico os dados do empregador são lidos de outro jeito; comportamento anterior, fora deste ajuste.)
+    const dq = `/esocial/events/diagnostics?asoRecordId=${s.asoId}&certificateId=${s.certificateId}`;
+    const dT = await http().get(dq).set(auth(tokenT));
+    expect(dT.status).toBe(200);
+    expect(Array.isArray(dT.body.issues)).toBe(true);
+    expect(JSON.stringify(dT.body)).not.toContain(VALID_CPF);
+    expect(JSON.stringify(dT.body)).not.toContain('529.982.247-25');
+
+    // Certificados: titular de e-CPF ("NOME:CPF"). Técnico não recebe subjectDocument e vê o CN mascarado.
+    await db.rawQuery(`UPDATE esocial_certificates SET subject_cn = 'FULANO DE TAL:52998224725', subject_document = '52998224725' WHERE id = $1`, [s.certificateId]);
+    const cT = (await http().get('/esocial/certificates').set(auth(tokenT)));
+    expect(cT.status).toBe(200);
+    const certT = cT.body.find((c: any) => c.id === s.certificateId);
+    expect(certT).toBeDefined();
+    expect(certT).not.toHaveProperty('subjectDocument');
+    expect(certT.subjectCn).toBe('FULANO DE TAL:***.982.247-**');
+    expect(certT.thumbprintSha256).toMatch(/^[0-9a-f]{64}$/i);
+    expect(JSON.stringify(cT.body)).not.toContain(VALID_CPF);
+    for (const tok of [s.token, tokenA]) {
+      const certE = (await http().get('/esocial/certificates').set(auth(tok))).body.find((c: any) => c.id === s.certificateId);
+      expect(certE).toMatchObject({ subjectCn: 'FULANO DE TAL:52998224725', subjectDocument: '52998224725' });
+    }
+  }, 120000);
+
   it('S-3000: exclui só evento processado, transmite o evtExclusao, marca o original como excluído e libera o ASO', async () => {
     const s = await scenario('esocial-s3000'); await makeReady(s);
     const post = (path: string, tok = s.token, body?: object) => http().post(path).set(auth(tok)).send(body ?? {});

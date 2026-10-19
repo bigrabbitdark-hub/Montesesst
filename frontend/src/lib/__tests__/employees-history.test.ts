@@ -2,10 +2,11 @@ import { describe, expect, it } from 'vitest';
 import { FIELD_LABELS, formatChangedAt, formatHistoryValue, roleLabel, sourceLabel } from '../employees-history';
 
 describe('employees-history', () => {
-  it('rótulos dos 11 campos rastreados', () => {
+  it('rótulos dos 12 campos rastreados (inclui Setor, 0085)', () => {
     expect(FIELD_LABELS.cbo_code).toBe('CBO');
     expect(FIELD_LABELS.registration_number).toBe('Matrícula (eSocial)');
-    expect(Object.keys(FIELD_LABELS)).toHaveLength(11);
+    expect(FIELD_LABELS.department).toBe('Setor');
+    expect(Object.keys(FIELD_LABELS)).toHaveLength(12);
   });
   it('formata valores', () => {
     expect(formatHistoryValue('birth_date', '1990-02-03')).toBe('03/02/1990');

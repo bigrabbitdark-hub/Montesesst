@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { sessionExpired } from '@/lib/auth';
 import type { UnitOption } from '@/components/NovoFuncionarioForm';
 import { PROCESSING_NOTICE, UNEXPECTED_RESPONSE, WAIT_NOTICE, asList, reasonLabel, safeText, statusMessage, type Extraction, type ExtractionItem } from '@/lib/employees-ingestion';
 
@@ -114,6 +115,11 @@ export function AnexarDocumentoPanel({
           headers: { Authorization: `Bearer ${token}` },
         });
         if (cancelled) return;
+        if (res.status === 401) {
+          setPollId(null);
+          sessionExpired();
+          return;
+        }
         if (res.status >= 400 && res.status < 500 && res.status !== 429) {
           setPollId(null);
           setError('Não foi possível acompanhar a leitura. Atualize a página para conferir.');
@@ -179,6 +185,10 @@ export function AnexarDocumentoPanel({
         body: form,
         signal: controller.signal,
       });
+      if (res.status === 401) {
+        sessionExpired();
+        return;
+      }
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         setError(typeof data?.message === 'string' && data.message ? data.message : `Não foi possível enviar ${isDoc ? 'o documento' : 'a planilha'}. Tente novamente.`);

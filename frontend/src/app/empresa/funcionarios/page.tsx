@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { sessionExpired } from '@/lib/auth';
 import { useRouter } from 'next/navigation';
 import { FuncionariosTable } from '@/components/FuncionariosTable';
 import { AnexarDocumentoPanel } from '@/components/AnexarDocumentoPanel';
@@ -33,7 +34,13 @@ export default function EmpresaFuncionariosPage() {
       .catch(() => setUnits([]));
     // Revisão pendente de uma planilha anterior: a mais recente aparece acima da tabela.
     fetch('/api/employees/extractions?status=requer_revisao', { headers: { Authorization: `Bearer ${token}` } })
-      .then((res) => (res.ok ? res.json() : null))
+      .then((res) => {
+        if (res.status === 401) {
+          sessionExpired();
+          return null;
+        }
+        return res.ok ? res.json() : null;
+      })
       .then((data) => {
         const list: Extraction[] = Array.isArray(data?.items) ? data.items : [];
         if (list[0]) setReview((cur) => cur ?? list[0]);

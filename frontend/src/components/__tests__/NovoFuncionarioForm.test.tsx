@@ -1,6 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { NovoFuncionarioForm } from '../NovoFuncionarioForm';
+import { sessionExpired } from '@/lib/auth';
+
+vi.mock('@/lib/auth', async (orig) => ({ ...(await orig<typeof import('@/lib/auth')>()), sessionExpired: vi.fn() }));
 
 const UNITS = [{ id: 'u1', name: 'Matriz SP' }, { id: 'u2', name: 'Filial RJ' }];
 
@@ -107,6 +110,18 @@ describe('NovoFuncionarioForm', () => {
     expect(JSON.parse((posts(fetchMock)[0][1] as RequestInit).body as string)).toEqual({
       full_name: 'Ana', cpf: '52998224725', tenant_id: 't9',
     });
+  });
+
+  it('401 no cadastro chama sessionExpired e não mostra "Unauthorized"', async () => {
+    vi.mocked(sessionExpired).mockClear();
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(resp({ message: 'Unauthorized' }, 401)));
+    const onCreated = abrir();
+    digitar('Funcionário', 'Ana Teste');
+    digitar('CPF', '52998224725');
+    fireEvent.click(screen.getByRole('button', { name: 'Cadastrar funcionário' }));
+    await waitFor(() => expect(sessionExpired).toHaveBeenCalled());
+    expect(document.body.textContent).not.toContain('Unauthorized');
+    expect(onCreated).not.toHaveBeenCalled();
   });
 
   it.each([

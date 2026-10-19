@@ -94,6 +94,8 @@ describe('Funcionários: exposição de CPF por papel e validação de tipos (e2
       expect(list.body.find((e: any) => e.id === empAId)?.cpf).toBe(CPF_A);
       const one = await request(srv).get(`/employees/${empAId}`).set(auth(adminToken));
       expect(one.body.cpf).toBe(CPF_A);
+      expect(one.body).toHaveProperty('birth_date');
+      expect(one.body).toHaveProperty('created_at');
     });
 
     it.each([['tecnico'], ['parceiro']])('%s vê o CPF mascarado (lista e detalhe), nunca o completo', async (who) => {
@@ -107,6 +109,10 @@ describe('Funcionários: exposição de CPF por papel e validação de tipos (e2
       expect(one.status).toBe(200);
       expect(one.body.cpf).toBe('***.982.247-**');
       expect(JSON.stringify(list.body) + JSON.stringify(one.body)).not.toContain(CPF_A);
+      // Projeção mínima: nada de nascimento, sexo, CBO, atividade, admissão ou campos do eSocial.
+      const KEYS = ['company_unit_id', 'cpf', 'department', 'full_name', 'id', 'position', 'position_id', 'registration_number', 'status', 'tenant_id'];
+      expect(Object.keys(one.body).sort()).toEqual(KEYS);
+      for (const e of list.body) expect(Object.keys(e).sort()).toEqual(KEYS);
     });
   });
 
