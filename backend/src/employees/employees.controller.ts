@@ -41,6 +41,8 @@ export class EmployeesController {
           position: dto.position,
           admission_date: dto.admission_date,
           company_unit_id: dto.company_unit_id,
+          registration_number: dto.registration_number,
+          department: dto.department,
         },
         user.role,
       ),

@@ -6,12 +6,13 @@ const ESPERADO: { titulo: string | null; labels: string[] }[] = [
   { titulo: 'Empresa', labels: ['Empresas', 'Funcionários', 'Documentos', 'Relatório de visita técnica'] },
   { titulo: 'CIPA', labels: ['CIPA', 'Eleição da CIPA', 'Capacitação da CIPA'] },
   { titulo: 'Brigada e Incêndio', labels: ['Brigada de Incêndio', 'Equip. contra incêndio', 'Checklist prevenção', 'Simulados'] },
-  { titulo: 'Segurança', labels: ['Mapa SST', 'EPIs', 'Consulta de CA'] },
+  { titulo: 'Segurança', labels: ['Mapa SST', 'Consulta de CA'] },
+  { titulo: 'EPI', labels: ['Painel de EPI', 'Cadastro de EPI', 'Movimentação de EPI', 'Fichas de controle'] },
   { titulo: 'Agenda', labels: ['Reuniões e Visitas'] },
   { titulo: 'Gestão', labels: ['Auditoria Montese', 'Auditoria IA', 'eSocial', 'Relatórios', 'Financeiro', 'Universidade', 'Configurações'] },
 ];
 
-// Lista literal dos 24 hrefs: protege contra perda/alteração de rota.
+// Lista literal dos 27 hrefs: protege contra perda/alteração de rota.
 const HREFS_ESPERADOS = [
   '/dashboard-v2',
   '/empresa/assistente',
@@ -27,8 +28,11 @@ const HREFS_ESPERADOS = [
   '/empresa/checklist-prevencao',
   '/empresa/simulados',
   '/empresa/mapa-sst',
-  '/empresa/epis',
   '/empresa/consulta-ca',
+  '/empresa/epi',
+  '/empresa/epi/cadastro',
+  '/empresa/epi/movimentacao',
+  '/empresa/epi/fichas',
   '/empresa/agendamentos',
   '/empresa/pente-fino',
   '/empresa/em-construcao?item=Auditoria IA',
@@ -75,8 +79,8 @@ describe('MENU_SETORES (agrupamento por setor)', () => {
   it('nenhum setor fica vazio', () => {
     MENU_SETORES.forEach((s) => expect(s.itens.length).toBeGreaterThan(0));
   });
-  it('MENU_ITEMS é a lista plana dos setores: 24 itens, mesma ordem', () => {
-    expect(MENU_ITEMS).toHaveLength(24);
+  it('MENU_ITEMS é a lista plana dos setores: 27 itens, mesma ordem', () => {
+    expect(MENU_ITEMS).toHaveLength(27);
     expect(MENU_ITEMS).toEqual(MENU_SETORES.flatMap((s) => s.itens));
   });
   it('hrefs e labels são únicos', () => {
@@ -84,7 +88,7 @@ describe('MENU_SETORES (agrupamento por setor)', () => {
     expect(new Set(MENU_ITEMS.map((i) => i.label)).size).toBe(MENU_ITEMS.length);
   });
   it('o conjunto de hrefs é exatamente o esperado (nenhuma rota perdida ou alterada)', () => {
-    expect(HREFS_ESPERADOS).toHaveLength(24);
+    expect(HREFS_ESPERADOS).toHaveLength(27);
     expect([...MENU_ITEMS.map((i) => i.href)].sort()).toEqual([...HREFS_ESPERADOS].sort());
   });
 });
@@ -106,6 +110,20 @@ describe('itemAtivo', () => {
   it('não confunde prefixos parecidos', () => {
     expect(itemAtivo('/empresa/epis-extra', todos)).toBeNull();
   });
+  it('a rota antiga /empresa/epis não ativa o Painel de EPI (e /empresa/epi não casa /empresa/epis)', () => {
+    expect(itemAtivo('/empresa/epis', todos)).toBeNull();
+    expect(itemAtivo('/empresa/epi', todos)).toBe('/empresa/epi');
+  });
+  it('subrota do EPI ativa o item mais específico', () => {
+    expect(itemAtivo('/empresa/epi/cadastro/x', todos)).toBe('/empresa/epi/cadastro');
+    expect(itemAtivo('/empresa/epi/fichas', todos)).toBe('/empresa/epi/fichas');
+    expect(itemAtivo('/empresa/epi/outra', todos)).toBe('/empresa/epi');
+  });
+  it('"Consulta de CA" continua no setor Segurança e o item antigo "EPIs" saiu do menu', () => {
+    const seg = MENU_SETORES.find((s) => s.titulo === 'Segurança');
+    expect(seg?.itens.map((i) => i.label)).toContain('Consulta de CA');
+    expect(MENU_ITEMS.some((i) => i.label === 'EPIs' || i.href === '/empresa/epis')).toBe(false);
+  });
   it('itens "em construção" (href com query) nunca ficam ativos e página desconhecida não ativa nada', () => {
     expect(itemAtivo('/empresa/em-construcao', todos)).toBeNull();
     expect(itemAtivo('/qualquer', todos)).toBeNull();
@@ -115,7 +133,7 @@ describe('itemAtivo', () => {
 describe('cobertura do menu (nenhuma página da empresa fica órfã)', () => {
   const hrefs = todos.map((i) => i.href.split('?')[0]);
   it.each([
-    '/empresa/assistente', '/empresa/documentos', '/empresa/epis', '/empresa/consulta-ca', '/empresa/inspecoes',
+    '/empresa/assistente', '/empresa/documentos', '/empresa/epi', '/empresa/epi/cadastro', '/empresa/consulta-ca', '/empresa/inspecoes',
     '/empresa/agendamentos', '/empresa/mapa-sst', '/empresa/pente-fino', '/empresa/equipamentos-incendio',
     '/empresa/brigada', '/empresa/checklist-prevencao', '/empresa/simulados', '/empresa/cipa',
     '/empresa/cipa/eleicao', '/empresa/cipa/capacitacao', '/empresa/onboarding',

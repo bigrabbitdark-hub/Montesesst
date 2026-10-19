@@ -231,6 +231,7 @@ export class PositionsService {
            SELECT 1 FROM employee_epi_deliveries eed
            JOIN tenant_epis te ON te.id = eed.tenant_epi_id
            WHERE eed.employee_id = e.id AND te.epi_catalog_item_id = eci.id
+             AND eed.signature_status <> 'estornada'
          )`,
       [tenantId],
     );

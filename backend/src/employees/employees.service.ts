@@ -17,7 +17,37 @@ const UPDATABLE_FIELDS = [
   'company_unit_id',
   'position_id',
   'status',
+  'registration_number',
+  'department',
 ] as const;
+
+// Ficha de EPI: os DTOs validam com class-validator; tipo/tamanho/NUL também são checados aqui (defesa em profundidade; 400, nunca 500).
+// registration_number: 30 por coerência com o eSocial (DTO MaxLength(30) dos pré-requisitos e
+// MATRICULA_FORMATO do diagnóstico), pois a coluna é compartilhada com esse módulo.
+const FICHA_TEXT_LIMITS = { registration_number: 30, department: 120 } as const;
+
+// Erros do Postgres de entrada -> HTTP sem expor o texto do pg (tabela/constraint/valor).
+const PG_BAD_INPUT = new Set(['22P02', '22001', '22007', '22008', '22003', '23502', '22021', '23514']);
+function translateEmployeePgError(err: unknown): never {
+  const e = err as { code?: string; constraint?: string };
+  if (e.code === '23505') {
+    if (e.constraint && e.constraint.includes('cpf')) throw new ConflictException('CPF já cadastrado nesta empresa');
+    throw new ConflictException('Registro duplicado');
+  }
+  if (e.code && PG_BAD_INPUT.has(e.code)) throw new BadRequestException('Dados inválidos');
+  return mapPgError(err);
+}
+
+function assertCpf(cpf: unknown): void {
+  if (typeof cpf !== 'string' || !/^\d{11}$/.test(cpf)) throw new BadRequestException('cpf inválido');
+}
+
+function assertOptionalFichaText(field: keyof typeof FICHA_TEXT_LIMITS, value: unknown): void {
+  if (value === undefined || value === null) return;
+  if (typeof value !== 'string' || value.length > FICHA_TEXT_LIMITS[field] || value.includes('\u0000')) {
+    throw new BadRequestException(`${field} inválido`);
+  }
+}
 
 export interface Employee {
   id: string;
@@ -29,6 +59,8 @@ export interface Employee {
   position: string | null;
   admission_date: string | null;
   company_unit_id: string | null;
+  registration_number: string | null;
+  department: string | null;
   status: string;
   created_at: string;
   updated_at: string;
@@ -41,17 +73,21 @@ interface CreateEmployeeData {
   position?: string;
   admission_date?: string;
   company_unit_id?: string;
+  registration_number?: string;
+  department?: string;
 }
 
 interface UpdateEmployeeData {
   full_name?: string;
   cpf?: string;
-  birth_date?: string;
-  position?: string;
-  admission_date?: string;
-  company_unit_id?: string;
-  position_id?: string;
+  birth_date?: string | null;
+  position?: string | null;
+  admission_date?: string | null;
+  company_unit_id?: string | null;
+  position_id?: string | null;
   status?: string;
+  registration_number?: string | null;
+  department?: string | null;
 }
 
 export interface ImportRowError {
@@ -103,13 +139,19 @@ export class EmployeesService {
   }
 
   async create(client: PoolClient, tenantId: string, data: CreateEmployeeData, callerRole: string): Promise<Employee> {
+    assertOptionalFichaText('registration_number', data.registration_number);
+    assertOptionalFichaText('department', data.department);
+    assertCpf(data.cpf);
     await this.assertEmployeeLimitNotExceeded(client, tenantId, callerRole);
     if (data.company_unit_id) {
       await this.assertCompanyUnitBelongsToTenant(client, data.company_unit_id, tenantId);
     }
-    const result = await client.query<Employee>(
-      `INSERT INTO employees (tenant_id, full_name, cpf, birth_date, position, admission_date, company_unit_id)
-       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
+    let result;
+    try {
+      result = await client.query<Employee>(
+      `INSERT INTO employees (tenant_id, full_name, cpf, birth_date, position, admission_date, company_unit_id,
+                              registration_number, department)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
       [
         tenantId,
         data.full_name,
@@ -118,8 +160,13 @@ export class EmployeesService {
         data.position ?? null,
         data.admission_date ?? null,
         data.company_unit_id ?? null,
+        data.registration_number ?? null,
+        data.department ?? null,
       ],
-    );
+      );
+    } catch (err) {
+      translateEmployeePgError(err);
+    }
     return result.rows[0];
   }
 
@@ -144,6 +191,9 @@ export class EmployeesService {
   }
 
   async update(client: PoolClient, id: string, data: UpdateEmployeeData, callerRole: string): Promise<Employee> {
+    assertOptionalFichaText('registration_number', data.registration_number);
+    assertOptionalFichaText('department', data.department);
+    if (data.cpf !== undefined) assertCpf(data.cpf);
     if (data.status === 'ativo') {
       const existing = await client.query<{ tenant_id: string; status: string }>(
         'SELECT tenant_id, status FROM employees WHERE id = $1',
@@ -182,10 +232,15 @@ export class EmployeesService {
     const { setClauses, values } = buildSafeSetClause(data, UPDATABLE_FIELDS, 2);
     if (setClauses.length === 0) return this.findOne(client, id);
 
-    const result = await client.query<Employee>(
-      `UPDATE employees SET ${setClauses.join(', ')} WHERE id = $1 RETURNING *`,
-      [id, ...values],
-    );
+    let result;
+    try {
+      result = await client.query<Employee>(
+        `UPDATE employees SET ${setClauses.join(', ')} WHERE id = $1 RETURNING *`,
+        [id, ...values],
+      );
+    } catch (err) {
+      translateEmployeePgError(err);
+    }
     const employee = result.rows[0];
     if (!employee) throw new NotFoundException('Funcionário não encontrado');
     return employee;

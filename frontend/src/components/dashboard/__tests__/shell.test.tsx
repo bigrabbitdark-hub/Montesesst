@@ -60,8 +60,13 @@ const SETORES = [
   ] },
   { titulo: 'Segurança', links: [
     ['Mapa SST', '/empresa/mapa-sst'],
-    ['EPIs', '/empresa/epis'],
     ['Consulta de CA', '/empresa/consulta-ca'],
+  ] },
+  { titulo: 'EPI', links: [
+    ['Painel de EPI', '/empresa/epi'],
+    ['Cadastro de EPI', '/empresa/epi/cadastro'],
+    ['Movimentação de EPI', '/empresa/epi/movimentacao'],
+    ['Fichas de controle', '/empresa/epi/fichas'],
   ] },
   { titulo: 'Agenda', links: [
     ['Reuniões e Visitas', '/empresa/agendamentos'],
@@ -110,14 +115,14 @@ describe('DashboardSidebar da empresa agrupada por setores', () => {
     expect(encontrados).toEqual(links.map(([l, h]) => [l, h]));
   });
 
-  it('os 24 links estão presentes, com os hrefs certos e sem repetição', () => {
+  it('os 27 links estão presentes, com os hrefs certos e sem repetição', () => {
     render(<DashboardSidebar />);
     const esperados = [
       ['Dashboard', '/dashboard-v2'],
       ['Assistente Montese', '/empresa/assistente'],
       ...SETORES.flatMap((s) => s.links.map(([l, h]) => [l, h])),
     ];
-    expect(esperados).toHaveLength(24);
+    expect(esperados).toHaveLength(27);
     const links = screen.getAllByRole('link');
     expect(links.map((a) => [a.textContent, a.getAttribute('href')])).toEqual(esperados);
   });
@@ -132,14 +137,16 @@ describe('DashboardSidebar da empresa agrupada por setores', () => {
     ['/empresa/cipa/capacitacao', 'Capacitação da CIPA'],
     ['/empresa/brigada', 'Brigada de Incêndio'],
     ['/empresa/simulados', 'Simulados'],
-    ['/empresa/epis', 'EPIs'],
+    ['/empresa/epi', 'Painel de EPI'],
+    ['/empresa/epi/movimentacao', 'Movimentação de EPI'],
+    ['/empresa/epi/fichas', 'Fichas de controle'],
     ['/empresa/mapa-sst', 'Mapa SST'],
     ['/empresa/agendamentos', 'Reuniões e Visitas'],
     ['/empresa/pente-fino', 'Auditoria Montese'],
     // subrotas
     ['/empresa/cipa/eleicao/2024/votos', 'Eleição da CIPA'],
     ['/empresa/documentos/abc-123/editar', 'Documentos'],
-    ['/empresa/epis/novo', 'EPIs'],
+    ['/empresa/epi/cadastro/abc-123', 'Cadastro de EPI'],
     ['/empresa/agendamentos/9', 'Reuniões e Visitas'],
   ])('em %s só "%s" fica com aria-current (exatamente um)', (caminho, label) => {
     pathname = caminho;
@@ -161,6 +168,7 @@ describe('DashboardSidebar da empresa agrupada por setores', () => {
     '/empresa/em-construcao/outra',
     '/rota-desconhecida',
     '/empresa/epis-extra',
+    '/empresa/epis',
   ])('em %s nenhum item fica com aria-current', (caminho) => {
     pathname = caminho;
     render(<DashboardSidebar />);

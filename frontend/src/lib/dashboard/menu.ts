@@ -1,7 +1,7 @@
 import {
   LayoutDashboard, Building2, Users, FileText, ScanSearch, Globe, FileBarChart2, Coins,
   GraduationCap, Settings, Bot, ShieldCheck, ClipboardCheck, Flame, CircleCheck, Search,
-  CalendarClock, MapPinned, Microscope, ListChecks, Siren, Vote, type LucideIcon,
+  CalendarClock, MapPinned, Microscope, ListChecks, Siren, Vote, ArrowLeftRight, ClipboardList, type LucideIcon,
 } from 'lucide-react';
 
 export interface MenuItem {
@@ -18,7 +18,7 @@ export interface MenuSetor {
   itens: MenuItem[];
 }
 
-// Fonte única dos 24 itens da Empresa, organizados por setor.
+// Fonte única dos 27 itens da Empresa, organizados por setor.
 // Os objetos de item existem uma única vez aqui; nada é duplicado em outra lista.
 // `MENU_ITEMS` abaixo é uma visão plana (ordem dos setores) usada por dependentes
 // que ainda não migraram para `MENU_SETORES`.
@@ -46,8 +46,13 @@ export const MENU_SETORES: MenuSetor[] = [
   ]},
   { titulo: 'Segurança', itens: [
     { href: '/empresa/mapa-sst', label: 'Mapa SST', icon: MapPinned, implemented: true },
-    { href: '/empresa/epis', label: 'EPIs', icon: ShieldCheck, implemented: true },
     { href: '/empresa/consulta-ca', label: 'Consulta de CA', icon: Search, implemented: true },
+  ]},
+  { titulo: 'EPI', itens: [
+    { href: '/empresa/epi', label: 'Painel de EPI', icon: LayoutDashboard, implemented: true },
+    { href: '/empresa/epi/cadastro', label: 'Cadastro de EPI', icon: ShieldCheck, implemented: true },
+    { href: '/empresa/epi/movimentacao', label: 'Movimentação de EPI', icon: ArrowLeftRight, implemented: true },
+    { href: '/empresa/epi/fichas', label: 'Fichas de controle', icon: ClipboardList, implemented: true },
   ]},
   { titulo: 'Agenda', itens: [
     { href: '/empresa/agendamentos', label: 'Reuniões e Visitas', icon: CalendarClock, implemented: true },
@@ -63,7 +68,7 @@ export const MENU_SETORES: MenuSetor[] = [
   ]},
 ];
 
-// Lista plana dos 24 itens, na ordem em que aparecem nos setores. Derivada
+// Lista plana dos 27 itens, na ordem em que aparecem nos setores. Derivada
 // de MENU_SETORES — não há objetos duplicados em outro array.
 export const MENU_ITEMS: MenuItem[] = MENU_SETORES.flatMap((s) => s.itens);
 

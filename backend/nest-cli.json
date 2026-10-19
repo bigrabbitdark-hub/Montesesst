@@ -3,6 +3,9 @@
   "collection": "@nestjs/schematics",
   "sourceRoot": "src",
   "compilerOptions": {
-    "assets": [{ "include": "esocial/schemas/**/*.xsd", "outDir": "dist/src", "watchAssets": false }]
+    "assets": [
+      { "include": "esocial/schemas/**/*.xsd", "outDir": "dist/src", "watchAssets": false },
+      { "include": "common/pdf/assets/**/*", "outDir": "dist/src", "watchAssets": false }
+    ]
   }
 }

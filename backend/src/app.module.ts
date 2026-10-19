@@ -17,6 +17,8 @@ import { TenantTechniciansModule } from './tenant-technicians/tenant-technicians
 import { DocumentsModule } from './documents/documents.module';
 import { InspectionsModule } from './inspections/inspections.module';
 import { EpiModule } from './epi/epi.module';
+import { EpiFichaModule } from './epi-ficha/epi-ficha.module';
+import { EpiSignatureModule } from './epi-signature/epi-signature.module';
 import { AuditLogModule } from './audit-log/audit-log.module';
 import { OverviewModule } from './overview/overview.module';
 import { SystemStatusModule } from './system-status/system-status.module';
@@ -77,6 +79,8 @@ import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
     DocumentsModule,
     InspectionsModule,
     EpiModule,
+    EpiFichaModule,
+    EpiSignatureModule,
     AuditLogModule,
     OverviewModule,
     SystemStatusModule,

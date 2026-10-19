@@ -1,36 +1,7 @@
-'use client';
+import { redirect } from 'next/navigation';
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { EpisPanel } from '@/components/EpisPanel';
-import { Card } from '@/components/ui/Card';
-import { DashSkin } from '@/components/dashboard/DashSkin';
-import { PageHeader } from '@/components/dashboard/PageHeader';
-
-export default function EmpresaEpisPage() {
-  const router = useRouter();
-  const [ready, setReady] = useState(false);
-
-  useEffect(() => {
-    if (!localStorage.getItem('montese_token')) {
-      router.push('/login');
-      return;
-    }
-    setReady(true);
-  }, [router]);
-
-  if (!ready) {
-    return <div role="status" className="px-4 py-16 text-center text-sm text-dash-muted">Carregando...</div>;
-  }
-
-  return (
-    <div className="mx-auto max-w-4xl px-4 py-8 sm:px-8">
-      <PageHeader titulo="Catálogo de EPI" />
-      <DashSkin>
-        <Card>
-          <EpisPanel />
-        </Card>
-      </DashSkin>
-    </div>
-  );
+// A tela antiga de EPIs foi substituída pelo módulo em /empresa/epi (painel, cadastro, movimentação e fichas).
+// Mantém links e favoritos antigos funcionando.
+export default function EmpresaEpisRedirect() {
+  redirect('/empresa/epi');
 }

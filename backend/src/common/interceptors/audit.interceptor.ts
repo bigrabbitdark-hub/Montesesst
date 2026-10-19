@@ -51,12 +51,12 @@ export class AuditInterceptor implements NestInterceptor {
     return next.handle().pipe(
       tap((data) => {
         const statusCode = context.switchToHttp().getResponse().statusCode;
-        const resourceId = request.params?.id ?? extractId(data);
+        const resourceId = request.auditResourceId ?? request.params?.id ?? extractId(data);
         finish(statusCode, resourceId);
       }),
       catchError((err) => {
         const statusCode = err?.status ?? 500;
-        finish(statusCode, request.params?.id ?? null);
+        finish(statusCode, request.auditResourceId ?? request.params?.id ?? null);
         return throwError(() => err);
       }),
     );

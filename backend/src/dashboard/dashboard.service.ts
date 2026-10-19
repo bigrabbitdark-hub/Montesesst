@@ -199,7 +199,7 @@ export class DashboardService {
         prioridade: 'alta',
         data: toDateString(epi.ca_valid_until),
         responsavel: 'empresa',
-        link: '/empresa/epis',
+        link: '/empresa/epi',
       })),
       ...epis.avisos.map((epi): AttentionItem => ({
         tipo: 'epi',
@@ -207,7 +207,7 @@ export class DashboardService {
         prioridade: 'media',
         data: toDateString(epi.ca_valid_until),
         responsavel: 'empresa',
-        link: '/empresa/epis',
+        link: '/empresa/epi',
       })),
       ...actionPlans.map((plan): AttentionItem => ({
         tipo: 'acao',
