@@ -11,6 +11,7 @@ import { EmployeesModule } from './employees/employees.module';
 import { TechniciansModule } from './technicians/technicians.module';
 import { PartnersModule } from './partners/partners.module';
 import { TenantsModule } from './tenants/tenants.module';
+import { AtuacaoModule } from './atuacao/atuacao.module';
 import { CnpjLookupModule } from './cnpj-lookup/cnpj-lookup.module';
 import { CompanyUnitsModule } from './company-units/company-units.module';
 import { TenantTechniciansModule } from './tenant-technicians/tenant-technicians.module';
@@ -41,6 +42,7 @@ import { AsoModule } from './aso/aso.module';
 import { EsocialModule } from './esocial/esocial.module';
 import { JwtAuthGuard } from './auth/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
+import { PermissionsGuard } from './common/guards/permissions.guard';
 import { TenantContextInterceptor } from './common/interceptors/tenant-context.interceptor';
 import { AuditInterceptor } from './common/interceptors/audit.interceptor';
 import { RequestLoggingInterceptor } from './common/interceptors/request-logging.interceptor';
@@ -73,6 +75,7 @@ import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
     TechniciansModule,
     PartnersModule,
     TenantsModule,
+    AtuacaoModule,
     CnpjLookupModule,
     CompanyUnitsModule,
     TenantTechniciansModule,
@@ -115,6 +118,8 @@ import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: SubscriptionStatusGuard },
     { provide: APP_GUARD, useClass: RolesGuard },
+    // Depois do RolesGuard: ele deixa o socio com @RequirePermission passar e confia nesta guarda.
+    { provide: APP_GUARD, useClass: PermissionsGuard },
     { provide: APP_INTERCEPTOR, useClass: TenantContextInterceptor },
     { provide: APP_INTERCEPTOR, useClass: AuditInterceptor },
     { provide: APP_INTERCEPTOR, useClass: RequestLoggingInterceptor },

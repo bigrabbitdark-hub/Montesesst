@@ -1,6 +1,6 @@
 export interface SessionUser {
   id: string;
-  role: 'empresa' | 'tecnico' | 'parceiro' | 'admin';
+  role: 'empresa' | 'tecnico' | 'parceiro' | 'admin' | 'socio';
   tenantId: string | null;
 }
 
@@ -43,6 +43,7 @@ export function homeFor(role: SessionUser['role']): string {
   if (role === 'empresa') return '/dashboard-v2';
   if (role === 'tecnico' || role === 'parceiro') return '/tecnico/empresas';
   if (role === 'admin') return '/admin/overview';
+  if (role === 'socio') return '/atuacao';
   return '/';
 }
 

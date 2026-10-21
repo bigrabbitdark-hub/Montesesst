@@ -38,7 +38,9 @@ export default function LoginPage() {
             ? '/tecnico/empresas'
             : role === 'admin'
               ? '/admin/overview'
-              : '/',
+              : role === 'socio'
+                ? '/atuacao'
+                : '/',
       );
     } catch {
       setError('Não foi possível conectar ao servidor.');
