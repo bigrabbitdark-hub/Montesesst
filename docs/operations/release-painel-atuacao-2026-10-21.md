@@ -84,3 +84,7 @@ Imagens construídas de **cópia limpa** do candidato com tags `montese-backend:
 - **Efeito real (VERIFICADO e2e):** conceder `tasks.read` muda 403 → 200 em `/atuacao/tarefas` e remover volta a 403.
 - **Para liberar:** commit do proprietário + build das imagens backend e frontend; nenhuma migration a aplicar. Depois, o admin concede as permissões pela tela (as sensíveis seguem NÃO concedidas até decisão do dono; a matriz de documentos continua obrigatória).
 - **Verificação (esta fase):** unit backend 1843 ok, 2 falhas pré-existentes (`r2-get-object`, `tenant-context-callsites`); tsc e build ok; frontend 84 arquivos / 1153 testes, tsc, eslint e build ok; e2e conforme logs da sessão. QA visual em navegador: NÃO VERIFICADO.
+
+## 9. Fase 7 em produção (2026-10-25) — FEITO
+- Commit `95b4146` (branch `release/painel-atuacao-fase7`); backup `montese-20261025-174243.dump` (local + R2); tags de rollback `rollback-20261025`; imagens `painel-95b4146` → `:latest`; backend/frontend recriados 17:43 UTC; nginx recarregado.
+- Verificação (leitura): `/api/health` com `commit=95b4146…`; `/`, `/login`, `/api/plans`, `/atuacao`, `/admin/permissoes-socios` = 200; 0 erros nos logs; 0 reinícios; `_migrations` = 92. Login e uso da tela pelo admin: NÃO VERIFICADO (a cargo do proprietário).
