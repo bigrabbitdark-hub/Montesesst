@@ -14,6 +14,8 @@ import { DocumentosController } from './documentos/documentos.controller';
 import { DocumentosService } from './documentos/documentos.service';
 import { DocumentosAdminController } from './documentos/documentos-admin.controller';
 import { DocumentosAdminService } from './documentos/documentos-admin.service';
+import { PermissoesAdminController } from './permissoes/permissoes-admin.controller';
+import { PermissoesAdminService } from './permissoes/permissoes-admin.service';
 
-@Module({ controllers: [AtuacaoController, TarefasController, ResponsaveisController, AgendaController, InteracoesController, FinanceiroController, DocumentosController, DocumentosAdminController], providers: [DocumentosAdminService, DocumentosService, FinanceiroService, AtuacaoService, TarefasService, AgendaService, InteracoesService] })
+@Module({ controllers: [AtuacaoController, TarefasController, ResponsaveisController, AgendaController, InteracoesController, FinanceiroController, DocumentosController, DocumentosAdminController, PermissoesAdminController], providers: [PermissoesAdminService, DocumentosAdminService, DocumentosService, FinanceiroService, AtuacaoService, TarefasService, AgendaService, InteracoesService] })
 export class AtuacaoModule {}

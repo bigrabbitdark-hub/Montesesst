@@ -33,6 +33,7 @@ export const ADMIN_NAV: AdminNavGroup[] = [
       { href: '/admin/checklist-sst', label: 'Checklist SST', icon: 'check', keywords: 'catalogo itens infracao' },
       { href: '/admin/auditoria', label: 'Auditoria', icon: 'shield', keywords: 'logs eventos acessos' },
       { href: '/admin/documentos-fluxo', label: 'Documentos — responsabilidades', icon: 'settings', keywords: 'documentos matriz responsabilidades registros profissionais conselho socios viabilidade' },
+      { href: '/admin/permissoes-socios', label: 'Permissões dos sócios', icon: 'users', keywords: 'socios permissoes rbac acesso painel atuacao' },
     ],
   },
 ];
