@@ -30,6 +30,14 @@ export const CATALOGO_PERMISSOES: GrupoCatalogo[] = [
     i('documents.cancel', 'Cancelar documentos', 'Cancela documentos em andamento.', true),
     i('documents.view_registration', 'Ver registro profissional', 'Acessa o registro em conselho profissional de outros usuários.', true),
   ] },
+  { id: 'empresas', titulo: 'Atuação por empresa', itens: [
+    i('empresas.read', 'Atender empresas clientes', 'Escolher uma empresa cliente e consultar visão geral, documentos, vencimentos, funcionários (sem CPF) e EPI. Requer também \'Ver clientes\' (clients.read) para escolher a empresa.'),
+    i('empresas.documentos', 'Ajustar vigência de documentos', 'Corrigir início e vencimento dos documentos de uma empresa cliente. Não envia nem apaga arquivos. Só tem efeito junto com \'Atender empresas clientes\' (empresas.read).'),
+  ] },
+  { id: 'pgr', titulo: 'PGR — Programa de Gerenciamento de Riscos', itens: [
+    i('pgr.read', 'Consultar o PGR', 'Biblioteca, GHEs e inventário de riscos das empresas clientes. Requer também \'Ver clientes\' (clients.read) e \'Atender empresas clientes\' (empresas.read).'),
+    i('pgr.write', 'Elaborar o PGR', 'Criar e editar GHEs, riscos, controles e medições, e perigos personalizados. Só tem efeito junto com \'Consultar o PGR\' (pgr.read).'),
+  ] },
 ];
 
 export const PERMISSOES_SENSIVEIS: readonly string[] = CATALOGO_PERMISSOES.flatMap((g) => g.itens).filter((x) => x.sensivel).map((x) => x.permissao);

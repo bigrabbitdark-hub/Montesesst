@@ -1,4 +1,4 @@
-import { LayoutDashboard, Building2, ListChecks, CalendarDays, Wallet, FileText } from 'lucide-react';
+import { LayoutDashboard, Building2, ListChecks, CalendarDays, Wallet, FileText, Briefcase, ShieldAlert } from 'lucide-react';
 import type { MenuItem } from './menu';
 
 // Menu do sócio (Painel de Atuação). Só rotas /atuacao/* que existem hoje;
@@ -6,8 +6,10 @@ import type { MenuItem } from './menu';
 export const ATUACAO_MENU_ITEMS: MenuItem[] = [
   { href: '/atuacao', label: 'Painel', icon: LayoutDashboard, implemented: true },
   { href: '/atuacao/clientes', label: 'Clientes Montese', icon: Building2, implemented: true },
+  { href: '/atuacao/empresas', label: 'Empresas', icon: Briefcase, implemented: true },
   { href: '/atuacao/tarefas', label: 'Minhas tarefas', icon: ListChecks, implemented: true },
   { href: '/atuacao/agenda', label: 'Agenda', icon: CalendarDays, implemented: true },
   { href: '/atuacao/financeiro', label: 'Financeiro', icon: Wallet, implemented: true },
   { href: '/atuacao/documentos', label: 'Documentos', icon: FileText, implemented: true },
+  { href: '/atuacao/pgr', label: 'PGR — Programa de Gerenciamento de Riscos', icon: ShieldAlert, implemented: true },
 ];

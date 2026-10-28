@@ -35,7 +35,7 @@ describe('documento-fluxo: transições', () => {
     }
   });
 
-  it('é idêntica ao trigger da migration 0096', () => {
+  it('espelha o trigger guard_document_drafts_update da migration 0096', () => {
     const sql = readFileSync(join(__dirname, '../db/migrations/0096_documentos_fluxo.sql'), 'utf8');
     const ini = sql.indexOf('guard_document_drafts_update()');
     const trecho = sql.slice(ini, sql.indexOf('transição de status inválida', ini));
@@ -188,18 +188,19 @@ describe('documento-fluxo: textos e permissões', () => {
     }
   });
 
-  it('PERMISSIONS: 14 itens (12 anteriores + documents.cancel + documents.view_registration), sem permissões proibidas', () => {
+  it('PERMISSIONS: 18 itens (16 anteriores + pgr.read + pgr.write), sem permissões proibidas', () => {
     const p = PERMISSIONS as readonly string[];
-    expect(p).toHaveLength(14);
-    for (const x of ['documents.read', 'documents.approve', 'documents.publish', 'documents.cancel', 'documents.view_registration']) expect(p).toContain(x);
+    expect(p).toHaveLength(18);
+    for (const x of ['documents.read', 'documents.approve', 'documents.publish', 'documents.cancel', 'documents.view_registration', 'empresas.read', 'empresas.documentos', 'pgr.read', 'pgr.write']) expect(p).toContain(x);
     for (const x of ['finance.write', 'billing.manage', 'users.manage', 'settings.manage']) expect(p).not.toContain(x);
   });
 });
 
-describe('documento-fluxo: PERMISSIONS x CHECK de socio_permissions na migration 0096', () => {
+describe('documento-fluxo: PERMISSIONS x CHECK de socio_permissions na migration 0098', () => {
   it('a lista do CHECK do banco e a lista TS concordam', () => {
-    const sql = readFileSync(join(__dirname, '../db/migrations/0096_documentos_fluxo.sql'), 'utf8');
-    const ini = sql.indexOf('ADD CONSTRAINT socio_permissions_permission_check CHECK (permission IN (');
+    const sql = readFileSync(join(__dirname, '../db/migrations/0098_pgr_inventario.sql'), 'utf8');
+    // lastIndexOf: o bloco de rollback comentado no topo repete o texto (com a lista antiga)
+    const ini = sql.lastIndexOf('ADD CONSTRAINT socio_permissions_permission_check CHECK (permission IN (');
     expect(ini).toBeGreaterThan(0);
     const trecho = sql.slice(ini, sql.indexOf('));', ini));
     const doBanco = [...trecho.matchAll(/'([a-z_.]+)'/g)].map((m) => m[1]).sort();

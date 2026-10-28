@@ -16,6 +16,18 @@ import { DocumentosAdminController } from './documentos/documentos-admin.control
 import { DocumentosAdminService } from './documentos/documentos-admin.service';
 import { PermissoesAdminController } from './permissoes/permissoes-admin.controller';
 import { PermissoesAdminService } from './permissoes/permissoes-admin.service';
+import { EmpresasController } from './empresas/empresas.controller';
+import { EmpresasService } from './empresas/empresas.service';
+import { PerigosController } from './pgr/perigos.controller';
+import { PerigosService } from './pgr/perigos.service';
+import { GhesController } from './pgr/ghes.controller';
+import { GhesService } from './pgr/ghes.service';
+import { RiscosController } from './pgr/riscos.controller';
+import { RiscosService } from './pgr/riscos.service';
+import { EpiCatalogoController } from './pgr/epi-catalogo.controller';
+import { EpiCatalogoService } from './pgr/epi-catalogo.service';
+import { PgrPainelService } from './pgr/pgr-painel.service';
+import { DocumentsModule } from '../documents/documents.module';
 
-@Module({ controllers: [AtuacaoController, TarefasController, ResponsaveisController, AgendaController, InteracoesController, FinanceiroController, DocumentosController, DocumentosAdminController, PermissoesAdminController], providers: [PermissoesAdminService, DocumentosAdminService, DocumentosService, FinanceiroService, AtuacaoService, TarefasService, AgendaService, InteracoesService] })
+@Module({ imports: [DocumentsModule], controllers: [EmpresasController, AtuacaoController, TarefasController, ResponsaveisController, AgendaController, InteracoesController, FinanceiroController, DocumentosController, DocumentosAdminController, PermissoesAdminController, PerigosController, GhesController, RiscosController, EpiCatalogoController], providers: [EpiCatalogoService, PerigosService, GhesService, RiscosService, PgrPainelService, EmpresasService, PermissoesAdminService, DocumentosAdminService, DocumentosService, FinanceiroService, AtuacaoService, TarefasService, AgendaService, InteracoesService] })
 export class AtuacaoModule {}

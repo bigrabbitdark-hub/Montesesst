@@ -15,5 +15,9 @@ export const PERMISSIONS = [
   'documents.cancel',
   'documents.view_registration',
   'finance.read',
+  'empresas.read',
+  'empresas.documentos',
+  'pgr.read',
+  'pgr.write',
 ] as const;
 export type Permission = (typeof PERMISSIONS)[number];

@@ -51,6 +51,27 @@ export function configurePublicSignatureRoutes(app: INestApplication): void {
   );
 }
 
+// Importação da biblioteca de perigos (admin): até 500 itens com textos longos passam dos 100 KB do parser padrão.
+// 2 MB vale SÓ para este caminho; o restante segue com o limite global. Mesmo cuidado de nome do parser acima.
+export const PGR_IMPORT_PATH = '/atuacao/pgr/perigos/importar';
+export const PGR_IMPORT_BODY_LIMIT = '2mb';
+
+export function configurePgrImportRoute(app: INestApplication): void {
+  const importJson = json({ limit: PGR_IMPORT_BODY_LIMIT });
+  app.use(
+    PGR_IMPORT_PATH,
+    (req: any, res: any, next: (e?: unknown) => void) => importJson(req, res, next),
+    (err: any, _req: any, res: any, next: (e?: unknown) => void) => {
+      if (!err?.type) return next(err);
+      const status = err.status === 413 || err.type === 'entity.too.large' ? 413 : 400;
+      res.status(status).json({
+        statusCode: status,
+        message: status === 413 ? 'Corpo da requisição grande demais' : 'Corpo da requisição inválido',
+      });
+    },
+  );
+}
+
 export function configureApp(app: INestApplication): void {
   // Backend nunca é exposto direto (sem "ports:" no docker-compose) — só
   // nginx alcança essa porta, então confiar no proxy é seguro aqui. Sem
@@ -88,6 +109,7 @@ export function configureApp(app: INestApplication): void {
   });
 
   configurePublicSignatureRoutes(app);
+  configurePgrImportRoute(app);
 
   // F-15: ValidationPipe global. Sem ele, DTOs sem decorators de classe
   // (ex.: LoginDto antes deste fix) aceitavam qualquer shape de corpo —

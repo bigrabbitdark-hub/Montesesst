@@ -55,14 +55,14 @@ export async function atuacaoFetch<T>(path: string, init: RequestInit = {}): Pro
     }
     throw new Error(MSG_403);
   }
-  if (res.status === 409 && path.startsWith('/documentos')) {
+  if (res.status === 409 && (path.startsWith('/documentos') || path.startsWith('/pgr'))) {
     // Conflito de estado/separação de funções: mensagem do servidor, sem reinterpretar.
     let msg = '';
     try {
       const body = await res.json();
       if (typeof body?.message === 'string') msg = body.message.trim();
     } catch { /* corpo ilegível: usa a mensagem padrão */ }
-    throw new Error(msg || 'Ação não permitida no estado atual do documento.');
+    throw new Error(msg || (path.startsWith('/pgr') ? 'Conflito: já existe um registro igual. Revise os dados.' : 'Ação não permitida no estado atual do documento.'));
   }
   if (res.status === 413) throw new Error(`O arquivo excede o limite de ${DOC_MAX_MB} MB.`);
   if (res.status === 401) {
@@ -73,10 +73,23 @@ export async function atuacaoFetch<T>(path: string, init: RequestInit = {}): Pro
     throw new Error('Sua sessão expirou. Entre novamente.');
   }
   if (res.status === 404) {
+    if (path.startsWith('/pgr/perigos')) throw new Error('Perigo não encontrado.');
+    if (path.startsWith('/pgr/empresas')) {
+      // O servidor distingue Empresa/GHE/Risco não encontrado; sem mensagem (ou no /resumo) vale o texto de empresa.
+      let msg = '';
+      try {
+        const body = await res.json();
+        if (typeof body?.message === 'string') msg = body.message.trim();
+      } catch { /* corpo ilegível */ }
+      throw new Error(path.endsWith('/resumo') || !msg ? 'Empresa não encontrada.' : msg);
+    }
     if (path.startsWith('/tarefas')) throw new Error('Tarefa não encontrada.');
     if (path.startsWith('/agenda')) throw new Error('Compromisso não encontrado.');
     if (path.startsWith('/documentos/')) throw new Error('Documento não encontrado.');
     if (path.startsWith('/interacoes')) throw new Error('Registro não encontrado.');
+    if (path.startsWith('/empresas/')) {
+      throw new Error(/\/documentos\/[^/]+/.test(path) ? 'Documento não encontrado.' : 'Empresa não encontrada.');
+    }
     throw new Error('Cliente não encontrado.');
   }
   let detalhe = '';
@@ -308,4 +321,143 @@ export function formatTamanho(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   const n = (v: number) => v.toFixed(1).replace('.', ',');
   return bytes < 1024 * 1024 ? `${n(bytes / 1024)} KB` : `${n(bytes / (1024 * 1024))} MB`;
+}
+
+// ---- Atuação por empresa (sub-projeto Z) ----
+export const CHAVE_ULTIMA_EMPRESA = 'montese_atuacao_ultima_empresa';
+export interface EmpresaVisaoGeral {
+  empresa: { id: string; name: string; trade_name: string | null; cnpj: string; situacao?: Situacao };
+  funcionarios_ativos: number;
+  documentos: { total: number; vencidos: number; a_vencer_30d: number };
+  epis_cadastrados: number;
+}
+export interface EmpresaDocumento {
+  id: string; category: string; title: string; file_name: string;
+  valid_from: string | null; expires_at: string | null; situacao: string;
+}
+export interface EmpresaVencimento {
+  id: string; category: string; title: string; expires_at: string; dias_para_vencer: number;
+}
+export interface EmpresaFuncionario {
+  id: string; full_name: string; cargo: string | null; department: string | null; company_unit_id: string | null;
+  admission_date: string | null; status: string;
+}
+export interface EmpresaEpi { id: string; code: string; equipment_group: string; description: string }
+
+// ---- PGR: biblioteca de perigos (sub-projeto A) ----
+export const PERIGO_CATEGORIAS = ['fisico', 'quimico', 'biologico', 'ergonomico', 'acidente', 'psicossocial'] as const;
+export type PerigoCategoria = (typeof PERIGO_CATEGORIAS)[number];
+export const PERIGO_CATEGORIA_LABEL: Record<PerigoCategoria, string> = {
+  fisico: 'Físico', quimico: 'Químico', biologico: 'Biológico', ergonomico: 'Ergonômico',
+  acidente: 'Acidente', psicossocial: 'Psicossocial',
+};
+export function perigoCategoriaLabel(c: string): string { return PERIGO_CATEGORIA_LABEL[c as PerigoCategoria] ?? c; }
+export type PerigoAvaliacao = 'qualitativa' | 'quantitativa';
+export const PERIGO_AVALIACAO_LABEL: Record<PerigoAvaliacao, string> = { qualitativa: 'Qualitativa', quantitativa: 'Quantitativa' };
+
+// Chaves do JSON `psychosocial` (o servidor aceita qualquer objeto; estas são as que a tela edita).
+export const PSICO_CAMPOS = [
+  ['organizacao_trabalho', 'Organização do trabalho'],
+  ['metas', 'Metas'],
+  ['jornada', 'Jornada'],
+  ['relacoes_interpessoais', 'Relações interpessoais'],
+  ['violencia_assedio', 'Violência e assédio'],
+] as const;
+
+export interface PerigoResumo {
+  id: string; scope: 'global' | 'tenant'; tenant_id: string | null; category: string; name: string;
+  description: string | null; esocial_code: string | null; default_assessment: string | null; active: boolean;
+}
+export type PerigoDetalhe = PerigoResumo & {
+  sources: string | null; health_effects: string | null; exposure_routes: string[] | null; default_unit: string | null;
+  tolerance_limit: string | null; tolerance_reference: string | null; suggested_controls: string | null;
+  psychosocial: Record<string, unknown> | null;
+};
+export interface PgrImportados {
+  cnpj: boolean; cnae: boolean; endereco: boolean; grau_risco: boolean | null;
+  unidades: number; cargos: number; funcionarios: number;
+}
+export interface PgrResumo {
+  empresa: { id: string; name: string; trade_name: string | null; cnpj: string };
+  importados?: Partial<PgrImportados>;
+  pendencias: string[]; ghes: number; riscos: number; completude: number;
+}
+export const PGR_PENDENCIA_LABEL: Record<string, string> = {
+  cnpj: 'CNPJ', cnae: 'CNAE', endereco: 'Endereço completo', unidades: 'Unidades', cargos: 'Cargos',
+  funcionarios: 'Funcionários', ghes: 'GHEs', riscos: 'Riscos',
+};
+
+export const MSG_PGR_LEITURA =
+  "Você não tem a permissão 'Consultar o PGR' (pgr.read). Peça ao administrador para liberá-la.";
+export const MSG_PGR_ESCRITA =
+  "Você não tem a permissão 'Elaborar o PGR' (pgr.write) para alterar a biblioteca. Peça ao administrador.";
+
+export const MSG_PGR_BIBLIOTECA_VAZIA = 'A biblioteca ainda não tem perigos. A carga inicial é fornecida pela equipe técnica.';
+export const NAO_INFORMADO = 'não informado';
+
+// ---- PGR: GHEs e inventário de riscos (sub-projeto A) ----
+export interface GheCargo { id: string; name: string }
+// `expostos` é só uma contagem de funcionários ativos; o servidor nunca envia nome nem CPF.
+export interface Ghe {
+  id: string; name: string; company_unit_id: string | null; positions: GheCargo[]; expostos: number; riscos: number;
+  environment_description?: string | null; process_description?: string | null; activities?: string | null;
+  machines_products?: string | null; notes?: string | null;
+}
+export const EXPOSICOES = ['habitual_permanente', 'intermitente', 'eventual'] as const;
+export const EXPOSICAO_LABEL: Record<string, string> = {
+  habitual_permanente: 'Habitual e permanente', intermitente: 'Intermitente', eventual: 'Eventual',
+};
+export function exposicaoLabel(v: string | null | undefined): string { return v ? (EXPOSICAO_LABEL[v] ?? v) : NAO_INFORMADO; }
+export function avaliacaoLabel(v: string | null | undefined): string {
+  return v ? (PERIGO_AVALIACAO_LABEL[v as PerigoAvaliacao] ?? v) : NAO_INFORMADO;
+}
+export const RISCO_STATUS_LABEL: Record<string, string> = { rascunho: 'Rascunho', completo: 'Completo' };
+export const CONTROLE_TIPOS = ['epc', 'epi', 'administrativa', 'treinamento'] as const;
+export const CONTROLE_TIPO_LABEL: Record<string, string> = {
+  epc: 'EPC (proteção coletiva)', epi: 'EPI (proteção individual)', administrativa: 'Administrativa', treinamento: 'Treinamento',
+};
+export const CONTROLE_STATUS = ['existente', 'planejado', 'nao_implementado'] as const;
+export const CONTROLE_STATUS_LABEL: Record<string, string> = {
+  existente: 'Existente', planejado: 'Planejado', nao_implementado: 'Não implementado',
+};
+export const EFICACIAS = ['eficaz', 'ineficaz', 'nao_avaliada'] as const;
+export const EFICACIA_LABEL: Record<string, string> = { eficaz: 'Eficaz', ineficaz: 'Ineficaz', nao_avaliada: 'Não avaliada' };
+// Espelho de TRAINING_TYPES do backend (cipa/trainings.service); o servidor valida.
+export const TREINAMENTO_LABEL: Record<string, string> = {
+  'nr-05': 'NR-05 — Membro da CIPA', 'nr-06': 'NR-06 — Uso de EPI', 'nr-10': 'NR-10 — Segurança em eletricidade',
+  'nr-11': 'NR-11 — Transporte/movimentação de materiais', 'nr-12': 'NR-12 — Segurança em máquinas e equipamentos',
+  'nr-18': 'NR-18 — Condições de segurança na construção civil', 'nr-20': 'NR-20 — Inflamáveis e combustíveis',
+  'nr-33': 'NR-33 — Espaço confinado', 'nr-35': 'NR-35 — Trabalho em altura', outro: 'Outro',
+};
+export interface RiscoControle {
+  id: string; kind: string; description: string; status: string; effectiveness: string | null;
+  epi_catalog_item_id: string | null; training_tipo: string | null;
+}
+export interface RiscoMedicao {
+  id: string; agent: string; value: string | null; unit: string | null; tolerance_limit: string | null;
+  reference: string | null; methodology: string | null; equipment: string | null; evaluated_on: string | null;
+}
+export interface Risco {
+  id: string; ghe_id: string; hazard_id: string | null; category: string; name: string; description: string | null;
+  sources: string | null; health_effects: string | null; tolerance_limit: string | null; tolerance_reference: string | null;
+  activity: string | null; exposure_type: string | null; esocial_code: string | null; assessment_type: string | null;
+  assessment_notes: string | null; status: string; controles: RiscoControle[]; medicoes: RiscoMedicao[];
+}
+export interface RiscosCriados { riscos: Risco[]; ignorados: string[] }
+export interface CargoEmpresa { id: string; name: string }
+export interface EpiCatalogoItem {
+  id: string; category: string; code: string; equipment_group: string; description: string;
+  risk_protected: string | null; related_nr: string | null;
+}
+export const MSG_REGISTRO_INDISPONIVEL = 'Registro profissional não cadastrado ou indisponível para consulta';
+export const MSG_PGR_ESCRITA_INVENTARIO =
+  "Você não tem a permissão 'Elaborar o PGR' (pgr.write) para alterar o inventário. Peça ao administrador.";
+// Traduz erro de escrita no inventário: 403 vira a mensagem de permissão; o resto já vem pronto do atuacaoFetch.
+export function erroEscritaPgr(e: unknown): string {
+  const m = e instanceof Error ? e.message : 'Algo deu errado. Tente novamente.';
+  return m === MSG_403 ? MSG_PGR_ESCRITA_INVENTARIO : m;
+}
+export function erroLeituraPgr(e: unknown): string {
+  const m = e instanceof Error ? e.message : 'Algo deu errado. Tente novamente.';
+  return m === MSG_403 ? MSG_PGR_LEITURA : m;
 }
