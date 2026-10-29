@@ -114,7 +114,15 @@ export class GhesService {
     await this.buscarTravado(c, tenantId, id);
     const n = (await c.query('SELECT count(*)::int AS n FROM pgr_risks WHERE ghe_id = $1', [id])).rows[0].n;
     if (n > 0) throw new ConflictException('O GHE possui riscos; remova-os antes de excluir');
-    await c.query('DELETE FROM pgr_ghes WHERE id = $1 AND tenant_id = $2', [id, tenantId]);
+    try {
+      await c.query('DELETE FROM pgr_ghes WHERE id = $1 AND tenant_id = $2', [id, tenantId]);
+    } catch (e) {
+      // Trigger pgr_ghes_keep_assessments (0099): riscos avaliados mantêm o histórico da matriz.
+      if ((e as { code?: string; message?: string })?.code === '23514' && /riscos avaliados/.test((e as Error).message ?? '')) {
+        throw new ConflictException('Este GHE possui riscos com avaliações registradas na matriz e não pode ser excluído; o histórico é mantido.');
+      }
+      return mapPgError(e);
+    }
     await this.auditar(c, ator, ctx, 'pgr.ghe.deleted', id, `ghe: ${id}; empresa: ${tenantId}`);
     return { id };
   }

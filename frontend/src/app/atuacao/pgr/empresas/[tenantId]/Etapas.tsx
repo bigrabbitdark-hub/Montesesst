@@ -7,6 +7,7 @@ export const ETAPAS = [
   { chave: 'responsaveis', rotulo: 'Responsáveis', pendencias: [] as string[] },
   { chave: 'ambientes', rotulo: 'Ambientes', pendencias: ['ghes'] },
   { chave: 'riscos', rotulo: 'Riscos', pendencias: ['riscos'] },
+  { chave: 'classificacao', rotulo: 'Classificação', pendencias: [] as string[] },
 ] as const;
 export type EtapaChave = (typeof ETAPAS)[number]['chave'];
 
@@ -16,7 +17,7 @@ export function Etapas({ atual, onIr, resumo }: { atual: EtapaChave; onIr: (e: E
   return (
     <div className="mb-6">
       <nav aria-label="Etapas do PGR">
-        <ol className="grid gap-2 sm:grid-cols-4">
+        <ol className="grid gap-2 sm:grid-cols-5">
           {ETAPAS.map((e, i) => {
             const faltam = e.pendencias.filter((p) => resumo.pendencias.includes(p)).length;
             const ativa = e.chave === atual;

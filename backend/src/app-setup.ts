@@ -72,6 +72,34 @@ export function configurePgrImportRoute(app: INestApplication): void {
   );
 }
 
+// Matriz de risco (admin): o config pode chegar a 200000 bytes (limite do serviço), acima dos 100 KB do parser padrão.
+// 300 KB vale SÓ para este caminho; excedente ⇒ 413 JSON. Mesmo cuidado de nome do parser acima.
+export const PGR_MATRIZ_PATH = '/atuacao/pgr/matriz';
+export const PGR_MATRIZ_BODY_LIMIT = '300kb';
+
+// Só POST/PATCH nos caminhos exatos da matriz (/, /validar, /:uuid) recebem o limite maior; GET, publicar/arquivar e
+// qualquer outro subcaminho seguem o limite global (100 KB). `req.url` chega relativo ao ponto de montagem.
+const MATRIZ_BODY_URL = /^\/?(?:\?.*)?$|^\/validar(?:\?.*)?$|^\/[0-9a-fA-F-]{36}(?:\?.*)?$/;
+export function matrizUsaLimiteMaior(method: string, url: string): boolean {
+  return (method === 'POST' || method === 'PATCH') && MATRIZ_BODY_URL.test(url);
+}
+
+export function configurePgrMatrizRoute(app: INestApplication): void {
+  const matrizJson = json({ limit: PGR_MATRIZ_BODY_LIMIT });
+  app.use(
+    PGR_MATRIZ_PATH,
+    (req: any, res: any, next: (e?: unknown) => void) => (matrizUsaLimiteMaior(req.method, req.url) ? matrizJson(req, res, next) : next()),
+    (err: any, _req: any, res: any, next: (e?: unknown) => void) => {
+      if (!err?.type) return next(err);
+      const status = err.status === 413 || err.type === 'entity.too.large' ? 413 : 400;
+      res.status(status).json({
+        statusCode: status,
+        message: status === 413 ? 'Corpo da requisição grande demais' : 'Corpo da requisição inválido',
+      });
+    },
+  );
+}
+
 export function configureApp(app: INestApplication): void {
   // Backend nunca é exposto direto (sem "ports:" no docker-compose) — só
   // nginx alcança essa porta, então confiar no proxy é seguro aqui. Sem
@@ -110,6 +138,7 @@ export function configureApp(app: INestApplication): void {
 
   configurePublicSignatureRoutes(app);
   configurePgrImportRoute(app);
+  configurePgrMatrizRoute(app);
 
   // F-15: ValidationPipe global. Sem ele, DTOs sem decorators de classe
   // (ex.: LoginDto antes deste fix) aceitavam qualquer shape de corpo —

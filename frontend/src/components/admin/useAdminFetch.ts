@@ -1,7 +1,9 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { adminFetch } from './api';
+import { AdminApiError, adminFetch } from './api';
+
+export const ERRO_CARREGAR_PADRAO = 'Não foi possível carregar.';
 
 export interface FetchState<T> {
   data: T | null;
@@ -30,8 +32,10 @@ export function useAdminFetch<T>(path: string | null, refreshKey = 0): FetchStat
         setData(json);
         setError(null);
       })
-      .catch(() => {
-        if (!cancelled) setError('Não foi possível carregar.');
+      .catch((e) => {
+        // 403/404 com mensagem do servidor: mostra a mensagem dele; os demais erros seguem genéricos.
+        const especifico = e instanceof AdminApiError && e.doServidor && (e.status === 403 || e.status === 404);
+        if (!cancelled) setError(especifico ? e.message : ERRO_CARREGAR_PADRAO);
       })
       .finally(() => {
         if (!cancelled) setLoading(false);

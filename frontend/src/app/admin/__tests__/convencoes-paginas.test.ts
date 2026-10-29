@@ -3,7 +3,7 @@ import { readFileSync } from 'fs';
 import { join } from 'path';
 
 // Páginas já migradas para o DS v2 do admin. Cada lote acrescenta as suas aqui.
-const PAGINAS = ['empresas/page.tsx', 'auditoria/page.tsx', 'financeiro/page.tsx', 'tecnicos/page.tsx', 'parceiros/page.tsx', 'normativa/page.tsx', 'checklist-sst/page.tsx', 'empresas/[id]/page.tsx', 'normativa/FontesPanel.tsx', 'normativa/DiffView.tsx', 'documentos-fluxo/page.tsx', 'documentos-fluxo/Viabilidade.tsx', 'documentos-fluxo/Matriz.tsx', 'documentos-fluxo/Registros.tsx', 'documentos-fluxo/Dialogo.tsx', 'permissoes-socios/page.tsx', 'permissoes-socios/CartaoSocio.tsx'];
+const PAGINAS = ['empresas/page.tsx', 'auditoria/page.tsx', 'financeiro/page.tsx', 'tecnicos/page.tsx', 'parceiros/page.tsx', 'normativa/page.tsx', 'checklist-sst/page.tsx', 'empresas/[id]/page.tsx', 'normativa/FontesPanel.tsx', 'normativa/DiffView.tsx', 'documentos-fluxo/page.tsx', 'documentos-fluxo/Viabilidade.tsx', 'documentos-fluxo/Matriz.tsx', 'documentos-fluxo/Registros.tsx', 'documentos-fluxo/Dialogo.tsx', 'permissoes-socios/page.tsx', 'permissoes-socios/CartaoSocio.tsx', 'pgr-matriz/Lista.tsx', 'pgr-matriz/Detalhe.tsx', 'pgr-matriz/Editor.tsx', 'pgr-matriz/Leitura.tsx', 'pgr-matriz/Previa.tsx', 'pgr-matriz/Resultado.tsx', 'pgr-matriz/Acao.tsx', 'pgr-matriz/Escalas.tsx', 'pgr-matriz/NiveisFaixas.tsx', 'pgr-matriz/Metodologia.tsx'];
 
 const BASE = join(process.cwd(), 'src/app/admin');
 

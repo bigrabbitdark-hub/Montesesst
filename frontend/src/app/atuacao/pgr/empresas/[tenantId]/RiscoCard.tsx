@@ -7,6 +7,8 @@ import {
   PERIGO_CATEGORIA_LABEL, perigoCategoriaLabel, RISCO_STATUS_LABEL, type Risco,
 } from '../../../api';
 import { BTN, BTN_PRIMARY, ERRO, INPUT, LABEL } from '../../estilos';
+import { AvaliacaoRisco } from './AvaliacaoRisco';
+import type { MatrizCtx } from './useMatrizVigente';
 import { ControlesRisco, MedicoesRisco } from './RiscoSecoes';
 
 const TEXTOS = [
@@ -107,8 +109,8 @@ function EditarRisco({ risco, tenantId, onRisco, onFechar }: { risco: Risco; ten
   );
 }
 
-export function RiscoCard({ risco, tenantId, onRisco, onExcluido }: {
-  risco: Risco; tenantId: string; onRisco: (f: (r: Risco) => Risco) => void; onExcluido: (id: string) => void;
+export function RiscoCard({ risco, tenantId, matriz, onRisco, onExcluido }: {
+  risco: Risco; tenantId: string; matriz: MatrizCtx; onRisco: (f: (r: Risco) => Risco) => void; onExcluido: (id: string) => void;
 }) {
   const [editando, setEditando] = useState(false);
   const [confirmando, setConfirmando] = useState(false);
@@ -147,6 +149,7 @@ export function RiscoCard({ risco, tenantId, onRisco, onExcluido }: {
       )}
       {editando && <EditarRisco risco={risco} tenantId={tenantId} onRisco={(r) => onRisco(() => r)} onFechar={() => setEditando(false)} />}
       {erro && <p role="alert" className={`mt-2 ${ERRO}`}>{erro}</p>}
+      <AvaliacaoRisco risco={risco} tenantId={tenantId} matriz={matriz} />
       <ControlesRisco tenantId={tenantId} risco={risco} onRisco={onRisco} />
       <MedicoesRisco tenantId={tenantId} risco={risco} onRisco={onRisco} />
     </article>

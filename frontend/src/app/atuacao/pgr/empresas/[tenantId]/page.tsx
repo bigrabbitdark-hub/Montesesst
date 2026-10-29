@@ -12,15 +12,15 @@ import { Ambientes } from './Ambientes';
 import { Etapas, type EtapaChave } from './Etapas';
 import { Responsaveis } from './Responsaveis';
 import { ResumoEmpresa } from './ResumoEmpresa';
+import { MapaCalor } from './MapaCalor';
 import { Riscos } from './Riscos';
 
 const EM_BREVE = [
-  ['Matriz de riscos', 'Classificação dos riscos de cada GHE por probabilidade e severidade.'],
   ['Plano de ação', 'Medidas de prevenção com responsável e prazo.'],
   ['Emitir PGR', 'Geração do documento do programa a partir do inventário.'],
 ] as const;
 
-// Fluxo guiado do inventário: Empresa → Responsáveis → Ambientes → Riscos. O servidor guarda o rascunho de cada etapa;
+// Fluxo guiado do inventário: Empresa → Responsáveis → Ambientes → Riscos → Classificação. O servidor guarda o rascunho de cada etapa;
 // esta tela só lê e grava pelas rotas /atuacao/pgr/empresas/:tenantId (o tenant é sempre o da URL).
 export default function PgrFluxoPage() {
   const { tenantId } = useParams<{ tenantId: string }>();
@@ -101,7 +101,8 @@ function PgrFluxo({ tenantId }: { tenantId: string }) {
         <Ambientes tenantId={tenantId} ghes={ghes} unidades={(ficha?.units ?? []).filter((u) => u.status === 'ativo')} onGhes={setGhes} onMudou={aoMudar} />
       )}
       {etapa === 'riscos' && <Riscos tenantId={tenantId} ghes={ghes} onMudou={aoMudar} />}
-      <ul className="mt-6 grid gap-3 sm:grid-cols-3">
+      {etapa === 'classificacao' && <MapaCalor tenantId={tenantId} />}
+      <ul className="mt-6 grid gap-3 sm:grid-cols-2">
         {EM_BREVE.map(([t, d]) => <li key={t}><EmBreveCard titulo={t} descricao={d} /></li>)}
       </ul>
     </div>

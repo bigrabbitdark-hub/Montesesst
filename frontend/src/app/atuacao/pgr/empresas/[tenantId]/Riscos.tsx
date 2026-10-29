@@ -8,6 +8,7 @@ import {
 import { BTN, BTN_PRIMARY, ERRO, INPUT, LABEL } from '../../estilos';
 import { PerigosPicker } from './PerigosPicker';
 import { RiscoCard } from './RiscoCard';
+import { useMatrizVigente } from './useMatrizVigente';
 
 const plural = (n: number, um: string, varios: string) => (n === 1 ? `1 ${um}` : `${n} ${varios}`);
 
@@ -23,6 +24,7 @@ export function Riscos({ tenantId, ghes, onMudou }: { tenantId: string; ghes: Gh
   const [origem, setOrigem] = useState('');
   const [confirmando, setConfirmando] = useState(false);
   const seq = useRef(0);
+  const matriz = useMatrizVigente();
   const base = `/pgr/empresas/${tenantId}`;
 
   useEffect(() => {
@@ -104,7 +106,7 @@ export function Riscos({ tenantId, ghes, onMudou }: { tenantId: string; ghes: Gh
           <div className="mt-2 grid gap-3">
             {riscos.map((r) => (
               <RiscoCard
-                key={r.id} risco={r} tenantId={tenantId} onRisco={(f) => trocar(r.id, f)}
+                key={r.id} risco={r} tenantId={tenantId} matriz={matriz} onRisco={(f) => trocar(r.id, f)}
                 onExcluido={(id) => { setRiscos((l) => (l ?? []).filter((x) => x.id !== id)); onMudou(); }}
               />
             ))}

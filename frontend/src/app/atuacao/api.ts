@@ -20,6 +20,7 @@ export const SITUACAO_TONE: Record<Situacao, 'ok' | 'info' | 'warn' | 'crit'> = 
   ativa: 'ok', trial: 'info', pendente: 'warn', inativa: 'crit',
 };
 
+export const MSG_MATRIZ_AGUARDANDO = 'Aguardando matriz publicada pela equipe técnica.';
 export const MSG_403 = 'Você não tem permissão para esta ação.';
 
 export function formatCnpj(v: string): string {
@@ -74,6 +75,7 @@ export async function atuacaoFetch<T>(path: string, init: RequestInit = {}): Pro
   }
   if (res.status === 404) {
     if (path.startsWith('/pgr/perigos')) throw new Error('Perigo não encontrado.');
+    if (path === '/pgr/matriz/vigente') throw new Error(MSG_MATRIZ_AGUARDANDO);
     if (path.startsWith('/pgr/empresas')) {
       // O servidor distingue Empresa/GHE/Risco não encontrado; sem mensagem (ou no /resumo) vale o texto de empresa.
       let msg = '';
@@ -461,3 +463,27 @@ export function erroLeituraPgr(e: unknown): string {
   const m = e instanceof Error ? e.message : 'Algo deu errado. Tente novamente.';
   return m === MSG_403 ? MSG_PGR_LEITURA : m;
 }
+
+// ---- PGR: matriz de risco e classificação (B1). O servidor calcula escore e nível; o cliente só envia as escolhas. ----
+export interface MatrizEscalaItem { valor: number; rotulo: string; descricao: string }
+export interface MatrizNivel { id: string; rotulo: string; aceitabilidade: string; decisao: string; bloqueia_emissao: boolean }
+export interface MatrizVigente {
+  id: string; version_number: number; status: string;
+  config: { severidade: MatrizEscalaItem[]; probabilidade: MatrizEscalaItem[]; niveis: MatrizNivel[] };
+}
+export type AvaliacaoKind = 'inerente' | 'residual_previsto';
+export const AVALIACAO_KINDS: AvaliacaoKind[] = ['inerente', 'residual_previsto'];
+export const AVALIACAO_KIND_LABEL: Record<AvaliacaoKind, string> = { inerente: 'Risco inerente', residual_previsto: 'Risco residual previsto' };
+export interface AvaliacaoRisco {
+  id: string; risk_id: string; kind: AvaliacaoKind; matrix_version_id: string; matrix_version_number: number;
+  severity_value: number; probability_value: number; score: number; level_id: string; nivel: MatrizNivel | null;
+  justification: string; assessed_at: string;
+}
+export interface AvaliacoesResposta { historico: AvaliacaoRisco[]; vigente: Record<AvaliacaoKind, AvaliacaoRisco | null> }
+export interface MapaCalorResposta {
+  kind: AvaliacaoKind; matrix_version: { id: string; version_number: number; status: string };
+  cells: Array<{ severidade: number; probabilidade: number; score: number; nivel_id: string; quantidade: number }>;
+  total_riscos: number; classificados: number; em_outra_versao: number; sem_avaliacao: number;
+  por_versao: Array<{ version_number: number; n: number }>;
+}
+export const plural = (n: number, um: string, varios: string) => (n === 1 ? `1 ${um}` : `${n} ${varios}`);

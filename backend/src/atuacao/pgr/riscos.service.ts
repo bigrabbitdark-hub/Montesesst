@@ -83,6 +83,10 @@ export class RiscosService {
     if (err?.code === '23514' && /tenant incoerente/.test(err.message ?? '')) {
       throw new BadRequestException('Referência não pertence a esta empresa');
     }
+    // Trigger pgr_risks_keep_assessments (0099): o histórico de avaliações da matriz é append-only.
+    if (err?.code === '23514' && /avaliações registradas/.test(err.message ?? '')) {
+      throw new ConflictException('Este risco possui avaliações registradas na matriz e não pode ser excluído; o histórico é mantido.');
+    }
     return mapPgError(e);
   }
 
@@ -179,7 +183,9 @@ export class RiscosService {
   async excluir(c: PoolClient, ator: Ator, tenantId: string, id: string, ctx: AuditCtx) {
     await this.exigirEmpresa(c, tenantId);
     const atual = await this.travarRisco(c, tenantId, id);
-    await c.query('DELETE FROM pgr_risks WHERE id = $1 AND tenant_id = $2', [id, tenantId]); // controles/medições: ON DELETE CASCADE
+    try {
+      await c.query('DELETE FROM pgr_risks WHERE id = $1 AND tenant_id = $2', [id, tenantId]); // controles/medições: ON DELETE CASCADE
+    } catch (e) { return this.erroBanco(e); }
     await this.auditar(c, ator, ctx, 'pgr.risk.deleted', 'pgr_risk', id, `risco: ${id}; ghe: ${atual.ghe_id}; empresa: ${tenantId}`);
     return { id };
   }

@@ -81,15 +81,15 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals());
 
 describe('etapas e progresso', () => {
-  it('mostra 4 etapas, progresso, pendências em pt-BR e cartões em breve', async () => {
+  it('mostra 5 etapas, progresso, pendências em pt-BR e cartões em breve', async () => {
     rota();
     render(<FluxoPage />);
     const nav = await screen.findByRole('navigation', { name: 'Etapas do PGR' });
-    for (const n of ['Empresa', 'Responsáveis', 'Ambientes', 'Riscos']) expect(within(nav).getByRole('button', { name: new RegExp(n) })).toBeInTheDocument();
+    for (const n of ['Empresa', 'Responsáveis', 'Ambientes', 'Riscos', 'Classificação']) expect(within(nav).getByRole('button', { name: new RegExp(n) })).toBeInTheDocument();
     expect(screen.getByRole('progressbar', { name: 'Completude do inventário' })).toHaveAttribute('aria-valuenow', '50');
     expect(screen.getByText(/Pendências: CNAE, GHEs, Riscos/)).toBeInTheDocument();
-    for (const t of ['Matriz de riscos', 'Plano de ação', 'Emitir PGR']) expect(screen.getByText(t)).toBeInTheDocument();
-    expect(screen.getAllByText('Em breve').length).toBe(3);
+    for (const t of ['Plano de ação', 'Emitir PGR']) expect(screen.getByText(t)).toBeInTheDocument();
+    expect(screen.getAllByText('Em breve').length).toBe(2);
     expect(document.body.textContent).not.toMatch(/ICP-Brasil|assinatura digital/i);
   });
 
