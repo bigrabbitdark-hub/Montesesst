@@ -10,7 +10,6 @@ vi.mock('next/navigation', () => ({
 
 import TarefasPage from '../tarefas/page';
 import TarefaDetalhePage from '../tarefas/[id]/page';
-import PainelPage from '../page';
 import FichaPage from '../clientes/[tenantId]/page';
 import { ATUACAO_MENU_ITEMS } from '@/lib/dashboard/menu-atuacao';
 
@@ -79,6 +78,43 @@ describe('lista de tarefas', () => {
     render(<TarefasPage />);
     await screen.findByText('Nenhuma tarefa encontrada.');
     expect(urls()[0]).toContain('tenantId=t-9');
+  });
+
+  it('?vencidas=true na URL já filtra a primeira busca e marca "Somente vencidas"', async () => {
+    search = 'vencidas=true';
+    fetchMock.mockResolvedValue(resp(200, [dOutro]));
+    render(<TarefasPage />);
+    await screen.findAllByText('Visitar obra');
+    expect(urls()[0]).toContain('vencidas=true');
+    expect(urls()).toHaveLength(1);
+    expect(screen.getByLabelText('Somente vencidas')).toBeChecked();
+  });
+
+  it('?status=blocked na URL filtra a primeira busca e seleciona o status', async () => {
+    search = 'status=blocked';
+    fetchMock.mockResolvedValue(resp(200, [minha]));
+    render(<TarefasPage />);
+    await screen.findAllByText('Revisar PGR');
+    expect(urls()[0]).toContain('status=blocked');
+    expect(urls()).toHaveLength(1);
+    expect(screen.getByLabelText('Status')).toHaveValue('blocked');
+  });
+
+  it('?status inválido é ignorado', async () => {
+    search = 'status=hack';
+    fetchMock.mockResolvedValue(resp(200, [minha]));
+    render(<TarefasPage />);
+    await screen.findAllByText('Revisar PGR');
+    expect(urls()[0]).not.toContain('status');
+  });
+
+  it('sem ?vencidas na URL o filtro começa desmarcado; outro valor é ignorado', async () => {
+    search = 'vencidas=1';
+    fetchMock.mockResolvedValue(resp(200, [minha]));
+    render(<TarefasPage />);
+    await screen.findAllByText('Revisar PGR');
+    expect(urls()[0]).not.toContain('vencidas');
+    expect(screen.getByLabelText('Somente vencidas')).not.toBeChecked();
   });
 
   it('marca em texto a tarefa de outro sócio e o selo Vencida', async () => {
@@ -262,36 +298,6 @@ describe('detalhe da tarefa', () => {
     fetchMock.mockResolvedValue(resp(404, {}));
     render(<TarefaDetalhePage />);
     expect(await screen.findByText('Tarefa não encontrada.')).toBeInTheDocument();
-  });
-});
-
-describe('painel: KPIs de tarefas', () => {
-  it('mostra os 4 indicadores vindos de /atuacao/tarefas/resumo', async () => {
-    fetchMock.mockImplementation(async (url: string) =>
-      String(url).includes('/atuacao/agenda')
-        ? resp(200, [])
-        : String(url).includes('/tarefas/resumo')
-          ? resp(200, { abertas: 7, vencidas: 2, hoje: 3, bloqueadas: 1 })
-          : resp(200, { total: 5, ativos: 3, trial: 1, pendentes: 0, inativos: 1 }));
-    render(<PainelPage />);
-    for (const [rotulo, valor] of [['Minhas tarefas abertas', '7'], ['Vencidas', '2'], ['Para hoje', '3'], ['Bloqueadas', '1']]) {
-      const p = await screen.findByText(rotulo);
-      expect(p.parentElement).toHaveTextContent(valor);
-    }
-    expect(screen.getByRole('link', { name: 'Ver minhas tarefas' })).toHaveAttribute('href', '/atuacao/tarefas');
-  });
-
-  it('erro nos KPIs de tarefas é tratado sem derrubar o resto', async () => {
-    fetchMock.mockImplementation(async (url: string) =>
-      String(url).includes('/atuacao/agenda')
-        ? resp(200, [])
-        : String(url).includes('/tarefas/resumo')
-          ? resp(500, {})
-          : resp(200, { total: 5, ativos: 3, trial: 1, pendentes: 0, inativos: 1 }));
-    render(<PainelPage />);
-    expect(await screen.findByText('Clientes Montese')).toBeInTheDocument();
-    expect(await screen.findByText('Algo deu errado. Tente novamente.')).toBeInTheDocument();
-    expect(screen.queryByText('Minhas tarefas abertas')).toBeNull();
   });
 });
 

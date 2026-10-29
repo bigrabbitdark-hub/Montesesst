@@ -119,8 +119,12 @@ function TarefasConteudo() {
   const tenantId = params.get('tenantId') ?? '';
   const [meuId, setMeuId] = useState<string | null>(null);
   const [responsavel, setResponsavel] = useState<'me' | 'todas'>('me');
-  const [status, setStatus] = useState('');
-  const [vencidas, setVencidas] = useState(false);
+  const statusUrl = params.get('status') ?? '';
+  const statusUrlValido = statusUrl in STATUS_LABEL ? statusUrl : '';
+  const [status, setStatus] = useState(statusUrlValido);
+  // ?vencidas=true (links do painel) liga o filtro; qualquer outro valor é ignorado. O backend só aceita 'true'.
+  const vencidasUrl = params.get('vencidas') === 'true';
+  const [vencidas, setVencidas] = useState(vencidasUrl);
   const [data, setData] = useState<TarefaResumo[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -128,6 +132,9 @@ function TarefasConteudo() {
   const [aviso, setAviso] = useState<string | null>(null);
 
   useEffect(() => { setMeuId(getUser()?.id ?? null); }, []);
+  // Navegação dentro da própria página (ex.: link do painel) muda a URL sem remontar o componente.
+  useEffect(() => { setVencidas(vencidasUrl); }, [vencidasUrl]);
+  useEffect(() => { setStatus(statusUrlValido); }, [statusUrlValido]);
 
   const ultima = useRef(0);
 

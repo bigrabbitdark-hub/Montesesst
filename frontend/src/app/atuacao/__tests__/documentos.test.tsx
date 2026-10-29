@@ -10,7 +10,6 @@ vi.mock('next/navigation', () => ({
 }));
 
 import DocumentosPage from '../documentos/page';
-import PainelPage from '../page';
 import FichaPage from '../clientes/[tenantId]/page';
 import { ATUACAO_MENU_ITEMS } from '@/lib/dashboard/menu-atuacao';
 
@@ -242,23 +241,7 @@ describe('criar rascunho', () => {
   });
 });
 
-describe('painel e ficha', () => {
-  it('KPI conta em_revisao, aprovado e assinado (dados reais)', async () => {
-    rota([doc, doc2, { ...doc, id: 'd-5', status: 'aprovado' }, doc3, doc4]);
-    render(<PainelPage />);
-    const kpi = (await screen.findByText('Documentos aguardando ação')).closest('div')!;
-    expect(within(kpi).getByText('3')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Ver documentos' }).getAttribute('href')).toBe('/atuacao/documentos');
-  });
-
-  it('erro do KPI de documentos fica isolado', async () => {
-    rota([], (u) => (u.includes('/atuacao/documentos') ? resp(500, {}) : undefined));
-    render(<PainelPage />);
-    const sec = (await screen.findByRole('heading', { name: 'Documentos' })).closest('section')!;
-    expect(await within(sec).findByRole('alert')).toBeInTheDocument();
-    expect(screen.getByText('Suas tarefas')).toBeInTheDocument();
-  });
-
+describe('ficha', () => {
   it('ficha do cliente tem o link "Documentos deste cliente"', async () => {
     rota([doc], (u) => (u.includes('/interacoes') || u.includes('/financeiro') ? resp(200, u.includes('/financeiro') ? {} : []) : undefined));
     render(<FichaPage />);

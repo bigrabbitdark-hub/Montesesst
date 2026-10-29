@@ -85,6 +85,7 @@ export async function atuacaoFetch<T>(path: string, init: RequestInit = {}): Pro
       } catch { /* corpo ilegível */ }
       throw new Error(path.endsWith('/resumo') || !msg ? 'Empresa não encontrada.' : msg);
     }
+    if (path.startsWith('/vencimentos')) throw new Error('Empresa não encontrada.');
     if (path.startsWith('/tarefas')) throw new Error('Tarefa não encontrada.');
     if (path.startsWith('/agenda')) throw new Error('Compromisso não encontrado.');
     if (path.startsWith('/documentos/')) throw new Error('Documento não encontrado.');
@@ -487,3 +488,43 @@ export interface MapaCalorResposta {
   por_versao: Array<{ version_number: number; n: number }>;
 }
 export const plural = (n: number, um: string, varios: string) => (n === 1 ? `1 ${um}` : `${n} ${varios}`);
+
+// ---- Painel do sócio (GET /atuacao/painel) e vencimentos da carteira (GET /atuacao/vencimentos) ----
+export interface PainelEvento {
+  id: string; titulo: string; tipo: string; data: string; hora: string | null; tenant_id: string; empresa: string; status: string;
+}
+export type PendenciaTipo = 'tarefa_atrasada' | 'documento_vencido' | 'documento_vencendo' | 'documento_aguardando';
+export interface PainelPendencia {
+  tipo: PendenciaTipo; tenant_id: string; empresa: string; descricao: string; prazo: string | null;
+  prioridade: string | null; href: string;
+}
+// Cada bloco é null quando o sócio não tem a permissão OU o bloco falhou (nesse caso vem listado em `indisponiveis`).
+// vence_7 ⊂ vence_15 ⊂ vence_30 são CUMULATIVOS ("vencem em até N dias"); `vencidos` é separado. Nunca somar.
+// Cada campo de `documentos` pode ser null isoladamente (só empresas.read ou só documents.read).
+export interface PainelResposta {
+  gerado_em: string;
+  empresas: { acessiveis: number | null } | null;
+  tarefas: TarefasKpi | null;
+  agenda: { hoje: PainelEvento[]; hoje_total: number; proximos_7_dias: number } | null;
+  documentos: {
+    vencidos: number | null; vence_7: number | null; vence_15: number | null; vence_30: number | null; aguardando_acao: number | null;
+  } | null;
+  pendencias: PainelPendencia[];
+  indisponiveis: string[];
+}
+export type FaixaVencimento = 'vencidos' | '7' | '15' | '30';
+export const FAIXAS_VENCIMENTO: readonly FaixaVencimento[] = ['vencidos', '7', '15', '30'];
+export const FAIXA_LABEL: Record<FaixaVencimento, string> = {
+  vencidos: 'Vencidos', '7': 'Vencem em até 7 dias', '15': 'Vencem em até 15 dias', '30': 'Vencem em até 30 dias',
+};
+export interface VencimentoCarteiraItem {
+  documento_id: string; tenant_id: string; empresa: string; titulo: string; categoria: string;
+  expires_at: string; dias: number; href: string;
+}
+export interface VencimentosResposta { itens: VencimentoCarteiraItem[]; total: number }
+export const VENCIMENTOS_POR_PAGINA = 100;
+
+// Só caminhos internos do Painel de Atuação viram link (o servidor já garante; aqui é defesa em profundidade).
+export function hrefAtuacaoSeguro(href: unknown): string | null {
+  return typeof href === 'string' && href.startsWith('/atuacao/') && !href.includes('..') && !/[\\\s]/.test(href) ? href : null;
+}

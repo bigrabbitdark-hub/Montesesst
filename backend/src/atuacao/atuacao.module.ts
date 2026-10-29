@@ -31,7 +31,9 @@ import { MatrizController } from './pgr/matriz/matriz.controller';
 import { MatrizService } from './pgr/matriz/matriz.service';
 import { AvaliacoesController } from './pgr/matriz/avaliacoes.controller';
 import { AvaliacoesService } from './pgr/matriz/avaliacoes.service';
+import { PainelController } from './painel/painel.controller';
+import { PainelService } from './painel/painel.service';
 import { DocumentsModule } from '../documents/documents.module';
 
-@Module({ imports: [DocumentsModule], controllers: [EmpresasController, AtuacaoController, TarefasController, ResponsaveisController, AgendaController, InteracoesController, FinanceiroController, DocumentosController, DocumentosAdminController, PermissoesAdminController, PerigosController, GhesController, RiscosController, EpiCatalogoController, MatrizController, AvaliacoesController], providers: [MatrizService, AvaliacoesService, EpiCatalogoService, PerigosService, GhesService, RiscosService, PgrPainelService, EmpresasService, PermissoesAdminService, DocumentosAdminService, DocumentosService, FinanceiroService, AtuacaoService, TarefasService, AgendaService, InteracoesService] })
+@Module({ imports: [DocumentsModule], controllers: [PainelController, EmpresasController, AtuacaoController, TarefasController, ResponsaveisController, AgendaController, InteracoesController, FinanceiroController, DocumentosController, DocumentosAdminController, PermissoesAdminController, PerigosController, GhesController, RiscosController, EpiCatalogoController, MatrizController, AvaliacoesController], providers: [PainelService, MatrizService, AvaliacoesService, EpiCatalogoService, PerigosService, GhesService, RiscosService, PgrPainelService, EmpresasService, PermissoesAdminService, DocumentosAdminService, DocumentosService, FinanceiroService, AtuacaoService, TarefasService, AgendaService, InteracoesService] })
 export class AtuacaoModule {}

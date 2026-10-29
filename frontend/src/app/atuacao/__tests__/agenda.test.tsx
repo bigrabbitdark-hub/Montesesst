@@ -8,7 +8,6 @@ vi.mock('next/navigation', () => ({
 }));
 
 import AgendaPage from '../agenda/page';
-import PainelPage from '../page';
 import FichaPage from '../clientes/[tenantId]/page';
 import { ATUACAO_MENU_ITEMS } from '@/lib/dashboard/menu-atuacao';
 
@@ -401,45 +400,5 @@ describe('ficha: Reuniões e contatos', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Salvar registro' }));
     expect(await screen.findByText('Nenhuma alteração para salvar.')).toBeInTheDocument();
     expect(fetchMock.mock.calls.some((c) => c[1]?.method === 'PATCH')).toBe(false);
-  });
-});
-
-describe('painel: KPI de próximos atendimentos', () => {
-  const resumo = { total: 5, ativos: 3, trial: 1, pendentes: 0, inativos: 1 };
-  function rotaPainel(agenda: () => Response) {
-    fetchMock.mockImplementation(async (url: string) => {
-      const u = String(url);
-      if (u.includes('/atuacao/agenda')) return agenda();
-      if (u.includes('/tarefas/resumo')) return resp(200, { abertas: 0, vencidas: 0, hoje: 0, bloqueadas: 0 });
-      return resp(200, resumo);
-    });
-  }
-
-  it('mostra a contagem real vinda da agenda e chama a URL certa', async () => {
-    rotaPainel(() => resp(200, [ev, evOutro, ev]));
-    render(<PainelPage />);
-    const p = await screen.findByText('Próximos atendimentos (7 dias)');
-    await waitFor(() => expect(p.parentElement).toHaveTextContent('3'));
-    const u = urls().find((x) => x.includes('/atuacao/agenda'))!;
-    expect(u).toContain('owner=me');
-    expect(u).toContain('from=2026-10-20');
-    expect(u).toContain('to=2026-10-27');
-    expect(u).toContain('status=agendado');
-    expect(screen.getByRole('link', { name: 'Ver agenda' })).toHaveAttribute('href', '/atuacao/agenda');
-  });
-
-  it('zero compromissos mostra 0', async () => {
-    rotaPainel(() => resp(200, []));
-    render(<PainelPage />);
-    const p = await screen.findByText('Próximos atendimentos (7 dias)');
-    await waitFor(() => expect(p.parentElement).toHaveTextContent('0'));
-  });
-
-  it('erro no KPI não derruba o resto e oferece nova tentativa', async () => {
-    rotaPainel(() => resp(500, {}));
-    render(<PainelPage />);
-    expect(await screen.findByText('Clientes Montese')).toBeInTheDocument();
-    expect(await screen.findByText('Algo deu errado. Tente novamente.')).toBeInTheDocument();
-    expect(screen.queryByText('Próximos atendimentos (7 dias)')).toBeNull();
   });
 });

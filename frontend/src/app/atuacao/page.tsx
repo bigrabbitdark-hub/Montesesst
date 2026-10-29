@@ -1,102 +1,70 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { PageHeader } from '@/components/dashboard/PageHeader';
-import { KpiCard } from '@/components/dashboard/KpiCard';
 import { AsyncBody } from '@/components/ui/AsyncBody';
-import { atuacaoFetch, hojeIso, somarDias, DOC_STATUS_AGUARDANDO, type DocumentoResumo, type EventoResumo, type ResumoFinanceiro, type TarefasKpi } from './api';
+import { atuacaoFetch, type PainelResposta, type ResumoFinanceiro } from './api';
+import { AgendaHoje, BlocoSemDados, MSG_PARCIAL, KpiLink, LINK_TEXTO, Pendencias, Secao } from './painel/Blocos';
 
-interface Resumo { total: number; ativos: number; trial: number; pendentes: number; inativos: number }
+const GRID = 'grid gap-4 sm:grid-cols-2 lg:grid-cols-4';
 
-function TarefasKpis() {
-  const [data, setData] = useState<TarefasKpi | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  const carregar = useCallback(() => {
-    setLoading(true);
-    setError(null);
-    atuacaoFetch<TarefasKpi>('/tarefas/resumo')
-      .then(setData)
-      .catch((e: Error) => setError(e.message))
-      .finally(() => setLoading(false));
-  }, []);
-
-  useEffect(carregar, [carregar]);
-
+function Painel({ p, onRetry }: { p: PainelResposta; onRetry: () => void }) {
+  const indisp = (bloco: string) => p.indisponiveis.includes(bloco);
+  const { empresas, tarefas, agenda, documentos } = p;
+  const docsTemAlgumNull = documentos !== null && Object.values(documentos).some((v) => v === null);
   return (
-    <section aria-labelledby="kpis-tarefas" className="mt-8">
-      <h2 id="kpis-tarefas" className="mb-3 text-base font-semibold text-dash-primary">Suas tarefas</h2>
-      <AsyncBody
-        data={data}
-        error={error}
-        loading={loading}
-        onRetry={carregar}
-        skeletonClassName="h-32 w-full"
-        render={(t) => (
+    <>
+      <Secao id="painel-empresas" titulo="Empresas">
+        {empresas && typeof empresas.acessiveis === 'number'
+          ? <div className={GRID}><KpiLink href="/atuacao/empresas" label="Empresas acessíveis" value={empresas.acessiveis} /></div>
+          : <BlocoSemDados indisponivel={indisp('empresas')} onRetry={onRetry} />}
+      </Secao>
+
+      <Secao id="painel-tarefas" titulo="Tarefas">
+        {tarefas ? (
+          <div className={GRID}>
+            <KpiLink href="/atuacao/tarefas" label="Tarefas abertas" value={tarefas.abertas} />
+            <KpiLink href="/atuacao/tarefas?vencidas=true" label="Tarefas vencidas" value={tarefas.vencidas} />
+            <KpiLink href="/atuacao/tarefas" label="Tarefas para hoje" value={tarefas.hoje} hint="Abre todas as tarefas" />
+            <KpiLink href="/atuacao/tarefas?status=blocked" label="Tarefas bloqueadas" value={tarefas.bloqueadas} />
+          </div>
+        ) : <BlocoSemDados indisponivel={indisp('tarefas')} onRetry={onRetry} />}
+      </Secao>
+
+      <Secao id="painel-documentos" titulo="Documentos">
+        {documentos ? (
           <>
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              <KpiCard label="Minhas tarefas abertas" value={t.abertas} />
-              <KpiCard label="Vencidas" value={t.vencidas} />
-              <KpiCard label="Para hoje" value={t.hoje} />
-              <KpiCard label="Bloqueadas" value={t.bloqueadas} />
+            <div className={GRID}>
+              {documentos.vencidos !== null && <KpiLink href="/atuacao/vencimentos?faixa=vencidos" label="Documentos vencidos" value={documentos.vencidos} hint="Validade anterior a hoje" />}
+              {documentos.vence_7 !== null && <KpiLink href="/atuacao/vencimentos?faixa=7" label="Vencem em até 7 dias" value={documentos.vence_7} />}
+              {documentos.vence_15 !== null && <KpiLink href="/atuacao/vencimentos?faixa=15" label="Vencem em até 15 dias" value={documentos.vence_15} hint="Inclui os de até 7 dias" />}
+              {documentos.vence_30 !== null && <KpiLink href="/atuacao/vencimentos?faixa=30" label="Vencem em até 30 dias" value={documentos.vence_30} hint="Inclui os de até 7 e 15 dias" />}
+              {documentos.aguardando_acao !== null && (
+                <KpiLink href="/atuacao/documentos" label="Documentos aguardando ação" value={documentos.aguardando_acao} hint="Em revisão, aprovados ou assinados (registro interno)" />
+              )}
             </div>
-            <Link
-              href="/atuacao/tarefas"
-              className="mt-4 inline-block rounded text-sm font-semibold text-dash-primary underline focus:outline-none focus-visible:ring-2 focus-visible:ring-dash-primary focus-visible:ring-offset-2"
-            >
-              Ver minhas tarefas
-            </Link>
+            {docsTemAlgumNull && <p className="mt-3 text-sm text-dash-muted">{MSG_PARCIAL}</p>}
           </>
-        )}
-      />
-    </section>
-  );
-}
+        ) : <BlocoSemDados indisponivel={indisp('documentos')} onRetry={onRetry} />}
+      </Secao>
 
-function AgendaKpi() {
-  const [data, setData] = useState<EventoResumo[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  const carregar = useCallback(() => {
-    setLoading(true);
-    setError(null);
-    const hoje = hojeIso();
-    const qs = new URLSearchParams({ owner: 'me', from: hoje, to: somarDias(hoje, 7), status: 'agendado' });
-    atuacaoFetch<EventoResumo[]>(`/agenda?${qs.toString()}`)
-      .then(setData)
-      .catch((e: Error) => setError(e.message))
-      .finally(() => setLoading(false));
-  }, []);
-
-  useEffect(carregar, [carregar]);
-
-  return (
-    <section aria-labelledby="kpis-agenda" className="mt-8">
-      <h2 id="kpis-agenda" className="mb-3 text-base font-semibold text-dash-primary">Sua agenda</h2>
-      <AsyncBody
-        data={data}
-        error={error}
-        loading={loading}
-        onRetry={carregar}
-        skeletonClassName="h-32 w-full"
-        render={(eventos) => (
+      <Secao id="painel-agenda" titulo="Minha agenda">
+        {agenda ? (
           <>
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              <KpiCard label="Próximos atendimentos (7 dias)" value={eventos.length} />
+            <div className={`${GRID} mb-4`}>
+              <KpiLink href="/atuacao/agenda" label="Compromissos hoje" value={agenda.hoje_total} hint={`${agenda.proximos_7_dias} nos próximos 7 dias`} />
             </div>
-            <Link
-              href="/atuacao/agenda"
-              className="mt-4 inline-block rounded text-sm font-semibold text-dash-primary underline focus:outline-none focus-visible:ring-2 focus-visible:ring-dash-primary focus-visible:ring-offset-2"
-            >
-              Ver agenda
-            </Link>
+            <AgendaHoje hoje={agenda.hoje} total={agenda.hoje_total} />
+            <Link href="/atuacao/agenda" className={`${LINK_TEXTO} mt-4 inline-block text-sm`}>Ver agenda</Link>
           </>
-        )}
-      />
-    </section>
+        ) : <BlocoSemDados indisponivel={indisp('agenda')} onRetry={onRetry} />}
+      </Secao>
+
+      <Secao id="painel-pendencias" titulo="Pendências prioritárias">
+        <Pendencias itens={p.pendencias} incompleta={p.indisponiveis.length > 0} />
+      </Secao>
+    </>
   );
 }
 
@@ -129,67 +97,9 @@ function FinanceiroKpi() {
         onRetry={carregar}
         skeletonClassName="h-32 w-full"
         render={(r) => (
-          <>
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              <KpiCard label="Clientes com pendência financeira" value={r.clientes.com_pendencia} />
-            </div>
-            <Link
-              href="/atuacao/financeiro"
-              className="mt-4 inline-block rounded text-sm font-semibold text-dash-primary underline focus:outline-none focus-visible:ring-2 focus-visible:ring-dash-primary focus-visible:ring-offset-2"
-            >
-              Ver financeiro
-            </Link>
-          </>
-        )}
-      />
-    </section>
-  );
-}
-
-function DocumentosKpi() {
-  const [data, setData] = useState<DocumentoResumo[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  const carregar = useCallback(() => {
-    setLoading(true);
-    setError(null);
-    atuacaoFetch<DocumentoResumo[]>('/documentos')
-      .then((d) => {
-        if (!Array.isArray(d)) throw new Error('Resumo de documentos indisponível.');
-        setData(d);
-      })
-      .catch((e: Error) => setError(e.message))
-      .finally(() => setLoading(false));
-  }, []);
-
-  useEffect(carregar, [carregar]);
-
-  return (
-    <section aria-labelledby="kpis-documentos" className="mt-8">
-      <h2 id="kpis-documentos" className="mb-3 text-base font-semibold text-dash-primary">Documentos</h2>
-      <AsyncBody
-        data={data}
-        error={error}
-        loading={loading}
-        onRetry={carregar}
-        skeletonClassName="h-32 w-full"
-        render={(docs) => (
-          <>
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              <KpiCard
-                label="Documentos aguardando ação"
-                value={docs.filter((d) => DOC_STATUS_AGUARDANDO.includes(d.status)).length}
-                hint="Em revisão, aprovados ou assinados (registro interno)"
-              />
-            </div>
-            <Link
-              href="/atuacao/documentos"
-              className="mt-4 inline-block rounded text-sm font-semibold text-dash-primary underline focus:outline-none focus-visible:ring-2 focus-visible:ring-dash-primary focus-visible:ring-offset-2"
-            >
-              Ver documentos
-            </Link>
-          </>
+          <div className={GRID}>
+            <KpiLink href="/atuacao/financeiro" label="Clientes com pendência financeira" value={r.clientes.com_pendencia} />
+          </div>
         )}
       />
     </section>
@@ -197,51 +107,44 @@ function DocumentosKpi() {
 }
 
 export default function AtuacaoPainelPage() {
-  const [data, setData] = useState<Resumo | null>(null);
+  const [data, setData] = useState<PainelResposta | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const ultima = useRef(0);
 
   const carregar = useCallback(() => {
+    const id = ++ultima.current;
     setLoading(true);
     setError(null);
-    atuacaoFetch<Resumo>('/resumo')
-      .then(setData)
-      .catch((e: Error) => setError(e.message))
-      .finally(() => setLoading(false));
+    atuacaoFetch<PainelResposta>('/painel')
+      .then((d) => {
+        if (!d || typeof d !== 'object' || !Array.isArray(d.pendencias) || !Array.isArray(d.indisponiveis)) {
+          throw new Error('Painel indisponível. Tente novamente.');
+        }
+        if (id === ultima.current) setData(d);
+      })
+      .catch((e: Error) => { if (id === ultima.current) { setData(null); setError(e.message); } })
+      .finally(() => { if (id === ultima.current) setLoading(false); });
   }, []);
 
-  useEffect(carregar, [carregar]);
+  useEffect(() => {
+    carregar();
+    // Respostas que chegam depois de sair da página (ou de uma nova tentativa) são descartadas.
+    return () => { ultima.current += 1; };
+  }, [carregar]);
 
   return (
     <div className="px-4 py-8 sm:px-6">
-      <PageHeader titulo="Painel" descricao="Visão geral das empresas da carteira Montese." />
+      <PageHeader titulo="Painel" descricao="Números reais da carteira Montese, conforme as suas permissões." />
       <AsyncBody
         data={data}
         error={error}
-        loading={loading}
+        loading={loading && data === null}
         onRetry={carregar}
-        skeletonClassName="h-32 w-full"
-        render={(r) => (
-          <>
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              <KpiCard label="Clientes Montese" value={r.total} />
-              <KpiCard label="Ativos" value={r.ativos} />
-              <KpiCard label="Em teste" value={r.trial} />
-              <KpiCard label="Inativos" value={r.inativos} />
-            </div>
-            <Link
-              href="/atuacao/clientes"
-              className="mt-6 inline-block rounded text-sm font-semibold text-dash-primary underline focus:outline-none focus-visible:ring-2 focus-visible:ring-dash-primary focus-visible:ring-offset-2"
-            >
-              Ver clientes
-            </Link>
-          </>
-        )}
+        skeletonClassName="h-48 w-full"
+        render={(p) => <Painel p={p} onRetry={carregar} />}
       />
-      <TarefasKpis />
-      <AgendaKpi />
       <FinanceiroKpi />
-      <DocumentosKpi />
     </div>
   );
 }

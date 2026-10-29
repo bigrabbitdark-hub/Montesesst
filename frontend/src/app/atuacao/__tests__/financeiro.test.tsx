@@ -191,11 +191,14 @@ describe('painel', () => {
     fetchMock.mockImplementation(async (url: string) => {
       const u = String(url);
       if (u.includes('/financeiro/resumo')) return resp(403, {});
+      if (u.endsWith('/atuacao/painel')) {
+        return resp(200, { gerado_em: '2026-10-29T12:00:00Z', empresas: null, tarefas: null, agenda: null, documentos: null, pendencias: [], indisponiveis: [] });
+      }
       return resp(200, []);
     });
     render(<PainelPage />);
     expect(await screen.findByText('Você não tem permissão para esta ação.')).toBeTruthy();
-    expect(screen.getByText('Sua agenda')).toBeTruthy();
+    expect(screen.getByRole('heading', { name: 'Minha agenda' })).toBeTruthy();
   });
 });
 
