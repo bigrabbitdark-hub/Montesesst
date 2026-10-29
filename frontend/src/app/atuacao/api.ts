@@ -56,14 +56,14 @@ export async function atuacaoFetch<T>(path: string, init: RequestInit = {}): Pro
     }
     throw new Error(MSG_403);
   }
-  if (res.status === 409 && (path.startsWith('/documentos') || path.startsWith('/pgr'))) {
+  if (res.status === 409 && (path.startsWith('/documentos') || path.startsWith('/pgr') || path.startsWith('/tarefas'))) {
     // Conflito de estado/separação de funções: mensagem do servidor, sem reinterpretar.
     let msg = '';
     try {
       const body = await res.json();
       if (typeof body?.message === 'string') msg = body.message.trim();
     } catch { /* corpo ilegível: usa a mensagem padrão */ }
-    throw new Error(msg || (path.startsWith('/pgr') ? 'Conflito: já existe um registro igual. Revise os dados.' : 'Ação não permitida no estado atual do documento.'));
+    throw new Error(msg || (path.startsWith('/pgr') ? 'Conflito: já existe um registro igual. Revise os dados.' : path.startsWith('/tarefas') ? 'Ação não permitida no estado atual da tarefa.' : 'Ação não permitida no estado atual do documento.'));
   }
   if (res.status === 413) throw new Error(`O arquivo excede o limite de ${DOC_MAX_MB} MB.`);
   if (res.status === 401) {
@@ -89,6 +89,7 @@ export async function atuacaoFetch<T>(path: string, init: RequestInit = {}): Pro
     if (path.startsWith('/tarefas')) throw new Error('Tarefa não encontrada.');
     if (path.startsWith('/agenda')) throw new Error('Compromisso não encontrado.');
     if (path.startsWith('/documentos/')) throw new Error('Documento não encontrado.');
+    if (path.startsWith('/interacoes?')) throw new Error('Empresa não encontrada.');
     if (path.startsWith('/interacoes')) throw new Error('Registro não encontrado.');
     if (path.startsWith('/empresas/')) {
       throw new Error(/\/documentos\/[^/]+/.test(path) ? 'Documento não encontrado.' : 'Empresa não encontrada.');
@@ -107,7 +108,11 @@ export async function atuacaoFetch<T>(path: string, init: RequestInit = {}): Pro
 }
 
 // ---- Tarefas (Fase 3A) ----
-export type TarefaStatus = 'pending' | 'in_progress' | 'blocked' | 'awaiting_review' | 'completed' | 'cancelled';
+export const TAREFA_STATUS = [
+  'pending', 'in_progress', 'blocked', 'awaiting_review', 'awaiting_client', 'awaiting_execution', 'awaiting_efficacy',
+  'completed', 'cancelled',
+] as const;
+export type TarefaStatus = (typeof TAREFA_STATUS)[number];
 export type Prioridade = 'baixa' | 'media' | 'alta' | 'urgente';
 
 export interface TarefaResumo {
@@ -126,20 +131,39 @@ export type TarefaDetalhe = TarefaResumo & {
 
 export const STATUS_LABEL: Record<TarefaStatus, string> = {
   pending: 'Pendente', in_progress: 'Em andamento', blocked: 'Bloqueada',
-  awaiting_review: 'Em revisão', completed: 'Concluída', cancelled: 'Cancelada',
+  awaiting_review: 'Aguardando avaliação técnica', awaiting_client: 'Aguardando cliente',
+  awaiting_execution: 'Aguardando execução', awaiting_efficacy: 'Aguardando comprovação de eficácia',
+  completed: 'Concluída', cancelled: 'Cancelada',
 };
 export const STATUS_TONE: Record<TarefaStatus, 'ok' | 'info' | 'warn' | 'crit' | 'high'> = {
-  pending: 'info', in_progress: 'info', blocked: 'crit', awaiting_review: 'warn', completed: 'ok', cancelled: 'high',
+  pending: 'info', in_progress: 'info', blocked: 'crit', awaiting_review: 'warn', awaiting_client: 'warn',
+  awaiting_execution: 'warn', awaiting_efficacy: 'warn', completed: 'ok', cancelled: 'high',
 };
 export const PRIORIDADE_LABEL: Record<Prioridade, string> = { baixa: 'Baixa', media: 'Média', alta: 'Alta', urgente: 'Urgente' };
 
-// Espelho de backend/src/atuacao/tarefa-status.ts, só para UX (mostrar os botões possíveis).
-// Quem decide é o servidor.
+// Espelho de backend/src/atuacao/tarefa-status.ts, só para UX (mostrar os botões possíveis). Quem decide é o servidor.
+// Entre estados ABERTOS a troca é livre; concluir só de in_progress ou de uma espera; cancelar de qualquer aberto;
+// completed -> in_progress e cancelled -> pending (reabertura).
+export const STATUS_ABERTOS: readonly TarefaStatus[] = [
+  'pending', 'in_progress', 'blocked', 'awaiting_review', 'awaiting_client', 'awaiting_execution', 'awaiting_efficacy',
+];
+export const STATUS_ESPERA: readonly TarefaStatus[] = ['awaiting_review', 'awaiting_client', 'awaiting_execution', 'awaiting_efficacy'];
+const PODE_CONCLUIR: readonly TarefaStatus[] = ['in_progress', ...STATUS_ESPERA];
+function transicoesDeAberto(de: TarefaStatus): readonly TarefaStatus[] {
+  return [
+    ...STATUS_ABERTOS.filter((p) => p !== de),
+    ...(PODE_CONCLUIR.includes(de) ? (['completed'] as const) : []),
+    'cancelled',
+  ];
+}
 export const TRANSICOES: Record<TarefaStatus, readonly TarefaStatus[]> = {
-  pending: ['in_progress', 'blocked', 'cancelled'],
-  in_progress: ['blocked', 'awaiting_review', 'completed', 'cancelled'],
-  blocked: ['in_progress', 'cancelled'],
-  awaiting_review: ['in_progress', 'completed', 'cancelled'],
+  pending: transicoesDeAberto('pending'),
+  in_progress: transicoesDeAberto('in_progress'),
+  blocked: transicoesDeAberto('blocked'),
+  awaiting_review: transicoesDeAberto('awaiting_review'),
+  awaiting_client: transicoesDeAberto('awaiting_client'),
+  awaiting_execution: transicoesDeAberto('awaiting_execution'),
+  awaiting_efficacy: transicoesDeAberto('awaiting_efficacy'),
   completed: ['in_progress'],
   cancelled: ['pending'],
 };
@@ -159,7 +183,11 @@ export function formatDataHora(v: string): string {
   if (Number.isNaN(d.getTime())) return v;
   return d.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
-export interface TarefasKpi { abertas: number; vencidas: number; hoje: number; bloqueadas: number }
+export interface TarefasKpi {
+  abertas: number; vencidas: number; hoje: number; bloqueadas: number;
+  // D2 (aditivos): contagens por espera; podem faltar em respostas de backend antigo.
+  aguardando_cliente?: number; aguardando_avaliacao?: number; aguardando_execucao?: number; aguardando_eficacia?: number;
+}
 
 // ---- Agenda e interações (Fase 3B) ----
 export type AgendaStatus = 'agendado' | 'concluido' | 'cancelado';
@@ -189,6 +217,14 @@ export type InteracaoTipo = 'reuniao' | 'ligacao' | 'email' | 'visita' | 'outro'
 export const INTERACAO_TIPO_LABEL: Record<InteracaoTipo, string> = {
   reuniao: 'Reunião', ligacao: 'Ligação', email: 'E-mail', visita: 'Visita', outro: 'Outro',
 };
+// Histórico global (GET /atuacao/interacoes): summary vem cortado em 200 (summary_truncado) e sem dados extras.
+export interface InteracaoGlobal {
+  id: string; tenant_id: string; empresa: string; type: InteracaoTipo; occurred_on: string; summary: string;
+  summary_truncado: boolean; created_by_name: string | null; href: string;
+}
+export interface InteracoesGlobalResposta { itens: InteracaoGlobal[]; total: number; page: number; page_size: number }
+export const INTERACOES_POR_PAGINA = 100;
+
 export interface Interacao {
   id: string; tenant_id: string; type: InteracaoTipo; occurred_on: string; participants: string | null; summary: string;
   decisions: string | null; next_steps: string | null; agenda_event_id: string | null; created_by: string;
@@ -493,7 +529,7 @@ export const plural = (n: number, um: string, varios: string) => (n === 1 ? `1 $
 export interface PainelEvento {
   id: string; titulo: string; tipo: string; data: string; hora: string | null; tenant_id: string; empresa: string; status: string;
 }
-export type PendenciaTipo = 'tarefa_atrasada' | 'documento_vencido' | 'documento_vencendo' | 'documento_aguardando';
+export type PendenciaTipo = 'tarefa_atrasada' | 'tarefa_aguardando' | 'documento_vencido' | 'documento_vencendo' | 'documento_aguardando';
 export interface PainelPendencia {
   tipo: PendenciaTipo; tenant_id: string; empresa: string; descricao: string; prazo: string | null;
   prioridade: string | null; href: string;

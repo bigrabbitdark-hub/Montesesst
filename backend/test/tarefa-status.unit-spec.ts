@@ -10,6 +10,15 @@ describe('tarefa-status', () => {
   ])('%s -> %s = %s', (de, para, esperado) => {
     expect(transicaoPermitida(de as any, para as any)).toBe(esperado);
   });
+  it.each([
+    ['awaiting_client', 'in_progress', true], ['awaiting_client', 'awaiting_execution', true],
+    ['awaiting_review', 'awaiting_efficacy', true], ['pending', 'awaiting_client', true],
+    ['blocked', 'awaiting_review', true], ['awaiting_efficacy', 'blocked', true],
+    ['awaiting_execution', 'completed', true], ['awaiting_client', 'completed', true],
+    ['awaiting_efficacy', 'cancelled', true], ['pending', 'completed', false],
+  ])('espera: %s -> %s = %s', (de, para, esperado) => {
+    expect(transicaoPermitida(de as any, para as any)).toBe(esperado);
+  });
   it('nunca permite transição para o mesmo estado', () => {
     for (const s of TAREFA_STATUS) expect(transicaoPermitida(s, s)).toBe(false);
   });

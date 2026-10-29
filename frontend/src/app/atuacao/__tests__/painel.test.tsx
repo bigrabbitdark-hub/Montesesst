@@ -119,7 +119,7 @@ describe('painel: permissão e indisponibilidade por bloco', () => {
     painelBody = async () => resp(200, { ...completo(), tarefas: null, agenda: null });
     render(<PainelPage />);
     await kpi(/Empresas acessíveis/);
-    expect(screen.getAllByText('Sem permissão para este bloco (peça ao administrador)')).toHaveLength(2);
+    expect(screen.getAllByText('Sem permissão para este bloco (peça ao administrador)')).toHaveLength(3); // tarefas, agenda e Pendências por categoria (D2)
     expect(screen.queryByRole('link', { name: /Tarefas abertas/ })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Tentar novamente' })).toBeNull();
     expect(await kpi(/Documentos vencidos/)).toBeInTheDocument();
@@ -128,7 +128,8 @@ describe('painel: permissão e indisponibilidade por bloco', () => {
   it('bloco null listado em indisponiveis => "indisponível" com nova tentativa que recarrega', async () => {
     painelBody = async () => resp(200, { ...completo(), tarefas: null, indisponiveis: ['tarefas'] });
     render(<PainelPage />);
-    expect(await screen.findByText('Bloco indisponível no momento. Tente novamente.')).toBeInTheDocument();
+    // Tarefas e "Pendências por categoria" (D2) usam a mesma fonte: a mensagem aparece nos dois; o botão só em Tarefas.
+    expect(await screen.findAllByText('Bloco indisponível no momento. Tente novamente.')).toHaveLength(2);
     expect(screen.queryByText('Sem permissão para este bloco (peça ao administrador)')).toBeNull();
     painelBody = async () => resp(200, completo());
     fireEvent.click(screen.getByRole('button', { name: 'Tentar novamente' }));
@@ -313,10 +314,74 @@ describe('painel: o que foi mantido e removido', () => {
     expect(ATUACAO_MENU_ITEMS.find((i) => i.label === 'Vencimentos')?.href).toBe('/atuacao/vencimentos');
   });
 
+  it('menu tem Histórico de atendimento em /atuacao/atendimentos (página existe)', () => {
+    expect(ATUACAO_MENU_ITEMS.find((i) => i.label === 'Histórico de atendimento')?.href).toBe('/atuacao/atendimentos');
+  });
+
   it('menu não tem links para telas inexistentes', () => {
     const rotulos = ATUACAO_MENU_ITEMS.map((i) => i.label);
-    for (const r of ['Visitas técnicas', 'Funcionários', 'EPI', 'Treinamentos', 'Ordens de Serviço', 'Histórico de atendimento']) {
+    for (const r of ['Visitas técnicas', 'Funcionários', 'EPI', 'Treinamentos', 'Ordens de Serviço']) {
       expect(rotulos).not.toContain(r);
     }
+  });
+});
+
+describe('painel D2: pendências por categoria e tarefa_aguardando', () => {
+  const comEspera = () => ({
+    ...completo(),
+    tarefas: {
+      abertas: 7, vencidas: 2, hoje: 3, bloqueadas: 1,
+      aguardando_cliente: 4, aguardando_avaliacao: 3, aguardando_execucao: 0, aguardando_eficacia: 2,
+    },
+  });
+  const secao = async () => within(await screen.findByRole('region', { name: 'Pendências por categoria' }));
+
+  it('mostra as 4 categorias com contagem do servidor e link com o status técnico', async () => {
+    painelBody = async () => resp(200, comEspera());
+    render(<PainelPage />);
+    const s = await secao();
+    const casos: [RegExp, string, string][] = [
+      [/Aguardando cliente/, '4', '/atuacao/tarefas?status=awaiting_client'],
+      [/Aguardando avaliação técnica/, '3', '/atuacao/tarefas?status=awaiting_review'],
+      [/Aguardando execução/, '0', '/atuacao/tarefas?status=awaiting_execution'],
+      [/Aguardando comprovação de eficácia/, '2', '/atuacao/tarefas?status=awaiting_efficacy'],
+    ];
+    for (const [nome, n, href] of casos) {
+      const l = s.getByRole('link', { name: nome });
+      expect(l).toHaveTextContent(n);
+      expect(l).toHaveAttribute('href', href);
+    }
+  });
+
+  it('tarefas null => mesmo aviso de sem permissão; indisponível => nova tentativa', async () => {
+    painelBody = async () => resp(200, { ...completo(), tarefas: null, indisponiveis: ['tarefas'] });
+    render(<PainelPage />);
+    const s = await secao();
+    expect(s.getByText('Bloco indisponível no momento. Tente novamente.')).toBeInTheDocument();
+    expect(s.queryByRole('link')).toBeNull();
+    expect(s.queryByRole('button')).toBeNull();
+  });
+
+  it('resposta sem os campos novos (backend antigo) não inventa números', async () => {
+    render(<PainelPage />);
+    const s = await secao();
+    expect(s.queryByRole('link')).toBeNull();
+    expect(s.getByText('Contagens por categoria indisponíveis no momento.')).toBeInTheDocument();
+  });
+
+  it('renderiza pendência tarefa_aguardando com rótulo e link, e ignora href fora de /atuacao/', async () => {
+    painelBody = async () => resp(200, {
+      ...comEspera(),
+      pendencias: [
+        pend({ tipo: 'tarefa_aguardando', descricao: 'Esperando o cliente', href: '/atuacao/tarefas?status=awaiting_client' }),
+        pend({ tipo: 'tarefa_aguardando', descricao: 'Link externo', href: 'https://evil.example/x' }),
+      ],
+    });
+    render(<PainelPage />);
+    const l = await screen.findByRole('link', { name: 'Esperando o cliente' });
+    expect(l).toHaveAttribute('href', '/atuacao/tarefas?status=awaiting_client');
+    expect(screen.getAllByText('Tarefa em espera').length).toBeGreaterThan(0);
+    expect(screen.queryByRole('link', { name: 'Link externo' })).toBeNull();
+    expect(screen.getByText('Link externo')).toBeInTheDocument();
   });
 });

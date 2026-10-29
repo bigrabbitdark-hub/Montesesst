@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { PageHeader } from '@/components/dashboard/PageHeader';
 import { AsyncBody } from '@/components/ui/AsyncBody';
 import { atuacaoFetch, type PainelResposta, type ResumoFinanceiro } from './api';
-import { AgendaHoje, BlocoSemDados, MSG_PARCIAL, KpiLink, LINK_TEXTO, Pendencias, Secao } from './painel/Blocos';
+import { AgendaHoje, BlocoSemDados, CategoriasEspera, CategoriasEsperaSemDados, MSG_PARCIAL, KpiLink, LINK_TEXTO, Pendencias, Secao } from './painel/Blocos';
 
 const GRID = 'grid gap-4 sm:grid-cols-2 lg:grid-cols-4';
 
@@ -30,6 +30,10 @@ function Painel({ p, onRetry }: { p: PainelResposta; onRetry: () => void }) {
             <KpiLink href="/atuacao/tarefas?status=blocked" label="Tarefas bloqueadas" value={tarefas.bloqueadas} />
           </div>
         ) : <BlocoSemDados indisponivel={indisp('tarefas')} onRetry={onRetry} />}
+      </Secao>
+
+      <Secao id="painel-categorias" titulo="Pendências por categoria">
+        {tarefas ? <CategoriasEspera tarefas={tarefas} /> : <CategoriasEsperaSemDados indisponivel={indisp('tarefas')} />}
       </Secao>
 
       <Secao id="painel-documentos" titulo="Documentos">

@@ -3,7 +3,7 @@ import { Roles } from '../common/decorators/roles.decorator';
 import { RequirePermission } from '../common/decorators/require-permission.decorator';
 import { AuditService } from '../common/audit/audit.service';
 import { TarefasService } from './tarefas.service';
-import { ChangeTarefaStatusDto, CreateTarefaDto, ListTarefasQuery, UpdateTarefaDto } from './dto/tarefa.dto';
+import { ChangeTarefaStatusDto, CreateTarefaDto, EncaminharTarefaDto, ListTarefasQuery, UpdateTarefaDto } from './dto/tarefa.dto';
 
 @Controller('atuacao/tarefas')
 @Roles('socio')
@@ -59,5 +59,14 @@ export class TarefasController {
     const t = await req.withTenantContext((c: any) => this.tarefas.mudarStatus(c, req.user.id, id, dto));
     if (t.status === 'completed') await this.log(req, 'task.completed', id);
     return t;
+  }
+
+  // Nota (opcional) vai só para task_events; a auditoria leva apenas os ids de origem e destino.
+  @RequirePermission('tasks.write')
+  @Post(':id/encaminhar')
+  async encaminhar(@Param('id', ParseUUIDPipe) id: string, @Body() dto: EncaminharTarefaDto, @Req() req: any) {
+    const r = await req.withTenantContext((c: any) => this.tarefas.encaminhar(c, req.user.id, id, dto));
+    await this.log(req, 'task.reassigned', id, `de: ${r.de}; para: ${r.para}`);
+    return r.tarefa;
   }
 }

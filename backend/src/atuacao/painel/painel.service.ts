@@ -3,12 +3,13 @@ import type { PoolClient } from 'pg';
 import { todayDateOnly, type DateOnly } from '../../common/dates/date-only';
 import { AtuacaoService } from '../atuacao.service';
 import { TarefasService } from '../tarefas.service';
+import { ESPERA } from '../tarefa-status';
 import { AgendaService } from '../agenda.service';
 import { EmpresasService } from '../empresas/empresas.service';
 import type { FaixaVencimento, ListVencimentosQuery } from './dto/painel.dto';
 import type { ListAgendaQuery } from '../dto/agenda.dto';
 
-export type TipoPendencia = 'tarefa_atrasada' | 'documento_vencido' | 'documento_vencendo' | 'documento_aguardando';
+export type TipoPendencia = 'tarefa_atrasada' | 'tarefa_aguardando' | 'documento_vencido' | 'documento_vencendo' | 'documento_aguardando';
 
 export interface Pendencia {
   tipo: TipoPendencia;
@@ -33,7 +34,10 @@ export interface DocumentosPainel {
 export interface PainelDto {
   gerado_em: string;
   empresas: { acessiveis: number } | null;
-  tarefas: { abertas: number; vencidas: number; hoje: number; bloqueadas: number } | null;
+  tarefas: {
+    abertas: number; vencidas: number; hoje: number; bloqueadas: number;
+    aguardando_cliente: number; aguardando_avaliacao: number; aguardando_execucao: number; aguardando_eficacia: number;
+  } | null;
   // hoje_total = contagem real dos eventos de hoje (a lista `hoje` é limitada a 10).
   // proximos_7_dias vem de AgendaService.listar, que tem teto de 300 linhas (aceitável para um contador de painel).
   agenda: { hoje: EventoPainel[]; hoje_total: number; proximos_7_dias: number } | null;
@@ -214,6 +218,24 @@ export class PainelService {
         itens.push({
           tipo: 'tarefa_atrasada', tenant_id: t.tenant_id, empresa: t.tenant_name, descricao: t.title, prazo: t.due_date,
           prioridade: t.priority, href: '/atuacao/tarefas?vencidas=true', _grupo: 0, _ordem: t.due_date ?? '9999-12-31', _id: t.id,
+        });
+      }
+    }
+    if (quem.tarefas) {
+      // Em espera e NÃO atrasadas (as atrasadas já entram como tarefa_atrasada). Ordem: prazo (sem prazo por último), id.
+      const es = await this.bloco(c, 'pendencias.tarefas-espera', async () => (await c.query(
+        `/* painel:tarefas-aguardando */
+         SELECT k.id, k.tenant_id, t.name AS empresa, k.title, k.priority, k.status, to_char(k.due_date, 'YYYY-MM-DD') AS due_date
+           FROM tasks AS k JOIN tenants t ON t.id = k.tenant_id
+          WHERE k.assignee_user_id = $1 AND k.status = ANY($2::text[]) AND (k.due_date IS NULL OR k.due_date >= $3::date)
+          ORDER BY k.due_date NULLS LAST, k.id
+          LIMIT ${MAX_PENDENCIAS}`,
+        [userId, ESPERA, hoje],
+      )).rows);
+      for (const t of es ?? []) {
+        itens.push({
+          tipo: 'tarefa_aguardando', tenant_id: t.tenant_id, empresa: t.empresa, descricao: t.title, prazo: t.due_date,
+          prioridade: t.priority, href: `/atuacao/tarefas?status=${t.status}`, _grupo: 3, _ordem: t.due_date ?? '9999-12-31', _id: t.id,
         });
       }
     }

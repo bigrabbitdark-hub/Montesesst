@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import type { PoolClient } from 'pg';
 import { buildSafeSetClause } from '../common/safe-update.util';
-import type { CreateInteracaoDto, UpdateInteracaoDto } from './dto/interacao.dto';
+import type { CreateInteracaoDto, ListInteracoesQuery, UpdateInteracaoDto } from './dto/interacao.dto';
 
 export interface Interacao {
   id: string; tenant_id: string; type: string; occurred_on: string; participants: string | null; summary: string;
@@ -19,6 +19,13 @@ const SELECT_INTERACAO = `
          i.created_at, i.updated_at
     FROM client_interactions i
     LEFT JOIN list_socios() c ON c.id = i.created_by`;
+
+export interface InteracaoGlobal {
+  id: string; tenant_id: string; empresa: string; type: string; occurred_on: string; summary: string;
+  summary_truncado: boolean; created_by_name: string | null; href: string;
+}
+const PAGINA = 100;
+const RESUMO_MAX = 200;
 
 @Injectable()
 export class InteracoesService {
@@ -52,6 +59,43 @@ export class InteracoesService {
       [tenantId],
     );
     return res.rows.map((r) => this.comEditavel(r, userId));
+  }
+
+  // Histórico global (somente leitura) das empresas Montese. Sem participantes, decisões nem próximos passos; o
+  // resumo é cortado em RESUMO_MAX. Empresa de parceiro/inexistente => 404 (RLS do sócio + is_montese_tenant).
+  async listarGlobal(
+    client: PoolClient, q: ListInteracoesQuery,
+  ): Promise<{ itens: InteracaoGlobal[]; total: number; page: number; page_size: number }> {
+    if (q.from && q.to && q.from > q.to) throw new BadRequestException('Período inválido');
+    if (q.tenantId) await this.assertTenant(client, q.tenantId);
+    const filtro = `is_montese_tenant(i.tenant_id)
+      AND ($1::uuid IS NULL OR i.tenant_id = $1::uuid)
+      AND ($2::text IS NULL OR i.type = $2::text)
+      AND ($3::date IS NULL OR i.occurred_on >= $3::date)
+      AND ($4::date IS NULL OR i.occurred_on <= $4::date)`;
+    const params = [q.tenantId ?? null, q.tipo ?? null, q.from ?? null, q.to ?? null];
+    const page = q.page ?? 1;
+    const lista = await client.query(
+      `/* interacoes:global-lista */
+       SELECT i.id, i.tenant_id, t.name AS empresa, i.type, to_char(i.occurred_on, 'YYYY-MM-DD') AS occurred_on,
+              left(i.summary, ${RESUMO_MAX}) AS summary, (char_length(i.summary) > ${RESUMO_MAX}) AS summary_truncado,
+              c.full_name AS created_by_name
+         FROM client_interactions i
+         JOIN tenants t ON t.id = i.tenant_id
+         LEFT JOIN list_socios() c ON c.id = i.created_by
+        WHERE ${filtro}
+        ORDER BY i.occurred_on DESC, i.created_at DESC, i.id DESC
+        LIMIT ${PAGINA} OFFSET $5`,
+      [...params, (page - 1) * PAGINA],
+    );
+    const total = await client.query(
+      `/* interacoes:global-total */ SELECT count(*)::int AS n FROM client_interactions i WHERE ${filtro}`,
+      params,
+    );
+    return {
+      itens: lista.rows.map((r: any) => ({ ...r, href: `/atuacao/empresas/${r.tenant_id}` })),
+      total: total.rows[0]?.n ?? 0, page, page_size: PAGINA,
+    };
   }
 
   async criar(client: PoolClient, actorId: string, tenantId: string, dto: CreateInteracaoDto): Promise<Interacao> {

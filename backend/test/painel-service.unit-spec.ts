@@ -19,9 +19,10 @@ function montar(permissoes: string[], resp: Resp = {}) {
   const base: Resp = {
     'FROM socio_permissions': permissoes.map((permission) => ({ permission })),
     'FROM tenants t': [{ id: T1, name: 'A', has_authorized: true, has_recent_pending: false, has_lapsed: false }],
-    'FROM tasks WHERE assignee_user_id': [{ abertas: 4, vencidas: 2, hoje: 1, bloqueadas: 0 }],
+    'FROM tasks WHERE assignee_user_id': [{ abertas: 4, vencidas: 2, hoje: 1, bloqueadas: 0, aguardando_cliente: 1, aguardando_avaliacao: 2, aguardando_execucao: 0, aguardando_eficacia: 3 }],
     'FROM tasks k': [],
     'FROM agenda_events e': [],
+    'painel:tarefas-aguardando': [],
     'painel:doc-contagem': [{ vencidos: 3, vence_7: 1, vence_15: 2, vence_30: 5 }],
     'painel:doc-pendentes': [],
     'painel:rascunhos-contagem': [{ n: 6 }],
@@ -53,7 +54,10 @@ describe('PainelService.painel', () => {
     const p = await service.painel(client, USER, HOJE);
     expect(Object.keys(p).sort()).toEqual(['agenda', 'documentos', 'empresas', 'gerado_em', 'indisponiveis', 'pendencias', 'tarefas']);
     expect(p.empresas).toEqual({ acessiveis: 1 });
-    expect(p.tarefas).toEqual({ abertas: 4, vencidas: 2, hoje: 1, bloqueadas: 0 });
+    expect(p.tarefas).toEqual({
+      abertas: 4, vencidas: 2, hoje: 1, bloqueadas: 0,
+      aguardando_cliente: 1, aguardando_avaliacao: 2, aguardando_execucao: 0, aguardando_eficacia: 3,
+    });
     expect(p.documentos).toEqual({ vencidos: 3, vence_7: 1, vence_15: 2, vence_30: 5, aguardando_acao: 6 });
     expect(p.agenda).toEqual({ hoje: [], hoje_total: 0, proximos_7_dias: 0 });
     expect(p.indisponiveis).toEqual([]);
@@ -289,5 +293,44 @@ describe('PainelService.vencimentos', () => {
     await expect(service.vencimentos(client, { tenantId: T2 }, HOJE)).rejects.toMatchObject({ status: 404 });
     expect(dados().some((c) => c.sql.includes('painel:vencimentos'))).toBe(false);
     expect(empresas.exigirEmpresa).toHaveBeenCalledWith(client, T2);
+  });
+});
+
+describe('PainelService — pendências tarefa_aguardando', () => {
+  beforeEach(() => { jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined); });
+  afterEach(() => jest.restoreAllMocks());
+
+  it('inclui tarefas em espera com href por status, ordenadas por prazo (sem prazo por último) e id; só com tasks.read', async () => {
+    const linha = (id: string, status: string, due: string | null) => ({ id, tenant_id: T1, empresa: 'A', title: `T ${id}`, priority: 'media', status, due_date: due });
+    const { service, client, dados } = montar(['tasks.read'], {
+      'painel:tarefas-aguardando': [
+        linha('b', 'awaiting_client', '2026-11-02'), linha('a', 'awaiting_efficacy', '2026-11-02'), linha('c', 'awaiting_review', null),
+      ],
+    });
+    const p = await service.painel(client, USER, HOJE);
+    const aguard = p.pendencias.filter((x) => x.tipo === 'tarefa_aguardando');
+    expect(aguard.map((x) => x.descricao)).toEqual(['T a', 'T b', 'T c']);
+    expect(aguard.map((x) => x.href)).toEqual([
+      '/atuacao/tarefas?status=awaiting_efficacy', '/atuacao/tarefas?status=awaiting_client', '/atuacao/tarefas?status=awaiting_review',
+    ]);
+    expect(aguard[2].prazo).toBeNull();
+    const q = dados().find((c) => c.sql.includes('painel:tarefas-aguardando'))!;
+    expect(q.params[0]).toBe(USER);
+    expect(q.params[2]).toBe(HOJE);
+    expect(q.sql).toContain('LIMIT 20');
+  });
+
+  it('sem tasks.read nem consulta nem pendência; teto de 20 respeitado', async () => {
+    const sem = montar(['clients.read']);
+    await sem.service.painel(sem.client, USER, HOJE);
+    expect(sem.dados().some((c) => c.sql.includes('painel:tarefas-aguardando'))).toBe(false);
+    const muitas = Array.from({ length: 20 }, (_, i) => ({ id: `i${String(i).padStart(2, '0')}`, tenant_id: T1, empresa: 'A', title: 't', priority: 'media', status: 'awaiting_client', due_date: null }));
+    const m = montar(['tasks.read', 'empresas.read'], {
+      'painel:tarefas-aguardando': muitas,
+      'painel:doc-pendentes': [{ id: 'd', tenant_id: T1, empresa: 'A', title: 'doc', category: 'pgr', expires_at: '2026-10-01', dias: -28 }],
+    });
+    const p = await m.service.painel(m.client, USER, HOJE);
+    expect(p.pendencias).toHaveLength(20);
+    expect(p.pendencias[0].tipo).toBe('documento_vencido'); // urgência: vencido antes de espera
   });
 });

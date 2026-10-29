@@ -250,7 +250,8 @@ describe('detalhe da tarefa', () => {
     await screen.findByRole('heading', { name: 'Revisar PGR' });
     const acoes = screen.getByRole('group', { name: 'Alterar status' });
     expect(within(acoes).getAllByRole('button').map((b) => b.textContent)).toEqual([
-      'Iniciar', 'Bloquear', 'Cancelar tarefa',
+      'Iniciar', 'Bloquear', 'Enviar para avaliação técnica', 'Aguardar cliente', 'Aguardar execução',
+      'Aguardar comprovação de eficácia', 'Cancelar tarefa',
     ]);
   });
 
@@ -324,5 +325,292 @@ describe('ficha: responsáveis', () => {
     fetchMock.mockImplementation(async (url: string) => resp(200, String(url).includes('/interacoes') ? [] : { ...ficha, responsaveis: [] }));
     render(<FichaPage />);
     expect(await screen.findByText('Nenhum responsável atribuído.')).toBeInTheDocument();
+  });
+});
+
+describe('D2: status de espera', () => {
+  const ROT = {
+    awaiting_review: 'Aguardando avaliação técnica', awaiting_client: 'Aguardando cliente',
+    awaiting_execution: 'Aguardando execução', awaiting_efficacy: 'Aguardando comprovação de eficácia',
+  } as const;
+
+  it('o filtro de status lista as 9 opções com os rótulos pt-BR', async () => {
+    fetchMock.mockResolvedValue(resp(200, [minha]));
+    render(<TarefasPage />);
+    await screen.findAllByText('Revisar PGR');
+    const opcoes = within(screen.getByLabelText('Status')).getAllByRole('option').map((o) => [o.getAttribute('value'), o.textContent]);
+    expect(opcoes).toEqual([
+      ['', 'Todos'], ['pending', 'Pendente'], ['in_progress', 'Em andamento'], ['blocked', 'Bloqueada'],
+      ['awaiting_review', 'Aguardando avaliação técnica'], ['awaiting_client', 'Aguardando cliente'],
+      ['awaiting_execution', 'Aguardando execução'], ['awaiting_efficacy', 'Aguardando comprovação de eficácia'],
+      ['completed', 'Concluída'], ['cancelled', 'Cancelada'],
+    ]);
+    expect(screen.queryByText('Em revisão')).toBeNull();
+  });
+
+  it.each(Object.entries(ROT))('?status=%s na URL filtra e seleciona', async (valor) => {
+    search = `status=${valor}`;
+    fetchMock.mockResolvedValue(resp(200, [{ ...minha, status: valor }]));
+    render(<TarefasPage />);
+    await screen.findAllByText(ROT[valor as keyof typeof ROT], { selector: 'span' });
+    expect(urls()[0]).toContain(`status=${valor}`);
+    expect(screen.getByLabelText('Status')).toHaveValue(valor);
+  });
+
+  it.each(Object.entries(ROT))('detalhe mostra o selo de %s', async (valor, rotulo) => {
+    fetchMock.mockResolvedValue(resp(200, { ...detalhe, status: valor }));
+    render(<TarefaDetalhePage />);
+    expect(await screen.findByText(rotulo, { selector: 'span' })).toBeInTheDocument();
+  });
+
+  const botoes = () => within(screen.getByRole('group', { name: 'Alterar status' })).getAllByRole('button').map((b) => b.textContent);
+
+  it('de um estado de espera: troca livre entre abertos, concluir e cancelar (espelha o backend)', async () => {
+    fetchMock.mockResolvedValue(resp(200, { ...detalhe, status: 'awaiting_client' }));
+    render(<TarefaDetalhePage />);
+    await screen.findByRole('heading', { name: 'Revisar PGR' });
+    expect(botoes()).toEqual([
+      'Voltar para pendente', 'Iniciar', 'Bloquear', 'Enviar para avaliação técnica', 'Aguardar execução',
+      'Aguardar comprovação de eficácia', 'Concluir', 'Cancelar tarefa',
+    ]);
+  });
+
+  it('blocked não conclui direto; completed só reabre; cancelled só volta a pendente', async () => {
+    fetchMock.mockResolvedValue(resp(200, { ...detalhe, status: 'blocked' }));
+    const a = render(<TarefaDetalhePage />);
+    await screen.findByRole('heading', { name: 'Revisar PGR' });
+    expect(botoes()).not.toContain('Concluir');
+    a.unmount();
+    fetchMock.mockResolvedValue(resp(200, { ...detalhe, status: 'completed' }));
+    const b = render(<TarefaDetalhePage />);
+    await screen.findByRole('heading', { name: 'Revisar PGR' });
+    expect(botoes()).toEqual(['Reabrir tarefa']);
+    b.unmount();
+    fetchMock.mockResolvedValue(resp(200, { ...detalhe, status: 'cancelled' }));
+    render(<TarefaDetalhePage />);
+    await screen.findByRole('heading', { name: 'Revisar PGR' });
+    expect(botoes()).toEqual(['Reabrir como pendente']);
+  });
+
+  it('ir para uma espera é direto (sem motivo) e envia só o status; histórico traduz o rótulo', async () => {
+    fetchMock
+      .mockResolvedValueOnce(resp(200, { ...detalhe, status: 'in_progress' }))
+      .mockResolvedValueOnce(resp(200, {
+        ...detalhe, status: 'awaiting_efficacy',
+        eventos: [...detalhe.eventos, { id: 'e3', type: 'status_changed', actor_name: 'Eu Sócio', from_value: 'in_progress', to_value: 'awaiting_efficacy', note: null, created_at: '2026-10-12T10:00:00Z' }],
+      }));
+    render(<TarefaDetalhePage />);
+    await screen.findByRole('heading', { name: 'Revisar PGR' });
+    fireEvent.click(screen.getByRole('button', { name: 'Aguardar comprovação de eficácia' }));
+    expect(await screen.findByText('Status: Em andamento → Aguardando comprovação de eficácia')).toBeInTheDocument();
+    expect(JSON.parse(fetchMock.mock.calls[1][1].body)).toEqual({ status: 'awaiting_efficacy' });
+    expect(screen.queryByLabelText('Motivo')).toBeNull();
+  });
+});
+
+describe('D2: encaminhar tarefa', () => {
+  const equipe = [
+    { id: 'u-me', full_name: 'Eu Sócio' }, { id: 'u-2', full_name: 'Ana Sócia' }, { id: 'u-3', full_name: 'Beto Sócio' },
+  ];
+  let post: ((init: RequestInit) => Response) | null;
+
+  function rota(t: object = detalhe) {
+    post = null;
+    fetchMock.mockImplementation(async (url: string, init: RequestInit) => {
+      const u = String(url);
+      if (u.endsWith('/encaminhar')) return post!(init);
+      if (u.endsWith('/atuacao/equipe')) return resp(200, equipe);
+      return resp(200, t);
+    });
+  }
+  async function abrir(t: object = detalhe) {
+    rota(t);
+    render(<TarefaDetalhePage />);
+    await screen.findByRole('heading', { name: 'Revisar PGR' });
+    fireEvent.click(screen.getByRole('button', { name: 'Encaminhar a…' }));
+    await screen.findByRole('option', { name: 'Beto Sócio' });
+  }
+
+  it('lista os sócios sem você e sem o responsável atual, com o aviso de dados pessoais', async () => {
+    await abrir({ ...detalhe, assignee_user_id: 'u-2', assignee_name: 'Ana Sócia' });
+    const nomes = within(screen.getByLabelText('Encaminhar para')).getAllByRole('option').map((o) => o.textContent);
+    expect(nomes).toEqual(['Selecione', 'Beto Sócio']);
+    expect(screen.getByText('Não inclua dados pessoais ou de saúde de trabalhadores.')).toBeInTheDocument();
+    expect(screen.getByLabelText('Nota (opcional)')).toHaveAttribute('maxlength', '500');
+  });
+
+  it('sem destino escolhido não envia', async () => {
+    await abrir();
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar encaminhamento' }));
+    expect(await screen.findByText('Escolha o sócio que receberá a tarefa.')).toBeInTheDocument();
+    expect(urls().some((u) => u.endsWith('/encaminhar'))).toBe(false);
+  });
+
+  it('envia assignee_user_id e nota, desabilita em voo, mostra sucesso e atualiza o histórico pela resposta', async () => {
+    await abrir();
+    let soltar!: (r: Response) => void;
+    post = () => { throw new Error('não usado'); };
+    fetchMock.mockImplementation(async (url: string) => {
+      const u = String(url);
+      if (u.endsWith('/encaminhar')) return new Promise<Response>((r) => { soltar = r; });
+      if (u.endsWith('/atuacao/equipe')) return resp(200, equipe);
+      return resp(200, detalhe);
+    });
+    fireEvent.change(screen.getByLabelText('Encaminhar para'), { target: { value: 'u-3' } });
+    fireEvent.change(screen.getByLabelText('Nota (opcional)'), { target: { value: '  Cuide do prazo  ' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar encaminhamento' }));
+    await waitFor(() => expect(soltar).toBeDefined());
+    expect(screen.getByRole('button', { name: 'Encaminhando...' })).toBeDisabled();
+    const call = fetchMock.mock.calls.find((c) => String(c[0]).endsWith('/encaminhar'))!;
+    expect(String(call[0])).toContain('/atuacao/tarefas/k-1/encaminhar');
+    expect(call[1].method).toBe('POST');
+    expect(JSON.parse(call[1].body)).toEqual({ assignee_user_id: 'u-3', nota: 'Cuide do prazo' });
+    soltar(resp(201, {
+      ...detalhe, assignee_user_id: 'u-3', assignee_name: 'Beto Sócio',
+      eventos: [...detalhe.eventos, { id: 'e9', type: 'assigned', actor_name: 'Eu Sócio', from_value: 'u-me', to_value: 'u-3', note: 'Cuide do prazo', created_at: '2026-10-12T10:00:00Z' }],
+    }));
+    expect(await screen.findByText('Tarefa encaminhada a Beto Sócio.')).toHaveAttribute('role', 'status');
+    const itens = within(screen.getByRole('list', { name: 'Histórico' })).getAllByRole('listitem');
+    expect(itens).toHaveLength(3);
+    expect(itens[2]).toHaveTextContent('Cuide do prazo');
+    expect(screen.queryByLabelText('Encaminhar para')).toBeNull();
+  });
+
+  it('sem nota não envia o campo nota', async () => {
+    await abrir();
+    post = () => resp(201, { ...detalhe, assignee_user_id: 'u-2', assignee_name: 'Ana Sócia' });
+    fireEvent.change(screen.getByLabelText('Encaminhar para'), { target: { value: 'u-2' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar encaminhamento' }));
+    await screen.findByText('Tarefa encaminhada a Ana Sócia.');
+    const call = fetchMock.mock.calls.find((c) => String(c[0]).endsWith('/encaminhar'))!;
+    expect(JSON.parse(call[1].body)).toEqual({ assignee_user_id: 'u-2' });
+  });
+
+  it.each([
+    [400, { message: 'Responsável inválido' }, 'Responsável inválido'],
+    [403, {}, 'Você não tem permissão para esta ação.'],
+    [404, {}, 'Tarefa não encontrada.'],
+    [409, { message: 'Tarefa encerrada não pode ser encaminhada' }, 'Tarefa encerrada não pode ser encaminhada'],
+  ])('erro %i aparece como alerta e mantém o formulário', async (status, body, texto) => {
+    await abrir();
+    post = () => resp(status, body);
+    fireEvent.change(screen.getByLabelText('Encaminhar para'), { target: { value: 'u-2' } });
+    fireEvent.change(screen.getByLabelText('Nota (opcional)'), { target: { value: 'Mantida' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar encaminhamento' }));
+    const alerta = await screen.findByText(texto);
+    expect(alerta.closest('[role="alert"]')).not.toBeNull();
+    expect(screen.getByLabelText('Nota (opcional)')).toHaveValue('Mantida');
+    expect(screen.queryByRole('status')).toBeNull();
+  });
+
+  it('tarefa concluída ou cancelada não oferece encaminhar', async () => {
+    rota({ ...detalhe, status: 'completed' });
+    render(<TarefaDetalhePage />);
+    await screen.findByRole('heading', { name: 'Revisar PGR' });
+    expect(screen.queryByRole('button', { name: 'Encaminhar a…' })).toBeNull();
+  });
+
+  it('falha ao carregar a equipe é informada', async () => {
+    fetchMock.mockImplementation(async (url: string) => (String(url).endsWith('/atuacao/equipe') ? resp(500, {}) : resp(200, detalhe)));
+    render(<TarefaDetalhePage />);
+    await screen.findByRole('heading', { name: 'Revisar PGR' });
+    fireEvent.click(screen.getByRole('button', { name: 'Encaminhar a…' }));
+    expect(await screen.findByText('Algo deu errado. Tente novamente.')).toBeInTheDocument();
+  });
+});
+
+describe('D2 fix 1: assumir tarefa e avisos', () => {
+  const deOutro = { ...detalhe, assignee_user_id: 'u-2', assignee_name: 'Ana Sócia' };
+  const equipe = [{ id: 'u-me', full_name: 'Eu Sócio' }, { id: 'u-2', full_name: 'Ana Sócia' }, { id: 'u-3', full_name: 'Beto Sócio' }];
+  let patch: (() => Promise<Response>) | null;
+  let statusResp: Response | null;
+
+  function rota(t: object) {
+    patch = null;
+    statusResp = null;
+    fetchMock.mockImplementation(async (url: string, init: RequestInit) => {
+      const u = String(url);
+      if (init?.method === 'PATCH') return patch!();
+      if (u.endsWith('/status')) return statusResp!;
+      if (u.endsWith('/encaminhar')) return resp(201, { ...t, assignee_user_id: 'u-3', assignee_name: 'Beto Sócio' });
+      if (u.endsWith('/atuacao/equipe')) return resp(200, equipe);
+      return resp(200, t);
+    });
+  }
+
+  it('aparece só em tarefa aberta de outro sócio', async () => {
+    rota(deOutro);
+    const a = render(<TarefaDetalhePage />);
+    await screen.findByRole('heading', { name: 'Revisar PGR' });
+    expect(screen.getByRole('button', { name: 'Assumir tarefa' })).toBeInTheDocument();
+    a.unmount();
+    rota(detalhe); // minha
+    const b = render(<TarefaDetalhePage />);
+    await screen.findByRole('heading', { name: 'Revisar PGR' });
+    expect(screen.queryByRole('button', { name: 'Assumir tarefa' })).toBeNull();
+    b.unmount();
+    rota({ ...deOutro, status: 'completed' });
+    render(<TarefaDetalhePage />);
+    await screen.findByRole('heading', { name: 'Revisar PGR' });
+    expect(screen.queryByRole('button', { name: 'Assumir tarefa' })).toBeNull();
+  });
+
+  it('confirma, envia PATCH {assignee_user_id: eu}, desabilita em voo e atualiza a página', async () => {
+    rota(deOutro);
+    render(<TarefaDetalhePage />);
+    await screen.findByRole('heading', { name: 'Revisar PGR' });
+    let soltar!: (r: Response) => void;
+    patch = () => new Promise<Response>((r) => { soltar = r; });
+    fireEvent.click(screen.getByRole('button', { name: 'Assumir tarefa' }));
+    expect(fetchMock.mock.calls.some((c) => c[1]?.method === 'PATCH')).toBe(false);
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar' }));
+    await waitFor(() => expect(soltar).toBeDefined());
+    expect(screen.getByRole('button', { name: 'Assumindo...' })).toBeDisabled();
+    const call = fetchMock.mock.calls.find((c) => c[1]?.method === 'PATCH')!;
+    expect(String(call[0])).toContain('/atuacao/tarefas/k-1');
+    expect(JSON.parse(call[1].body)).toEqual({ assignee_user_id: 'u-me' });
+    soltar(resp(200, { ...detalhe, assignee_user_id: 'u-me', assignee_name: 'Eu Sócio' }));
+    expect(await screen.findByText('Você assumiu a tarefa.')).toHaveAttribute('role', 'status');
+    expect(screen.queryByRole('button', { name: 'Assumir tarefa' })).toBeNull();
+  });
+
+  it.each([
+    [400, { message: 'Responsável inválido' }, 'Responsável inválido'],
+    [403, {}, 'Você não tem permissão para esta ação.'],
+    [404, {}, 'Tarefa não encontrada.'],
+    [409, { message: 'Tarefa encerrada' }, 'Tarefa encerrada'],
+  ])('erro %i aparece como alerta', async (status, body, texto) => {
+    rota(deOutro);
+    render(<TarefaDetalhePage />);
+    await screen.findByRole('heading', { name: 'Revisar PGR' });
+    patch = async () => resp(status, body);
+    fireEvent.click(screen.getByRole('button', { name: 'Assumir tarefa' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar' }));
+    expect((await screen.findByText(texto)).closest('[role="alert"]')).not.toBeNull();
+  });
+
+  it('o aviso de encaminhamento some ao mudar o status', async () => {
+    rota(detalhe);
+    render(<TarefaDetalhePage />);
+    await screen.findByRole('heading', { name: 'Revisar PGR' });
+    fireEvent.click(screen.getByRole('button', { name: 'Encaminhar a…' }));
+    await screen.findByRole('option', { name: 'Beto Sócio' });
+    fireEvent.change(screen.getByLabelText('Encaminhar para'), { target: { value: 'u-3' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar encaminhamento' }));
+    await screen.findByText('Tarefa encaminhada a Beto Sócio.');
+    statusResp = resp(200, { ...deOutro, status: 'in_progress' });
+    fireEvent.click(screen.getByRole('button', { name: 'Iniciar' }));
+    await waitFor(() => expect(screen.queryByText('Tarefa encaminhada a Beto Sócio.')).toBeNull());
+  });
+
+  it('abrir o formulário foca o select; Voltar limpa o erro da equipe', async () => {
+    fetchMock.mockImplementation(async (url: string) => (String(url).endsWith('/atuacao/equipe') ? resp(500, {}) : resp(200, detalhe)));
+    render(<TarefaDetalhePage />);
+    await screen.findByRole('heading', { name: 'Revisar PGR' });
+    fireEvent.click(screen.getByRole('button', { name: 'Encaminhar a…' }));
+    expect(screen.getByLabelText('Encaminhar para')).toHaveFocus();
+    await screen.findByText('Algo deu errado. Tente novamente.');
+    fireEvent.click(screen.getByRole('button', { name: 'Voltar' }));
+    expect(screen.queryByText('Algo deu errado. Tente novamente.')).toBeNull();
   });
 });

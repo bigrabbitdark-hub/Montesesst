@@ -3,7 +3,7 @@ import { Badge } from '@/components/ui/Badge';
 import { KpiCard } from '@/components/dashboard/KpiCard';
 import {
   AGENDA_STATUS_LABEL, AGENDA_STATUS_TONE, AGENDA_TIPO_LABEL, PRIORIDADE_LABEL, formatDataCurta, hrefAtuacaoSeguro,
-  type AgendaStatus, type AgendaTipo, type PainelEvento, type PainelPendencia, type PendenciaTipo, type Prioridade,
+  type AgendaStatus, type AgendaTipo, type PainelEvento, type PainelPendencia, type PendenciaTipo, type Prioridade, type TarefasKpi,
 } from '../api';
 
 export const MSG_SEM_PERMISSAO = 'Sem permissão para este bloco (peça ao administrador)';
@@ -33,6 +33,31 @@ export function BlocoSemDados({ indisponivel, onRetry }: { indisponivel: boolean
       </button>
     </div>
   );
+}
+
+// Pendências por categoria de espera (D2): contagem do servidor + link para a lista filtrada pelo status técnico.
+const CATEGORIAS_ESPERA = [
+  { campo: 'aguardando_cliente', status: 'awaiting_client', label: 'Aguardando cliente' },
+  { campo: 'aguardando_avaliacao', status: 'awaiting_review', label: 'Aguardando avaliação técnica' },
+  { campo: 'aguardando_execucao', status: 'awaiting_execution', label: 'Aguardando execução' },
+  { campo: 'aguardando_eficacia', status: 'awaiting_efficacy', label: 'Aguardando comprovação de eficácia' },
+] as const;
+
+export function CategoriasEspera({ tarefas }: { tarefas: TarefasKpi }) {
+  const itens = CATEGORIAS_ESPERA.filter((c) => typeof tarefas[c.campo] === 'number');
+  if (itens.length === 0) return <p className="text-sm text-dash-muted">Contagens por categoria indisponíveis no momento.</p>;
+  return (
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      {itens.map((c) => <KpiLink key={c.status} href={`/atuacao/tarefas?status=${c.status}`} label={c.label} value={tarefas[c.campo] as number} />)}
+    </div>
+  );
+}
+
+// tarefas null: mesma regra dos demais blocos; a nova tentativa fica no bloco Tarefas (mesma fonte), sem botão repetido.
+export function CategoriasEsperaSemDados({ indisponivel }: { indisponivel: boolean }) {
+  return indisponivel
+    ? <p role="alert" className="text-sm text-dash-status-crit-text">{MSG_INDISPONIVEL}</p>
+    : <p className="text-sm text-dash-muted">{MSG_SEM_PERMISSAO}</p>;
 }
 
 export function Secao({ id, titulo, children }: { id: string; titulo: string; children: React.ReactNode }) {
@@ -66,6 +91,7 @@ export function AgendaHoje({ hoje, total }: { hoje: PainelEvento[]; total: numbe
 
 const TIPO_PENDENCIA: Record<PendenciaTipo, { label: string; tone: 'crit' | 'warn' | 'info' }> = {
   tarefa_atrasada: { label: 'Tarefa atrasada', tone: 'crit' },
+  tarefa_aguardando: { label: 'Tarefa em espera', tone: 'warn' },
   documento_vencido: { label: 'Documento vencido', tone: 'crit' },
   documento_vencendo: { label: 'Documento vencendo', tone: 'warn' },
   documento_aguardando: { label: 'Aguardando ação', tone: 'info' },

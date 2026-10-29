@@ -31,6 +31,11 @@ export class ChangeTarefaStatusDto {
   @IsOptional() @IsString() @MaxLength(1000) note?: string;
 }
 
+export class EncaminharTarefaDto {
+  @IsUUID() assignee_user_id!: string;
+  @IsOptional() @IsString() @MaxLength(500) nota?: string;
+}
+
 export class ListTarefasQuery {
   @IsOptional() @IsString() @MaxLength(40) assignee?: string; // 'me' ou uuid
   @IsOptional() @IsIn(TAREFA_STATUS as unknown as string[]) status?: string;

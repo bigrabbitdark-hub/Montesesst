@@ -204,7 +204,10 @@ describe('atuacao-painel — dashboard e vencimentos da carteira (e2e HTTP)', ()
       expect(antes.tarefas).toBeNull();
 
       const r = (await get(tTudo, 'painel')).body;
-      expect(r.tarefas).toEqual({ abertas: 2, vencidas: 1, hoje: 1, bloqueadas: 0 });
+      expect(r.tarefas).toEqual({
+        abertas: 2, vencidas: 1, hoje: 1, bloqueadas: 0,
+        aguardando_cliente: 0, aguardando_avaliacao: 0, aguardando_execucao: 0, aguardando_eficacia: 0,
+      });
       expect(r.agenda.hoje.map((e: any) => e.titulo)).toEqual([`Hoje ev ${sufixo}`]);
       expect(r.agenda.hoje[0]).toMatchObject({ tipo: 'visita', tenant_id: montese.tenantId, status: 'agendado', data: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/) });
       expect(r.agenda.hoje_total).toBe(1);
@@ -218,6 +221,45 @@ describe('atuacao-painel — dashboard e vencimentos da carteira (e2e HTTP)', ()
       // Os mesmos dados NÃO aparecem para outro sócio (tarefas/agenda são do usuário)
       const outro = (await get(tVenc, 'painel')).body;
       expect(outro.tarefas).toBeNull(); // sem tasks.read
+    });
+  });
+
+  describe('/painel — tarefas em espera (D2)', () => {
+    it('contagens aditivas por categoria, campos antigos intactos, pendências tarefa_aguardando só com tasks.read', async () => {
+      const antes = (await get(tTudo, 'painel')).body.tarefas;
+      await db.client.query(
+        `INSERT INTO tasks (tenant_id, title, created_by, assignee_user_id, status, due_date)
+         VALUES ($1,$2,$3,$3,'awaiting_client', ${SP} + 4), ($1,$4,$3,$3,'awaiting_review', NULL),
+                ($1,$5,$3,$3,'awaiting_execution', ${SP}), ($1,$6,$3,$3,'awaiting_efficacy', ${SP} - 1),
+                ($1,$7,$3,$3,'completed', ${SP} + 1), ($1,$8,$3,$3,'awaiting_client', ${SP} + 9)`,
+        [montese.tenantId, `EspC ${sufixo}`, sTudo.userId, `EspR ${sufixo}`, `EspX ${sufixo}`, `EspE ${sufixo}`, `Fim ${sufixo}`, `EspC2 ${sufixo}`],
+      );
+      // tarefa de OUTRO sócio não conta
+      await db.client.query(
+        `INSERT INTO tasks (tenant_id, title, created_by, assignee_user_id, status) VALUES ($1,$2,$3,$3,'awaiting_client')`,
+        [montese.tenantId, `Alheia ${sufixo}`, sSoClientes.userId],
+      );
+      const r = (await get(tTudo, 'painel')).body;
+      expect(r.tarefas).toEqual({
+        abertas: antes.abertas + 5, vencidas: antes.vencidas + 1, hoje: antes.hoje + 1, bloqueadas: antes.bloqueadas,
+        aguardando_cliente: antes.aguardando_cliente + 2, aguardando_avaliacao: antes.aguardando_avaliacao + 1,
+        aguardando_execucao: antes.aguardando_execucao + 1, aguardando_eficacia: antes.aguardando_eficacia + 1,
+      });
+      const ag = r.pendencias.filter((p: any) => p.tipo === 'tarefa_aguardando');
+      const desc = ag.map((p: any) => p.descricao);
+      expect(desc).toEqual(expect.arrayContaining([`EspC ${sufixo}`, `EspR ${sufixo}`, `EspX ${sufixo}`, `EspC2 ${sufixo}`]));
+      expect(desc).not.toContain(`EspE ${sufixo}`); // atrasada: já aparece como tarefa_atrasada
+      expect(desc).not.toContain(`Fim ${sufixo}`);
+      expect(desc).not.toContain(`Alheia ${sufixo}`);
+      const c = ag.find((p: any) => p.descricao === `EspC ${sufixo}`);
+      expect(c).toMatchObject({ tenant_id: montese.tenantId, href: '/atuacao/tarefas?status=awaiting_client' });
+      expect(r.pendencias.length).toBeLessThanOrEqual(20);
+      expect(r.pendencias.some((p: any) => p.tipo === 'tarefa_atrasada' && p.descricao === `EspE ${sufixo}`)).toBe(true);
+      // sem tasks.read: bloco null e nenhuma pendência de tarefa
+      const sem = (await get(tClientes, 'painel')).body;
+      expect(sem.tarefas).toBeNull();
+      expect(sem.pendencias.some((p: any) => String(p.tipo).startsWith('tarefa_'))).toBe(false);
+      expect(JSON.stringify(sem)).not.toContain(`Esp`);
     });
   });
 

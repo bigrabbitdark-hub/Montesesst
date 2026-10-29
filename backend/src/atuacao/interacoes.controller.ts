@@ -1,9 +1,9 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Req } from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query, Req } from '@nestjs/common';
 import { Roles } from '../common/decorators/roles.decorator';
 import { RequirePermission } from '../common/decorators/require-permission.decorator';
 import { AuditService } from '../common/audit/audit.service';
 import { InteracoesService } from './interacoes.service';
-import { CreateInteracaoDto, UpdateInteracaoDto } from './dto/interacao.dto';
+import { CreateInteracaoDto, ListInteracoesQuery, UpdateInteracaoDto } from './dto/interacao.dto';
 
 // Caminhos completos ('clientes/:tenantId/interacoes' e 'interacoes/:id'): não colidem com
 // AtuacaoController ('clientes/:tenantId' tem um segmento a menos).
@@ -18,6 +18,19 @@ export class InteracoesController {
       actorUserId: req.user.id, actorRole: req.user.role, action, resourceType: 'client_interaction', resourceId: id,
       method: req.method, path: req.path, statusCode, ipAddress: req.ip, detail,
     });
+  }
+
+  // Histórico global. Audita a leitura como as demais listas da carteira: só o nome do módulo (e o tenant, se filtrado).
+  @RequirePermission('clients.read')
+  @Get('interacoes')
+  async listarGlobal(@Query() q: ListInteracoesQuery, @Req() req: any) {
+    const out = await req.withTenantContext((c: any) => this.interacoes.listarGlobal(c, q));
+    await this.audit.log({
+      actorUserId: req.user.id, actorRole: req.user.role, action: 'company.accessed', resourceType: 'tenant',
+      resourceId: q.tenantId ?? null, method: req.method, path: req.path, statusCode: 200, ipAddress: req.ip,
+      detail: 'modulo: atendimentos-carteira',
+    });
+    return out;
   }
 
   @RequirePermission('clients.read')

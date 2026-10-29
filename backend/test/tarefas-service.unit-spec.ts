@@ -166,7 +166,10 @@ describe('TarefasService', () => {
 
   it('resumo: conta abertas, vencidas, hoje e bloqueadas só do usuário', async () => {
     const { service, client, consultas } = montar([{ match: 'FROM tasks', rows: [{ abertas: 5, vencidas: 2, hoje: 1, bloqueadas: 1 }] }]);
-    expect(await service.resumo(client, U1)).toEqual({ abertas: 5, vencidas: 2, hoje: 1, bloqueadas: 1 });
+    expect(await service.resumo(client, U1)).toEqual({
+      abertas: 5, vencidas: 2, hoje: 1, bloqueadas: 1,
+      aguardando_cliente: 0, aguardando_avaliacao: 0, aguardando_execucao: 0, aguardando_eficacia: 0,
+    });
     expect(consultas).toHaveLength(1);
     expect(consultas[0].sql).toContain('COUNT(*) FILTER');
     expect(consultas[0].sql).toContain('assignee_user_id = $1');

@@ -1,5 +1,5 @@
-import { Transform } from 'class-transformer';
-import { IsIn, IsOptional, IsString, IsUUID, MaxLength, MinLength, ValidateIf } from 'class-validator';
+import { Transform, Type } from 'class-transformer';
+import { IsIn, IsInt, IsOptional, IsString, IsUUID, Matches, Max, MaxLength, Min, MinLength, ValidateIf } from 'class-validator';
 import { IsDataReal } from './validators';
 
 export const INTERACAO_TIPOS = ['reuniao', 'ligacao', 'email', 'visita', 'outro'] as const;
@@ -28,4 +28,13 @@ export class UpdateInteracaoDto {
   @quandoPresente() @IsString() @MaxLength(4000) decisions?: string;
   @quandoPresente() @IsString() @MaxLength(4000) next_steps?: string;
   @quandoPresente() @IsUUID() agenda_event_id?: string;
+}
+
+// GET /atuacao/interacoes (histórico global). Propriedades desconhecidas são rejeitadas pelo ValidationPipe global.
+export class ListInteracoesQuery {
+  @IsOptional() @IsUUID() tenantId?: string;
+  @IsOptional() @IsIn(TIPOS) tipo?: string;
+  @IsOptional() @Matches(/^\d{4}-\d{2}-\d{2}$/) @IsDataReal() from?: string;
+  @IsOptional() @Matches(/^\d{4}-\d{2}-\d{2}$/) @IsDataReal() to?: string;
+  @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(10000) page?: number;
 }

@@ -615,7 +615,10 @@ describe('atuacao-tarefas — HTTP (e2e)', () => {
     );
     const r = await http().get('/atuacao/tarefas/resumo').set(auth(tResumo));
     expect(r.status).toBe(200);
-    expect(r.body).toEqual({ abertas: 4, vencidas: 1, hoje: 1, bloqueadas: 1 });
+    expect(r.body).toEqual({
+      abertas: 4, vencidas: 1, hoje: 1, bloqueadas: 1,
+      aguardando_cliente: 0, aguardando_avaliacao: 0, aguardando_execucao: 0, aguardando_eficacia: 0,
+    });
 
     const venc = await http().get('/atuacao/tarefas?assignee=me&vencidas=true').set(auth(tResumo));
     expect(venc.body.map((x: any) => x.id)).toEqual([vencidaId]);

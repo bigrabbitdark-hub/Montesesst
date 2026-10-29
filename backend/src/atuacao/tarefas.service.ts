@@ -1,8 +1,8 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import type { PoolClient } from 'pg';
 import { buildSafeSetClause } from '../common/safe-update.util';
 import { ABERTAS, exigeNota, transicaoPermitida, type TarefaStatus } from './tarefa-status';
-import type { ChangeTarefaStatusDto, CreateTarefaDto, ListTarefasQuery, UpdateTarefaDto } from './dto/tarefa.dto';
+import type { ChangeTarefaStatusDto, CreateTarefaDto, EncaminharTarefaDto, ListTarefasQuery, UpdateTarefaDto } from './dto/tarefa.dto';
 
 export interface TarefaResumo {
   id: string; tenant_id: string; tenant_name: string; title: string; priority: string; status: string;
@@ -109,6 +109,26 @@ export class TarefasService {
     return { tarefa: await this.obter(client, id), reassigned: novoResp ? { from: atual, to: novoResp } : null };
   }
 
+  // Encaminhar = trocar o responsável por OUTRO sócio ativo, com nota opcional (só no histórico, nunca na auditoria).
+  // 404 uniforme (inexistente/invisível); tarefa encerrada => 409; para si mesmo ou para o responsável atual => 400.
+  async encaminhar(
+    client: PoolClient, actorId: string, id: string, dto: EncaminharTarefaDto,
+  ): Promise<{ tarefa: TarefaDetalhe; de: string; para: string }> {
+    const cur = await client.query<{ tenant_id: string; status: TarefaStatus; assignee_user_id: string }>(
+      'SELECT tenant_id, status, assignee_user_id FROM tasks WHERE id = $1 FOR UPDATE',
+      [id],
+    );
+    if (cur.rowCount === 0) throw new NotFoundException('Tarefa não encontrada');
+    const { tenant_id, status, assignee_user_id: atual } = cur.rows[0];
+    if (!ABERTAS.includes(status)) throw new ConflictException('Tarefa encerrada não pode ser encaminhada');
+    if (dto.assignee_user_id === actorId) throw new BadRequestException('Não é possível encaminhar para si mesmo');
+    if (dto.assignee_user_id === atual) throw new BadRequestException('Tarefa já está com este responsável');
+    await this.assertSocio(client, dto.assignee_user_id);
+    await client.query('UPDATE tasks SET assignee_user_id = $2 WHERE id = $1', [id, dto.assignee_user_id]);
+    await this.evento(client, id, tenant_id, actorId, 'assigned', atual, dto.assignee_user_id, dto.nota?.trim() || null);
+    return { tarefa: await this.obter(client, id), de: atual, para: dto.assignee_user_id };
+  }
+
   async mudarStatus(client: PoolClient, actorId: string, id: string, dto: ChangeTarefaStatusDto): Promise<TarefaDetalhe> {
     const cur = await client.query<{ tenant_id: string; status: TarefaStatus }>(
       'SELECT tenant_id, status FROM tasks WHERE id = $1 FOR UPDATE',
@@ -158,11 +178,19 @@ export class TarefasService {
       `SELECT COUNT(*) FILTER (WHERE status = ANY($2))::int AS abertas,
               COUNT(*) FILTER (WHERE status = ANY($2) AND due_date < ${HOJE_SP})::int AS vencidas,
               COUNT(*) FILTER (WHERE status = ANY($2) AND due_date = ${HOJE_SP})::int AS hoje,
-              COUNT(*) FILTER (WHERE status = 'blocked')::int AS bloqueadas
+              COUNT(*) FILTER (WHERE status = 'blocked')::int AS bloqueadas,
+              COUNT(*) FILTER (WHERE status = 'awaiting_client')::int AS aguardando_cliente,
+              COUNT(*) FILTER (WHERE status = 'awaiting_review')::int AS aguardando_avaliacao,
+              COUNT(*) FILTER (WHERE status = 'awaiting_execution')::int AS aguardando_execucao,
+              COUNT(*) FILTER (WHERE status = 'awaiting_efficacy')::int AS aguardando_eficacia
          FROM tasks WHERE assignee_user_id = $1`,
       [userId, ABERTAS],
     );
     const r = res.rows[0];
-    return { abertas: r.abertas, vencidas: r.vencidas, hoje: r.hoje, bloqueadas: r.bloqueadas };
+    return {
+      abertas: r.abertas, vencidas: r.vencidas, hoje: r.hoje, bloqueadas: r.bloqueadas,
+      aguardando_cliente: r.aguardando_cliente ?? 0, aguardando_avaliacao: r.aguardando_avaliacao ?? 0,
+      aguardando_execucao: r.aguardando_execucao ?? 0, aguardando_eficacia: r.aguardando_eficacia ?? 0,
+    };
   }
 }
