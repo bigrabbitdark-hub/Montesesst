@@ -61,7 +61,7 @@ export function SiteFooter() {
             <Image src="/brand/logo-icon.jpg" alt="" width={22} height={22} className="rounded-[5px]" />
             <p className="text-xs text-brand-100">&copy; {new Date().getFullYear()} Montese SST. Todos os direitos reservados.</p>
           </div>
-          <p className="text-xs text-brand-100">{`CNPJ ${company.cnpj} · montesesst.com.br`}</p>
+          <p className="text-xs text-brand-100">{[company.cnpj ? `CNPJ ${company.cnpj}` : null, 'montesesst.com.br'].filter(Boolean).join(' · ')}</p>
         </div>
       </div>
     </footer>

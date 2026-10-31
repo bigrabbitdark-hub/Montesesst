@@ -21,7 +21,7 @@ export interface CompanyInfo {
 export const company: CompanyInfo = {
   nomeFantasia: 'Montese SST',
   razaoSocial: null,
-  cnpj: '69.203.754/0001-45',
+  cnpj: '',
   endereco: {
     logradouro: 'Avenida Marcolino Martins Cabral',
     numero: '2644',
@@ -41,7 +41,9 @@ export function formatAddress(): string {
 
 export function formatIdentification(): string {
   const razao = company.razaoSocial ?? RAZAO_SOCIAL_PENDENTE;
-  return `${razao}, inscrita no CNPJ sob o nº ${company.cnpj}, com endereço comercial na ${formatAddress()}`;
+  return company.cnpj 
+    ? `${razao}, inscrita no CNPJ sob o nº ${company.cnpj}, com endereço comercial na ${formatAddress()}`
+    : `${razao}, com endereço comercial na ${formatAddress()}`;
 }
 
 // Os documentos em content/legal/*.mdx usam este token onde vai a
