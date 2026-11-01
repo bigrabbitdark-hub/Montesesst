@@ -366,12 +366,21 @@ Opções:
 | `FILES_BACKUP_ONLY_MISSING=1` | só copia o que falta; o divergente vai para `notOverwritten` |
 | `FILES_BACKUP_CONCURRENCY` / `_RETRIES` / `_TIMEOUT_MS` | 4 / 3 / 300000 por padrão |
 
+### Estado em produção (2026-11-01)
+
+- Bucket de backup `montese-backup-arquivos` (conta Cloudflare da Montese, região automática ENAM), token só desse bucket, `R2_BACKUP_*` no `.env`.
+- Scripts instalados em `/opt/Montese/ops/` (cópias idênticas ao commit `de30063`).
+- Primeira cópia: 720 de 720 arquivos (402 MB), 0 falhas; 2ª execução copiou 0; `verify`: 720 iguais, 0 faltando, 0 divergentes.
+- Cron do root: `10 4 * * *` (04:10 UTC), após o backup do banco (03:00 UTC).
+- **NÃO VERIFICADO:** acesso público desligado e Bucket Lock (conferir no painel); `If-None-Match` no R2 real (testar em objeto descartável antes de qualquer restore); primeira execução pelo cron.
+- Lição: o endpoint deve ser exatamente o da conta (`https://<id-da-conta>.r2.cloudflarestorage.com`); um endpoint digitado errado falha com "não foi possível resolver o host".
+
 ### Passo a passo para o DONO
 
 **(a) Criar o bucket dedicado e o token no painel da Cloudflare**
 
 1. Em R2, crie um bucket novo com nome **diferente** do principal, ex.:
-   `montese-files-backup`. Deixe **sem** acesso público: sem `r2.dev` e sem
+   `montese-backup-arquivos`. Deixe **sem** acesso público: sem `r2.dev` e sem
    domínio customizado.
 2. Em R2 → *Manage API tokens*, crie um token **novo** com leitura e escrita
    de objetos, **restrito somente a esse bucket**.
@@ -397,7 +406,7 @@ no git, no chat, em issue ou em print:
 R2_BACKUP_ENDPOINT=<endpoint S3 da conta>
 R2_BACKUP_ACCESS_KEY_ID=<access key do token NOVO>
 R2_BACKUP_SECRET_ACCESS_KEY=<secret do token NOVO>
-R2_BACKUP_BUCKET=montese-files-backup
+R2_BACKUP_BUCKET=montese-backup-arquivos
 ```
 
 **(c) docker-compose: NÃO acrescentar**
@@ -424,7 +433,7 @@ Use subshell `( … )` para as variáveis de controle não ficarem no seu shell.
 Nenhum segredo vai na linha de comando: o script lê do `.env`.
 
 ```bash
-( FILES_BACKUP_ACTION=init-destination FILES_BACKUP_CONFIRM_BUCKET=montese-files-backup /opt/Montese/ops/backup-r2-files.sh )
+( FILES_BACKUP_ACTION=init-destination FILES_BACKUP_CONFIRM_BUCKET=montese-backup-arquivos /opt/Montese/ops/backup-r2-files.sh )
 ( FILES_BACKUP_DRY_RUN=1 /opt/Montese/ops/backup-r2-files.sh )            # espera wouldCopy ≈ 718, failed 0
 /opt/Montese/ops/backup-r2-files.sh                                        # espera copied ≈ 718, failed 0
 /opt/Montese/ops/backup-r2-files.sh                                        # 2ª vez: copied 0
