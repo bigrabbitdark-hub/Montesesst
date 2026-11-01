@@ -277,12 +277,14 @@ describe('Assinatura eletrônica de EPI: criação, listagem, revogação e pres
     const emp = await newEmployee('Func Termo Rascunho');
     const d = await deliver(emp, 1);
     process.env.EPI_SIGNATURE_ALLOW_DRAFT_TERM = 'false';
+    (EPI_TERM as any).draft = true; // simula um termo ainda em rascunho (o vigente é aprovado)
     try {
       const r = await create(emp);
       expect(r.status).toBe(409);
       expect((await sql.query('SELECT 1 FROM epi_signature_requests WHERE employee_id = $1', [emp])).rowCount).toBe(0);
       expect((await delivery(d)).signature_status).toBe('pendente');
     } finally {
+      (EPI_TERM as any).draft = false;
       process.env.EPI_SIGNATURE_ALLOW_DRAFT_TERM = 'true';
     }
   });
@@ -409,6 +411,7 @@ describe('Assinatura eletrônica de EPI: criação, listagem, revogação e pres
     const link = await create(emp);
     const body = { delivery_ids: [d], witness_name: 'Testemunha Termo', reason: 'Funcionário sem celular' };
     process.env.EPI_SIGNATURE_ALLOW_DRAFT_TERM = 'false';
+    (EPI_TERM as any).draft = true; // simula um termo ainda em rascunho (o vigente é aprovado)
     try {
       const off = await inPerson(body);
       expect(off.status).toBe(409);
@@ -416,6 +419,7 @@ describe('Assinatura eletrônica de EPI: criação, listagem, revogação e pres
       expect((await sql.query('SELECT 1 FROM epi_in_person_signatures WHERE employee_id = $1', [emp])).rowCount).toBe(0);
       expect(await statusOf(link.body.id)).toBe('ativa'); // o link também não foi revogado
     } finally {
+      (EPI_TERM as any).draft = false;
       process.env.EPI_SIGNATURE_ALLOW_DRAFT_TERM = 'true';
     }
     const on = await inPerson(body);

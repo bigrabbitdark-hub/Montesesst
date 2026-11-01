@@ -1,9 +1,9 @@
-// TEXTO EM RASCUNHO: precisa de revisão do proprietário/jurídico antes de uso definitivo.
-// Não cita norma, artigo ou prazo. A versão é gravada em cada documento emitido.
+// Texto aprovado pelo proprietário em 2026-11-01 (versão v1-2026-11). Não cita norma, artigo ou prazo.
+// A versão e o hash do texto são gravados em cada documento emitido: alterar o texto exige nova versão.
 export const EPI_TERM = {
-  version: 'rascunho-1',
-  draft: true,
-  title: 'Termo de recebimento e responsabilidade (RASCUNHO)',
+  version: 'v1-2026-11',
+  draft: false,
+  title: 'Termo de recebimento e responsabilidade',
   paragraphs: [
     'Declaro ter recebido os equipamentos de proteção individual (EPI) relacionados nesta ficha, nas quantidades e datas indicadas.',
     'Comprometo-me a utilizá-los apenas para a finalidade a que se destinam, seguindo as orientações recebidas sobre o uso correto.',

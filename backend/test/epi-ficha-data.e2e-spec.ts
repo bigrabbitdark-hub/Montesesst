@@ -116,7 +116,7 @@ describe('GET /epi-fichas/employees/:employeeId (e2e)', () => {
     expect(types).toEqual(['entrega', 'devolucao']);
     expect(r.body.lines[0]).toMatchObject({ quantity: 2, signature_status: 'pendente', reversed: false, source: 'livro' });
     expect(r.body.lines[1].signature_status).toBeNull(); // devolução não tem status próprio
-    expect(r.body.term.draft).toBe(true);
+    expect(r.body.term.draft).toBe(false);
   });
 
   it('nenhuma resposta de ficha contém 11 dígitos seguidos (CPF completo), nem em outro funcionário', async () => {
