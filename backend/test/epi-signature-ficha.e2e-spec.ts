@@ -480,7 +480,8 @@ describe('Ficha de EPI com assinatura eletrônica e comprovante em PDF (e2e)', (
       expect(text).toContain('João Comprovante Silva');
       expect(text).toContain('CA CA-SIGF-1');
       expect(text).toContain('Assinatura eletrônica simples, registrada com aceite explícito, código de confirmação e evidências técnicas; não é assinatura digital com certificado ICP-Brasil.');
-      expect(text).toContain('RASCUNHO');
+      expect(text).not.toContain('RASCUNHO'); // termo vigente aprovado: sem marca de rascunho
+      expect(text).toContain(EPI_TERM.version);
       expect(text).toContain('America/Sao_Paulo');
       // o hash exibido é mesmo o SHA-256 do payload JSON da evidência (o banco hasheia v_payload::text)
       const payloadText = (await sql.query('SELECT evidence_payload::text AS t FROM epi_signatures WHERE id = $1', [sigId])).rows[0].t as string;
