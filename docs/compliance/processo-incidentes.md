@@ -63,13 +63,7 @@ comunicar aos titulares finais.
 
 ### Identificação do controlador a ter à mão
 
-Ao comunicar um incidente (ANPD, empresa cliente ou titulares), tenha pronta a
-identificação de quem comunica: **Montese SST — CNPJ 69.203.754/0001-45 —
-Avenida Marcolino Martins Cabral, nº 2644, Bairro Aeroporto, Tubarão/SC, CEP
-88705-004 — Encarregado: privacidade@montesesst.com.br**. A razão social
-continua pendente (ver `lgpd-compliance.md` §2). ⚠️ Confirmar com o formulário
-vigente da ANPD quais campos de identificação ele exige — este documento não
-os enumera.
+Ao comunicar um incidente (ANPD, empresa cliente ou titulares), informe os dados validados disponíveis: **Montese SST — Avenida Marcolino Martins Cabral, nº 2644, Bairro Aeroporto, Tubarão/SC, CEP 88705-004 — Encarregado: privacidade@montesesst.com.br**. A razão social e o CNPJ institucional estão pendentes de validação; não reutilize identificadores antigos. ⚠️ Confirme com o formulário vigente da ANPD quais campos de identificação ele exige — este documento não os enumera.
 
 ## 6. Registro
 

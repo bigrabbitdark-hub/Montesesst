@@ -208,16 +208,7 @@ decompostas.
   está em produção como código, e desde 2026-08-28 o Copiloto de IA
   está ativo de verdade (não só planejado) — recomendado priorizar
   esse documento agora, não é mais "sem pressa".
-- **Placeholders nos Termos de Uso e na Política de Privacidade** — CNPJ
-  (`69.203.754/0001-45`) e endereço comercial preenchidos em 2026-09-21
-  (fonte: `frontend/src/lib/company.ts`); **verificado em 2026-09-28**: o CNPJ
-  aparece nos rodapés do site, do painel empresa/técnico e do admin e nas telas
-  de pagamento, e o fundador o reafirmou para uso em segurança/privacidade
-  (identificação do controlador em `lgpd-compliance.md` §2 e em
-  `processo-incidentes.md` §5). Pendentes, dependem do
-  fundador: **razão social** (`[RAZÃO SOCIAL — PREENCHER]`) e **foro**
-  (`[CIDADE/ESTADO — PREENCHER]`, cláusula 10 dos Termos — escolha
-  jurídica; não decorre do endereço da sede).
+- **Identificação empresarial nas páginas legais** — o CNPJ institucional não está configurado nem é exibido no código atual; as superfícies condicionam a saída à existência de um valor em `frontend/src/lib/company.ts`. A publicação no ambiente do site ainda precisa ser confirmada após deploy. Termos e Privacidade mantêm pendentes a razão social (`[RAZÃO SOCIAL — PREENCHER]`) e o foro (`[CIDADE/ESTADO — PREENCHER]`), sujeitos a validação jurídica.
 - **Pontos ⚠️ que dependem de validação jurídica**, espalhados por
   `lgpd-compliance.md` e pelas páginas publicadas hoje (prazo de
   retenção de dado de saúde, prazo de comunicação de incidente,

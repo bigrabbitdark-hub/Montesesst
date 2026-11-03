@@ -282,7 +282,7 @@ não bater, `ram_high` é entregue **desligada** por constante
 
 ## 8. CNPJ e endereço comercial
 
-**Dados fornecidos pelo fundador (2026-09-21):** CNPJ `69.203.754/0001-45`
+**Dados fornecidos pelo fundador (2026-09-21):** CNPJ `[CNPJ REDIGIDO]`
 (dígitos verificadores conferidos — válido); endereço: Avenida Marcolino
 Martins Cabral, nº 2644, Bairro Aeroporto, Tubarão/SC, CEP 88705-004.
 

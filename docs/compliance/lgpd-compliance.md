@@ -26,22 +26,19 @@ documento sinaliza isso explicitamente em vez de decidir por conta própria.
 ### Identificação do controlador (Montese SST)
 
 Para os dados em que a Montese é **controladora** (dados de conta de quem usa a
-plataforma — ver "Controlador vs. operador" abaixo), esta é a identificação
-dela. Dados fornecidos pelo fundador em 2026-09-21 e reafirmados em 2026-09-28;
-a fonte única no código é `frontend/src/lib/company.ts` (se mudar, atualizar
-lá primeiro e depois aqui).
+plataforma — ver "Controlador vs. operador" abaixo), esta é a identificação.
+
+Os dados institucionais devem ser mantidos nesta fonte central de configuração quando validados. O CNPJ institucional está sem valor até confirmação jurídica; não reutilizar registros anteriores como identificação vigente.
 
 | Campo | Valor |
 |---|---|
 | Nome fantasia | Montese SST |
 | Razão social | **Pendente — o fundador ainda não informou.** Nunca inventar: nos textos públicos aparece `[RAZÃO SOCIAL — PREENCHER]` |
-| CNPJ | 69.203.754/0001-45 |
+| CNPJ institucional | Não divulgado; cadastro pendente de validação jurídica. |
 | Endereço comercial | Avenida Marcolino Martins Cabral, nº 2644, Bairro Aeroporto, Tubarão/SC, CEP 88705-004 |
 | Canal do titular e do Encarregado | privacidade@montesesst.com.br |
 
-Onde o CNPJ já aparece publicamente: rodapé do site, do painel da empresa e do
-técnico, do painel administrativo e nas telas de pagamento; os textos legais
-(`/termos`, `/privacidade`) o recebem pelo token `[[EMPRESA_IDENTIFICACAO]]`.
+No código atual, o CNPJ institucional não é divulgado. `company.cnpj` permanece vazio em `frontend/src/lib/company.ts`; rodapés e avisos de pagamento só exibem o campo quando configurado. A identificação dos Termos e da Política de Privacidade é montada pelo token `[[EMPRESA_IDENTIFICACAO]]` e omite a cláusula de CNPJ enquanto o campo estiver vazio. A publicação no ambiente do site ainda precisa ser confirmada após deploy; razão social e identificação jurídica seguem pendentes de validação.
 
 ### Encarregado (DPO)
 

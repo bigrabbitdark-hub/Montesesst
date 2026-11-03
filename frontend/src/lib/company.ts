@@ -1,9 +1,8 @@
-// Fonte única dos dados cadastrais públicos da Montese SST. Forneceu o
-// fundador em 2026-09-21. Onde cada dado aparece (decisão do fundador):
-//  - CNPJ: só em rodapés e telas de pagamento;
-//  - endereço comercial: só nos documentos legais (Termos e Privacidade).
-// A razão social ainda NÃO foi informada — nunca inventar: enquanto for
-// `null`, os textos legais mostram o placeholder explícito abaixo.
+// Fonte única dos dados institucionais da Montese SST. O CNPJ fica vazio até
+// haver um novo dado validado; as superfícies que o exibem omitem o campo vazio.
+// O endereço comercial é usado nos documentos legais. A razão social ainda
+// não foi informada — nunca inventar: enquanto for `null`, os textos legais
+// mostram o placeholder explícito abaixo.
 export interface CompanyInfo {
   nomeFantasia: string;
   razaoSocial: string | null;

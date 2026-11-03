@@ -21,7 +21,7 @@ Valem para todas as tarefas (copiados da spec e do `PRODUCT.md`):
 - **Contraste de texto ≥ 4,5:1**; foco visível em todo elemento interativo; respeitar `prefers-reduced-motion`.
 - **Endpoints novos:** `@Roles('admin')`, somente leitura, **nenhuma migration**, e `/alertas` **não faz chamada externa** (só banco e `os`).
 - **Fuso:** "dia", "hoje" e "mês" financeiros em `America/Sao_Paulo`.
-- **Dados da empresa** (fornecidos pelo fundador em 2026-09-21): CNPJ `69.203.754/0001-45`; endereço comercial Avenida Marcolino Martins Cabral, nº 2644, Bairro Aeroporto, Tubarão/SC, CEP 88705-004. CNPJ só em rodapés e telas de pagamento; endereço só em Termos de Uso e Política de Privacidade. **Razão social e foro não são preenchidos** (continuam placeholders explícitos).
+- **Dados da empresa** (fornecidos pelo fundador em 2026-09-21): CNPJ `[CNPJ REDIGIDO]`; endereço comercial Avenida Marcolino Martins Cabral, nº 2644, Bairro Aeroporto, Tubarão/SC, CEP 88705-004. CNPJ só em rodapés e telas de pagamento; endereço só em Termos de Uso e Política de Privacidade. **Razão social e foro não são preenchidos** (continuam placeholders explícitos).
 - **Texto de interface, mensagens de commit e comentários em português do Brasil.**
 - **Nome do produto no admin:** "Montese Control" ("Centro de comando da Montese").
 
@@ -1614,7 +1614,7 @@ export interface CompanyInfo {
 export const company: CompanyInfo = {
   nomeFantasia: 'Montese SST',
   razaoSocial: null,
-  cnpj: '69.203.754/0001-45',
+  cnpj: '[CNPJ REDIGIDO]',
   endereco: {
     logradouro: 'Avenida Marcolino Martins Cabral',
     numero: '2644',
@@ -1709,7 +1709,7 @@ por
 ```bash
 cd /opt/Montese/frontend && npx tsc --noEmit && echo "tipos ok"
 for p in termos privacidade contato planos; do
-  echo "== /$p: CNPJ=$(curl -s http://localhost:3100/$p | grep -o '69.203.754/0001-45' | wc -l) endereço=$(curl -s http://localhost:3100/$p | grep -c 'Marcolino Martins Cabral')"
+  echo "== /$p: CNPJ=$(curl -s http://localhost:3100/$p | grep -o '[CNPJ REDIGIDO]' | wc -l) endereço=$(curl -s http://localhost:3100/$p | grep -c 'Marcolino Martins Cabral')"
 done
 curl -s http://localhost:3100/termos | grep -o '\[RAZÃO SOCIAL — PREENCHER\]\|\[CIDADE/ESTADO — PREENCHER\]' | sort | uniq -c
 ```
@@ -1743,7 +1743,7 @@ EOF
 
 **Interfaces:**
 - Consumes: `company` (`lib/company.ts`, Tarefa 5).
-- Produces: `PaymentIssuerNote({ className?: string })` — renderiza `Pagamento processado pelo Mercado Pago · Montese SST · CNPJ 69.203.754/0001-45`.
+- Produces: `PaymentIssuerNote({ className?: string })` — renderiza `Pagamento processado pelo Mercado Pago · Montese SST · CNPJ [CNPJ REDIGIDO]`.
 
 - [ ] **Step 1: Criar o componente**
 
@@ -1885,7 +1885,7 @@ por
 ```bash
 cd /opt/Montese/frontend && npx tsc --noEmit && echo "tipos ok"
 for p in planos planos/assinatura-concluida; do
-  echo "== /$p: CNPJ=$(curl -s http://localhost:3100/$p | grep -o '69.203.754/0001-45' | wc -l) endereço=$(curl -s http://localhost:3100/$p | grep -c 'Marcolino')"
+  echo "== /$p: CNPJ=$(curl -s http://localhost:3100/$p | grep -o '[CNPJ REDIGIDO]' | wc -l) endereço=$(curl -s http://localhost:3100/$p | grep -c 'Marcolino')"
 done
 node "$SCRATCH/qa/shots.mjs" cheio "$SCRATCH/qa/out" /tecnico/planos,/admin/financeiro desktop
 ```
@@ -2543,7 +2543,7 @@ node shots.mjs cheio out /admin/empresas mobile
 ```
 
 Abra os PNGs em `$SCRATCH/qa/out/` com a ferramenta Read e confira:
-1. **Desktop:** sidebar de 256 px com o logo (ícone + MONTESE/CONTROL), grupos "Financeiro/Clientes/Sistema", item da página atual destacado em verde com barra à esquerda; conteúdo das telas antigas **legível** (texto claro sobre marinho, bordas visíveis, botões verdes, links de erro em vermelho claro); rodapé com "CNPJ 69.203.754/0001-45".
+1. **Desktop:** sidebar de 256 px com o logo (ícone + MONTESE/CONTROL), grupos "Financeiro/Clientes/Sistema", item da página atual destacado em verde com barra à esquerda; conteúdo das telas antigas **legível** (texto claro sobre marinho, bordas visíveis, botões verdes, links de erro em vermelho claro); rodapé com "CNPJ [CNPJ REDIGIDO]".
 2. **Mobile:** sem sidebar, cabeçalho com hambúrguer + marca compacta; `-drawer.png` mostra o drawer aberto sobre um overlay escuro.
 3. O log do script não mostra `pageerror`.
 4. Logo: se houver halo/serrilhado, volte à Tarefa 7 (fallback).
@@ -5207,7 +5207,7 @@ Em `/opt/Montese/PRODUCT.md`, com o Edit tool:
 1. Trocar `- **Admin:** operação interna da Montese (Fase 7, ainda não construída).` por
    `- **Admin:** operação interna da Montese — painel \`/admin\` (Fase 7) já construído: gestão de empresas, técnicos e parceiros, financeiro (Mercado Pago), auditoria, base normativa, checklist SST e Visão Geral operacional (status da VPS, alertas, uso de IA); visual "Montese Control" em tema escuro.`
 2. Trocar `Ainda **não construído** (roadmap, não produto hoje): Dashboard Admin (Fase 7) e Copiloto/Agente de IA (Fase 8) —` por `Ainda **não construído** (roadmap, não produto hoje): Copiloto/Agente de IA (Fase 8) —` (**não** mexer no resto da frase — ver o aviso no relatório final).
-3. Trocar `Não inventar outro telefone/endereço.` por `Dados cadastrais fornecidos pelo fundador em 2026-09-21: CNPJ 69.203.754/0001-45 e endereço comercial Avenida Marcolino Martins Cabral, nº 2644, Bairro Aeroporto, Tubarão/SC, CEP 88705-004 (fonte única: \`frontend/src/lib/company.ts\`). CNPJ só em rodapés e telas de pagamento; endereço só nos documentos legais. Razão social ainda não informada. Não inventar outro telefone, endereço ou razão social.`
+3. Trocar `Não inventar outro telefone/endereço.` por `Dados cadastrais fornecidos pelo fundador em 2026-09-21: CNPJ [CNPJ REDIGIDO] e endereço comercial Avenida Marcolino Martins Cabral, nº 2644, Bairro Aeroporto, Tubarão/SC, CEP 88705-004 (fonte única: \`frontend/src/lib/company.ts\`). CNPJ só em rodapés e telas de pagamento; endereço só nos documentos legais. Razão social ainda não informada. Não inventar outro telefone, endereço ou razão social.`
 4. Depois da linha que começa com `- Tipografia: Poppins.` adicionar: `- Painel admin ("Montese Control"): tema escuro marinho + verde da marca, escopado a \`/admin\` — exceção intencional ao tema claro do resto do produto (decisão do fundador em 2026-09-21).`
 
 Em `/opt/Montese/docs/compliance/matriz-conformidade.md`:
@@ -5217,7 +5217,7 @@ grep -n "PREENCHER" /opt/Montese/docs/compliance/matriz-conformidade.md
 ```
 
 - Na linha do item "Termos de Uso" (≈ 42): trocar o trecho `e dois placeholders explícitos (\`[RAZÃO SOCIAL/CNPJ — PREENCHER]\`, \`[CIDADE/ESTADO — PREENCHER]\`) aguardando dado real do fundador` por `CNPJ e endereço comercial preenchidos em 2026-09-21; seguem como placeholders explícitos a razão social (\`[RAZÃO SOCIAL — PREENCHER]\`) e o foro (\`[CIDADE/ESTADO — PREENCHER]\`), aguardando dado real do fundador`.
-- No bullet "Dois placeholders nos Termos de Uso" (≈ 211): leia as linhas ao redor (`sed -n 205,218p`) e reescreva o bullet inteiro como: `**Placeholders nos Termos de Uso e na Política de Privacidade** — CNPJ (\`69.203.754/0001-45\`) e endereço comercial preenchidos em 2026-09-21 (fonte: \`frontend/src/lib/company.ts\`). Pendentes, dependem do fundador: **razão social** (\`[RAZÃO SOCIAL — PREENCHER]\`) e **foro** (\`[CIDADE/ESTADO — PREENCHER]\`, cláusula 10 dos Termos — escolha jurídica; não decorre do endereço da sede).` Preserve o restante da lista.
+- No bullet "Dois placeholders nos Termos de Uso" (≈ 211): leia as linhas ao redor (`sed -n 205,218p`) e reescreva o bullet inteiro como: `**Placeholders nos Termos de Uso e na Política de Privacidade** — CNPJ (\`[CNPJ REDIGIDO]\`) e endereço comercial preenchidos em 2026-09-21 (fonte: \`frontend/src/lib/company.ts\`). Pendentes, dependem do fundador: **razão social** (\`[RAZÃO SOCIAL — PREENCHER]\`) e **foro** (\`[CIDADE/ESTADO — PREENCHER]\`, cláusula 10 dos Termos — escolha jurídica; não decorre do endereço da sede).` Preserve o restante da lista.
 
 **Não** editar `docs/compliance/lgpd-compliance.md` (mudanças não commitadas do fundador).
 
@@ -5281,7 +5281,7 @@ cd "$SCRATCH/qa" && node checks.mjs
 node shots.mjs cheio out /admin/overview desktop,tablet,mobile
 ```
 
-Expected: tudo verde/OK. Abra `cheio-desktop-_admin_overview.png` uma última vez e compare com a imagem de referência do fundador (mesma composição, logo da Montese, dados reais ou selo "Em construção"). Confira também `curl -s http://localhost:3100/planos | grep -c "69.203.754/0001-45"` ≥ 1 e `curl -s http://localhost:3100/contato | grep -c Marcolino` = 0.
+Expected: tudo verde/OK. Abra `cheio-desktop-_admin_overview.png` uma última vez e compare com a imagem de referência do fundador (mesma composição, logo da Montese, dados reais ou selo "Em construção"). Confira também `curl -s http://localhost:3100/planos | grep -c "[CNPJ REDIGIDO]"` ≥ 1 e `curl -s http://localhost:3100/contato | grep -c Marcolino` = 0.
 
 Auditoria dos commits (nada do fundador foi levado e nada fora do escopo mudou):
 
