@@ -12,6 +12,7 @@ import { TechniciansModule } from './technicians/technicians.module';
 import { PartnersModule } from './partners/partners.module';
 import { TenantsModule } from './tenants/tenants.module';
 import { AtuacaoModule } from './atuacao/atuacao.module';
+import { CarteiraSociosModule } from './admin/carteira-socios/carteira-socios.module';
 import { CnpjLookupModule } from './cnpj-lookup/cnpj-lookup.module';
 import { CompanyUnitsModule } from './company-units/company-units.module';
 import { TenantTechniciansModule } from './tenant-technicians/tenant-technicians.module';
@@ -76,6 +77,7 @@ import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
     PartnersModule,
     TenantsModule,
     AtuacaoModule,
+    CarteiraSociosModule,
     CnpjLookupModule,
     CompanyUnitsModule,
     TenantTechniciansModule,
