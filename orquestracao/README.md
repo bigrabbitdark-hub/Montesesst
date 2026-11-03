@@ -4,7 +4,7 @@ Você descreve o que precisa. O chefe planeja, pede o seu OK, distribui para os 
 (cada um com a IA definida em `agentes.conf`), outro modelo revisa, e você decide o commit.
 
 ## Onde rodar
-Terminal do Orca na VPS (alvo `root@187.127.54.72`). Sempre comece com:
+Terminal do Orca na VPS (alvo `root@<IP-DA-VPS>`). Sempre comece com:
 
 ```bash
 cd /opt/Montese

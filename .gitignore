@@ -34,3 +34,12 @@ backend/eval/_dev/
 .vite/
 docker-compose.dev-redis-temp.yml
 nginx/default.conf.pre-leads
+
+# Chaves, certificados e dumps — nunca no git (o certificado de teste do eSocial é exceção versionada)
+*.pem
+*.key
+*.p12
+*.crt
+*.dump
+*.sql.gz
+!backend/test/fixtures/esocial/test-certificate.pfx

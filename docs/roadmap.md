@@ -226,10 +226,10 @@ ambos exigem ação do fundador:
 1. **`MERCADOPAGO_WEBHOOK_SECRET` não existe** — só é gerado depois que o
    fundador configurar o webhook no painel do Mercado Pago (Suas
    integrações → aplicação de teste → Webhooks → apontar pra
-   `http://187.127.54.72/api/payments/mercadopago/webhook`, evento
+   `http://<IP-DO-SERVIDOR>/api/payments/mercadopago/webhook`, evento
    "Assinaturas"). Sem isso, a validação HMAC do endpoint (já
    implementada e testada com segredo sintético) nunca vê tráfego real.
-2. **`PUBLIC_APP_URL` de produção (`http://187.127.54.72`) provavelmente
+2. **`PUBLIC_APP_URL` de produção (`http://<IP-DO-SERVIDOR>`) provavelmente
    não é aceito pelo Mercado Pago como `back_url`** — descoberto durante
    as Tasks 3 e 5: mesmo um `back_url` sobre `http://` com domínio real
    (não IP) retornou erro inesperado do Mercado Pago nos testes; um IP
