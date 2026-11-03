@@ -12,11 +12,12 @@
 Painel dos sócios: atuação por empresa, PGR inventário e matriz de risco, tarefas com espera, carteira explícita (0101), correções de documento (0102), checklists com aprovação técnica (0103), alertas de vencimento e notificações (0104, inclui RLS em `document_validity_rules`), vínculo LTCAT/LIP/laudo→PGR (0105; só banco, sem tela ainda). Documentação: `docs/superpowers/audits/2026-11-0{1,2}-*.md`.
 
 ## 3. Evidência (VERIFICADO em banco descartável)
-- Migrations 0001–0105 aplicadas do zero: 0 falhas (a 0097 não entrou nessa conta de 99; o script antigo a pula).
+- Migrations 0001–0105 aplicadas do zero, inclusive a 0097: 100 registradas, 0 falhas.
 - e2e: alertas-rls 7/7, alertas 9/9, documento-correcoes-rls 8/8, checklists-rls 8/8, checklists 5/5, documento-base-pgr-rls 3/3, atuacao-documentos 45/45, atuacao-permissoes 14/14, socio-access-matrix 13/13, documents-validity 31/31.
 - Unitários backend 2032/2034 (falhas pré-existentes `r2-get-object` e `tenant-context-callsites`); frontend vitest 1363 (5 suítes de EPI sem `qrcode` no ambiente emprestado).
 - Revisão de segurança independente: 0 crítico/alto; 1 médio + 5 baixos corrigidos.
-- **NÃO VERIFICADO:** QA visual; aplicação das migrations 0097–0100 sobre o banco REAL de produção (dados reais); boot das imagens candidatas (ver §4).
+- **NÃO VERIFICADO:** QA visual; aplicação das migrations 0097–0100 sobre o banco REAL de produção (dados reais).
+- **VERIFICADO (2026-11-03, rede descartável, credenciais falsas):** boot das duas candidatas em `NODE_ENV=production` contra o banco de ensaio migrado até a 0105: backend `/health` 200, `/atuacao/notificacoes/resumo` e `/atuacao/checklists/modelos` 401 sem login; frontend `/login` 200.
 
 ## 4. Imagens (candidatas, ainda não no ar)
 `montese-backend:candidate-painel-20261103` e `montese-frontend:candidate-painel-20261103` (build limpo de `git archive`, `GIT_COMMIT=c5f1465-painel-20261103`). Retorno já criado: `montese-backend:pre-painel-20261103` e `montese-frontend:pre-painel-20261103`.
