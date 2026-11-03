@@ -29,6 +29,11 @@ const ALLOWED: Record<string, { calls: number; motivo: string }> = {
     calls: 1,
     motivo: 'Monta o contexto a partir de request.user (JWT); é a única fonte de req.withTenantContext.',
   },
+  'common/guards/permissions.guard.ts': {
+    calls: 1,
+    motivo:
+      'Contexto montado só de request.user (JWT validado pelo JwtAuthGuard), nunca de dto/body/query; lê apenas as próprias linhas de socio_permissions e falha fechada.',
+  },
   'normative/normative-assistant.service.ts': {
     calls: 4,
     motivo:

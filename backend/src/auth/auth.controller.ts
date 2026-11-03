@@ -10,6 +10,7 @@ import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { ResendConfirmationDto } from './dto/resend-confirmation.dto';
 import { Public } from '../common/decorators/public.decorator';
+import { Roles } from '../common/decorators/roles.decorator';
 import { SkipSubscriptionCheck } from '../common/decorators/skip-subscription-check.decorator';
 import { RateLimit } from '../common/rate-limit/rate-limit.decorator';
 import { envInt } from '../common/env';
@@ -138,6 +139,7 @@ export class AuthController {
   // ITEM 002 (auditoria 2026-09-27): "quem estou logado" precisa continuar
   // respondendo mesmo com assinatura inativa, senão o frontend não tem como
   // saber quem é o usuário pra mostrar a tela de "reative seu plano".
+  @Roles('empresa', 'tecnico', 'parceiro', 'admin', 'socio')
   @SkipSubscriptionCheck()
   @Get('me')
   me(@Req() req: any) {

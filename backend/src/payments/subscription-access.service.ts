@@ -19,6 +19,18 @@ export interface AccessSubject {
   role: string;
 }
 
+// Regra única de precedência: ativa > pendente > inativa > trial.
+export function deriveAccessState(row: {
+  has_authorized: boolean;
+  has_recent_pending: boolean;
+  has_lapsed: boolean;
+}): SubscriptionAccess {
+  if (row.has_authorized) return 'ativa';
+  if (row.has_recent_pending) return 'pendente';
+  if (row.has_lapsed) return 'inativa';
+  return 'trial';
+}
+
 @Injectable()
 export class SubscriptionAccessService {
   constructor(private readonly db: DatabaseService) {}
@@ -44,11 +56,7 @@ export class SubscriptionAccessService {
              ) AS has_lapsed`,
           [user.tenantId ?? null, user.id],
         );
-        const row = result.rows[0];
-        if (row.has_authorized) return 'ativa';
-        if (row.has_recent_pending) return 'pendente';
-        if (row.has_lapsed) return 'inativa';
-        return 'trial';
+        return deriveAccessState(result.rows[0]);
       },
     );
   }

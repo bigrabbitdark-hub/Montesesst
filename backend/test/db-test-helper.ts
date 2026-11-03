@@ -43,7 +43,7 @@ function stripDiacritics(value: string): string {
 }
 
 export class TestDb {
-  private readonly client: Client;
+  readonly client: Client;
   private tenantIds: string[] = [];
   private userIds: string[] = [];
 
@@ -99,7 +99,7 @@ export class TestDb {
     };
   }
 
-  async createUserWithRole(role: 'tecnico' | 'parceiro' | 'admin', namePrefix: string): Promise<TestUserFixture> {
+  async createUserWithRole(role: 'tecnico' | 'parceiro' | 'admin' | 'socio', namePrefix: string): Promise<TestUserFixture> {
     const passwordHash = await bcrypt.hash(TEST_PASSWORD, BCRYPT_COST);
     const suffix = randomUUID().slice(0, 8);
     const email = `${stripDiacritics(namePrefix).toLowerCase().replace(/\s+/g, '-')}-${suffix}@teste.montese.local`;
@@ -113,6 +113,13 @@ export class TestDb {
     this.userIds.push(userId);
 
     return { userId, email, password: TEST_PASSWORD };
+  }
+
+  async grantSocioPermission(userId: string, permission: string): Promise<void> {
+    await this.client.query(
+      'INSERT INTO socio_permissions (user_id, permission) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+      [userId, permission],
+    );
   }
 
   // Apaga só o que este helper criou. Tenants em CASCADE levam junto users e

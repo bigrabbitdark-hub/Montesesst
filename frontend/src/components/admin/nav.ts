@@ -32,6 +32,7 @@ export const ADMIN_NAV: AdminNavGroup[] = [
       { href: '/admin/normativa', label: 'Base normativa', icon: 'book', keywords: 'nr normas fontes oficiais' },
       { href: '/admin/checklist-sst', label: 'Checklist SST', icon: 'check', keywords: 'catalogo itens infracao' },
       { href: '/admin/auditoria', label: 'Auditoria', icon: 'shield', keywords: 'logs eventos acessos' },
+      { href: '/admin/documentos-fluxo', label: 'Documentos — responsabilidades', icon: 'settings', keywords: 'documentos matriz responsabilidades registros profissionais conselho socios viabilidade' },
       { href: '/admin/ia', label: 'IA', icon: 'sparkle', keywords: 'modelos provedores openrouter minimax groq chaves api' },
     ],
   },
