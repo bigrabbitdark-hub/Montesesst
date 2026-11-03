@@ -1,11 +1,13 @@
 'use client';
 
+import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AsyncBody } from '@/components/ui/AsyncBody';
 import { Badge, type Tone } from '@/components/ui/Badge';
 import { Dialogo } from '@/app/admin/documentos-fluxo/Dialogo';
 import {
   atuacaoFetch,
+  docCategoriaLabel, docStatusLabel, docStatusTone, type DocTecnico,
   type EmpresaDocumento, type EmpresaEpi, type EmpresaFuncionario, type EmpresaVencimento, type EmpresaVisaoGeral,
 } from '../../api';
 
@@ -310,6 +312,53 @@ export function Epis({ tenantId }: { tenantId: string }) {
           </ul>
         )
       }
+    />
+  );
+}
+
+const ORDEM_TECNICOS = ['pgr', 'ltcat', 'lip', 'laudo', 'pcmso'];
+
+// Visão por empresa dos documentos técnicos: o mais recente de cada tipo, com etapa, correções e avisos do PGR-base.
+export function Tecnicos({ tenantId }: { tenantId: string }) {
+  const { data, error, loading, carregar } = useCarga<DocTecnico[]>(`/documentos/empresa/${tenantId}/tecnicos`);
+  return (
+    <AsyncBody
+      data={data}
+      error={error}
+      loading={loading}
+      onRetry={carregar}
+      render={(lista) => {
+        const porTipo = new Map(lista.map((d) => [d.category, d]));
+        return (
+          <ul className="grid gap-3 sm:grid-cols-2">
+            {ORDEM_TECNICOS.map((cat) => {
+              const d = porTipo.get(cat);
+              return (
+                <li key={cat} className={CARTAO}>
+                  <p className="text-xs font-semibold uppercase text-dash-muted">{docCategoriaLabel(cat)}</p>
+                  {!d ? (
+                    <p className="mt-1 text-sm text-dash-muted">Nenhum documento deste tipo.</p>
+                  ) : (
+                    <>
+                      <p className="mt-1 break-words font-semibold text-dash-primary">
+                        <Link href={`/atuacao/documentos/${d.id}`} className="underline focus:outline-none focus-visible:ring-2 focus-visible:ring-dash-primary">{d.title}</Link>
+                      </p>
+                      <p className="mt-1 flex flex-wrap items-center gap-2 text-sm">
+                        <Badge tone={docStatusTone(d.status)}>{docStatusLabel(d.status)}</Badge>
+                        {d.versao !== null && <span className="text-xs text-dash-muted">versão {d.versao}</span>}
+                        {d.correcoes_pendentes > 0 && (
+                          <Badge tone="warn">{d.correcoes_pendentes} {d.correcoes_pendentes === 1 ? 'correção pendente' : 'correções pendentes'}</Badge>
+                        )}
+                      </p>
+                      {d.avisos_base.map((a) => <p key={a.codigo} className="mt-2 text-xs text-dash-primary">⚠ {a.mensagem}</p>)}
+                    </>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        );
+      }}
     />
   );
 }

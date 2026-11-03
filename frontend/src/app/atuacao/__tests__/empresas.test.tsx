@@ -123,13 +123,13 @@ describe('seletor de empresa', () => {
 });
 
 describe('página da empresa', () => {
-  it('mostra o nome sempre visível e as 5 abas em tablist', async () => {
+  it('mostra o nome sempre visível e as 6 abas em tablist', async () => {
     rota();
     render(<EmpresaPage />);
     expect(await screen.findByRole('heading', { level: 1, name: 'Alfa Ltda' })).toBeInTheDocument();
     const lista = screen.getByRole('tablist');
     expect(within(lista).getAllByRole('tab').map((t) => t.textContent)).toEqual(
-      ['Visão geral', 'Documentos', 'Vencimentos', 'Funcionários', 'EPI']);
+      ['Visão geral', 'Documentos', 'Vencimentos', 'Funcionários', 'EPI', 'Documentos técnicos']);
     expect(screen.getByRole('tab', { name: 'Visão geral' })).toHaveAttribute('aria-selected', 'true');
     expect(screen.getByRole('tabpanel')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('tab', { name: 'Documentos' }));
@@ -165,8 +165,8 @@ describe('página da empresa', () => {
     fireEvent.keyDown(screen.getByRole('tab', { name: 'Visão geral' }), { key: 'ArrowRight' });
     expect(screen.getByRole('tab', { name: 'Documentos' })).toHaveAttribute('aria-selected', 'true');
     fireEvent.keyDown(screen.getByRole('tab', { name: 'Documentos' }), { key: 'End' });
-    expect(screen.getByRole('tab', { name: 'EPI' })).toHaveAttribute('aria-selected', 'true');
-    fireEvent.keyDown(screen.getByRole('tab', { name: 'EPI' }), { key: 'ArrowRight' });
+    expect(screen.getByRole('tab', { name: 'Documentos técnicos' })).toHaveAttribute('aria-selected', 'true');
+    fireEvent.keyDown(screen.getByRole('tab', { name: 'Documentos técnicos' }), { key: 'ArrowRight' });
     expect(screen.getByRole('tab', { name: 'Visão geral' })).toHaveAttribute('aria-selected', 'true');
   });
 
@@ -177,7 +177,7 @@ describe('página da empresa', () => {
     fireEvent.click(screen.getByRole('tab', { name: 'Vencimentos' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('Algo deu errado');
     expect(screen.getByRole('heading', { level: 1, name: 'Alfa Ltda' })).toBeInTheDocument();
-    expect(screen.getAllByRole('tab')).toHaveLength(5);
+    expect(screen.getAllByRole('tab')).toHaveLength(6);
   });
 
   it('estado vazio por aba', async () => {

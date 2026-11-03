@@ -79,6 +79,7 @@ describe('alertas — regras, mudanças, job e notificações (e2e HTTP)', () =>
     const us = [sA, sB, sNada, sSemEmp].map((u) => u.userId);
     await db.client.query('UPDATE document_validity_rules SET notice_days=$1, source=$2 WHERE category=\'laudo\'', [regraLaudoOriginal.notice_days, regraLaudoOriginal.source]);
     await db.client.query('DELETE FROM notifications WHERE user_id = ANY($1)', [us]);
+    await db.client.query('DELETE FROM document_drafts WHERE tenant_id = ANY($1)', [[montese.tenantId, vinculado.tenantId]]);
     await db.client.query('DELETE FROM document_change_flags WHERE tenant_id = ANY($1)', [[montese.tenantId, vinculado.tenantId]]);
     await db.client.query('DELETE FROM tasks WHERE assignee_user_id = ANY($1)', [us]);
     await db.client.query('DELETE FROM socio_permissions WHERE user_id = ANY($1) OR granted_by = ANY($1)', [us]);
@@ -189,5 +190,43 @@ describe('alertas — regras, mudanças, job e notificações (e2e HTTP)', () =>
     const todas = await api('post', tB, 'notificacoes/lidas');
     expect(todas.body.nao_lidas).toBe(0);
     expect((await api('get', tA, 'notificacoes/resumo')).body.nao_lidas).toBe(a.body.total); // as de A seguem intactas
+  });
+
+  it('PGR-base atualizado: avisa uma vez por (documento, versão do PGR), texto genérico, só carteira; nova versão do PGR gera novo aviso', async () => {
+    const mk = async (tenantId: string, category: string, base: string | null) => (await db.client.query(
+      "INSERT INTO document_drafts (tenant_id, category, title, created_by, base_draft_id) VALUES ($1,$2,'TESTE segredo base',$3,$4) RETURNING id", [tenantId, category, sA.userId, base])).rows[0].id as string;
+    const ver = async (draft: string, tenantId: string, n: number, quando: string) => {
+      const id = (await db.client.query(
+        "INSERT INTO document_draft_versions (draft_id, tenant_id, version_number, file_key, file_name, mime_type, size_bytes, sha256, created_by, created_at) VALUES ($1,$2,$3,$4,'a.pdf','application/pdf',10,$5,$6,$7) RETURNING id",
+        [draft, tenantId, n, `documents-fluxo/teste/${draft}/${n}`, 'd'.repeat(64), sA.userId, quando])).rows[0].id as string;
+      await db.client.query('UPDATE document_drafts SET current_version_id=$2 WHERE id=$1', [draft, id]);
+      return id;
+    };
+    const pgr = await mk(montese.tenantId, 'pgr', null);
+    const lt = await mk(montese.tenantId, 'ltcat', pgr);
+    const pgrV = await mk(vinculado.tenantId, 'pgr', null);
+    const ltV = await mk(vinculado.tenantId, 'ltcat', pgrV);
+    await ver(lt, montese.tenantId, 1, '2026-01-01T00:00:00Z');
+    await ver(ltV, vinculado.tenantId, 1, '2026-01-01T00:00:00Z');
+    const job = app.get(AlertasJobService);
+    const base = async () => (await notifs(sA.userId)).filter((n) => n.dedupe_key.startsWith(`base:${lt}:`));
+    await job.runOnce();
+    expect(await base()).toHaveLength(0);                        // PGR ainda sem versão
+    const v1 = await ver(pgr, montese.tenantId, 1, '2026-02-01T00:00:00Z');
+    await ver(pgrV, vinculado.tenantId, 1, '2026-02-01T00:00:00Z');
+    await job.runOnce();
+    const n1 = await base();
+    expect(n1).toHaveLength(1);
+    expect(n1[0]).toMatchObject({ type: 'revisao_por_mudanca', priority: 'media', dedupe_key: `base:${lt}:${v1}` });
+    expect(n1[0].title).toMatch(/^PGR atualizado — revisar LTCAT — /);
+    expect(n1[0].title).not.toMatch(/segredo/);
+    expect(n1[0].href).toBe(`/atuacao/documentos/${lt}`);
+    expect((await notifs(sB.userId)).some((n) => n.dedupe_key === `base:${lt}:${v1}`)).toBe(true);
+    expect((await notifs(sA.userId)).some((n) => n.dedupe_key.startsWith(`base:${ltV}:`))).toBe(false); // fora da carteira
+    await job.runOnce();
+    expect(await base()).toHaveLength(1);                        // idempotente
+    const v2 = await ver(pgr, montese.tenantId, 2, '2026-03-01T00:00:00Z');
+    await job.runOnce();
+    expect((await base()).map((n) => n.dedupe_key).sort()).toEqual([`base:${lt}:${v1}`, `base:${lt}:${v2}`].sort());
   });
 });

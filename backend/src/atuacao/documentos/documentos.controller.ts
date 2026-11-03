@@ -7,7 +7,7 @@ import { RequirePermission } from '../../common/decorators/require-permission.de
 import { AuditService } from '../../common/audit/audit.service';
 import { DocumentosService, MAX_ARQUIVO_BYTES } from './documentos.service';
 import {
-  CreateCorrecaoDto, CreateDocumentoDto, DevolverDocumentoDto, ListDocumentosQuery, NovaVersaoDto, PublicarDocumentoDto, TransicaoComNotaDto, TransicaoSemCorpoDto, UpdateCorrecaoDto,
+  CreateCorrecaoDto, CreateDocumentoDto, DefinirBaseDto, DevolverDocumentoDto, ListDocumentosQuery, NovaVersaoDto, PublicarDocumentoDto, TransicaoComNotaDto, TransicaoSemCorpoDto, UpdateCorrecaoDto,
 } from './dto/documentos.dto';
 
 // Fluxo de documentos do sócio (rascunho, versões, revisão, aprovação, registro de assinatura
@@ -49,6 +49,13 @@ export class DocumentosController {
     return req.withTenantContext((c: any) => this.documentos.listar(c, q));
   }
 
+  // Visão por empresa dos documentos técnicos (PGR, LTCAT, LIP, laudo, PCMSO). Rota antes de ':id'.
+  @RequirePermission('documents.read', 'empresas.read')
+  @Get('empresa/:tenantId/tecnicos')
+  tecnicosDaEmpresa(@Param('tenantId', ParseUUIDPipe) tenantId: string, @Req() req: any) {
+    return req.withTenantContext((c: any) => this.documentos.tecnicosDaEmpresa(c, tenantId));
+  }
+
   @RequirePermission('documents.read')
   @Get(':id')
   obter(@Param('id', ParseUUIDPipe) id: string, @Req() req: any) {
@@ -61,6 +68,15 @@ export class DocumentosController {
     const d = await this.comAuditoria<any>(req, 'criar', null, () => req.withTenantContext((c: any) => this.documentos.criar(c, req.user.id, dto)));
     await this.log(req, 'created', d.id, 201, this.detalheAuditoria(d, `; categoria: ${d.category}`));
     return d;
+  }
+
+  @RequirePermission('documents.create_draft')
+  @Patch(':id/base')
+  async definirBase(@Param('id', ParseUUIDPipe) id: string, @Body() dto: DefinirBaseDto, @Req() req: any) {
+    const r = await this.comAuditoria<any>(req, 'definir_base', id, () =>
+      req.withTenantContext((c: any) => this.documentos.definirBase(c, req.user.id, id, dto.base_draft_id ?? null)));
+    await this.log(req, 'base_defined', id, 200, `tenant: ${r.tenant_id}; status: ${r.status}; base: ${r.base_draft_id ?? 'removida'}`);
+    return r;
   }
 
   @RequirePermission('documents.create_draft')

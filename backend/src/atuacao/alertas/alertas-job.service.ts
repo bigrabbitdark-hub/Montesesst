@@ -57,6 +57,7 @@ export class AlertasJobService {
         ['tarefas', () => this.tarefas(c, hoje, ids)],
         ['correcoes', () => this.correcoes(c, hoje, ids)],
         ['mudancas', () => this.mudancas(c, destinatarios)],
+        ['pgr_base', () => this.pgrBaseAtualizado(c, destinatarios)],
       ];
       for (const [nome, fn] of fontes) {
         await c.query('SAVEPOINT alertas_fonte');
@@ -178,6 +179,29 @@ export class AlertasJobService {
       userId, type: 'revisao_por_mudanca' as const, priority: 'alta' as const,
       title: `Revisão por mudança nas condições de trabalho — ${f.empresa}`.slice(0, 200), tenantId: f.tenant_id,
       href: `/atuacao/empresas/${f.tenant_id}`, dedupeKey: `flag:${f.id}`,
+    })));
+  }
+
+  // LTCAT/LIP/laudo ligado a um PGR cuja versão atual é mais nova que a do próprio documento (migration 0105).
+  // Um aviso por (documento, versão do PGR-base): publicar outro PGR depois gera novo aviso; o mesmo não se repete.
+  private async pgrBaseAtualizado(c: PoolClient, dest: string[]): Promise<Alvo[]> {
+    if (!dest.length) return [];
+    const r = await c.query(
+      `/* alertas-job:pgr_base */
+       SELECT d.id, d.tenant_id, d.category, t.name AS empresa, b.current_version_id AS base_version_id
+         FROM document_drafts d
+         JOIN document_draft_versions dv ON dv.id = d.current_version_id
+         JOIN document_drafts b ON b.id = d.base_draft_id AND b.tenant_id = d.tenant_id
+         JOIN document_draft_versions bv ON bv.id = b.current_version_id
+         JOIN tenants t ON t.id = d.tenant_id
+        WHERE d.status <> 'cancelado' AND b.status <> 'cancelado' AND bv.created_at > dv.created_at
+          AND is_montese_tenant(d.tenant_id)
+        ORDER BY bv.created_at, d.id LIMIT 2000`,
+    );
+    return r.rows.flatMap((x) => dest.map((userId) => ({
+      userId, type: 'revisao_por_mudanca' as const, priority: 'media' as const,
+      title: `PGR atualizado — revisar ${CATEGORIA_ROTULO[x.category] ?? 'documento'} — ${x.empresa}`.slice(0, 200), tenantId: x.tenant_id,
+      href: `/atuacao/documentos/${x.id}`, dedupeKey: `base:${x.id}:${x.base_version_id}`,
     })));
   }
 

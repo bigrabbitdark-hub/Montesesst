@@ -91,6 +91,7 @@ export async function atuacaoFetch<T>(path: string, init: RequestInit = {}): Pro
     if (path.startsWith('/vencimentos')) throw new Error('Empresa não encontrada.');
     if (path.startsWith('/tarefas')) throw new Error('Tarefa não encontrada.');
     if (path.startsWith('/agenda')) throw new Error('Compromisso não encontrado.');
+    if (/^\/documentos\/empresa\//.test(path)) throw new Error('Empresa não encontrada.');
     if (path.startsWith('/documentos/')) throw new Error('Documento não encontrado.');
     if (path.startsWith('/interacoes?')) throw new Error('Empresa não encontrada.');
     if (path.startsWith('/interacoes')) throw new Error('Registro não encontrado.');
@@ -366,9 +367,19 @@ export interface DocAssinatura {
   version_sha256: string; signed_at: string; registro_confirmado: boolean; vigente: boolean;
   council?: string; registration_number?: string; uf?: string;
 }
+// Vínculo opcional LTCAT/LIP/laudo -> PGR-base (E5). Os avisos são informativos; o texto vem pronto do servidor.
+export const CATEGORIAS_COM_BASE = ['ltcat', 'lip', 'laudo'] as const;
+export interface DocBase { id: string; title: string; category: string; status: DocStatus; versao: number | null }
+export interface DocAvisoBase { codigo: 'base_mais_nova' | 'base_nao_publicada' | 'base_cancelada'; mensagem: string }
+export interface DocDerivado { id: string; category: string; title: string; status: DocStatus; versao: number | null }
+export interface DocTecnico {
+  id: string; category: string; title: string; status: DocStatus; versao: number | null; base_draft_id: string | null;
+  correcoes_pendentes: number; updated_at: string; avisos_base: DocAvisoBase[];
+}
 export type DocumentoDetalhe = DocumentoResumo & {
   versao_atual_sha256: string | null; versoes: DocVersao[]; eventos: DocEvento[]; assinaturas: DocAssinatura[];
   correcoes: DocCorrecao[]; correcoes_pendentes: number;
+  base_draft_id?: string | null; base?: DocBase | null; avisos_base?: DocAvisoBase[]; derivados?: DocDerivado[];
   aviso_assinatura: string; acoes_permitidas: DocAcaoNome[];
 };
 

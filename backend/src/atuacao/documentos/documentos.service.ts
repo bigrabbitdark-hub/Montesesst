@@ -17,6 +17,7 @@ import {
   type DocStatus,
 } from './documento-fluxo';
 import type { CreateCorrecaoDto, CreateDocumentoDto, ListDocumentosQuery, UpdateCorrecaoDto } from './dto/documentos.dto';
+import { gravarBase, obterBaseEDerivados, listarTecnicosDaEmpresa, traduzirBase, CATEGORIAS_COM_BASE } from './vinculo-base';
 import { itensBloqueantesPendentes } from '../checklists/completude';
 import {
   atualizarCorrecao, exigirSemPendentes, inserirCorrecao, listarCorrecoes, registrarCorrecao,
@@ -68,7 +69,8 @@ export class NegacaoConflictException extends ConflictException {
 const conflitoEstado = (msg: string, acao: string) => new NegacaoConflictException(msg, 'ESTADO', acao);
 
 // Colunas do rascunho + da versão atual (autor, hash e arquivo), usadas no bloqueio e no detalhe.
-const COLUNAS_RASCUNHO = `d.id, d.tenant_id, d.category, d.title, d.status, d.current_version_id, d.company_unit_id,
+const COLUNAS_RASCUNHO = `d.id, d.tenant_id, d.category, d.title, d.status, d.current_version_id, d.company_unit_id, d.base_draft_id,
+  cv.created_at AS versao_em,
   ARRAY(
     SELECT d.created_by
     UNION SELECT vv.created_by FROM document_draft_versions vv WHERE vv.draft_id = d.id
@@ -185,10 +187,13 @@ export class DocumentosService {
       assinaturaVigente: assinaturas.some((s) => s.vigente),
     });
 
+    const vinculo = await obterBaseEDerivados(client, id, row.base_draft_id ?? null, { status: row.status, versao_em: row.versao_em ?? null });
+
     const {
       elaboradores_ids, versao_numero, versao_sha256, versao_file_key, versao_file_name, versao_mime_type,
-      versao_size_bytes, ...cabecalho
+      versao_size_bytes, versao_em, ...cabecalho
     } = row;
+    void versao_em;
     void elaboradores_ids; void versao_file_key; void versao_file_name; void versao_mime_type; void versao_size_bytes;
     return {
       ...cabecalho,
@@ -198,10 +203,29 @@ export class DocumentosService {
       eventos: eventos.rows,
       correcoes,
       correcoes_pendentes: correcoes.filter((c) => c.status === 'aberta' || c.status === 'corrigida').length,
+      ...vinculo,
       assinaturas,
       aviso_assinatura: AVISO_ASSINATURA_INTERNA,
       acoes_permitidas: acoes,
     };
+  }
+
+  async definirBase(client: PoolClient, userId: string, id: string, baseId: string | null) {
+    const d = await this.travar(client, id);
+    const matriz = await this.matriz(client, d.category, userId);
+    if (!matriz.has('elaborar')) throw new NegacaoForbiddenException(MSG_ACAO_NAO_HABILITADA, 'MATRIZ', 'elaborar');
+    if (baseId && !(CATEGORIAS_COM_BASE as readonly string[]).includes(d.category)) {
+      throw new BadRequestException('Só LTCAT, LIP e laudo têm PGR-base.');
+    }
+    if (d.status !== 'em_elaboracao') throw new ConflictException(MSG_ESTADO);
+    await gravarBase(client, id, baseId);
+    return { id, tenant_id: d.tenant_id, status: d.status, base_draft_id: baseId };
+  }
+
+  async tecnicosDaEmpresa(client: PoolClient, tenantId: string) {
+    const t = await client.query('SELECT 1 FROM tenants WHERE id = $1', [tenantId]);
+    if (t.rowCount === 0) throw new NotFoundException('Empresa não encontrada');
+    return listarTecnicosDaEmpresa(client, tenantId);
   }
 
   async downloadVersao(client: PoolClient, draftId: string, versionId: string): Promise<{ url: string; file_name: string }> {
@@ -229,12 +253,13 @@ export class DocumentosService {
     let id: string;
     try {
       const ins = await client.query<{ id: string }>(
-        `INSERT INTO document_drafts (tenant_id, category, title, company_unit_id, created_by)
-         VALUES ($1,$2,$3,$4,$5) RETURNING id`,
-        [dto.tenant_id, dto.category, dto.title, dto.company_unit_id ?? null, userId],
+        `INSERT INTO document_drafts (tenant_id, category, title, company_unit_id, created_by, base_draft_id)
+         VALUES ($1,$2,$3,$4,$5,$6) RETURNING id`,
+        [dto.tenant_id, dto.category, dto.title, dto.company_unit_id ?? null, userId, dto.base_draft_id ?? null],
       );
       id = ins.rows[0].id;
     } catch (err) {
+      if (dto.base_draft_id) traduzirBase(err);
       mapPgError(err);
     }
     await this.evento(client, id, dto.tenant_id, null, userId, 'created', null);

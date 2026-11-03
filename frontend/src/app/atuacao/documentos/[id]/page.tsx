@@ -14,6 +14,7 @@ import {
 import { Dialogo } from './Dialogo';
 import { Correcoes } from './Correcoes';
 import { Checklists } from './Checklists';
+import { BasePgr } from './BasePgr';
 
 const INPUT =
   'w-full rounded-md border border-dash-border-input bg-white px-3 py-2 text-sm text-dash-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-dash-primary';
@@ -359,6 +360,13 @@ export default function DocumentoDetalhePage() {
                 <Secao id="sec-versoes" titulo="Versões">
                   <Versoes versoes={d.versoes} atualId={d.current_version_id} baixando={baixando} onBaixar={(v) => void baixar(v)} />
                 </Secao>
+              </div>
+              <div className="mt-6">
+                <BasePgr
+                  docId={d.id} tenantId={d.tenant_id} category={d.category} status={d.status}
+                  base={d.base ?? null} avisos={d.avisos_base ?? []} derivados={d.derivados ?? []}
+                  onMudou={() => carregar(true)}
+                />
               </div>
               <div className="mt-6">
                 <Checklists docId={d.id} encerrado={d.status === 'publicado' || d.status === 'cancelado'} />

@@ -17,6 +17,13 @@ export class CreateDocumentoDto {
   @IsIn(CATEGORIAS_DOCUMENTO as unknown as string[]) category!: string;
   @Transform(trim) @IsString() @MinLength(1) @MaxLength(200) title!: string;
   @IsOptional() @IsUUID() company_unit_id?: string;
+  // Opcional: PGR-base (só para ltcat/lip/laudo; a regra de empresa/categoria é do banco, 0105).
+  @IsOptional() @IsUUID() base_draft_id?: string;
+}
+
+// PATCH :id/base — null remove o vínculo.
+export class DefinirBaseDto {
+  @IsOptional() @IsUUID() base_draft_id?: string | null;
 }
 
 // Corpo multipart da nova versão: o arquivo vem em `file`; só a nota é campo de texto.

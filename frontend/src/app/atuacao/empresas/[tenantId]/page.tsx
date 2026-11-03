@@ -6,9 +6,9 @@ import Link from 'next/link';
 import { PageHeader } from '@/components/dashboard/PageHeader';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { atuacaoFetch, CHAVE_ULTIMA_EMPRESA, formatCnpj, type EmpresaVisaoGeral } from '../../api';
-import { VisaoGeral, Documentos, Vencimentos, Funcionarios, Epis } from './Secoes';
+import { VisaoGeral, Documentos, Vencimentos, Funcionarios, Epis, Tecnicos } from './Secoes';
 
-const ABAS = ['Visão geral', 'Documentos', 'Vencimentos', 'Funcionários', 'EPI'] as const;
+const ABAS = ['Visão geral', 'Documentos', 'Vencimentos', 'Funcionários', 'EPI', 'Documentos técnicos'] as const;
 const LINK =
   'rounded text-sm font-semibold text-dash-primary underline focus:outline-none focus-visible:ring-2 focus-visible:ring-dash-primary focus-visible:ring-offset-2';
 
@@ -110,6 +110,7 @@ export default function EmpresaPage() {
         {aba === 2 && <Vencimentos tenantId={tenantId} />}
         {aba === 3 && <Funcionarios tenantId={tenantId} />}
         {aba === 4 && <Epis tenantId={tenantId} />}
+        {aba === 5 && <Tecnicos tenantId={tenantId} />}
       </div>
     </div>
   );
