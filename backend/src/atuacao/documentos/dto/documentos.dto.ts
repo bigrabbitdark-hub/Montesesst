@@ -42,3 +42,26 @@ export class ListDocumentosQuery {
   @IsOptional() @IsUUID() tenantId?: string;
   @IsOptional() @IsIn(CATEGORIAS_DOCUMENTO as unknown as string[]) category?: string;
 }
+
+// devolver: nota obrigatória (vira a descrição da correção) + responsável (sócio ativo) e prazo opcionais.
+export class DevolverDocumentoDto extends TransicaoComNotaDto {
+  @IsOptional() @IsUUID() responsavel_id?: string;
+  @IsOptional() @Matches(/^\d{4}-\d{2}-\d{2}$/) @IsDataReal() prazo?: string;
+}
+
+// Correção pedida pelo cliente ou identificada internamente, sem devolver o documento.
+export class CreateCorrecaoDto {
+  @Transform(trim) @IsString() @MinLength(1) @MaxLength(1000) description!: string;
+  @IsIn(['cliente', 'interna']) origin!: 'cliente' | 'interna';
+  @IsOptional() @Transform(trim) @IsString() @MaxLength(120) requester_label?: string;
+  @IsOptional() @IsUUID() responsavel_id?: string;
+  @IsOptional() @Matches(/^\d{4}-\d{2}-\d{2}$/) @IsDataReal() prazo?: string;
+}
+
+export const ACOES_CORRECAO = ['corrigir', 'verificar', 'reabrir', 'cancelar', 'ajustar'] as const;
+export class UpdateCorrecaoDto {
+  @IsIn(ACOES_CORRECAO as unknown as string[]) acao!: (typeof ACOES_CORRECAO)[number];
+  @IsOptional() @Transform(trim) @IsString() @MaxLength(1000) nota?: string;
+  @IsOptional() @IsUUID() responsavel_id?: string;
+  @IsOptional() @Matches(/^\d{4}-\d{2}-\d{2}$/) @IsDataReal() prazo?: string;
+}

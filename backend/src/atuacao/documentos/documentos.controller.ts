@@ -1,5 +1,5 @@
 import {
-  BadRequestException, Body, Controller, Get, Param, ParseUUIDPipe, Post, Query, Req, UploadedFile, UseInterceptors,
+  BadRequestException, Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query, Req, UploadedFile, UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -7,7 +7,7 @@ import { RequirePermission } from '../../common/decorators/require-permission.de
 import { AuditService } from '../../common/audit/audit.service';
 import { DocumentosService, MAX_ARQUIVO_BYTES } from './documentos.service';
 import {
-  CreateDocumentoDto, ListDocumentosQuery, NovaVersaoDto, PublicarDocumentoDto, TransicaoComNotaDto, TransicaoSemCorpoDto,
+  CreateCorrecaoDto, CreateDocumentoDto, DevolverDocumentoDto, ListDocumentosQuery, NovaVersaoDto, PublicarDocumentoDto, TransicaoComNotaDto, TransicaoSemCorpoDto, UpdateCorrecaoDto,
 } from './dto/documentos.dto';
 
 // Fluxo de documentos do sócio (rascunho, versões, revisão, aprovação, registro de assinatura
@@ -92,9 +92,30 @@ export class DocumentosController {
 
   @RequirePermission('documents.review')
   @Post(':id/devolver')
-  async devolver(@Param('id', ParseUUIDPipe) id: string, @Body() dto: TransicaoComNotaDto, @Req() req: any) {
-    const d = await this.comAuditoria(req, 'devolver', id, () => req.withTenantContext((c: any) => this.documentos.devolver(c, req.user.id, id, dto.note)));
+  async devolver(@Param('id', ParseUUIDPipe) id: string, @Body() dto: DevolverDocumentoDto, @Req() req: any) {
+    const d = await this.comAuditoria(req, 'devolver', id, () => req.withTenantContext((c: any) =>
+      this.documentos.devolver(c, req.user.id, id, dto.note, { responsavelId: dto.responsavel_id, prazo: dto.prazo })));
     await this.log(req, 'returned', id, 201, this.detalheAuditoria(d));
+    return d;
+  }
+
+  // Correções estruturadas (E2). Auditoria só com ids e a ação; nunca descrição nem nota.
+  @RequirePermission('documents.create_draft')
+  @Post(':id/correcoes')
+  async registrarCorrecao(@Param('id', ParseUUIDPipe) id: string, @Body() dto: CreateCorrecaoDto, @Req() req: any) {
+    const d = await this.comAuditoria(req, 'correcao', id, () => req.withTenantContext((c: any) => this.documentos.registrarCorrecao(c, req.user.id, id, dto)));
+    await this.log(req, 'correction_added', id, 201, this.detalheAuditoria(d, `; origem: ${dto.origin}`));
+    return d;
+  }
+
+  @RequirePermission('documents.read')
+  @Patch(':id/correcoes/:correcaoId')
+  async atualizarCorrecao(
+    @Param('id', ParseUUIDPipe) id: string, @Param('correcaoId', ParseUUIDPipe) correcaoId: string,
+    @Body() dto: UpdateCorrecaoDto, @Req() req: any,
+  ) {
+    const d = await this.comAuditoria(req, 'correcao', id, () => req.withTenantContext((c: any) => this.documentos.atualizarCorrecao(c, req.user.id, id, correcaoId, dto)));
+    await this.log(req, 'correction_updated', id, 200, this.detalheAuditoria(d, `; correcao: ${correcaoId}; acao: ${dto.acao}`));
     return d;
   }
 

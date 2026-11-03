@@ -38,6 +38,15 @@ export const CATALOGO_PERMISSOES: GrupoCatalogo[] = [
     i('pgr.read', 'Consultar o PGR', 'Biblioteca, GHEs e inventário de riscos das empresas clientes. Requer também \'Ver clientes\' (clients.read) e \'Atender empresas clientes\' (empresas.read).'),
     i('pgr.write', 'Elaborar o PGR', 'Criar e editar GHEs, riscos, controles e medições, e perigos personalizados. Só tem efeito junto com \'Consultar o PGR\' (pgr.read).'),
   ] },
+  { id: 'checklists', titulo: 'Checklists por serviço', itens: [
+    i('checklists.read', 'Consultar checklists', 'Ver os modelos de checklist e os checklists dos documentos. Requer também \'Ver documentos\' (documents.read).'),
+    i('checklists.write', 'Preencher checklists', 'Aplicar um modelo aprovado a um documento e registrar as respostas. Só tem efeito junto com \'Consultar checklists\' (checklists.read).'),
+    i('checklists.approve', 'Criar e aprovar modelos de checklist', 'Cria e edita modelos em rascunho e os aprova para uso. Modelo aprovado não pode ser alterado; só substituído por nova versão.', true),
+  ] },
+  { id: 'alertas', titulo: 'Alertas e notificações', itens: [
+    i('alertas.read', 'Receber e consultar alertas', 'Recebe as notificações internas (vencimentos, atrasos, revisões por mudança) e consulta as regras de antecedência.'),
+    i('alertas.manage', 'Gerenciar alertas', 'Ajusta as antecedências de alerta por tipo de documento e registra revisões por mudança nas condições de trabalho. Não altera os meses de validade.', true),
+  ] },
 ];
 
 export const PERMISSOES_SENSIVEIS: readonly string[] = CATALOGO_PERMISSOES.flatMap((g) => g.itens).filter((x) => x.sensivel).map((x) => x.permissao);

@@ -9,9 +9,11 @@ import { Badge } from '@/components/ui/Badge';
 import {
   atuacaoFetch, AVISO_LGPD_NOTA, DOC_ACCEPT, DOC_MAX_BYTES, DOC_MAX_MB, DOC_TIPOS_ACEITOS, docCategoriaLabel, docEventoLabel,
   docStatusLabel, docStatusTone, formatDataHora, formatTamanho, hashAbreviado,
-  type DocAcaoNome, type DocAssinatura, type DocumentoDetalhe, type DocVersao,
+  type DocAcaoNome, type DocAssinatura, type DocumentoDetalhe, type DocVersao, type Responsavel,
 } from '../../api';
 import { Dialogo } from './Dialogo';
+import { Correcoes } from './Correcoes';
+import { Checklists } from './Checklists';
 
 const INPUT =
   'w-full rounded-md border border-dash-border-input bg-white px-3 py-2 text-sm text-dash-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-dash-primary';
@@ -25,12 +27,12 @@ const LABEL = 'mb-1 block text-sm font-medium text-dash-muted';
 
 // Rótulos dos botões (só apresentação). Quem decide quais aparecem é `acoes_permitidas`, vinda do servidor.
 const ACAO_BOTAO: Record<DocAcaoNome, string> = {
-  nova_versao: 'Nova versão', enviar_revisao: 'Enviar para revisão', devolver: 'Devolver para elaboração',
+  nova_versao: 'Nova versão', enviar_revisao: 'Enviar para revisão', devolver: 'Devolver para correção',
   aprovar: 'Aprovar', assinar: 'Registrar assinatura interna', publicar: 'Publicar', cancelar: 'Cancelar documento',
 };
 const ACAO_OK: Record<DocAcaoNome, string> = {
   nova_versao: 'Nova versão enviada.', enviar_revisao: 'Documento enviado para revisão.',
-  devolver: 'Documento devolvido para elaboração.', aprovar: 'Documento aprovado.',
+  devolver: 'Documento devolvido para correção.', aprovar: 'Documento aprovado.',
   assinar: 'Assinatura interna registrada.', publicar: 'Documento publicado.', cancelar: 'Documento cancelado.',
 };
 const ROTA: Record<Exclude<DocAcaoNome, 'nova_versao'>, string> = {
@@ -133,13 +135,20 @@ function Assinaturas({ lista, aviso }: { lista: DocAssinatura[]; aviso: string }
   );
 }
 
+type DadosAcao = { note?: string; expires_at?: string; file?: File; responsavel_id?: string; prazo?: string };
 type Dlg = Extract<DocAcaoNome, 'nova_versao' | 'devolver' | 'assinar' | 'publicar' | 'cancelar'>;
 
 function DialogoAcao({ acao, aviso, enviando, erro, onEnviar, onFechar }: {
   acao: Dlg; aviso: string; enviando: boolean; erro: string | null;
-  onEnviar: (dados: { note?: string; expires_at?: string; file?: File }) => void; onFechar: () => void;
+  onEnviar: (dados: DadosAcao) => void; onFechar: () => void;
 }) {
   const [nota, setNota] = useState('');
+  const [responsavel, setResponsavel] = useState('');
+  const [prazo, setPrazo] = useState('');
+  const [equipe, setEquipe] = useState<Responsavel[]>([]);
+  useEffect(() => {
+    if (acao === 'devolver') atuacaoFetch<Responsavel[]>('/equipe').then((r) => setEquipe(Array.isArray(r) ? r : [])).catch(() => setEquipe([]));
+  }, [acao]);
   const [validade, setValidade] = useState('');
   const [arquivo, setArquivo] = useState<File | null>(null);
   const [erroLocal, setErroLocal] = useState<string | null>(null);
@@ -156,7 +165,10 @@ function DialogoAcao({ acao, aviso, enviando, erro, onEnviar, onFechar }: {
       if (!DOC_TIPOS_ACEITOS.includes(arquivo.type)) { setErroLocal('Tipo de arquivo não aceito. Use PDF, JPEG, PNG, DOCX ou XLSX.'); return; }
       if (arquivo.size > DOC_MAX_BYTES) { setErroLocal(`O arquivo excede o limite de ${DOC_MAX_MB} MB.`); return; }
     }
-    onEnviar({ note: nota.trim() || undefined, expires_at: validade || undefined, file: arquivo ?? undefined });
+    onEnviar({
+      note: nota.trim() || undefined, expires_at: validade || undefined, file: arquivo ?? undefined,
+      responsavel_id: responsavel || undefined, prazo: prazo || undefined,
+    });
   }
 
   const mensagem = erroLocal ?? erro;
@@ -181,6 +193,21 @@ function DialogoAcao({ acao, aviso, enviando, erro, onEnviar, onFechar }: {
             <label htmlFor="dlg-nota" className={LABEL}>Nota{notaObrigatoria ? ' (obrigatória)' : ' (opcional)'}</label>
             <textarea id="dlg-nota" rows={3} maxLength={1000} value={nota} onChange={(e) => setNota(e.target.value)} aria-describedby="dlg-lgpd" className={INPUT} />
             <p id="dlg-lgpd" className="mt-1 text-xs text-dash-muted">{AVISO_LGPD_NOTA}</p>
+          </div>
+        )}
+        {acao === 'devolver' && (
+          <div className="mb-3 grid gap-3 sm:grid-cols-2">
+            <div>
+              <label htmlFor="dlg-resp" className={LABEL}>Responsável pela correção (opcional)</label>
+              <select id="dlg-resp" value={responsavel} onChange={(e) => setResponsavel(e.target.value)} className={INPUT}>
+                <option value="">Autor da versão atual</option>
+                {equipe.map((m) => <option key={m.id} value={m.id}>{m.full_name}</option>)}
+              </select>
+            </div>
+            <div>
+              <label htmlFor="dlg-prazo" className={LABEL}>Prazo (opcional)</label>
+              <input id="dlg-prazo" type="date" value={prazo} onChange={(e) => setPrazo(e.target.value)} className={INPUT} />
+            </div>
           </div>
         )}
         {mensagem && <p role="alert" className="mb-3 text-sm text-dash-status-crit-text">{mensagem}</p>}
@@ -220,7 +247,7 @@ export default function DocumentoDetalhePage() {
 
   useEffect(() => { void carregar(); }, [carregar]);
 
-  async function executar(acao: DocAcaoNome, dados: { note?: string; expires_at?: string; file?: File } = {}) {
+  async function executar(acao: DocAcaoNome, dados: DadosAcao = {}) {
     if (emVoo.current) return;
     emVoo.current = true;
     setEnviando(true);
@@ -235,6 +262,8 @@ export default function DocumentoDetalhePage() {
       } else {
         const corpo: Record<string, string> = {};
         if (acao === 'devolver' || acao === 'cancelar') corpo.note = dados.note ?? '';
+        if (acao === 'devolver' && dados.responsavel_id) corpo.responsavel_id = dados.responsavel_id;
+        if (acao === 'devolver' && dados.prazo) corpo.prazo = dados.prazo;
         if (acao === 'publicar' && dados.expires_at) corpo.expires_at = dados.expires_at;
         await atuacaoFetch(`/documentos/${id}/${ROTA[acao]}`, {
           method: 'POST', ...(Object.keys(corpo).length ? { body: JSON.stringify(corpo) } : {}),
@@ -330,6 +359,18 @@ export default function DocumentoDetalhePage() {
                 <Secao id="sec-versoes" titulo="Versões">
                   <Versoes versoes={d.versoes} atualId={d.current_version_id} baixando={baixando} onBaixar={(v) => void baixar(v)} />
                 </Secao>
+              </div>
+              <div className="mt-6">
+                <Checklists docId={d.id} encerrado={d.status === 'publicado' || d.status === 'cancelado'} />
+              </div>
+              <div className="mt-6">
+                <Correcoes
+                  docId={d.id}
+                  lista={d.correcoes ?? []}
+                  pendentes={d.correcoes_pendentes ?? 0}
+                  encerrado={d.status === 'publicado' || d.status === 'cancelado'}
+                  onMudou={() => carregar(true)}
+                />
               </div>
               <div className="mt-6">
                 <Assinaturas lista={d.assinaturas} aviso={d.aviso_assinatura} />

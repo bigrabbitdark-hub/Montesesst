@@ -110,7 +110,10 @@ function DocumentosConteudo() {
   const params = useSearchParams();
   const [clientes, setClientes] = useState<ClienteResumo[]>([]);
   const [erroClientes, setErroClientes] = useState<string | null>(null);
-  const [status, setStatus] = useState('');
+  const [status, setStatus] = useState(() => {
+    const q = params.get('status') ?? '';
+    return (DOC_STATUS as readonly string[]).includes(q) ? q : '';
+  });
   const [categoria, setCategoria] = useState('');
   const [tenantId, setTenantId] = useState(params.get('tenantId') ?? '');
   const [data, setData] = useState<DocumentoResumo[] | null>(null);

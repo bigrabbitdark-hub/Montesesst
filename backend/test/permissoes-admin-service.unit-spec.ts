@@ -27,11 +27,11 @@ const SOCIO = [{ id: 'u1', nome: 'Fulano Teste', status: 'ativo' }];
 const INATIVO = [{ id: 'u1', nome: 'Fulano Teste', status: 'inativo' }];
 
 describe('catálogo de permissões', () => {
-  it('cobre EXATAMENTE PERMISSIONS, sem repetição, em 6 grupos', () => {
+  it('cobre EXATAMENTE PERMISSIONS, sem repetição, em 8 grupos', () => {
     const todas = CATALOGO_PERMISSOES.flatMap((g) => g.itens.map((i) => i.permissao));
     expect(new Set(todas).size).toBe(todas.length);
     expect([...todas].sort()).toEqual([...PERMISSIONS].sort());
-    expect(CATALOGO_PERMISSOES.map((g) => g.titulo)).toEqual(['Clientes', 'Tarefas e agenda', 'Financeiro', 'Documentos', 'Atuação por empresa', 'PGR — Programa de Gerenciamento de Riscos']);
+    expect(CATALOGO_PERMISSOES.map((g) => g.titulo)).toEqual(['Clientes', 'Tarefas e agenda', 'Financeiro', 'Documentos', 'Atuação por empresa', 'PGR — Programa de Gerenciamento de Riscos', 'Checklists por serviço', 'Alertas e notificações']);
     for (const g of CATALOGO_PERMISSOES) for (const i of g.itens) { expect(i.rotulo.length).toBeGreaterThan(2); expect(i.descricao.length).toBeGreaterThan(5); }
   });
   it('grupo empresas traz empresas.read e empresas.documentos, não sensíveis', () => {
@@ -45,9 +45,9 @@ describe('catálogo de permissões', () => {
     expect(g.itens.map((x) => x.permissao)).toEqual(['pgr.read', 'pgr.write']);
     expect(g.itens.every((x) => x.sensivel === false)).toBe(true);
   });
-  it('sensíveis são exatamente os 6 do plano', () => {
+  it('sensíveis são exatamente os 8 do plano', () => {
     const sens = CATALOGO_PERMISSOES.flatMap((g) => g.itens).filter((i) => i.sensivel).map((i) => i.permissao).sort();
-    expect(sens).toEqual(['documents.approve', 'documents.cancel', 'documents.publish', 'documents.review', 'documents.sign', 'documents.view_registration']);
+    expect(sens).toEqual(['alertas.manage', 'checklists.approve', 'documents.approve', 'documents.cancel', 'documents.publish', 'documents.review', 'documents.sign', 'documents.view_registration']);
     expect([...PERMISSOES_SENSIVEIS].sort()).toEqual(sens);
   });
 });
@@ -127,7 +127,7 @@ describe('PermissoesAdminService', () => {
     const out = await service.listar(client);
     expect((await montar(INATIVO, []).service.listar(montar(INATIVO, []).client)).socios[0].ativo).toBe(false);
     expect(out.socios).toEqual([{ id: 'u1', nome: 'Fulano Teste', ativo: true, permissoes: ['tasks.read'] }]);
-    expect(out.catalogo.grupos).toHaveLength(6);
+    expect(out.catalogo.grupos).toHaveLength(8);
     expect(JSON.stringify(out)).not.toContain('email');
   });
 });

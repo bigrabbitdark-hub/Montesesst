@@ -25,7 +25,7 @@ function montar(permissoes: string[], resp: Resp = {}) {
     'painel:tarefas-aguardando': [],
     'painel:doc-contagem': [{ vencidos: 3, vence_7: 1, vence_15: 2, vence_30: 5 }],
     'painel:doc-pendentes': [],
-    'painel:rascunhos-contagem': [{ n: 6 }],
+    'painel:rascunhos-contagem': [{ n: 6, em_revisao: 3, para_assinar: 2, para_entregar: 1 }],
     'painel:rascunhos-lista': [],
     ...resp,
   };
@@ -58,7 +58,7 @@ describe('PainelService.painel', () => {
       abertas: 4, vencidas: 2, hoje: 1, bloqueadas: 0,
       aguardando_cliente: 1, aguardando_avaliacao: 2, aguardando_execucao: 0, aguardando_eficacia: 3,
     });
-    expect(p.documentos).toEqual({ vencidos: 3, vence_7: 1, vence_15: 2, vence_30: 5, aguardando_acao: 6 });
+    expect(p.documentos).toEqual({ vencidos: 3, vence_7: 1, vence_15: 2, vence_30: 5, aguardando_acao: 6, etapas: { em_revisao: 3, para_assinar: 2, para_entregar: 1 } });
     expect(p.agenda).toEqual({ hoje: [], hoje_total: 0, proximos_7_dias: 0 });
     expect(p.indisponiveis).toEqual([]);
     expect(new Date(p.gerado_em).toISOString()).toBe(p.gerado_em);
@@ -89,8 +89,8 @@ describe('PainelService.painel', () => {
     expect((await so('clients.read')).empresas).not.toBeNull();
     expect((await so('tasks.read')).empresas).toBeNull();
     // documentos: cada campo depende da sua permissão
-    expect((await so('empresas.read')).documentos).toEqual({ vencidos: 3, vence_7: 1, vence_15: 2, vence_30: 5, aguardando_acao: null });
-    expect((await so('documents.read')).documentos).toEqual({ vencidos: null, vence_7: null, vence_15: null, vence_30: null, aguardando_acao: 6 });
+    expect((await so('empresas.read')).documentos).toEqual({ vencidos: 3, vence_7: 1, vence_15: 2, vence_30: 5, aguardando_acao: null, etapas: null });
+    expect((await so('documents.read')).documentos).toEqual({ vencidos: null, vence_7: null, vence_15: null, vence_30: null, aguardando_acao: 6, etapas: { em_revisao: 3, para_assinar: 2, para_entregar: 1 } });
   });
 
   it('agenda: hoje limitado a 10, mapeia o contrato e usa o dia injetado', async () => {
@@ -219,7 +219,7 @@ describe('PainelService.painel', () => {
   it('erro em sub-consulta de documentos zera só o campo afetado', async () => {
     const { service, client } = montar(TODAS, { 'painel:rascunhos-contagem': new Error('x') });
     const p = await service.painel(client, USER, HOJE);
-    expect(p.documentos).toEqual({ vencidos: 3, vence_7: 1, vence_15: 2, vence_30: 5, aguardando_acao: null });
+    expect(p.documentos).toEqual({ vencidos: 3, vence_7: 1, vence_15: 2, vence_30: 5, aguardando_acao: null, etapas: null });
   });
 
   it('falha ao ler permissões propaga (falha fechada)', async () => {

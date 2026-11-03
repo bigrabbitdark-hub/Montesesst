@@ -68,7 +68,7 @@ describe('atuacao-permissoes — admin gerencia socio_permissions (e2e HTTP)', (
     expect(r.status).toBe(200);
     const itens = r.body.catalogo.grupos.flatMap((g: any) => g.itens.map((i: any) => i.permissao));
     expect([...itens].sort()).toEqual([...PERMISSIONS].sort());
-    expect(r.body.catalogo.grupos).toHaveLength(6);
+    expect(r.body.catalogo.grupos).toHaveLength(8);
     const sa = r.body.socios.find((s: any) => s.id === A.userId);
     const sb = r.body.socios.find((s: any) => s.id === B.userId);
     expect(sa).toEqual({ id: A.userId, nome: `Socio Perm A ${sufixo}`, ativo: true, permissoes: [] });

@@ -43,10 +43,10 @@ export async function atuacaoFetch<T>(path: string, init: RequestInit = {}): Pro
   } catch {
     throw new Error('Não foi possível conectar. Verifique sua conexão e tente novamente.');
   }
-  if (res.ok) return (await res.json()) as T;
+  if (res.ok) return (res.status === 204 ? undefined : await res.json()) as T;
   if (res.status === 403) {
     // Em /documentos o servidor distingue negações (ex.: matriz de responsabilidades): exibe a mensagem dele, sem reinterpretar.
-    if (path.startsWith('/documentos')) {
+    if (path.startsWith('/documentos') || path.startsWith('/checklists')) {
       let msg = '';
       try {
         const body = await res.json();
@@ -56,14 +56,14 @@ export async function atuacaoFetch<T>(path: string, init: RequestInit = {}): Pro
     }
     throw new Error(MSG_403);
   }
-  if (res.status === 409 && (path.startsWith('/documentos') || path.startsWith('/pgr') || path.startsWith('/tarefas'))) {
+  if (res.status === 409 && (path.startsWith('/documentos') || path.startsWith('/pgr') || path.startsWith('/tarefas') || path.startsWith('/checklists') || path.startsWith('/alertas'))) {
     // Conflito de estado/separação de funções: mensagem do servidor, sem reinterpretar.
     let msg = '';
     try {
       const body = await res.json();
       if (typeof body?.message === 'string') msg = body.message.trim();
     } catch { /* corpo ilegível: usa a mensagem padrão */ }
-    throw new Error(msg || (path.startsWith('/pgr') ? 'Conflito: já existe um registro igual. Revise os dados.' : path.startsWith('/tarefas') ? 'Ação não permitida no estado atual da tarefa.' : 'Ação não permitida no estado atual do documento.'));
+    throw new Error(msg || (path.startsWith('/pgr') ? 'Conflito: já existe um registro igual. Revise os dados.' : path.startsWith('/tarefas') ? 'Ação não permitida no estado atual da tarefa.' : path.startsWith('/checklists') ? 'Ação não permitida no estado atual do modelo.' : path.startsWith('/alertas') ? 'Ação não permitida para este registro.' : 'Ação não permitida no estado atual do documento.'));
   }
   if (res.status === 413) throw new Error(`O arquivo excede o limite de ${DOC_MAX_MB} MB.`);
   if (res.status === 401) {
@@ -85,6 +85,9 @@ export async function atuacaoFetch<T>(path: string, init: RequestInit = {}): Pro
       } catch { /* corpo ilegível */ }
       throw new Error(path.endsWith('/resumo') || !msg ? 'Empresa não encontrada.' : msg);
     }
+    if (path.startsWith('/checklists')) throw new Error('Modelo de checklist não encontrado.');
+    if (path.startsWith('/notificacoes')) throw new Error('Notificação não encontrada.');
+    if (path.startsWith('/alertas/mudancas')) throw new Error('Empresa ou registro não encontrado.');
     if (path.startsWith('/vencimentos')) throw new Error('Empresa não encontrada.');
     if (path.startsWith('/tarefas')) throw new Error('Tarefa não encontrada.');
     if (path.startsWith('/agenda')) throw new Error('Compromisso não encontrado.');
@@ -338,6 +341,22 @@ export interface DocVersao {
   id: string; version_number: number; file_name: string; mime_type: string; size_bytes: number; sha256: string;
   note: string | null; created_by: string; created_by_name: string | null; created_at: string;
 }
+export type CorrecaoStatus = 'aberta' | 'corrigida' | 'verificada' | 'cancelada';
+export type CorrecaoOrigem = 'revisao' | 'cliente' | 'interna';
+export interface DocCorrecao {
+  id: string; version_number: number | null; description: string; origin: CorrecaoOrigem; requester_label: string | null;
+  requested_by_name: string | null; responsible_user_id: string; responsible_name: string | null; due_date: string | null;
+  status: CorrecaoStatus; corrected_at: string | null; verified_at: string | null; resolution_note: string | null; created_at: string;
+}
+export const CORRECAO_STATUS_LABEL: Record<CorrecaoStatus, string> = {
+  aberta: 'Aberta', corrigida: 'Corrigida, aguardando verificação', verificada: 'Verificada', cancelada: 'Cancelada',
+};
+export const CORRECAO_ORIGEM_LABEL: Record<CorrecaoOrigem, string> = {
+  revisao: 'Revisão interna', cliente: 'Pedido do cliente', interna: 'Identificada internamente',
+};
+export function correcaoStatusTone(s: CorrecaoStatus): 'ok' | 'info' | 'warn' | 'crit' | 'high' {
+  return s === 'verificada' ? 'ok' : s === 'aberta' ? 'crit' : s === 'corrigida' ? 'warn' : 'high';
+}
 export interface DocEvento {
   id: string; type: string; version_id: string | null; actor_user_id: string | null; actor_name: string | null;
   note: string | null; created_at: string;
@@ -349,6 +368,7 @@ export interface DocAssinatura {
 }
 export type DocumentoDetalhe = DocumentoResumo & {
   versao_atual_sha256: string | null; versoes: DocVersao[]; eventos: DocEvento[]; assinaturas: DocAssinatura[];
+  correcoes: DocCorrecao[]; correcoes_pendentes: number;
   aviso_assinatura: string; acoes_permitidas: DocAcaoNome[];
 };
 
@@ -544,6 +564,7 @@ export interface PainelResposta {
   agenda: { hoje: PainelEvento[]; hoje_total: number; proximos_7_dias: number } | null;
   documentos: {
     vencidos: number | null; vence_7: number | null; vence_15: number | null; vence_30: number | null; aguardando_acao: number | null;
+    etapas: { em_revisao: number; para_assinar: number; para_entregar: number } | null;
   } | null;
   pendencias: PainelPendencia[];
   indisponiveis: string[];
@@ -563,4 +584,71 @@ export const VENCIMENTOS_POR_PAGINA = 100;
 // Só caminhos internos do Painel de Atuação viram link (o servidor já garante; aqui é defesa em profundidade).
 export function hrefAtuacaoSeguro(href: unknown): string | null {
   return typeof href === 'string' && href.startsWith('/atuacao/') && !href.includes('..') && !/[\\\s]/.test(href) ? href : null;
+}
+
+
+// ---- Checklists por serviço (E3) ----
+export type ChecklistServico = 'pgr' | 'ltcat' | 'laudo_insalubridade' | 'laudo_periculosidade' | 'relatorio_inspecao' | 'apr' | 'ordem_servico' | 'outro';
+export const CHECKLIST_SERVICOS: readonly ChecklistServico[] = ['pgr', 'ltcat', 'laudo_insalubridade', 'laudo_periculosidade', 'relatorio_inspecao', 'apr', 'ordem_servico', 'outro'];
+const CHECKLIST_SERVICO_LABEL: Record<ChecklistServico, string> = {
+  pgr: 'PGR', ltcat: 'LTCAT', laudo_insalubridade: 'Laudo de insalubridade', laudo_periculosidade: 'Laudo de periculosidade',
+  relatorio_inspecao: 'Relatório de inspeção', apr: 'APR', ordem_servico: 'Ordem de serviço', outro: 'Outro',
+};
+export function checklistServicoLabel(s: string): string { return CHECKLIST_SERVICO_LABEL[s as ChecklistServico] ?? s; }
+export type ChecklistTipo = 'sim_nao_na' | 'texto' | 'numero' | 'data';
+export const CHECKLIST_TIPO_LABEL: Record<ChecklistTipo, string> = { sim_nao_na: 'Sim / Não / N.A.', texto: 'Texto', numero: 'Número', data: 'Data' };
+export type ChecklistVersaoStatus = 'rascunho' | 'aprovado' | 'substituido';
+export const CHECKLIST_STATUS_LABEL: Record<ChecklistVersaoStatus, string> = { rascunho: 'Rascunho', aprovado: 'Aprovado', substituido: 'Substituído' };
+export function checklistStatusTone(s: ChecklistVersaoStatus): 'ok' | 'warn' | 'high' { return s === 'aprovado' ? 'ok' : s === 'rascunho' ? 'warn' : 'high'; }
+export interface ChecklistModeloResumo {
+  id: string; service: ChecklistServico; name: string; versao_aprovada_id: string | null; versao_aprovada: number | null;
+  rascunho_id: string | null; ultima_versao: number | null;
+}
+export interface ChecklistItemModelo {
+  id?: string; position?: number; label: string; instruction: string | null; kind: ChecklistTipo; required: boolean; blocks_review: boolean;
+}
+export interface ChecklistVersao {
+  id: string; template_id: string; service: ChecklistServico; name: string; version_number: number; status: ChecklistVersaoStatus;
+  change_note: string | null; created_by_name: string | null; approved_by_name: string | null; approved_at: string | null; itens: ChecklistItemModelo[];
+}
+export interface ChecklistItemResposta extends ChecklistItemModelo {
+  id: string; resposta: string | null; resposta_nota: string | null; answered_at: string | null; respondido_por: string | null;
+}
+export interface ChecklistDoDocumento {
+  id: string; template_version_id: string; service: ChecklistServico; name: string; version_number: number; versao_status: ChecklistVersaoStatus;
+  itens: ChecklistItemResposta[];
+  completude: { total: number; respondidos: number; obrigatorios_pendentes: number; bloqueiam_revisao: number };
+}
+
+
+// ---- Alertas e notificações (E4) ----
+export type NotificacaoPrioridade = 'baixa' | 'media' | 'alta';
+export interface Notificacao {
+  id: string; type: string; priority: NotificacaoPrioridade; title: string; tenant_id: string | null; href: string | null;
+  created_at: string; read_at: string | null;
+}
+export interface ResumoNotificacoes { nao_lidas: number; alta: number }
+export function notificacaoTone(p: NotificacaoPrioridade): 'crit' | 'warn' | 'high' { return p === 'alta' ? 'crit' : p === 'media' ? 'warn' : 'high'; }
+export const NOTIFICACAO_PRIORIDADE_LABEL: Record<NotificacaoPrioridade, string> = { alta: 'Alta', media: 'Média', baixa: 'Baixa' };
+export interface RegraAlerta {
+  category: string; validity_months: number | null; alert_days: number; notice_days: number[] | null; notice_days_efetivo: number[];
+  usa_padrao: boolean; source: string | null; updated_at: string;
+}
+export type MotivoMudanca = 'funcao' | 'processo' | 'equipamento' | 'risco' | 'estabelecimento' | 'outro';
+export const MOTIVO_MUDANCA_LABEL: Record<MotivoMudanca, string> = {
+  funcao: 'Mudança de função', processo: 'Mudança de processo', equipamento: 'Novo equipamento', risco: 'Mudança de risco',
+  estabelecimento: 'Mudança de estabelecimento', outro: 'Outro motivo',
+};
+export interface MudancaCondicoes {
+  id: string; tenant_id: string; empresa: string; document_id: string | null; category: string | null; reason: MotivoMudanca;
+  note: string | null; created_at: string; created_by_name: string | null; resolved_at: string | null; resolved_by_name: string | null;
+  resolution_note: string | null;
+}
+// "60, 30, 15" -> [60, 30, 15]; null quando inválido (0 a 365, sem repetição, de 1 a 8 valores).
+export function parseAntecedencias(txt: string): number[] | null {
+  const partes = txt.split(/[,\s;]+/).filter(Boolean);
+  if (partes.length < 1 || partes.length > 8) return null;
+  const nums = partes.map((p) => (/^\d{1,3}$/.test(p) ? Number(p) : NaN));
+  if (nums.some((n) => Number.isNaN(n) || n > 365) || new Set(nums).size !== nums.length) return null;
+  return nums.sort((a, b) => b - a);
 }

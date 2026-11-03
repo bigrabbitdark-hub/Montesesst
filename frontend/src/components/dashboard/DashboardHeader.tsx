@@ -9,6 +9,8 @@ export function DashboardHeader({
   onMenuClick,
   iaHref = '/empresa/assistente',
   comBuscaENotificacoes = true,
+  notificacoesHref = null,
+  notificacoesNaoLidas = 0,
 }: {
   nomeUsuario: string;
   papel: string;
@@ -18,6 +20,9 @@ export function DashboardHeader({
   iaHref?: string | null;
   // Busca e sino ainda são decorativos; ficam só onde já existiam (empresa).
   comBuscaENotificacoes?: boolean;
+  // Sino funcional (painel dos sócios): link para a lista, com contador de não lidas.
+  notificacoesHref?: string | null;
+  notificacoesNaoLidas?: number;
 }) {
   return (
     <header className="flex h-[72px] items-center justify-between border-b border-dash-border-soft bg-dash-card px-4 sm:px-8">
@@ -60,6 +65,20 @@ export function DashboardHeader({
           >
             <Bell size={18} className="text-dash-muted" aria-hidden />
           </button>
+        )}
+        {notificacoesHref && (
+          <Link
+            href={notificacoesHref}
+            aria-label={notificacoesNaoLidas > 0 ? `Notificações (${notificacoesNaoLidas} não lida${notificacoesNaoLidas === 1 ? '' : 's'})` : 'Notificações'}
+            className="relative flex h-[42px] w-[42px] items-center justify-center rounded-xl border border-dash-border-soft hover:bg-dash-page focus:outline-none focus-visible:ring-2 focus-visible:ring-dash-primary"
+          >
+            <Bell size={18} className="text-dash-muted" aria-hidden />
+            {notificacoesNaoLidas > 0 && (
+              <span aria-hidden className="absolute -right-1 -top-1 min-w-[18px] rounded-full bg-dash-status-crit-text px-1 text-center text-[11px] font-bold leading-[18px] text-white">
+                {notificacoesNaoLidas > 99 ? '99+' : notificacoesNaoLidas}
+              </span>
+            )}
+          </Link>
         )}
         {logoSrc ? (
           // eslint-disable-next-line @next/next/no-img-element

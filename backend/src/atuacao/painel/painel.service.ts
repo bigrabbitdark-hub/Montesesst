@@ -29,6 +29,9 @@ export interface EventoPainel {
 export interface DocumentosPainel {
   vencidos: number | null; vence_7: number | null; vence_15: number | null; vence_30: number | null;
   aguardando_acao: number | null;
+  // Fila por etapa do fluxo 0096: em_revisao = aguardando revisão/aprovação; aprovado = aguardando assinatura;
+  // assinado = aguardando publicação/entrega. null quando a contagem de rascunhos falhou ou não é permitida.
+  etapas: { em_revisao: number; para_assinar: number; para_entregar: number } | null;
 }
 
 export interface PainelDto {
@@ -192,14 +195,20 @@ export class PainelService {
       : null;
     const a = aguard
       ? await this.bloco(c, 'documentos.aguardando', async () => (await c.query(
-        `/* painel:rascunhos-contagem */ SELECT count(*)::int AS n FROM document_drafts WHERE status = ANY($1::text[])`,
+        `/* painel:rascunhos-contagem */
+         SELECT count(*)::int AS n,
+                count(*) FILTER (WHERE status = 'em_revisao')::int AS em_revisao,
+                count(*) FILTER (WHERE status = 'aprovado')::int AS para_assinar,
+                count(*) FILTER (WHERE status = 'assinado')::int AS para_entregar
+           FROM document_drafts WHERE status = ANY($1::text[])`,
         [AGUARDANDO],
-      )).rows[0].n as number)
+      )).rows[0])
       : null;
     if (v === null && a === null) return null;
     return {
       vencidos: v?.vencidos ?? null, vence_7: v?.vence_7 ?? null, vence_15: v?.vence_15 ?? null, vence_30: v?.vence_30 ?? null,
-      aguardando_acao: a,
+      aguardando_acao: a?.n ?? null,
+      etapas: a ? { em_revisao: a.em_revisao, para_assinar: a.para_assinar, para_entregar: a.para_entregar } : null,
     };
   }
 

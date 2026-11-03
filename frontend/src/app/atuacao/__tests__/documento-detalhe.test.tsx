@@ -31,6 +31,7 @@ const detalhe = {
     { id: 's1', version_id: 'v-1', version_number: 1, signer_user_id: 'u-3', signer_name: 'Beto Sócio', version_sha256: HASH1, signed_at: '2026-10-11T13:00:00Z', registro_confirmado: true, vigente: false },
     { id: 's2', version_id: 'v-2', version_number: 2, signer_user_id: 'u-4', signer_name: 'Carla Sócia', version_sha256: HASH2, signed_at: '2026-10-12T13:00:00Z', registro_confirmado: true, vigente: true },
   ],
+  correcoes: [] as unknown[], correcoes_pendentes: 0,
   aviso_assinatura: AVISO,
   acoes_permitidas: ['nova_versao', 'enviar_revisao', 'devolver', 'aprovar', 'assinar', 'publicar', 'cancelar'],
 };
@@ -166,7 +167,7 @@ describe('ações', () => {
   it('devolver exige nota, mostra aviso LGPD e envia a nota', async () => {
     comAcoes(['devolver']);
     render(<DocumentoDetalhePage />);
-    fireEvent.click(await screen.findByRole('button', { name: 'Devolver para elaboração' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Devolver para correção' }));
     const dlg = await screen.findByRole('dialog');
     expect(within(dlg).getByText('Não inclua dados pessoais sensíveis ou de saúde.')).toBeTruthy();
     fireEvent.click(within(dlg).getByRole('button', { name: 'Confirmar' }));
@@ -296,7 +297,7 @@ describe('erros do servidor', () => {
     fetchMock.mockImplementation(async (_u: string, init?: RequestInit) =>
       init?.method === 'POST' ? resp(400, { message: ['note should not be empty', 'outra'] }) : resp(200, atual));
     render(<DocumentoDetalhePage />);
-    fireEvent.click(await screen.findByRole('button', { name: 'Devolver para elaboração' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Devolver para correção' }));
     const dlg = await screen.findByRole('dialog');
     fireEvent.change(within(dlg).getByLabelText(/Nota/), { target: { value: 'x' } });
     fireEvent.click(within(dlg).getByRole('button', { name: 'Confirmar' }));
@@ -324,7 +325,7 @@ describe('diálogo', () => {
   it('foco entra no diálogo, Tab fica preso, Esc fecha e devolve o foco ao botão', async () => {
     comAcoes(['devolver']);
     render(<DocumentoDetalhePage />);
-    const abrir = await screen.findByRole('button', { name: 'Devolver para elaboração' });
+    const abrir = await screen.findByRole('button', { name: 'Devolver para correção' });
     abrir.focus();
     fireEvent.click(abrir);
     const dlg = await screen.findByRole('dialog');
@@ -414,5 +415,73 @@ describe('estados terminais', () => {
     } else {
       expect(screen.queryByText('Publicado em documentos do cliente')).toBeNull();
     }
+  });
+});
+
+
+describe('correções (E2)', () => {
+  const corr = (over: Record<string, unknown> = {}) => ({
+    id: 'c-1', version_number: 1, description: 'Corrigir o item 3', origin: 'revisao', requester_label: null,
+    requested_by_name: 'Beto Sócio', responsible_user_id: 'u-2', responsible_name: 'Ana Sócia', due_date: '2026-12-01',
+    status: 'aberta', corrected_at: null, verified_at: null, resolution_note: null, created_at: '2026-10-11T12:00:00Z', ...over,
+  });
+  const patches = () => fetchMock.mock.calls.filter((c) => (c[1] as RequestInit | undefined)?.method === 'PATCH');
+
+  it('lista a correção com origem, responsável e prazo, e avisa que aprovar/assinar/publicar ficam bloqueados', async () => {
+    comAcoes(['aprovar'], { correcoes: [corr()], correcoes_pendentes: 1 });
+    render(<DocumentoDetalhePage />);
+    const lista = await screen.findByRole('list', { name: 'Correções do documento' });
+    expect(within(lista).getByText('Corrigir o item 3')).toBeInTheDocument();
+    expect(within(lista).getByText(/Revisão interna/)).toBeInTheDocument();
+    expect(within(lista).getByText(/Responsável: Ana Sócia · prazo: 01\/12\/2026/)).toBeInTheDocument();
+    expect(screen.getByText(/1 correção pendente: aprovar, assinar e publicar ficam bloqueados/)).toBeInTheDocument();
+  });
+
+  it('sem correções mostra o estado vazio e nenhum aviso de bloqueio', async () => {
+    render(<DocumentoDetalhePage />);
+    expect(await screen.findByText('Nenhuma correção registrada.')).toBeInTheDocument();
+    expect(screen.queryByText(/correção pendente|correções pendentes/)).toBeNull();
+  });
+
+  it('marcar como corrigida envia PATCH com a ação; corrigida oferece verificar e reabrir', async () => {
+    comAcoes([], { correcoes: [corr()], correcoes_pendentes: 1 });
+    render(<DocumentoDetalhePage />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Marcar como corrigida' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Confirmar' }));
+    await waitFor(() => expect(patches()).toHaveLength(1));
+    expect(String(patches()[0][0])).toBe('/api/atuacao/documentos/d-1/correcoes/c-1');
+    expect(JSON.parse((patches()[0][1] as RequestInit).body as string)).toEqual({ acao: 'corrigir' });
+  });
+
+  it('reabrir exige nota; verificar não', async () => {
+    comAcoes([], { correcoes: [corr({ status: 'corrigida' })], correcoes_pendentes: 1 });
+    render(<DocumentoDetalhePage />);
+    expect(await screen.findByRole('button', { name: 'Verificar e encerrar' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Reabrir' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Confirmar' }));
+    expect(await screen.findByText('Informe a nota (motivo).')).toBeInTheDocument();
+    expect(patches()).toHaveLength(0);
+  });
+
+  it('correção encerrada não oferece ações; documento publicado esconde "Registrar correção"', async () => {
+    comAcoes([], { status: 'publicado', correcoes: [corr({ status: 'verificada' })], correcoes_pendentes: 0 });
+    render(<DocumentoDetalhePage />);
+    await screen.findByRole('list', { name: 'Correções do documento' });
+    expect(screen.queryByRole('button', { name: 'Marcar como corrigida' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Registrar correção' })).toBeNull();
+  });
+
+  it('registrar correção do cliente exige quem solicitou e envia POST com origem e solicitante', async () => {
+    render(<DocumentoDetalhePage />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Registrar correção' }));
+    fireEvent.change(await screen.findByLabelText(/O que precisa ser corrigido/), { target: { value: 'Corrigir CNPJ' } });
+    fireEvent.change(screen.getByLabelText('Quem identificou'), { target: { value: 'cliente' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Registrar' }));
+    expect(await screen.findByText('Informe quem do cliente solicitou.')).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('Quem do cliente solicitou'), { target: { value: 'RH da empresa' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Registrar' }));
+    await waitFor(() => expect(posts()).toHaveLength(1));
+    expect(String(posts()[0][0])).toBe('/api/atuacao/documentos/d-1/correcoes');
+    expect(JSON.parse((posts()[0][1] as RequestInit).body as string)).toEqual({ description: 'Corrigir CNPJ', origin: 'cliente', requester_label: 'RH da empresa' });
   });
 });

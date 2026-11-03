@@ -91,17 +91,17 @@ describe('documento-fluxo: avaliarAcao', () => {
   });
 
   it('autor revisando a própria versão => SEPARACAO', () => {
-    const r = avaliarAcao({ ...base, acao: 'revisar', draftStatus: 'em_revisao', usuarioId: 'autor' });
+    const r = avaliarAcao({ ...base, acao: 'revisar', draftStatus: 'em_revisao', usuarioId: 'autor', separacao: fluxo.SEPARACAO_ESTRITA });
     expect(r).toMatchObject({ ok: false, codigo: 'SEPARACAO' });
   });
 
-  it('elaborador aprovando => SEPARACAO (revisor e aprovador diferentes do elaborador, por padrão)', () => {
-    expect(avaliarAcao({ ...base, acao: 'aprovar', draftStatus: 'em_revisao', usuarioId: 'autor' })).toMatchObject({ ok: false, codigo: 'SEPARACAO' });
+  it('elaborador aprovando => SEPARACAO quando a separação estrita é pedida', () => {
+    expect(avaliarAcao({ ...base, acao: 'aprovar', draftStatus: 'em_revisao', usuarioId: 'autor', separacao: fluxo.SEPARACAO_ESTRITA })).toMatchObject({ ok: false, codigo: 'SEPARACAO' });
     expect(avaliarAcao({ ...base, acao: 'aprovar', draftStatus: 'em_revisao', usuarioId: 'terceiro' })).toEqual({ ok: true });
   });
 
   it('todos os elaboradores contam (vários), não só um', () => {
-    const b = { ...base, elaboradoresIds: ['criador', 'autor-v1', 'quem-submeteu'], draftStatus: 'em_revisao' as const };
+    const b = { ...base, separacao: fluxo.SEPARACAO_ESTRITA, elaboradoresIds: ['criador', 'autor-v1', 'quem-submeteu'], draftStatus: 'em_revisao' as const };
     for (const u of ['criador', 'autor-v1', 'quem-submeteu']) {
       expect(avaliarAcao({ ...b, acao: 'revisar', usuarioId: u })).toMatchObject({ codigo: 'SEPARACAO' });
       expect(avaliarAcao({ ...b, acao: 'aprovar', usuarioId: u })).toMatchObject({ codigo: 'SEPARACAO' });
@@ -122,8 +122,11 @@ describe('documento-fluxo: avaliarAcao', () => {
     expect(avaliarAcao({ ...mesma, acao: 'publicar', draftStatus: 'assinado' })).toEqual({ ok: true });
   });
 
-  it('SEPARACAO_PADRAO exportado com os dois bloqueios ligados', () => {
-    expect(fluxo.SEPARACAO_PADRAO).toEqual({ revisorDiferenteDoElaborador: true, aprovadorDiferenteDoElaborador: true });
+  it('padrão (decisão do proprietário, 2026-11-01): sem bloqueio de separação; o modo estrito segue disponível', () => {
+    expect(fluxo.SEPARACAO_PADRAO).toEqual({ revisorDiferenteDoElaborador: false, aprovadorDiferenteDoElaborador: false });
+    expect(fluxo.SEPARACAO_ESTRITA).toEqual({ revisorDiferenteDoElaborador: true, aprovadorDiferenteDoElaborador: true });
+    expect(avaliarAcao({ ...base, acao: 'aprovar', draftStatus: 'em_revisao', usuarioId: 'autor' })).toEqual({ ok: true });
+    expect(avaliarAcao({ ...base, acao: 'revisar', draftStatus: 'em_revisao', usuarioId: 'autor' })).toEqual({ ok: true });
   });
 
   it('assinar sem registro confirmado => REGISTRO', () => {
@@ -140,7 +143,7 @@ describe('documento-fluxo: avaliarAcao', () => {
   it('mensagem de ESTADO e SEPARACAO são textos não vazios', () => {
     const e = avaliarAcao({ ...base, acao: 'assinar', draftStatus: 'publicado' });
     expect(e.ok === false && e.mensagem.length > 0).toBe(true);
-    const s = avaliarAcao({ ...base, acao: 'revisar', draftStatus: 'em_revisao', usuarioId: 'autor' });
+    const s = avaliarAcao({ ...base, acao: 'revisar', draftStatus: 'em_revisao', usuarioId: 'autor', separacao: fluxo.SEPARACAO_ESTRITA });
     expect(s.ok === false && s.mensagem.length > 0).toBe(true);
   });
 });
@@ -188,17 +191,17 @@ describe('documento-fluxo: textos e permissões', () => {
     }
   });
 
-  it('PERMISSIONS: 18 itens (16 anteriores + pgr.read + pgr.write), sem permissões proibidas', () => {
+  it('PERMISSIONS: 23 itens (21 anteriores + alertas.read/manage), sem permissões proibidas', () => {
     const p = PERMISSIONS as readonly string[];
-    expect(p).toHaveLength(18);
-    for (const x of ['documents.read', 'documents.approve', 'documents.publish', 'documents.cancel', 'documents.view_registration', 'empresas.read', 'empresas.documentos', 'pgr.read', 'pgr.write']) expect(p).toContain(x);
+    expect(p).toHaveLength(23);
+    for (const x of ['documents.read', 'documents.approve', 'documents.publish', 'documents.cancel', 'documents.view_registration', 'empresas.read', 'empresas.documentos', 'pgr.read', 'pgr.write', 'checklists.read', 'checklists.write', 'checklists.approve', 'alertas.read', 'alertas.manage']) expect(p).toContain(x);
     for (const x of ['finance.write', 'billing.manage', 'users.manage', 'settings.manage']) expect(p).not.toContain(x);
   });
 });
 
-describe('documento-fluxo: PERMISSIONS x CHECK de socio_permissions na migration 0098', () => {
+describe('documento-fluxo: PERMISSIONS x CHECK de socio_permissions na migration mais recente que o redefine (0104)', () => {
   it('a lista do CHECK do banco e a lista TS concordam', () => {
-    const sql = readFileSync(join(__dirname, '../db/migrations/0098_pgr_inventario.sql'), 'utf8');
+    const sql = readFileSync(join(__dirname, '../db/migrations/0104_alertas_vencimento.sql'), 'utf8');
     // lastIndexOf: o bloco de rollback comentado no topo repete o texto (com a lista antiga)
     const ini = sql.lastIndexOf('ADD CONSTRAINT socio_permissions_permission_check CHECK (permission IN (');
     expect(ini).toBeGreaterThan(0);
@@ -231,7 +234,7 @@ describe('documento-fluxo: cancelamento conservador', () => {
 });
 
 describe('avaliarViabilidade (função pura)', () => {
-  const SEP = fluxo.SEPARACAO_PADRAO;
+  const SEP = fluxo.SEPARACAO_ESTRITA;
   const av = (matriz: { userId: string; acoes: fluxo.DocAcao[] }[], conf: string[] = [], separacao: any = SEP) =>
     fluxo.avaliarViabilidade({ matriz, registrosConfirmados: new Set(conf), separacao });
   const TODAS = [...DOC_ACOES] as fluxo.DocAcao[];
@@ -269,6 +272,10 @@ describe('avaliarViabilidade (função pura)', () => {
   it('separacao.aprovadorDiferenteDoElaborador=false => a mesma pessoa serve', () => {
     const r = av([{ userId: 'a', acoes: TODAS }], ['a'], { revisorDiferenteDoElaborador: true, aprovadorDiferenteDoElaborador: false });
     expect(r.status).toBe('viavel');
+  });
+  it('padrão atual: uma única pessoa que faz tudo é viável (equipe de uma engenheira)', () => {
+    const r = fluxo.avaliarViabilidade({ matriz: [{ userId: 'a', acoes: TODAS }], registrosConfirmados: new Set(['a']), separacao: fluxo.SEPARACAO_PADRAO });
+    expect(r).toMatchObject({ status: 'viavel', faltas: [], avisos: [] });
   });
   it('aviso de devolver quando não há revisor diferente do elaborador (não impede)', () => {
     const base = [{ userId: 'a', acoes: ['elaborar', 'revisar'] as fluxo.DocAcao[] }, { userId: 'b', acoes: ['aprovar', 'assinar', 'publicar'] as fluxo.DocAcao[] }];

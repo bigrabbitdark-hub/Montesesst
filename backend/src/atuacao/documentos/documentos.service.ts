@@ -16,7 +16,11 @@ import {
   type DocAcao,
   type DocStatus,
 } from './documento-fluxo';
-import type { CreateDocumentoDto, ListDocumentosQuery } from './dto/documentos.dto';
+import type { CreateCorrecaoDto, CreateDocumentoDto, ListDocumentosQuery, UpdateCorrecaoDto } from './dto/documentos.dto';
+import { itensBloqueantesPendentes } from '../checklists/completude';
+import {
+  atualizarCorrecao, exigirSemPendentes, inserirCorrecao, listarCorrecoes, registrarCorrecao,
+} from './correcoes';
 
 // Mesmos tipos aceitos em `documents` (documents.service.ts; lá a constante não é exportada).
 const ALLOWED_MIME_TYPES = ['application/pdf', 'image/jpeg', 'image/png', DOCX_MIME_TYPE, XLSX_MIME_TYPE];
@@ -172,6 +176,7 @@ export class DocumentosService {
       };
     });
 
+    const correcoes = await listarCorrecoes(client, id);
     const matriz = await this.matriz(client, row.category, userId);
     const registro = await this.registroConfirmado(client, userId);
     const acoes = calcularAcoesPermitidas({
@@ -191,6 +196,8 @@ export class DocumentosService {
       versao_atual_sha256: versao_sha256 ?? null,
       versoes: versoes.rows,
       eventos: eventos.rows,
+      correcoes,
+      correcoes_pendentes: correcoes.filter((c) => c.status === 'aberta' || c.status === 'corrigida').length,
       assinaturas,
       aviso_assinatura: AVISO_ASSINATURA_INTERNA,
       acoes_permitidas: acoes,
@@ -297,19 +304,50 @@ export class DocumentosService {
     if (d.status !== 'em_elaboracao') throw conflitoEstado(MSG_ESTADO, 'enviar_revisao');
     await this.exigir(client, userId, d, 'elaborar');
     if (!d.current_version_id) throw conflitoEstado('Envie ao menos uma versão antes de enviar para revisão.', 'enviar_revisao');
+    const faltam = await itensBloqueantesPendentes(client, d.id);
+    if (faltam > 0) {
+      throw conflitoEstado(`Checklist incompleto: ${faltam === 1 ? '1 item obrigatório sem resposta' : `${faltam} itens obrigatórios sem resposta`}.`, 'enviar_revisao');
+    }
     return this.transicionar(client, userId, d, 'em_revisao', 'submitted', null);
   }
 
-  async devolver(client: PoolClient, userId: string, id: string, note: string) {
+  // A nota vira a descrição de uma correção estruturada (E2). Responsável padrão = autor da versão atual
+  // (ou, sem versão, quem criou o rascunho); prazo opcional.
+  async devolver(client: PoolClient, userId: string, id: string, note: string, extra: { responsavelId?: string; prazo?: string } = {}) {
     const d = await this.travar(client, id);
     await this.exigir(client, userId, d, 'revisar');
     const nota = this.notaObrigatoria(note);
+    const responsavel = extra.responsavelId ?? (await this.autorDaVersaoAtual(client, d)) ?? userId;
+    await inserirCorrecao(client, d, {
+      descricao: nota, origem: 'revisao', solicitadoPor: userId, responsavel, prazo: extra.prazo ?? null,
+    });
     return this.transicionar(client, userId, d, 'em_elaboracao', 'returned', nota);
+  }
+
+  private async autorDaVersaoAtual(client: PoolClient, d: RascunhoTravado): Promise<string | null> {
+    if (!d.current_version_id) return null;
+    const r = await client.query<{ created_by: string }>('SELECT created_by FROM document_draft_versions WHERE id = $1', [d.current_version_id]);
+    return r.rows[0]?.created_by ?? null;
+  }
+
+  async registrarCorrecao(client: PoolClient, userId: string, id: string, dto: CreateCorrecaoDto) {
+    const d = await this.travar(client, id);
+    if (d.status === 'publicado' || d.status === 'cancelado') throw conflitoEstado(MSG_ESTADO, 'corrigir');
+    await registrarCorrecao(client, userId, d, dto);
+    return this.obter(client, userId, id);
+  }
+
+  async atualizarCorrecao(client: PoolClient, userId: string, id: string, correcaoId: string, dto: UpdateCorrecaoDto) {
+    const d = await this.travar(client, id);
+    const rbac = await this.permissoesRbac(client, userId);
+    await atualizarCorrecao(client, userId, rbac, d.id, correcaoId, dto);
+    return this.obter(client, userId, id);
   }
 
   async aprovar(client: PoolClient, userId: string, id: string) {
     const d = await this.travar(client, id);
     await this.exigir(client, userId, d, 'aprovar');
+    await exigirSemPendentes(client, d.id, (m) => conflitoEstado(m, 'aprovar'));
     return this.transicionar(client, userId, d, 'aprovado', 'approved', null);
   }
 
@@ -317,6 +355,7 @@ export class DocumentosService {
     const d = await this.travar(client, id);
     const registro = await this.exigir(client, userId, d, 'assinar');
     if (!registro || !d.current_version_id || !d.versao_sha256) throw conflitoEstado(MSG_ESTADO, 'assinar');
+    await exigirSemPendentes(client, d.id, (m) => conflitoEstado(m, 'assinar'));
     try {
       await client.query(
         `INSERT INTO document_draft_signatures
@@ -349,6 +388,7 @@ export class DocumentosService {
       const d = await this.travar(client, id);
       await this.exigir(client, userId, d, 'publicar');
       await this.exigirAssinaturaVigente(client, d);
+      await exigirSemPendentes(client, d.id, (m) => conflitoEstado(m, 'publicar'));
       return d;
     });
     if (!prep.versao_file_key || !prep.versao_sha256) throw conflitoEstado(MSG_ESTADO, 'publicar');
@@ -382,6 +422,7 @@ export class DocumentosService {
     await this.exigir(client, userId, d, 'publicar');
     if (d.current_version_id !== versionId) throw conflitoEstado('A versão mudou durante a publicação; tente novamente.', 'publicar');
     await this.exigirAssinaturaVigente(client, d);
+    await exigirSemPendentes(client, d.id, (m) => conflitoEstado(m, 'publicar'));
     // Ordem obrigatória (trigger trg_a_guard_documents_socio_publish): com o rascunho ainda
     // 'assinado' e publish_file_key definido, insere-se o documento; só depois o rascunho vira 'publicado'.
     try {

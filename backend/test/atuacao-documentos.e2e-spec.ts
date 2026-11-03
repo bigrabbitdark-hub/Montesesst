@@ -1080,6 +1080,20 @@ describe('atuacao-documentos — fluxo HTTP do sócio (R2 fake)', () => {
     expect(rows2[1].sha256).not.toBe(rows2[0].sha256);
     expect((await post(tA, `/${id}/enviar-revisao`)).status).toBe(201);
 
+    // E2: a devolução abriu uma correção; enquanto não for corrigida E verificada, aprovar é bloqueado (409, nada muda)
+    const detCorr = await (request(app.getHttpServer()) as any).get(`${base}/${id}`).set(auth(tB));
+    expect(detCorr.body.correcoes).toHaveLength(1);
+    expect(detCorr.body.correcoes[0]).toMatchObject({ status: 'aberta', origin: 'revisao', description: NOTA });
+    expect(detCorr.body.correcoes_pendentes).toBe(1);
+    const bloq = await post(tB, `/${id}/aprovar`);
+    expect(bloq.status).toBe(409);
+    expect((await draft(id)).status).toBe('em_revisao');
+    const corrId = detCorr.body.correcoes[0].id as string;
+    const patch = (t: string, body: object) => (request(app.getHttpServer()) as any).patch(`${base}/${id}/correcoes/${corrId}`).set(auth(t)).send(body);
+    expect((await patch(tA, { acao: 'corrigir', nota: 'item 3 ajustado' })).status).toBe(200);
+    expect((await post(tB, `/${id}/aprovar`)).status).toBe(409); // corrigida ainda não é verificada
+    expect((await patch(tB, { acao: 'verificar' })).status).toBe(200);
+
     // B (que não é autor) aprova: a mesma transição em_revisao -> aprovado
     const apr = await post(tB, `/${id}/aprovar`);
     expect(apr.status).toBe(201);
@@ -1247,7 +1261,7 @@ describe('atuacao-documentos — fluxo HTTP do sócio (R2 fake)', () => {
     expect((await post(tC, `/${emRev.id}/assinar`)).status).toBe(409);
   }, 60000);
 
-  it('separação de funções: elaborador (criador, autor de versão antiga, quem submeteu, autor atual) não revisa nem aprova (409, nada muda); terceiro aprova', async () => {
+  it('sem separação de funções (decisão do proprietário, 2026-11-01): o elaborador devolve (abre correção) e aprova; a trilha registra quem fez', async () => {
     const casos: Array<[string, Awaited<ReturnType<typeof semear>>]> = [
       ['autor da versão atual', await semear(montese.tenantId, B.userId, 'em_revisao')],
       ['autor de versão antiga', await semear(montese.tenantId, A.userId, 'em_revisao', { anteriores: [B.userId] })],
@@ -1255,23 +1269,18 @@ describe('atuacao-documentos — fluxo HTTP do sócio (R2 fake)', () => {
       ['criador do rascunho', await semear(montese.tenantId, A.userId, 'em_revisao', { criador: B.userId })],
     ];
     for (const [nome, d] of casos) {
-      const antes = JSON.stringify([await draft(d.id), await eventos(d.id)]);
-      const dev = await post(tB, `/${d.id}/devolver`, { note: NOTA });
       const apr = await post(tB, `/${d.id}/aprovar`);
-      expect([nome, 'devolver', dev.status]).toEqual([nome, 'devolver', 409]);
-      expect([nome, 'aprovar', apr.status]).toEqual([nome, 'aprovar', 409]);
-      expect(JSON.stringify([await draft(d.id), await eventos(d.id)])).toBe(antes);
-      expect((await get(tB, `/${d.id}`)).body.acoes_permitidas).toEqual([]);
+      expect([nome, 'aprovar', apr.status]).toEqual([nome, 'aprovar', 201]);
+      expect((await draft(d.id)).status).toBe('aprovado');
+      expect((await eventos(d.id)).at(-1).actor_user_id).toBe(B.userId);
     }
-    // o outro sócio (H, não elaborador) revisa e aprova normalmente
-    const [, primeiro] = casos[0];
-    expect((await post(tH, `/${primeiro.id}/devolver`, { note: NOTA })).status).toBe(201);
-    const outro = await semear(montese.tenantId, B.userId, 'em_revisao');
-    expect((await post(tH, `/${outro.id}/aprovar`)).status).toBe(201);
-    expect((await draft(outro.id)).status).toBe('aprovado');
-    const negs = (await auditorias([B.userId], 8)).filter((x) => x.action === 'document_draft.denied');
-    expect(negs.length).toBeGreaterThanOrEqual(8);
-    expect(negs.every((x) => /codigo: SEPARACAO/.test(x.detail))).toBe(true);
+    const dev = await semear(montese.tenantId, B.userId, 'em_revisao');
+    const r = await post(tB, `/${dev.id}/devolver`, { note: NOTA });
+    expect(r.status).toBe(201);
+    expect((await draft(dev.id)).status).toBe('em_elaboracao');
+    expect(r.body.correcoes).toHaveLength(1);
+    const negs = (await auditorias([B.userId], 20)).filter((x) => x.action === 'document_draft.denied');
+    expect(negs.some((x) => /codigo: SEPARACAO/.test(x.detail))).toBe(false);
   }, 90000);
 
   it('a mesma pessoa (não elaboradora) aprova, assina e publica quando a matriz permite', async () => {
@@ -2013,11 +2022,11 @@ describe('atuacao-documentos — API admin: matriz e registros profissionais (HT
     await semearMatriz('cipa_ata', [[A, []], [D, []]]);
   }, 60000);
 
-  it('viabilidade: separação (mesma pessoa elabora e aprova) => inviavel; avisos de devolver; admin segue 403 nas rotas do sócio', async () => {
+  it('viabilidade: a mesma pessoa elaborar e aprovar não é mais falta (separação desligada); admin segue 403 nas rotas do sócio', async () => {
     expect((await putMatriz(tAdmin, A.userId, ['elaborar', 'aprovar', 'assinar', 'publicar'], 'treinamento')).status).toBe(200);
     const t = porCat(await viab(), 'treinamento');
-    expect(t.status).toBe('inviavel');
-    expect(t.faltas).toContain('O único aprovador é também o único elaborador, e o aprovador não pode ser o elaborador.');
+    expect(t.faltas).not.toContain('O único aprovador é também o único elaborador, e o aprovador não pode ser o elaborador.');
+    expect(t.avisos).toEqual([]);
     await putMatriz(tAdmin, A.userId, [], 'treinamento');
     for (const [m, path] of [['get', ''], ['post', '']] as const) {
       expect([m, (await apiFluxo(tAdmin, m, path, m === 'post' ? { tenant_id: montese.tenantId, category: 'pgr', title: 'x' } : {})).status]).toEqual([m, 403]);

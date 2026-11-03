@@ -33,7 +33,12 @@ import { AvaliacoesController } from './pgr/matriz/avaliacoes.controller';
 import { AvaliacoesService } from './pgr/matriz/avaliacoes.service';
 import { PainelController } from './painel/painel.controller';
 import { PainelService } from './painel/painel.service';
+import { ChecklistsController } from './checklists/checklists.controller';
+import { ChecklistsService } from './checklists/checklists.service';
+import { AlertasController } from './alertas/alertas.controller';
+import { AlertasService } from './alertas/alertas.service';
+import { AlertasJobService } from './alertas/alertas-job.service';
 import { DocumentsModule } from '../documents/documents.module';
 
-@Module({ imports: [DocumentsModule], controllers: [PainelController, EmpresasController, AtuacaoController, TarefasController, ResponsaveisController, AgendaController, InteracoesController, FinanceiroController, DocumentosController, DocumentosAdminController, PermissoesAdminController, PerigosController, GhesController, RiscosController, EpiCatalogoController, MatrizController, AvaliacoesController], providers: [PainelService, MatrizService, AvaliacoesService, EpiCatalogoService, PerigosService, GhesService, RiscosService, PgrPainelService, EmpresasService, PermissoesAdminService, DocumentosAdminService, DocumentosService, FinanceiroService, AtuacaoService, TarefasService, AgendaService, InteracoesService] })
+@Module({ imports: [DocumentsModule], controllers: [PainelController, EmpresasController, AtuacaoController, TarefasController, ResponsaveisController, AgendaController, InteracoesController, FinanceiroController, DocumentosController, DocumentosAdminController, PermissoesAdminController, PerigosController, GhesController, RiscosController, EpiCatalogoController, MatrizController, AvaliacoesController, ChecklistsController, AlertasController], providers: [AlertasService, AlertasJobService, ChecklistsService, PainelService, MatrizService, AvaliacoesService, EpiCatalogoService, PerigosService, GhesService, RiscosService, PgrPainelService, EmpresasService, PermissoesAdminService, DocumentosAdminService, DocumentosService, FinanceiroService, AtuacaoService, TarefasService, AgendaService, InteracoesService] })
 export class AtuacaoModule {}

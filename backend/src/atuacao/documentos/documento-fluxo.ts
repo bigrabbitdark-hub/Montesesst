@@ -39,10 +39,14 @@ const ESTADOS_DA_ACAO: Record<DocAcao, readonly DocStatus[]> = {
   publicar: ['assinado'],
 };
 
-// Separação de funções: padrão; ajustável após validação do proprietário.
+// Separação de funções. DECIDIDO pelo proprietário em 2026-11-01: a engenheira sócia (Évelyn) é a profissional
+// responsável e elabora, revisa, aprova, assina e executa; com a equipe de uma pessoa a separação ficaria inviável.
+// Os bloqueios continuam implementados (basta voltar a true); a rastreabilidade segue nos eventos e versões.
 // Elaboradores = criador do rascunho + autores de QUALQUER versão + quem enviou à revisão (evento 'submitted').
 // NÃO há (por decisão pendente) aprovador≠signatário nem signatário≠publicador.
-export const SEPARACAO_PADRAO = { revisorDiferenteDoElaborador: true, aprovadorDiferenteDoElaborador: true } as const;
+export const SEPARACAO_PADRAO = { revisorDiferenteDoElaborador: false, aprovadorDiferenteDoElaborador: false } as const;
+
+export const SEPARACAO_ESTRITA = { revisorDiferenteDoElaborador: true, aprovadorDiferenteDoElaborador: true } as const;
 
 export type AvaliacaoAcao =
   | { ok: true }
@@ -55,14 +59,16 @@ export function avaliarAcao(input: {
   usuarioId: string;
   temPermissaoMatriz: boolean;
   registroConfirmado?: boolean;
+  separacao?: { revisorDiferenteDoElaborador: boolean; aprovadorDiferenteDoElaborador: boolean };
 }): AvaliacaoAcao {
   const { acao, draftStatus, elaboradoresIds, usuarioId, temPermissaoMatriz, registroConfirmado } = input;
+  const sep = input.separacao ?? SEPARACAO_PADRAO;
   if (!ESTADOS_DA_ACAO[acao]?.includes(draftStatus)) return { ok: false, codigo: 'ESTADO', mensagem: MSG_ESTADO };
   if (!temPermissaoMatriz) return { ok: false, codigo: 'MATRIZ', mensagem: MSG_ACAO_NAO_HABILITADA };
   const elaborador = elaboradoresIds.includes(usuarioId);
   if (
-    (acao === 'revisar' && SEPARACAO_PADRAO.revisorDiferenteDoElaborador && elaborador) ||
-    (acao === 'aprovar' && SEPARACAO_PADRAO.aprovadorDiferenteDoElaborador && elaborador)
+    (acao === 'revisar' && sep.revisorDiferenteDoElaborador && elaborador) ||
+    (acao === 'aprovar' && sep.aprovadorDiferenteDoElaborador && elaborador)
   ) {
     return { ok: false, codigo: 'SEPARACAO', mensagem: MSG_SEPARACAO };
   }
@@ -108,7 +114,7 @@ export type StatusViabilidade = 'viavel' | 'inviavel' | 'nao_configurada';
 export function avaliarViabilidade(input: {
   matriz: readonly { userId: string; acoes: readonly DocAcao[] }[];
   registrosConfirmados: ReadonlySet<string>;
-  separacao: typeof SEPARACAO_PADRAO;
+  separacao: { revisorDiferenteDoElaborador: boolean; aprovadorDiferenteDoElaborador: boolean };
 }): { status: StatusViabilidade; faltas: string[]; avisos: string[] } {
   const quem = (a: DocAcao) => input.matriz.filter((m) => m.acoes.includes(a)).map((m) => m.userId);
   if (!input.matriz.some((m) => m.acoes.length > 0)) return { status: 'nao_configurada', faltas: [], avisos: [] };

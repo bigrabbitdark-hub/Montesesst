@@ -23,7 +23,7 @@ const completo = () => ({
   empresas: { acessiveis: 12 },
   tarefas: { abertas: 7, vencidas: 2, hoje: 3, bloqueadas: 1 },
   agenda: { hoje: [evento(1)], hoje_total: 1, proximos_7_dias: 4 },
-  documentos: { vencidos: 5, vence_7: 6, vence_15: 8, vence_30: 11, aguardando_acao: 9 },
+  documentos: { vencidos: 5, vence_7: 6, vence_15: 8, vence_30: 11, aguardando_acao: 9, etapas: { em_revisao: 4, para_assinar: 3, para_entregar: 2 } },
   pendencias: [pend()],
   indisponiveis: [] as string[],
 });
@@ -100,6 +100,28 @@ describe('painel: KPIs reais', () => {
   });
 });
 
+describe('painel: filas de documentos por etapa', () => {
+  it('mostra revisão, assinatura e entrega com links para a lista filtrada pelo estado', async () => {
+    render(<PainelPage />);
+    const rev = await kpi(/Aguardando minha revisão/);
+    expect(rev).toHaveAttribute('href', '/atuacao/documentos?status=em_revisao');
+    expect(rev).toHaveTextContent('4');
+    const ass = await kpi(/Aguardando minha assinatura/);
+    expect(ass).toHaveAttribute('href', '/atuacao/documentos?status=aprovado');
+    expect(ass).toHaveTextContent('3');
+    const ent = await kpi(/Prontos para entregar/);
+    expect(ent).toHaveAttribute('href', '/atuacao/documentos?status=assinado');
+    expect(ent).toHaveTextContent('2');
+  });
+
+  it('sem etapas (contagem indisponível) as filas não aparecem', async () => {
+    painelBody = async () => resp(200, { ...completo(), documentos: { ...completo().documentos, etapas: null } });
+    render(<PainelPage />);
+    await kpi(/Documentos vencidos/);
+    expect(screen.queryByRole('link', { name: /Aguardando minha revisão/ })).toBeNull();
+  });
+});
+
 describe('painel: dicas e financeiro', () => {
   it('"Tarefas para hoje" avisa que abre todas as tarefas', async () => {
     render(<PainelPage />);
@@ -138,7 +160,7 @@ describe('painel: permissão e indisponibilidade por bloco', () => {
   });
 
   it('documentos parcial: só empresas.read mostra vencimentos e avisa que falta aguardando ação', async () => {
-    painelBody = async () => resp(200, { ...completo(), documentos: { vencidos: 5, vence_7: 6, vence_15: 8, vence_30: 11, aguardando_acao: null } });
+    painelBody = async () => resp(200, { ...completo(), documentos: { vencidos: 5, vence_7: 6, vence_15: 8, vence_30: 11, aguardando_acao: null, etapas: null } });
     render(<PainelPage />);
     expect(await kpi(/Documentos vencidos/)).toHaveTextContent('5');
     expect(screen.queryByRole('link', { name: /aguardando ação/ })).toBeNull();

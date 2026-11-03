@@ -44,6 +44,13 @@ function Painel({ p, onRetry }: { p: PainelResposta; onRetry: () => void }) {
               {documentos.vence_7 !== null && <KpiLink href="/atuacao/vencimentos?faixa=7" label="Vencem em até 7 dias" value={documentos.vence_7} />}
               {documentos.vence_15 !== null && <KpiLink href="/atuacao/vencimentos?faixa=15" label="Vencem em até 15 dias" value={documentos.vence_15} hint="Inclui os de até 7 dias" />}
               {documentos.vence_30 !== null && <KpiLink href="/atuacao/vencimentos?faixa=30" label="Vencem em até 30 dias" value={documentos.vence_30} hint="Inclui os de até 7 e 15 dias" />}
+              {documentos.etapas && (
+                <>
+                  <KpiLink href="/atuacao/documentos?status=em_revisao" label="Aguardando minha revisão" value={documentos.etapas.em_revisao} hint="Revisar e aprovar" />
+                  <KpiLink href="/atuacao/documentos?status=aprovado" label="Aguardando minha assinatura" value={documentos.etapas.para_assinar} hint="Registro interno de assinatura" />
+                  <KpiLink href="/atuacao/documentos?status=assinado" label="Prontos para entregar" value={documentos.etapas.para_entregar} hint="Assinados, ainda não publicados ao cliente" />
+                </>
+              )}
               {documentos.aguardando_acao !== null && (
                 <KpiLink href="/atuacao/documentos" label="Documentos aguardando ação" value={documentos.aguardando_acao} hint="Em revisão, aprovados ou assinados (registro interno)" />
               )}

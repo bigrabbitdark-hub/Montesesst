@@ -19,5 +19,10 @@ export const PERMISSIONS = [
   'empresas.documentos',
   'pgr.read',
   'pgr.write',
+  'checklists.read',
+  'checklists.write',
+  'checklists.approve',
+  'alertas.read',
+  'alertas.manage',
 ] as const;
 export type Permission = (typeof PERMISSIONS)[number];

@@ -30,11 +30,13 @@ function draftRow(over: Record<string, any> = {}) {
 function mk(over: {
   draft?: Record<string, any> | null; matriz?: string[]; registro?: any | null; maxVersao?: number;
   assinaturaVigente?: boolean; socioPerms?: string[]; versoes?: any[]; assinaturas?: any[]; tenantExiste?: boolean;
+  responsavelAtivo?: boolean; pendentes?: number; correcoes?: any[]; correcaoStatus?: string | null;
 } = {}) {
   const e = {
     draft: draftRow(), matriz: [] as string[], registro: null as any, maxVersao: 1, assinaturaVigente: true,
     socioPerms: ['documents.read', 'documents.create_draft', 'documents.review', 'documents.approve', 'documents.sign', 'documents.publish', 'documents.cancel'],
     versoes: [] as any[], assinaturas: [] as any[], tenantExiste: true,
+    responsavelAtivo: true, pendentes: 0, correcoes: [] as any[], correcaoStatus: 'aberta' as string | null,
     ...over,
   };
   if (over.draft === null) e.draft = null as any;
@@ -50,8 +52,13 @@ function mk(over: {
       if (/INSERT INTO document_draft_versions/.test(sql)) return rows([{ id: 'v-novo' }]);
       if (/INSERT INTO document_drafts/.test(sql)) return rows([{ id: DRAFT }]);
       if (/INSERT INTO documents/.test(sql)) return rows([{ id: 'doc-novo' }]);
+      if (/INSERT INTO document_corrections/.test(sql)) return rows([{ id: 'corr-nova' }]);
       if (/INSERT INTO document_draft_signatures/.test(sql)) return rows([{ id: 'sig-novo' }]);
       if (/SELECT 1 FROM document_draft_signatures/.test(sql)) return rows(e.assinaturaVigente ? [{ '?column?': 1 }] : []);
+      if (/FROM list_socios\(\) s WHERE s\.id = \$1/.test(sql)) return rows(e.responsavelAtivo ? [{ '?column?': 1 }] : []);
+      if (/correcoes:pendentes/.test(sql)) return rows([{ n: e.pendentes }]);
+      if (/correcoes:lista/.test(sql)) return rows(e.correcoes);
+      if (/FROM document_corrections WHERE id = \$1/.test(sql)) return rows(e.correcaoStatus ? [{ status: e.correcaoStatus }] : []);
       if (/FROM tenants/.test(sql) && /SELECT id FROM tenants/.test(sql)) return rows(e.tenantExiste ? [{ id: TENANT }] : []);
       if (/FROM company_units/.test(sql)) return rows([]);
       if (/SELECT file_key, file_name FROM document_draft_versions/.test(sql)) return rows(e.versoes.slice(0, 1));
@@ -220,10 +227,10 @@ describe('DocumentosService — transições e ordem das verificações', () => 
     expect(eb.message).toBe(MSG_ACAO_NAO_HABILITADA);
   });
 
-  it('devolver: autor da versão não revisa a própria versão (409); nota obrigatória (400); sucesso volta a em_elaboracao', async () => {
+  it('devolver: o autor da versão pode devolver (separação desligada por decisão do proprietário); nota obrigatória (400); sucesso volta a em_elaboracao', async () => {
     const a = mk({ matriz: ['revisar'], draft: { status: 'em_revisao', elaboradores_ids: [USER] } });
-    expect(await msg(a.service.devolver(a.client, USER, DRAFT, 'motivo'))).toBeInstanceOf(ConflictException);
-    expect(a.escritas()).toEqual([]);
+    await a.service.devolver(a.client, USER, DRAFT, 'motivo');
+    expect(eventoDe(a.calls, 'returned')).toBeTruthy();
     const b = mk({ matriz: ['revisar'], draft: { status: 'em_revisao' } });
     expect(await msg(b.service.devolver(b.client, USER, DRAFT, '   '))).toBeInstanceOf(BadRequestException);
     expect(b.escritas()).toEqual([]);
@@ -234,14 +241,12 @@ describe('DocumentosService — transições e ordem das verificações', () => 
     expect(ev.params).toContain('ajustar o item 3');
   });
 
-  it('aprovar: exige a ação aprovar; ELABORADOR não aprova (SEPARACAO, nada gravado); terceiro aprova', async () => {
+  it('aprovar: exige a ação aprovar; o ELABORADOR aprova (separação desligada); terceiro aprova', async () => {
     const a = mk({ matriz: ['revisar'], draft: { status: 'em_revisao' } });
     expect(await msg(a.service.aprovar(a.client, USER, DRAFT))).toBeInstanceOf(ForbiddenException);
     const b = mk({ matriz: ['aprovar'], draft: { status: 'em_revisao', elaboradores_ids: [USER] } });
-    const eb = await msg(b.service.aprovar(b.client, USER, DRAFT));
-    expect(eb).toBeInstanceOf(ConflictException);
-    expect(eb.codigoNegacao).toBe('SEPARACAO');
-    expect(b.escritas()).toEqual([]);
+    await b.service.aprovar(b.client, USER, DRAFT);
+    expect(eventoDe(b.calls, 'approved')).toBeTruthy();
     const c = mk({ matriz: ['aprovar'], draft: { status: 'em_revisao' } });
     await c.service.aprovar(c.client, USER, DRAFT);
     expect(c.calls.find((x) => /UPDATE document_drafts/.test(x.sql))!.params).toContain('aprovado');
@@ -399,8 +404,8 @@ describe('DocumentosService — detalhe e download', () => {
     const d = await t.service.obter(t.client, USER, DRAFT);
     expect(d.aviso_assinatura).toBe(AVISO_ASSINATURA_INTERNA);
     expect(d.assinaturas.map((s: any) => s.vigente)).toEqual([true, false]);
-    // elaborador: não devolve nem aprova; sem elaborar na matriz
-    expect(d.acoes_permitidas).toEqual([]);
+    // elaborador com revisar e aprovar na matriz: separação desligada, as ações são oferecidas
+    expect(d.acoes_permitidas).toEqual(expect.arrayContaining(['aprovar']));
   });
 
   it('sem permissão RBAC a ação não é oferecida; matriz vazia não oferece nenhuma', async () => {
@@ -504,11 +509,10 @@ describe('DocumentosService — rodada 2', () => {
     expect(t.r2.putObject).not.toHaveBeenCalled();
   });
 
-  it('negações por matriz/estado/separação/registro carregam o código para a auditoria', async () => {
+  it('negações por matriz/estado/registro carregam o código para a auditoria', async () => {
     const casos: Array<[string, () => Promise<unknown>]> = [
       ['MATRIZ', async () => { const t = mk({ matriz: [] }); return t.service.enviarRevisao(t.client, USER, DRAFT); }],
       ['ESTADO', async () => { const t = mk({ matriz: ['elaborar'], draft: { status: 'em_revisao' } }); return t.service.enviarRevisao(t.client, USER, DRAFT); }],
-      ['SEPARACAO', async () => { const t = mk({ matriz: ['revisar'], draft: { status: 'em_revisao', elaboradores_ids: [USER] } }); return t.service.devolver(t.client, USER, DRAFT, 'n'); }],
       ['REGISTRO', async () => { const t = mk({ matriz: ['assinar'], draft: { status: 'aprovado' } }); return t.service.assinar(t.client, USER, DRAFT, {}); }],
     ];
     for (const [codigo, fn] of casos) expect([codigo, (await msg(fn())).codigoNegacao]).toEqual([codigo, codigo]);
@@ -544,12 +548,14 @@ describe('DocumentosService — rodada 2 (H, I, J)', () => {
     expect(lock).toMatch(/elaboradores_ids/);
   });
 
-  it('H: devolver (revisar) também bloqueia qualquer elaborador', async () => {
+  it('H: devolver (revisar) por elaborador é permitido (separação desligada); sem a ação na matriz segue negado', async () => {
     for (const elab of [[USER], [AUTOR, USER]]) {
       const t = mk({ matriz: ['revisar'], draft: { status: 'em_revisao', elaboradores_ids: elab } });
-      expect((await msg(t.service.devolver(t.client, USER, DRAFT, 'n'))).codigoNegacao).toBe('SEPARACAO');
-      expect(t.escritas()).toEqual([]);
+      await t.service.devolver(t.client, USER, DRAFT, 'n');
+      expect(eventoDe(t.calls, 'returned')).toBeTruthy();
     }
+    const n = mk({ matriz: [], draft: { status: 'em_revisao', elaboradores_ids: [USER] } });
+    expect((await msg(n.service.devolver(n.client, USER, DRAFT, 'n'))).codigoNegacao).toBe('MATRIZ');
   });
 
   it('I: cancelar só é oferecido com documents.cancel e a nota registra o estado de origem; histórico não é apagado', async () => {
@@ -579,5 +585,87 @@ describe('DocumentosService — rodada 2 (H, I, J)', () => {
     const t = mk({ assinaturas: [sigRow], socioPerms: ['documents.read', 'documents.view_registration'] });
     const d = await t.service.obter(t.client, USER, DRAFT);
     expect(d.assinaturas[0]).toMatchObject({ council: 'TESTE', registration_number: '0000', uf: 'SC', registro_confirmado: true });
+  });
+});
+
+
+describe('DocumentosService — correções estruturadas (E2)', () => {
+  const CORR = '77777777-7777-4777-8777-777777777777';
+  const ins = (calls: Call[]) => calls.find((c) => /INSERT INTO document_corrections/.test(c.sql));
+
+  it('devolver cria a correção (origem revisao) com a nota como descrição, responsável e prazo informados', async () => {
+    const t = mk({ matriz: ['revisar'], draft: { status: 'em_revisao' } });
+    await t.service.devolver(t.client, USER, DRAFT, 'ajustar o item 3', { responsavelId: AUTOR, prazo: '2026-12-01' });
+    const c = ins(t.calls)!;
+    expect(c.params).toEqual([DRAFT, TENANT, V1, 'ajustar o item 3', 'revisao', null, USER, AUTOR, '2026-12-01']);
+    expect(eventoDe(t.calls, 'returned')).toBeTruthy();
+  });
+
+  it('devolver sem responsável usa o autor da versão atual; responsável que não é sócio ativo => 400 e nada gravado', async () => {
+    const t = mk({ matriz: ['revisar'], draft: { status: 'em_revisao' } });
+    await t.service.devolver(t.client, USER, DRAFT, 'x');
+    expect(ins(t.calls)!.params[7]).toBe(USER); // mock sem autor da versão: cai no próprio usuário
+    const n = mk({ matriz: ['revisar'], draft: { status: 'em_revisao' }, responsavelAtivo: false });
+    expect(await msg(n.service.devolver(n.client, USER, DRAFT, 'x', { responsavelId: AUTOR }))).toBeInstanceOf(BadRequestException);
+    expect(n.escritas()).toEqual([]);
+  });
+
+  it('aprovar, assinar e publicar são bloqueados (409) enquanto houver correção aberta ou corrigida', async () => {
+    const a = mk({ matriz: ['aprovar'], draft: { status: 'em_revisao' }, pendentes: 1 });
+    expect(await msg(a.service.aprovar(a.client, USER, DRAFT))).toBeInstanceOf(ConflictException);
+    expect(a.escritas()).toEqual([]);
+    const s = mk({ matriz: ['assinar'], draft: { status: 'aprovado' }, registro: { id: 'r', council: 'TESTE', registration_number: '0000', uf: 'SC' }, pendentes: 2 });
+    expect(await msg(s.service.assinar(s.client, USER, DRAFT, {}))).toBeInstanceOf(ConflictException);
+    expect(s.escritas()).toEqual([]);
+    const p = mk({ matriz: ['publicar'], draft: { status: 'assinado' }, pendentes: 1 });
+    expect(await msg(p.service.publicar(p.ctx, USER, DRAFT))).toBeInstanceOf(ConflictException);
+    expect(p.r2.getObject).not.toHaveBeenCalled();
+  });
+
+  it('sem correções pendentes a aprovação segue normal', async () => {
+    const a = mk({ matriz: ['aprovar'], draft: { status: 'em_revisao' }, pendentes: 0 });
+    await a.service.aprovar(a.client, USER, DRAFT);
+    expect(eventoDe(a.calls, 'approved')).toBeTruthy();
+  });
+
+  it('registrar correção do cliente exige quem solicitou; documento publicado/cancelado => 409', async () => {
+    const t = mk({ draft: { status: 'em_elaboracao' } });
+    expect(await msg(t.service.registrarCorrecao(t.client, USER, DRAFT, { description: 'x', origin: 'cliente' } as any))).toBeInstanceOf(BadRequestException);
+    await t.service.registrarCorrecao(t.client, USER, DRAFT, { description: ' corrigir CNPJ ', origin: 'cliente', requester_label: 'RH da empresa' } as any);
+    expect(ins(t.calls)!.params).toEqual([DRAFT, TENANT, V1, 'corrigir CNPJ', 'cliente', 'RH da empresa', USER, USER, null]);
+    const f = mk({ draft: { status: 'publicado' } });
+    expect(await msg(f.service.registrarCorrecao(f.client, USER, DRAFT, { description: 'x', origin: 'interna' } as any))).toBeInstanceOf(ConflictException);
+  });
+
+  it('atualizar: corrigir/cancelar pedem documents.create_draft; verificar/reabrir pedem documents.review', async () => {
+    const sem = mk({ socioPerms: ['documents.read'] });
+    for (const acao of ['corrigir', 'verificar', 'reabrir', 'cancelar', 'ajustar'])
+      expect(await msg(sem.service.atualizarCorrecao(sem.client, USER, DRAFT, CORR, { acao, nota: 'n', prazo: '2026-12-01' } as any))).toBeInstanceOf(ForbiddenException);
+    const so = mk({ socioPerms: ['documents.read', 'documents.create_draft'], correcaoStatus: 'corrigida' });
+    expect(await msg(so.service.atualizarCorrecao(so.client, USER, DRAFT, CORR, { acao: 'verificar' } as any))).toBeInstanceOf(ForbiddenException);
+    expect(so.escritas()).toEqual([]);
+  });
+
+  it('atualizar: transições válidas gravam; inválidas (verificar uma aberta, mexer em encerrada) => 409; nota obrigatória; 404', async () => {
+    const ok = mk({ correcaoStatus: 'aberta' });
+    await ok.service.atualizarCorrecao(ok.client, USER, DRAFT, CORR, { acao: 'corrigir', nota: 'feito' } as any);
+    const up = ok.calls.find((c) => /UPDATE document_corrections/.test(c.sql))!;
+    expect(up.sql).toContain('status');
+    expect(up.params).toEqual(expect.arrayContaining([CORR, 'corrigida', USER, 'feito']));
+    const v = mk({ correcaoStatus: 'aberta' });
+    expect(await msg(v.service.atualizarCorrecao(v.client, USER, DRAFT, CORR, { acao: 'verificar' } as any))).toBeInstanceOf(ConflictException);
+    const enc = mk({ correcaoStatus: 'verificada' });
+    expect(await msg(enc.service.atualizarCorrecao(enc.client, USER, DRAFT, CORR, { acao: 'ajustar', prazo: '2026-12-01' } as any))).toBeInstanceOf(ConflictException);
+    const r = mk({ correcaoStatus: 'corrigida' });
+    expect(await msg(r.service.atualizarCorrecao(r.client, USER, DRAFT, CORR, { acao: 'reabrir' } as any))).toBeInstanceOf(BadRequestException);
+    const nf = mk({ correcaoStatus: null });
+    expect(await msg(nf.service.atualizarCorrecao(nf.client, USER, DRAFT, CORR, { acao: 'corrigir' } as any))).toBeInstanceOf(NotFoundException);
+  });
+
+  it('o detalhe traz a lista de correções e a contagem de pendentes (aberta + corrigida)', async () => {
+    const t = mk({ correcoes: [{ id: 'a', status: 'aberta' }, { id: 'b', status: 'corrigida' }, { id: 'c', status: 'verificada' }] });
+    const d = await t.service.obter(t.client, USER, DRAFT);
+    expect(d.correcoes).toHaveLength(3);
+    expect(d.correcoes_pendentes).toBe(2);
   });
 });
