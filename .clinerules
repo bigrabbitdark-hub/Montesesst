@@ -1,0 +1,22 @@
+# Regras do Cline — Montese SST
+
+Leia `AGENTS.md`, `CLAUDE.md` e `PROJECT_STATE.md` antes de agir. Responda sempre em português do Brasil.
+
+## Proibido (sem autorização explícita do proprietário)
+- commit, push, reset, revert, force push ou alterar histórico do git;
+- mexer em Docker, Nginx, banco, Redis, TLS, DNS, backups, secrets ou produção;
+- `docker compose down -v`;
+- ler, imprimir ou enviar `.env`, chaves, tokens, certificados ou senhas;
+- alterar provider/modelo de IA do produto (MiniMax é o principal).
+
+## Sempre
+- Isolamento entre tenants (RLS + FORCE RLS) é crítico: nunca confiar em ID vindo do frontend.
+- Mudança de schema só por migration.
+- Nunca inventar norma, artigo, prazo ou penalidade; a IA não é autoridade normativa.
+- Dados pessoais e de saúde: não enviar ao modelo sem necessidade.
+- Só afirmar que algo funciona com evidência (comando e resultado). Rotular: VERIFICADO / NÃO VERIFICADO / INFERIDO / RECOMENDADO.
+- Localizar o código existente antes de criar; não duplicar funcionalidade.
+
+## Modelos gratuitos ou de contexto limitado
+- Faça mudanças pequenas e peça confirmação antes de editar muitos arquivos.
+- Não toque em auth, RLS, migrations, pagamentos nem uploads: pare e avise que esse trabalho é para o modelo crítico.

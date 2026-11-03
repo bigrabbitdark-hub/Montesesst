@@ -29,3 +29,8 @@ backend/eval/_dev/
 
 # Artefatos gerados pelo TypeScript
 *.tsbuildinfo
+
+# Cache local do Vitest e arquivos temporarios/backup de ambiente
+.vite/
+docker-compose.dev-redis-temp.yml
+nginx/default.conf.pre-leads
