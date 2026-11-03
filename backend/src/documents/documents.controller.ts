@@ -78,6 +78,10 @@ export class DocumentsController {
         uploadedByUserId: user.id,
         uploadedByRole: user.role,
         companyUnitId: dto.company_unit_id,
+        // Etapa 1 do Relatório de Visita Técnica: encaminhamento do
+        // vínculo opcional com a inspeção de origem. A validação
+        // (existe + mesmo tenant) acontece no service.
+        inspectionId: dto.inspection_id,
       }),
     );
 

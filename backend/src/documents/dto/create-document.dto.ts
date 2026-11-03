@@ -1,7 +1,16 @@
 import { IsIn, IsISO8601, IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
 
 export class CreateDocumentDto {
-  @IsIn(['pgr', 'pcmso', 'laudo', 'ficha_epi', 'treinamento', 'ltcat', 'lip'])
+  // 'relatorio_visita' foi acrescentada na Etapa 1 do Relatório de
+  // Visita Técnica: é a única categoria aceita pelo
+  // DocumentsService.upload que ainda não estava no @IsIn (estava só
+  // na constante ALLOWED_CATEGORIES do service, usada pelo caminho
+  // interno InspectionsService.conclude() -> documents.upload() que
+  // não passa por DTO). Sem isso, o upload manual via /documents
+  // com category=relatorio_visita era rejeitado em 400. As
+  // categorias 'cipa_*' continuam fora do @IsIn de propósito — ver
+  // comentário equivalente em DocumentsPanel.tsx.
+  @IsIn(['pgr', 'pcmso', 'laudo', 'ficha_epi', 'treinamento', 'ltcat', 'lip', 'relatorio_visita'])
   category: string;
 
   @IsString()
@@ -23,4 +32,14 @@ export class CreateDocumentDto {
   @IsOptional()
   @IsUUID()
   company_unit_id?: string;
+
+  // Etapa 1 do Relatório de Visita Técnica: vínculo opcional a uma
+  // inspeção já existente. Quando presente, o DocumentsService
+  // valida que a inspeção (a) existe e (b) pertence ao mesmo tenant
+  // do documento — defense in depth, já que a FK no banco só
+  // garante (a). Sem esse campo o documento é gravado sem vínculo
+  // (preserva o comportamento atual de todas as outras categorias).
+  @IsOptional()
+  @IsUUID()
+  inspection_id?: string;
 }

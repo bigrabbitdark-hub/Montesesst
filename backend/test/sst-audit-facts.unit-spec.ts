@@ -34,6 +34,10 @@ const document: Document = {
   uploaded_by_user_id: 'user-1',
   uploaded_by_role: 'empresa',
   company_unit_id: null,
+  // Etapa 1 do Relatório de Visita Técnica: campo novo em Document.
+  // O mock do teste não tem inspection (não é uma visita), então
+  // fica null.
+  inspection_id: null,
   created_at: '2026-09-30T12:00:00.000Z',
   updated_at: '2026-09-30T12:00:00.000Z',
 };

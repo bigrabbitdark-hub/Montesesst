@@ -33,6 +33,11 @@ export interface Document {
   uploaded_by_user_id: string;
   uploaded_by_role: string;
   company_unit_id: string | null;
+  // Etapa 1 do Relatório de Visita Técnica: vínculo opcional à
+  // inspeção de origem. NULL em todos os documentos criados antes
+  // da migration 0080 e em todos os documentos de outras categorias
+  // (PGR/PCMSO/Laudo/etc.) que não têm relação com inspeção.
+  inspection_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -77,6 +82,12 @@ interface UploadData {
   uploadedByUserId: string;
   uploadedByRole: 'empresa' | 'tecnico' | 'parceiro';
   companyUnitId?: string;
+  // Etapa 1 do Relatório de Visita Técnica: vínculo opcional à
+  // inspeção de origem. Quando presente, o upload valida que a
+  // inspeção (a) existe e (b) pertence ao mesmo tenant — mesma
+  // defesa em profundidade aplicada ao companyUnitId (a FK no banco
+  // só garante existência, não co-titularidade).
+  inspectionId?: string;
 }
 
 @Injectable()
@@ -108,14 +119,31 @@ export class DocumentsService {
       }
     }
 
+    // Etapa 1 do Relatório de Visita Técnica: valida que a inspeção
+    // (a) existe e (b) pertence ao mesmo tenant do documento.
+    // Necessário porque a FK no banco (0080_documents_inspection_id)
+    // só garante (a) — a RLS não é executada em INSERTs do próprio
+    // tenant, então sem essa checagem adicional um INSERT com
+    // tenant_id=X e inspection_id=(inspeção de Y) passaria.
+    // defense in depth, mesmo padrão do companyUnitId acima.
+    if (data.inspectionId) {
+      const inspectionCheck = await client.query(
+        'SELECT 1 FROM inspections WHERE id = $1 AND tenant_id = $2',
+        [data.inspectionId, data.tenantId],
+      );
+      if (inspectionCheck.rowCount === 0) {
+        throw new BadRequestException('Inspeção inválida para esta empresa');
+      }
+    }
+
     const id = randomUUID();
     const fileKey = `tenants/${data.tenantId}/documents/${id}/${sanitizeFileName(data.file.originalname)}`;
     await this.r2.putObject(fileKey, data.file.buffer, data.file.mimetype);
 
     try {
       const result = await client.query<Document>(
-        `INSERT INTO documents (id, tenant_id, category, title, file_key, file_name, mime_type, size_bytes, expires_at, uploaded_by_user_id, uploaded_by_role, company_unit_id)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING *`,
+        `INSERT INTO documents (id, tenant_id, category, title, file_key, file_name, mime_type, size_bytes, expires_at, uploaded_by_user_id, uploaded_by_role, company_unit_id, inspection_id)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING *`,
         [
           id,
           data.tenantId,
@@ -129,6 +157,7 @@ export class DocumentsService {
           data.uploadedByUserId,
           data.uploadedByRole,
           data.companyUnitId ?? null,
+          data.inspectionId ?? null,
         ],
       );
       return result.rows[0];
@@ -283,6 +312,23 @@ export class DocumentsService {
     const document = result.rows[0];
     if (!document) throw new NotFoundException('Documento não encontrado');
     return document;
+  }
+
+  // Etapa 1 do Relatório de Visita Técnica: lista os anexos
+  // (documentos) de uma inspeção, na ordem mais recente primeiro.
+  // RLS já isola por tenant do caller — esta query não precisa
+  // repetir a checagem. Chamado por InspectionsService.findOne()
+  // para preencher `documentos_anexos` na resposta do GET
+  // /inspections/:id. A inspeção precisa ser visível ao caller
+  // (checada antes por InspectionsService via RLS de inspections);
+  // aqui, se o caller não pode ver a inspeção, o caller nem chega
+  // até esta query, então não há vazamento por este caminho.
+  async findByInspection(client: PoolClient, inspectionId: string): Promise<Document[]> {
+    const result = await client.query<Document>(
+      'SELECT * FROM documents WHERE inspection_id = $1 ORDER BY created_at DESC',
+      [inspectionId],
+    );
+    return result.rows;
   }
 
   async getDownloadUrl(client: PoolClient, id: string): Promise<{ url: string; file_name: string }> {
