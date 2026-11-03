@@ -12,9 +12,11 @@ export function Dialogo({ titulo, onFechar, ocupado = false, children }: {
   const ref = useRef<HTMLDivElement>(null);
   const tituloId = useId();
   const aoFechar = useRef(onFechar);
-  aoFechar.current = onFechar;
   const bloqueado = useRef(ocupado);
-  bloqueado.current = ocupado;
+  useEffect(() => {
+    aoFechar.current = onFechar;
+    bloqueado.current = ocupado;
+  });
 
   useEffect(() => {
     const anterior = document.activeElement as HTMLElement | null;

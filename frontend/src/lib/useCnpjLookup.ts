@@ -19,7 +19,9 @@ export function useCnpjLookup(onResult: (data: CnpjData) => void) {
   const controller = useRef<AbortController | null>(null);
   const lastApplied = useRef<string | null>(null);
   const onResultRef = useRef(onResult);
-  onResultRef.current = onResult;
+  useEffect(() => {
+    onResultRef.current = onResult;
+  });
 
   useEffect(() => () => {
     seq.current += 1;

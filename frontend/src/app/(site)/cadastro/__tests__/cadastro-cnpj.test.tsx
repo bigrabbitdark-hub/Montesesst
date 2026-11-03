@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 
-vi.mock('@/components/AuthSplit', () => ({ AuthSplit: ({ children }: any) => <div>{children}</div> }));
+vi.mock('@/components/AuthSplit', () => ({ AuthSplit: ({ children }: { children: React.ReactNode }) => <div>{children}</div> }));
 
 import CadastroPage from '../page';
 

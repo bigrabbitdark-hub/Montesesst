@@ -1,6 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: 'standalone',
+  // O frontend é a raiz do build; evita o Turbopack inferir a raiz do repositório (há um package-lock.json vazio lá).
+  turbopack: { root: __dirname },
   // As imagens em public/ já são pré-otimizadas (redimensionadas/comprimidas)
   // antes do upload — o pipeline de otimização em runtime do next/image exige
   // o pacote `sharp` em modo standalone, que não está instalado; sem isso ele

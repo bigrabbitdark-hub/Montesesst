@@ -1,11 +1,12 @@
 import Link from 'next/link';
 
-export default function CadastroConfirmadoPage({
+export default async function CadastroConfirmadoPage({
   searchParams,
 }: {
-  searchParams: { status?: string };
+  searchParams: Promise<{ status?: string }>;
 }) {
-  const ok = searchParams.status === 'ok';
+  const { status } = await searchParams;
+  const ok = status === 'ok';
 
   return (
     <section className="bg-gradient-to-b from-brand-50 to-white px-4 pb-16 pt-14 sm:px-10">

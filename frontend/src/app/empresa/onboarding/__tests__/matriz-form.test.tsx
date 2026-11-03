@@ -113,9 +113,9 @@ describe('MatrizForm — CNPJ e Observação', () => {
   });
 
   it('compatibilidade: empresa antiga sem os campos novos abre sem erro', () => {
-    const { notes, address_neighborhood, address_complement, cnae_code, cnae_description, ...antiga } = base as any;
+    const { notes, address_neighborhood, address_complement, cnae_code, cnae_description, ...antiga } = base;
     fetchMock.mockResolvedValue(resposta(404));
-    expect(() => renderiza(antiga)).not.toThrow();
+    expect(() => renderiza(antiga as unknown as TenantData)).not.toThrow();
     expect((screen.getByLabelText(/Observação/) as HTMLTextAreaElement).value).toBe('');
   });
 });

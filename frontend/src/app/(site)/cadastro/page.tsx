@@ -1,6 +1,6 @@
 'use client';
 
-import { FormEvent, useRef, useState } from 'react';
+import { FormEvent, useEffect, useRef, useState } from 'react';
 import { AuthSplit } from '@/components/AuthSplit';
 import { useCnpjLookup } from '@/lib/useCnpjLookup';
 
@@ -17,7 +17,9 @@ export default function CadastroPage() {
   const autoFilledName = useRef<string | null>(null);
   const [nameFromLookup, setNameFromLookup] = useState(false);
   const companyNameRef = useRef(companyName);
-  companyNameRef.current = companyName;
+  useEffect(() => {
+    companyNameRef.current = companyName;
+  });
   const { state: lookupState, lookup } = useCnpjLookup((data) => {
     if (!data.razao_social) return;
     const current = companyNameRef.current;

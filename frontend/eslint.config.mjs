@@ -1,11 +1,14 @@
-import { FlatCompat } from '@eslint/eslintrc';
-import { dirname } from 'path';
-import { fileURLToPath } from 'url';
-
-const compat = new FlatCompat({ baseDirectory: dirname(fileURLToPath(import.meta.url)) });
+import coreWebVitals from 'eslint-config-next/core-web-vitals';
+import typescript from 'eslint-config-next/typescript';
 
 const config = [
-  ...compat.extends('next/core-web-vitals', 'next/typescript'),
+  ...coreWebVitals,
+  ...typescript,
+  {
+    // Regra nova do React 19 / eslint-plugin-react-hooks 7. A linha base (Next 14) não a tinha.
+    // Mantida como aviso até as telas logadas serem verificadas; depois, migrar efeito a efeito.
+    rules: { 'react-hooks/set-state-in-effect': 'warn' },
+  },
   { ignores: ['.next/**', 'node_modules/**'] },
 ];
 

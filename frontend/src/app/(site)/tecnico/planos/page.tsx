@@ -47,7 +47,7 @@ export default function PlanosTecnicoPage() {
         return;
       }
       const data = await res.json();
-      window.location.href = data.initPoint;
+      window.location.assign(data.initPoint);
     } catch {
       setError('Não foi possível conectar ao servidor.');
       setSubscribingPlanId(null);
