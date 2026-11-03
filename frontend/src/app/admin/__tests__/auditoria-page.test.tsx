@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 
 // Router estável (como o real do Next): a página tem `[router]` nas deps do efeito de carga,
 // e um objeto novo a cada render causaria loop infinito de fetch + setState.
@@ -20,6 +20,7 @@ const LINHA = {
   method: 'GET',
   path: '/x',
   status_code: 200,
+  ip_address: '203.0.113.7',
 };
 
 beforeEach(() => {
@@ -32,6 +33,15 @@ afterEach(() => {
 });
 
 describe('/admin/auditoria (DS v2)', () => {
+  it('mostra o IP de quem acessou e "—" quando não há IP', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, json: async () => [LINHA, { ...LINHA, id: '2', ip_address: null }] })));
+    render(<AdminAuditoriaPage />);
+    expect(await screen.findByRole('columnheader', { name: 'IP' })).toBeInTheDocument();
+    expect(screen.getByText('203.0.113.7')).toBeInTheDocument();
+    const linhas = screen.getAllByRole('row');
+    expect(within(linhas[2]).getAllByRole('cell').at(-1)).toHaveTextContent('—');
+  });
+
   it('mostra o título e a descrição, com o filtro usando os primitivos de campo e botão', async () => {
     render(<AdminAuditoriaPage />);
     expect(await screen.findByRole('heading', { level: 2, name: 'Auditoria' })).toBeInTheDocument();

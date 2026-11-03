@@ -18,6 +18,7 @@ interface AuditLogRow {
   method: string;
   path: string;
   status_code: number;
+  ip_address: string | null;
 }
 
 const PAGE_SIZE = 50;
@@ -160,6 +161,7 @@ export default function AdminAuditoriaPage() {
                   <th>Ação</th>
                   <th>Recurso</th>
                   <th>Status</th>
+                  <th>IP</th>
                 </tr>
               </thead>
               <tbody>
@@ -179,6 +181,7 @@ export default function AdminAuditoriaPage() {
                         </span>
                       </Badge>
                     </td>
+                    <td className="font-mono text-xs text-brand-700">{row.ip_address ?? '—'}</td>
                   </tr>
                 ))}
               </tbody>

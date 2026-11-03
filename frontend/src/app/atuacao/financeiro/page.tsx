@@ -6,6 +6,7 @@ import { PageHeader } from '@/components/dashboard/PageHeader';
 import { KpiCard } from '@/components/dashboard/KpiCard';
 import { AsyncBody } from '@/components/ui/AsyncBody';
 import { Badge } from '@/components/ui/Badge';
+import { FinanceChartCard, type PeriodoFinanceiro } from '@/components/dashboard/FinanceChartCard';
 import {
   atuacaoFetch, formatBRL, formatDataCurta, pagamentoLabel, pagamentoTone, SITUACAO_LABEL, SITUACAO_TONE, textoAtraso,
   type ClienteFinanceiro, type ResumoFinanceiro,
@@ -22,15 +23,16 @@ function Resumo() {
   const [data, setData] = useState<ResumoFinanceiro | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [dias, setDias] = useState<PeriodoFinanceiro>(30);
 
   const carregar = useCallback(() => {
     setLoading(true);
     setError(null);
-    atuacaoFetch<ResumoFinanceiro>('/financeiro/resumo')
+    atuacaoFetch<ResumoFinanceiro>(`/financeiro/resumo?dias=${dias}`)
       .then(setData)
       .catch((e: Error) => setError(e.message))
       .finally(() => setLoading(false));
-  }, []);
+  }, [dias]);
   useEffect(carregar, [carregar]);
 
   return (
@@ -42,12 +44,15 @@ function Resumo() {
         onRetry={carregar}
         skeletonClassName="h-32 w-full"
         render={(r) => (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <KpiCard label="Clientes ativos" value={r.clientes.ativos} />
-            <KpiCard label="MRR" value={formatBRL(r.mrr_cents)} hint="Receita mensal recorrente das assinaturas ativas" />
-            <KpiCard label="Clientes com pendência" value={r.clientes.com_pendencia} />
-            <KpiCard label="Aprovado no mês" value={formatBRL(r.mes.aprovado_cents)} />
-          </div>
+          <>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <KpiCard label="Clientes ativos" value={r.clientes.ativos} />
+              <KpiCard label="MRR" value={formatBRL(r.mrr_cents)} hint="Receita mensal recorrente das assinaturas ativas" />
+              <KpiCard label="Clientes com pendência" value={r.clientes.com_pendencia} />
+              <KpiCard label="Aprovado no mês" value={formatBRL(r.mes.aprovado_cents)} />
+            </div>
+            <div className="mt-4"><FinanceChartCard data={r} dias={dias} onDias={setDias} /></div>
+          </>
         )}
       />
     </section>

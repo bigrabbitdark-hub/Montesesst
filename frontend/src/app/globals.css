@@ -173,3 +173,10 @@
 .skin-dash :where(input, select, textarea) {
   border-color: #7b8aa0;
 }
+
+/* Balão de valores do AreaChart (componente do /admin) dentro de telas do tema claro: ver FinanceChartCard. */
+.dash-chart .adm-card-2 {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.75rem;
+}

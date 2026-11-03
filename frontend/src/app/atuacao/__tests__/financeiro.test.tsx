@@ -68,13 +68,34 @@ describe('menu', () => {
 });
 
 describe('página Financeiro', () => {
+  it('mostra o gráfico de faturamento e troca o período consultando a API com dias', async () => {
+    const comSerie = { ...resumo, serie: [{ data: '2026-10-01', cobrado_cents: 9900, aprovado_cents: 9900 }, { data: '2026-10-02', cobrado_cents: 0, aprovado_cents: 0 }] };
+    fetchMock.mockImplementation(async (url: string) => {
+      const u = String(url);
+      if (u.includes('/atuacao/financeiro/resumo')) return resp(200, comSerie);
+      return resp(200, []);
+    });
+    render(<FinanceiroPage />);
+    expect(await screen.findByRole('heading', { name: 'Faturamento e recebimentos' })).toBeTruthy();
+    expect(screen.getByRole('group', { name: /Cobrado e aprovado por dia/ })).toBeTruthy();
+    expect(screen.getByText('Hoje (aprovado)')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: '90 dias' }));
+    await waitFor(() => expect(urls().some((x) => x.includes('/financeiro/resumo?dias=90'))).toBe(true));
+  });
+
+  it('sem cobranças no período mostra o estado vazio', async () => {
+    rota();
+    render(<FinanceiroPage />);
+    expect(await screen.findByText('Sem cobranças no período.')).toBeTruthy();
+  });
+
   it('mostra o aviso fixo e os KPIs em R$ pt-BR a partir de centavos', async () => {
     rota();
     render(<FinanceiroPage />);
     expect(screen.getByText(/Somente consulta/)).toBeTruthy();
     const mrr = (await screen.findByText('MRR')).closest('div')!;
     expect(within(mrr).getByText('R$ 299,00')).toBeTruthy();
-    expect(screen.getByText('R$ 499,00')).toBeTruthy(); // aprovado no mês
+    expect(screen.getAllByText('R$ 499,00').length).toBeGreaterThan(0); // aprovado no mês (KPI e tile do gráfico)
     expect(screen.getByText('Clientes ativos')).toBeTruthy();
     expect(screen.getByText('MRR')).toBeTruthy();
     expect(screen.getByText('Clientes com pendência')).toBeTruthy();
@@ -163,7 +184,7 @@ describe('página Financeiro', () => {
     rota();
     const { container } = render(<FinanceiroPage />);
     await screen.findAllByText('Alfa Ltda');
-    const permitidos = /^(limpar filtros|tentar novamente)$/i;
+    const permitidos = /^(limpar filtros|tentar novamente|\d+ dias)$/i; // "7/30/90 dias" = período do gráfico (só consulta)
     for (const b of screen.queryAllByRole('button')) expect(b.textContent ?? '').toMatch(permitidos);
     expect(container.querySelector('form')).toBeNull();
     expect(container.querySelector('input[type="number"]')).toBeNull();
