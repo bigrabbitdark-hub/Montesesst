@@ -11,6 +11,7 @@
 ## 2. Evidência (VERIFICADO em banco descartável)
 - e2e: `documento-base-pgr` 5/5, `alertas.e2e` 10/10, `documento-base-pgr-rls` 3/3, `atuacao-documentos` 45/45, `atuacao-painel` 16/16, `atuacao-permissoes` 14/14, `socio-access-matrix` 13/13; unitários novos 7/7.
 - Frontend: vitest 1370 (5 suítes de EPI sem `qrcode` no ambiente emprestado); `tsc` sem erro.
+- **VERIFICADO (rede descartável, credenciais falsas):** boot das candidatas em produção contra banco migrado até a 0105: backend `/health` 200 e rotas novas 401 sem login; frontend `/login` 200.
 - **NÃO VERIFICADO:** QA visual; efeito do job sobre dados reais.
 
 ## 3. Imagens e retorno
