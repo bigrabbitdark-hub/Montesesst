@@ -254,7 +254,7 @@ describe('Assinatura eletrônica de EPI: rotas públicas peek/open/sign/refuse (
     const ua = 'Mozilla/5.0 ' + 'x'.repeat(400);
     const ip = nextIp();
     const r = await request(srv).post('/epi-signatures/public/sign').set('X-Forwarded-For', ip).set('User-Agent', ua)
-      .send({ token: l.token, code: l.code, accepted: true, term_version: 'rascunho-1', signature_png_base64: png.toString('base64') });
+      .send({ token: l.token, code: l.code, accepted: true, term_version: EPI_TERM.version, signature_png_base64: png.toString('base64') });
     expect(r.status).toBe(201);
     noStore(r);
     expect(r.body).toMatchObject({ receipt_code: expect.stringMatching(/^ASEPI-\d{8}-[0-9A-F]{8}$/), signed_at: expect.any(String), evidence_sha256: expect.stringMatching(/^[0-9a-f]{64}$/) });
@@ -452,6 +452,7 @@ describe('Assinatura eletrônica de EPI: rotas públicas peek/open/sign/refuse (
     const l = await link('Func Sign Termo Rascunho');
     const puts = fakeR2.putCount;
     process.env.EPI_SIGNATURE_ALLOW_DRAFT_TERM = 'false';
+    (EPI_TERM as any).draft = true; // simula um termo ainda em rascunho (o vigente é aprovado)
     try {
       const r = await post('sign', signBody(l));
       expect(r.status).toBe(409);
@@ -460,6 +461,7 @@ describe('Assinatura eletrônica de EPI: rotas públicas peek/open/sign/refuse (
       expect((await row(l.id)).attempts).toBe(0);
       expect(await evidenceCount(l.id)).toBe(0);
     } finally {
+      (EPI_TERM as any).draft = false;
       process.env.EPI_SIGNATURE_ALLOW_DRAFT_TERM = 'true';
     }
     await stillUsable(l);
