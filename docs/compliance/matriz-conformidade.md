@@ -209,7 +209,7 @@ decompostas.
   está ativo de verdade (não só planejado) — recomendado priorizar
   esse documento agora, não é mais "sem pressa".
 - **Placeholders nos Termos de Uso e na Política de Privacidade** — CNPJ
-  (`69.203.754/0001-45`) e endereço comercial preenchidos em 2026-09-21
+  ([CNPJ descontinuado — removido em 2026-11-04]) e endereço comercial preenchidos em 2026-09-21
   (fonte: `frontend/src/lib/company.ts`). Pendentes, dependem do
   fundador: **razão social** (`[RAZÃO SOCIAL — PREENCHER]`) e **foro**
   (`[CIDADE/ESTADO — PREENCHER]`, cláusula 10 dos Termos — escolha
