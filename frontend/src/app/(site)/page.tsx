@@ -19,8 +19,9 @@ import { DashboardPreview } from '@/components/DashboardPreview';
 import { EcosystemFlow } from '@/components/EcosystemFlow';
 import { HomeHeroCTA } from './HomeHeroCTA';
 import { FAQAccordion } from '@/components/FAQAccordion';
+import { whatsappUrl } from '@/lib/company';
 
-const WHATSAPP_URL = 'https://wa.me/5548920031245';
+const WHATSAPP_URL = whatsappUrl();
 
 const FATOS = [
   {

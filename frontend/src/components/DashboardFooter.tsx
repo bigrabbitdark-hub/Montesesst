@@ -1,4 +1,4 @@
-import { company } from '@/lib/company';
+import { company, whatsappUrl } from '@/lib/company';
 
 export function DashboardFooter() {
   return (
@@ -10,12 +10,12 @@ export function DashboardFooter() {
             Suporte: contato@montesesst.com.br
           </a>
           <a
-            href="https://wa.me/5548920031245"
+            href={whatsappUrl()}
             target="_blank"
             rel="noopener noreferrer"
             className="hover:text-brand-900 hover:underline"
           >
-            WhatsApp: +55 48 92003-1245
+            WhatsApp: {company.whatsapp.exibicao}
           </a>
         </div>
       </div>

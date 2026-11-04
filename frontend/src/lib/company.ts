@@ -7,6 +7,8 @@ export interface CompanyInfo {
   nomeFantasia: string;
   razaoSocial: string | null;
   cnpj: string;
+  // WhatsApp comercial: ÚNICA fonte do número (só dígitos, com DDI) e da exibição.
+  whatsapp: { numero: string; exibicao: string };
   endereco: {
     logradouro: string;
     numero: string;
@@ -21,6 +23,7 @@ export const company: CompanyInfo = {
   nomeFantasia: 'Montese SST',
   razaoSocial: null,
   cnpj: '',
+  whatsapp: { numero: '5548992050516', exibicao: '+55 48 99205-0516' },
   endereco: {
     logradouro: 'Avenida Marcolino Martins Cabral',
     numero: '2644',
@@ -30,6 +33,10 @@ export const company: CompanyInfo = {
     cep: '88705-004',
   },
 };
+
+export function whatsappUrl(): string {
+  return `https://wa.me/${company.whatsapp.numero}`;
+}
 
 const RAZAO_SOCIAL_PENDENTE = '[RAZÃO SOCIAL — PREENCHER]';
 

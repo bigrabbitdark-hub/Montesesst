@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import Image from 'next/image';
-import { company } from '@/lib/company';
+import { company, whatsappUrl } from '@/lib/company';
 import { SocialLinks } from './SocialLinks';
 
 export function SiteFooter() {
@@ -41,7 +41,7 @@ export function SiteFooter() {
 
         <FooterColumn title="Fale conosco">
           <FooterLink href="mailto:contato@montesesst.com.br">contato@montesesst.com.br</FooterLink>
-          <FooterLink href="https://wa.me/5548920031245">+55 48 92003-1245</FooterLink>
+          <FooterLink href={whatsappUrl()}>{company.whatsapp.exibicao}</FooterLink>
         </FooterColumn>
 
         <FooterColumn title="Segurança e Privacidade">
