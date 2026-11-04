@@ -10,12 +10,12 @@ export function DashboardFooter() {
             Suporte: contato@montesesst.com.br
           </a>
           <a
-            href="https://wa.me/5548920031245"
+            href="https://wa.me/5548992050516"
             target="_blank"
             rel="noopener noreferrer"
             className="hover:text-brand-900 hover:underline"
           >
-            WhatsApp: +55 48 92003-1245
+            WhatsApp: +55 48 99205-0516
           </a>
         </div>
       </div>
