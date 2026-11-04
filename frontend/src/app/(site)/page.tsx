@@ -20,7 +20,7 @@ import { EcosystemFlow } from '@/components/EcosystemFlow';
 import { HomeHeroCTA } from './HomeHeroCTA';
 import { FAQAccordion } from '@/components/FAQAccordion';
 
-const WHATSAPP_URL = 'https://wa.me/5548920031245';
+const WHATSAPP_URL = 'https://wa.me/5548992050516';
 
 const FATOS = [
   {
