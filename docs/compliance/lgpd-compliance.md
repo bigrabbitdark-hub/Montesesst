@@ -35,7 +35,7 @@ lá primeiro e depois aqui).
 |---|---|
 | Nome fantasia | Montese SST |
 | Razão social | **Pendente — o fundador ainda não informou.** Nunca inventar: nos textos públicos aparece `[RAZÃO SOCIAL — PREENCHER]` |
-| CNPJ | 69.203.754/0001-45 |
+| CNPJ | **Não divulgado** — o número anterior foi descontinuado e removido em 2026-11-04 por decisão do responsável |
 | Endereço comercial | Avenida Marcolino Martins Cabral, nº 2644, Bairro Aeroporto, Tubarão/SC, CEP 88705-004 |
 | Canal do titular e do Encarregado | privacidade@montesesst.com.br |
 
