@@ -81,3 +81,24 @@ Conferir que carregam dados, não entram em loop de requisição e não piscam/z
 ## Critério para seguir
 
 Só depois de A–E sem regressão e da decisão sobre o lint o proprietário decide o commit, a imagem candidata e o deploy.
+
+## Resultado da verificação das telas logadas (2026-11-04)
+
+Ambiente descartável (Postgres + Redis + S3 falso, 80 migrations, chaves falsas, nada de produção), backend da branch `deps-seguranca` e frontend desta branch em modo `standalone`, com um proxy local replicando `/api/` do Nginx. Navegador: Chromium (Playwright). Usuários de teste: empresa, técnico, admin e sócio. Ambiente destruído e credenciais apagadas ao final.
+
+| Bloco | Resultado |
+|---|---|
+| Carregamento (desktop 1280) | 37 telas dos 4 papéis abrem com o `h1` esperado, sem erro de JS e sem laço de requisições. Único 4xx: 403 em `/atuacao/documentos` até semear `documents.read`/`documents.approve` no ambiente de teste (permissão faltando no meu seed, não defeito) |
+| A. Autenticação e navegação | VERIFICADO: login por papel (empresa, técnico, admin, sócio) cai na página certa; senha errada fica em `/login` com mensagem; rota logada sem sessão vai a `/login`; empresa em `/admin`, `/atuacao`, `/tecnico` é devolvida a `/dashboard-v2`; `/empresa/dashboard` responde 307 para `/dashboard-v2`; token expirado vai a `/login`; logout dos 4 papéis limpa a sessão e volta a `/`; `/esqueci-senha` envia e mostra o retorno |
+| B. Telas com `set-state-in-effect` | VERIFICADO em formulários reais: simulado, equipamento de incêndio, EPI, meta da brigada e registro do fluxo de documentos mantêm o valor digitado após 2 s, sem piscar nem refazer requisições; os que gravaram devolveram 201 (equipamento, EPI, registro). Simulado e meta da brigada: o salvar ficou bloqueado pela validação do formulário (selects obrigatórios que o meu preenchimento genérico não escolheu), **não concluído** |
+| C. Refs em render | VERIFICADO: `Dialogo` do admin e do sócio (abre como `dialog`, foco entra, Tab e Shift+Tab não escapam, Esc fecha, foco volta ao botão); CNPJ no `/cadastro` dispara a consulta (200) e não sobrescreve a razão social digitada; `/cadastro` envia e mostra o 409 de CNPJ/e-mail já cadastrado; `/planos` e `/tecnico/planos`: assinar não navega para pagamento, mostra "Erro interno" (a chave do Mercado Pago é falsa, 500 do backend `MPAuthenticationError`) e o botão volta a ficar utilizável |
+| D. Uploads | VERIFICADO: onboarding de funcionários — escolher CSV, analisar (201), mapear, confirmar importação (201) e 1 funcionário gravado no banco de teste; modal de relatório de inspeção abre e aceita o PDF, mas o envio **não foi testado** (exige uma inspeção existente, que o seed não tem) |
+| E. Parâmetros de URL | VERIFICADO: `/tecnico/configuracoes?google=conectado|erro|(vazio)` mostra a mensagem certa; recarregar mantém sessão e página; voltar vai para a página anterior |
+| F. Visual (celular 390) | VERIFICADO sem estouro horizontal em 36 de 37 telas. **`/admin/documentos-fluxo` estoura 78 px**; não consegui isolar o elemento. A migração só alterou a lógica de `Dialogo.tsx` nessa pasta (sem CSS): sem relação aparente (INFERIDO) |
+
+### Não verificado
+- Envio de relatório de inspeção, CIPA (reuniões e treinamentos) e brigada com salvar completo.
+- Pagamento real e provedores externos (IA, Resend, Google Calendar real).
+- `FileInput` em todas as telas; imagem Docker e produção.
+- Comparação visual com a versão anterior (Next 14): não rodei a linha base.
+- Observação: no ambiente de teste, a empresa continua caindo em `/empresa/onboarding` ao logar (passos 2 e 3 pendentes). Comportamento anterior à migração (a regra de redirecionamento não foi alterada); abrir `/dashboard-v2` direto funciona.
