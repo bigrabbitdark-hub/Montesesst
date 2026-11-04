@@ -18,6 +18,8 @@ import { getAllPosts } from '@/lib/noticias';
 import { DashboardPreview } from '@/components/DashboardPreview';
 import { EcosystemFlow } from '@/components/EcosystemFlow';
 import { HomeHeroCTA } from './HomeHeroCTA';
+import { DiagnosticoHero } from '@/components/DiagnosticoHero';
+import { BannerCarousel } from '@/components/BannerCarousel';
 import { FAQAccordion } from '@/components/FAQAccordion';
 import { whatsappUrl } from '@/lib/company';
 
@@ -135,6 +137,9 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* BANNER DIAGNÓSTICO GRATUITO */}
+      <DiagnosticoHero />
+
       {/* FATOS REAIS */}
       <section className="bg-brand-900 text-white">
         <ul className="mx-auto grid max-w-6xl gap-px bg-white/10 px-0 sm:grid-cols-2 lg:grid-cols-4">
@@ -245,6 +250,9 @@ export default function HomePage() {
           </div>
         </div>
       </section>
+
+      {/* CARROSSEL DE BANNERS */}
+      <BannerCarousel />
 
       {/* PARA TÉCNICOS */}
       <section className="mx-auto max-w-6xl px-4 py-20 sm:px-10 sm:py-28">

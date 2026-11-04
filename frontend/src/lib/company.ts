@@ -10,6 +10,8 @@ export interface CompanyInfo {
   cnpj: string;
   // WhatsApp comercial: ÚNICA fonte do número (só dígitos, com DDI) e da exibição.
   whatsapp: { numero: string; exibicao: string };
+  // E-mail da responsável técnica para o diagnóstico gratuito.
+  emailDiagnostico: string;
   endereco: {
     logradouro: string;
     numero: string;
@@ -25,6 +27,7 @@ export const company: CompanyInfo = {
   razaoSocial: null,
   cnpj: '',
   whatsapp: { numero: '5548992050516', exibicao: '+55 48 99205-0516' },
+  emailDiagnostico: 'eng.evelynsouza@montesesst.com.br',
   endereco: {
     logradouro: 'Avenida Marcolino Martins Cabral',
     numero: '2644',
@@ -35,8 +38,17 @@ export const company: CompanyInfo = {
   },
 };
 
-export function whatsappUrl(): string {
-  return `https://wa.me/${company.whatsapp.numero}`;
+export function whatsappUrl(mensagem?: string): string {
+  const base = `https://wa.me/${company.whatsapp.numero}`;
+  return mensagem ? `${base}?text=${encodeURIComponent(mensagem).replaceAll('!', '%21')}` : base;
+}
+
+export const MENSAGEM_DIAGNOSTICO_WHATSAPP =
+  'Olá! Quero solicitar o diagnóstico gratuito de SST da minha empresa.';
+export const ASSUNTO_DIAGNOSTICO_EMAIL = 'Solicitação de Diagnóstico Gratuito SST';
+
+export function diagnosticoMailtoUrl(): string {
+  return `mailto:${company.emailDiagnostico}?subject=${encodeURIComponent(ASSUNTO_DIAGNOSTICO_EMAIL)}`;
 }
 
 const RAZAO_SOCIAL_PENDENTE = '[RAZÃO SOCIAL — PREENCHER]';
