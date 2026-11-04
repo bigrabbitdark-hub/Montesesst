@@ -100,8 +100,8 @@ describe('extractLocalPeople', () => {
   });
 
   it('ignora CPF inválido e número de 11 dígitos que não é CPF', () => {
-    expect(extractLocalPeople('Nome: X FICTICIO\nCPF: 123.456.789-00\nTelefone: 48920031245')).toEqual([]);
-    expect(extractLocalPeople('Contato 48920031245')).toEqual([]);
+    expect(extractLocalPeople('Nome: X FICTICIO\nCPF: 123.456.789-00\nTelefone: 48992050516')).toEqual([]);
+    expect(extractLocalPeople('Contato 48992050516')).toEqual([]);
   });
 });
 
