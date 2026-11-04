@@ -5,7 +5,7 @@ import { company } from '@/lib/company';
 export function PaymentIssuerNote({ className = '' }: { className?: string }) {
   return (
     <p className={`text-center text-xs text-brand-700 ${className}`}>
-      {`Pagamento processado pelo Mercado Pago · ${company.nomeFantasia} · CNPJ ${company.cnpj}`}
+      {[`Pagamento processado pelo Mercado Pago · ${company.nomeFantasia}`, company.cnpj ? `CNPJ ${company.cnpj}` : null].filter(Boolean).join(' · ')}
     </p>
   );
 }
