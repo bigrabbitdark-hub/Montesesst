@@ -41,7 +41,7 @@ export function SiteFooter() {
 
         <FooterColumn title="Fale conosco">
           <FooterLink href="mailto:contato@montesesst.com.br">contato@montesesst.com.br</FooterLink>
-          <FooterLink href="https://wa.me/5548920031245">+55 48 92003-1245</FooterLink>
+          <FooterLink href="https://wa.me/5548992050516">+55 48 99205-0516</FooterLink>
         </FooterColumn>
 
         <FooterColumn title="Segurança e Privacidade">
