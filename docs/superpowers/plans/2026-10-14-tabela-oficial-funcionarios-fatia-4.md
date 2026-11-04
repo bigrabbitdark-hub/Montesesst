@@ -70,7 +70,7 @@ export const HEALTH_MARKERS: RegExp[];
   3. Formato de LISTA/TABELA (linhas "BRUNO FICTICIO 111.444.777-35 ELETRICISTA 18/06/2018") → nome = texto de letras antes do CPF na mesma linha; cada linha vira uma pessoa; CPF repetido no documento → UMA pessoa (primeira ocorrência).
   4. Valores ausentes ficam ausentes (não inventa); datas inexistentes como "31/02/2020" são mantidas como texto (o classificador as marcará inválidas); `sex` aceita "Feminino/Masculino" → `F/M`; "CBO 7243" (4 dígitos) é mantido como `7243` (o classificador rejeita, não se completa com zeros).
   5. Texto de duas pessoas em blocos consecutivos: os campos de uma NÃO vazam para a outra (cada janela termina no próximo CPF).
-  6. Não casa CPF inválido nem número de 11 dígitos que não é CPF (ex.: telefone `48920031245`).
+  6. Não casa CPF inválido nem número de 11 dígitos que não é CPF (ex.: telefone `48992050516`).
 - [ ] **Step 2: Run** → FAIL.
 - [ ] **Step 3: Implementar** (referência; ajuste regexes até os testes passarem, mantendo as regras):
 ```ts
