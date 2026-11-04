@@ -1,7 +1,9 @@
+import { whatsappUrl } from '@/lib/company';
+
 export function WhatsAppButton() {
   return (
     <a
-      href="https://wa.me/5548920031245"
+      href={whatsappUrl()}
       target="_blank"
       rel="noopener noreferrer"
       aria-label="Fale no WhatsApp"

@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from 'react';
 import { AuthSplit } from '@/components/AuthSplit';
+import { company, whatsappUrl } from '@/lib/company';
 
 export default function ContatoPage() {
   const [name, setName] = useState('');
@@ -37,7 +38,7 @@ export default function ContatoPage() {
             Obrigado pelo contato — retornaremos em breve.
           </p>
           <a
-            href="https://wa.me/5548920031245"
+            href={whatsappUrl()}
             target="_blank"
             rel="noopener noreferrer"
             className="mt-6 inline-flex items-center gap-2 rounded-[9px] bg-[#25D366] px-6 py-3.5 text-sm font-semibold text-white transition-colors hover:bg-[#20bd5a]"
@@ -58,12 +59,12 @@ export default function ContatoPage() {
       <div className="text-center">
         <h1 className="text-[28px] font-extrabold text-brand-900 sm:text-[32px]">Fale com a gente</h1>
         <a
-          href="https://wa.me/5548920031245"
+          href={whatsappUrl()}
           target="_blank"
           rel="noopener noreferrer"
           className="mt-4 inline-flex items-center gap-2 rounded-[9px] bg-[#25D366] px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#20bd5a]"
         >
-          WhatsApp: +55 48 92003-1245
+          WhatsApp: {company.whatsapp.exibicao}
         </a>
 
         <div className="mt-7 rounded-2xl border border-brand-100 bg-white p-7 text-left shadow-sm">

@@ -8,6 +8,8 @@ export interface CompanyInfo {
   nomeFantasia: string;
   razaoSocial: string | null;
   cnpj: string;
+  // WhatsApp comercial: ÚNICA fonte do número (só dígitos, com DDI) e da exibição.
+  whatsapp: { numero: string; exibicao: string };
   endereco: {
     logradouro: string;
     numero: string;
@@ -21,7 +23,8 @@ export interface CompanyInfo {
 export const company: CompanyInfo = {
   nomeFantasia: 'Montese SST',
   razaoSocial: null,
-  cnpj: '69.203.754/0001-45',
+  cnpj: '',
+  whatsapp: { numero: '5548992050516', exibicao: '+55 48 99205-0516' },
   endereco: {
     logradouro: 'Avenida Marcolino Martins Cabral',
     numero: '2644',
@@ -32,6 +35,10 @@ export const company: CompanyInfo = {
   },
 };
 
+export function whatsappUrl(): string {
+  return `https://wa.me/${company.whatsapp.numero}`;
+}
+
 const RAZAO_SOCIAL_PENDENTE = '[RAZÃO SOCIAL — PREENCHER]';
 
 export function formatAddress(): string {
@@ -41,7 +48,9 @@ export function formatAddress(): string {
 
 export function formatIdentification(): string {
   const razao = company.razaoSocial ?? RAZAO_SOCIAL_PENDENTE;
-  return `${razao}, inscrita no CNPJ sob o nº ${company.cnpj}, com endereço comercial na ${formatAddress()}`;
+  return company.cnpj
+    ? `${razao}, inscrita no CNPJ sob o nº ${company.cnpj}, com endereço comercial na ${formatAddress()}`
+    : `${razao}, com endereço comercial na ${formatAddress()}`;
 }
 
 // Os documentos em content/legal/*.mdx usam este token onde vai a

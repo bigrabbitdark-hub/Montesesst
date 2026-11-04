@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import Image from 'next/image';
-import { company } from '@/lib/company';
+import { company, whatsappUrl } from '@/lib/company';
 import { SocialLinks } from './SocialLinks';
 
 export function SiteFooter() {
@@ -41,7 +41,7 @@ export function SiteFooter() {
 
         <FooterColumn title="Fale conosco">
           <FooterLink href="mailto:contato@montesesst.com.br">contato@montesesst.com.br</FooterLink>
-          <FooterLink href="https://wa.me/5548920031245">+55 48 92003-1245</FooterLink>
+          <FooterLink href={whatsappUrl()}>{company.whatsapp.exibicao}</FooterLink>
         </FooterColumn>
 
         <FooterColumn title="Segurança e Privacidade">
@@ -61,7 +61,7 @@ export function SiteFooter() {
             <Image src="/brand/logo-icon.jpg" alt="" width={22} height={22} className="rounded-[5px]" />
             <p className="text-xs text-brand-100">&copy; {new Date().getFullYear()} Montese SST. Todos os direitos reservados.</p>
           </div>
-          <p className="text-xs text-brand-100">{`CNPJ ${company.cnpj} · montesesst.com.br`}</p>
+          <p className="text-xs text-brand-100">{[company.cnpj ? `CNPJ ${company.cnpj}` : null, 'montesesst.com.br'].filter(Boolean).join(' · ')}</p>
         </div>
       </div>
     </footer>
