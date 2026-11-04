@@ -177,7 +177,7 @@ export default function AdminFinanceiroPage() {
     <div>
       <AdminPageHeader
         title="Financeiro"
-        description={`Recebedor: ${company.nomeFantasia} · CNPJ ${company.cnpj}`}
+        description={[`Recebedor: ${company.nomeFantasia}`, company.cnpj ? `CNPJ ${company.cnpj}` : null].filter(Boolean).join(' · ')}
       />
 
       <Card title="Planos" className="mt-6">
