@@ -11,8 +11,10 @@ import { NovoFuncionarioForm, type UnitOption } from '@/components/NovoFuncionar
 import { Card } from '@/components/ui/Card';
 import { DashSkin } from '@/components/dashboard/DashSkin';
 import { PageHeader } from '@/components/dashboard/PageHeader';
+import { useAtuando } from '@/lib/useAtuando';
 
 export default function EmpresaFuncionariosPage() {
+  const atuando = useAtuando();
   const router = useRouter();
   const [ready, setReady] = useState(false);
   const [units, setUnits] = useState<UnitOption[]>([]);
@@ -83,9 +85,12 @@ export default function EmpresaFuncionariosPage() {
             <div className="flex flex-col gap-3">
               <NovoFuncionarioForm units={units} onCreated={() => setRefreshKey((k) => k + 1)} disabled={tableEditing} />
               {/* div de bloco: o botão fechado não estica na coluna. */}
-              <div>
-                <AnexarDocumentoPanel units={units} defaultUnitId={unitId} disabled={tableEditing || reviewPending} onDone={handleUploaded} />
-              </div>
+              {/* POST /api/employees/documents (extração por IA) é proibido no modo atuação. */}
+              {atuando !== true && (
+                <div>
+                  <AnexarDocumentoPanel units={units} defaultUnitId={unitId} disabled={tableEditing || reviewPending} onDone={handleUploaded} />
+                </div>
+              )}
             </div>
             {tableEditing && (
               <p id="func-edicao-ajuda" className="text-sm text-dash-muted">

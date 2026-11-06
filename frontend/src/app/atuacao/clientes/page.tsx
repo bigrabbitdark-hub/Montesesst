@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { PageHeader } from '@/components/dashboard/PageHeader';
 import { AsyncBody } from '@/components/ui/AsyncBody';
 import { Badge } from '@/components/ui/Badge';
+import { NovaEmpresaForm } from './NovaEmpresaForm';
 import { atuacaoFetch, formatCnpj, SITUACAO_LABEL, SITUACAO_TONE, type ClienteResumo } from '../api';
 
 const INPUT =
@@ -19,6 +20,8 @@ export default function ClientesPage() {
   const [data, setData] = useState<ClienteResumo[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [novaAberta, setNovaAberta] = useState(false);
+  const botaoNova = useRef<HTMLButtonElement>(null);
 
   // Pequena espera para não consultar a cada tecla.
   useEffect(() => {
@@ -47,6 +50,23 @@ export default function ClientesPage() {
   return (
     <div className="px-4 py-8 sm:px-6">
       <PageHeader titulo="Clientes Montese" descricao="Empresas da carteira. Abra uma para ver a ficha e atualizar o contato." />
+      <div className="mb-4">
+        <button
+          ref={botaoNova}
+          type="button"
+          aria-expanded={novaAberta}
+          aria-controls="nova-empresa-painel"
+          onClick={() => setNovaAberta((v) => !v)}
+          className="rounded-md bg-dash-primary px-4 py-2 text-sm font-semibold text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-dash-primary focus-visible:ring-offset-2"
+        >
+          Cadastrar nova empresa
+        </button>
+      </div>
+      {novaAberta && (
+        <div id="nova-empresa-painel">
+          <NovaEmpresaForm onCriada={carregar} onConcluir={() => { setNovaAberta(false); setTimeout(() => botaoNova.current?.focus(), 0); }} />
+        </div>
+      )}
       <div className="mb-4 grid gap-3 sm:grid-cols-[1fr_200px]">
         <div>
           <label htmlFor="busca" className="mb-1 block text-sm font-medium text-dash-muted">Buscar</label>

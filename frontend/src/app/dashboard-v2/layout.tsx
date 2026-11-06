@@ -1,3 +1,4 @@
+import { ActingBanner } from '@/components/ActingBanner';
 import { RoleGuard } from '@/components/RoleGuard';
 import { WhatsAppButton } from '@/components/WhatsAppButton';
 import { EmpresaShell } from '@/components/dashboard/EmpresaShell';
@@ -7,6 +8,7 @@ import { EmpresaShell } from '@/components/dashboard/EmpresaShell';
 export default function DashboardV2Layout({ children }: { children: React.ReactNode }) {
   return (
     <RoleGuard allow={['empresa']}>
+      <ActingBanner />
       <EmpresaShell>{children}</EmpresaShell>
       <WhatsAppButton />
     </RoleGuard>

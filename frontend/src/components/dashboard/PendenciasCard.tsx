@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import { LinkOuTexto } from '@/components/dashboard/LinkOuTexto';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import type { ItemLista } from '@/lib/dashboard/real';
@@ -13,9 +13,9 @@ export function PendenciasCard({ itens, resumo }: { itens: ItemLista[]; resumo: 
         <ul>
           {itens.map((p) => (
             <li key={p.id} className="border-b border-dash-border-soft py-3 last:border-0">
-              <Link href={p.href} className="text-sm font-semibold text-dash-primary hover:underline">
+              <LinkOuTexto href={p.href} className="text-sm font-semibold text-dash-primary hover:underline">
                 {p.titulo}
-              </Link>
+              </LinkOuTexto>
               <p className="mt-1 flex items-center justify-between gap-2 text-[12.5px] text-dash-muted">
                 <span>{p.detalhe}</span>
                 <Badge tone={p.tone}>{p.rotulo}</Badge>

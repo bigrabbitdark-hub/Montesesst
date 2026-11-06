@@ -3,11 +3,13 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { getToken } from '@/lib/auth';
+import { useAtuando } from '@/lib/useAtuando';
 import { DashSkin } from '@/components/dashboard/DashSkin';
 import { CompanyUnit, CIPA_COMPANY_UNIT_STORAGE_KEY as STORAGE_KEY } from '@/lib/cipa-types';
 
 function CipaLayoutContent({ children }: { children: React.ReactNode }) {
   const router = useRouter();
+  const atuando = useAtuando();
   const [ready, setReady] = useState(false);
   const [units, setUnits] = useState<CompanyUnit[]>([]);
   const [selectedUnitId, setSelectedUnitId] = useState<string>('');
@@ -49,9 +51,14 @@ function CipaLayoutContent({ children }: { children: React.ReactNode }) {
       <div className="mx-auto max-w-2xl px-4 py-16 text-center">
         <p className="text-brand-700">
           Nenhum estabelecimento cadastrado ainda.{' '}
-          <a href="/empresa/onboarding" className="font-semibold text-brand-900 underline">
-            Cadastre um em Dados da empresa
-          </a>{' '}
+          {/* /empresa/onboarding é bloqueado no modo atuação: sem link para uma área indisponível. */}
+          {atuando === true ? (
+            'Cadastre um em Dados da empresa'
+          ) : (
+            <a href="/empresa/onboarding" className="font-semibold text-brand-900 underline">
+              Cadastre um em Dados da empresa
+            </a>
+          )}{' '}
           antes de usar a Central da CIPA.
         </p>
       </div>

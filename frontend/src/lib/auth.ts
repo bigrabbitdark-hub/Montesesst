@@ -1,7 +1,12 @@
+import { clearAllSessionKeys, restoreSocioSessionIfActing } from './acting';
+import { isTokenExpired } from './jwt';
+
 export interface SessionUser {
   id: string;
   role: 'empresa' | 'tecnico' | 'parceiro' | 'admin' | 'socio';
   tenantId: string | null;
+  // Senha temporária: o backend bloqueia tudo até a troca em /trocar-senha.
+  mustChangePassword?: boolean;
 }
 
 // Único ponto de leitura/escrita de sessão pra código NOVO (sidebars,
@@ -24,16 +29,22 @@ export function getUser(): SessionUser | null {
   }
 }
 
+// Ponto único de limpeza da sessão: inclui a sessão guardada da sócia e o estado de atuação,
+// para que o próximo login não herde o banner nem a sessão dela.
+export function clearSession(): void {
+  clearAllSessionKeys();
+}
+
 // Sessão ausente/expirada (401): limpa a sessão local e volta ao login (mesmo padrão das páginas da empresa).
 export function sessionExpired(): void {
-  localStorage.removeItem('montese_token');
-  localStorage.removeItem('montese_user');
+  // Token de atuação vencido/recusado: volta para a sessão da sócia em vez de derrubar o login dela.
+  if (restoreSocioSessionIfActing()) { window.location.href = '/atuacao/clientes?atuacao=expirada'; return; }
+  clearSession();
   window.location.href = '/login';
 }
 
 export function logout(): void {
-  localStorage.removeItem('montese_token');
-  localStorage.removeItem('montese_user');
+  clearSession();
   window.location.href = '/';
 }
 
@@ -48,14 +59,5 @@ export function homeFor(role: SessionUser['role']): string {
 }
 
 // Só UX: evita renderizar telas com um token que o backend vai recusar. A
-// autorização de verdade continua 100% no backend.
-export function isTokenExpired(token: string): boolean {
-  try {
-    const payload = token.split('.')[1];
-    const json = atob(payload.replace(/-/g, '+').replace(/_/g, '/'));
-    const { exp } = JSON.parse(json);
-    return typeof exp === 'number' && exp * 1000 <= Date.now();
-  } catch {
-    return true;
-  }
-}
+// autorização de verdade continua 100% no backend. (Implementação em lib/jwt.)
+export { isTokenExpired };

@@ -12,6 +12,8 @@ import {
   formatDateBR,
   getSelectedCompanyUnitId,
 } from '@/lib/cipa-types';
+import { useAtuando } from '@/lib/useAtuando';
+import { MSG_CIPA_NOVA_GESTAO_ATUANDO } from '@/lib/cipa-atuacao';
 
 function Card({ emoji, label, value, href }: { emoji: string; label: string; value: string | number; href?: string }) {
   const content = (
@@ -27,6 +29,7 @@ function Card({ emoji, label, value, href }: { emoji: string; label: string; val
 
 export default function CipaDashboardPage() {
   const router = useRouter();
+  const atuando = useAtuando();
   const [ready, setReady] = useState(false);
   const [committee, setCommittee] = useState<CipaCommittee | null>(null);
   const [meetings, setMeetings] = useState<CipaMeeting[]>([]);
@@ -73,12 +76,16 @@ export default function CipaDashboardPage() {
       <div className="mx-auto max-w-2xl px-4 py-16 text-center">
         <h1 className="text-2xl font-bold text-brand-900">🦺 Central da CIPA</h1>
         <p className="mt-4 text-brand-700">Nenhuma gestão da CIPA cadastrada ainda para este estabelecimento.</p>
-        <Link
-          href="/empresa/cipa/nova-gestao"
-          className="mt-6 inline-block rounded-[9px] bg-brand-500 px-6 py-3 text-sm font-semibold text-white hover:bg-brand-700"
-        >
-          📅 Criar calendário da CIPA
-        </Link>
+        {atuando === true ? (
+          <p className="mt-6 text-sm text-brand-700">{MSG_CIPA_NOVA_GESTAO_ATUANDO}</p>
+        ) : (
+          <Link
+            href="/empresa/cipa/nova-gestao"
+            className="mt-6 inline-block rounded-[9px] bg-brand-500 px-6 py-3 text-sm font-semibold text-white hover:bg-brand-700"
+          >
+            📅 Criar calendário da CIPA
+          </Link>
+        )}
       </div>
     );
   }

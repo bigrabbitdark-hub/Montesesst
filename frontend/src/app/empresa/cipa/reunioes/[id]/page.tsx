@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { getToken } from '@/lib/auth';
+import { useAtuando } from '@/lib/useAtuando';
 import { CipaMeeting, CipaMeetingParticipant, CipaMeetingAtaDraft, CipaMember, formatDateBR } from '@/lib/cipa-types';
 
 const CHECKLIST_ITEMS: { field: keyof CipaMeeting; label: string; group: 'Antes' | 'Durante' | 'Depois' }[] = [
@@ -25,6 +26,7 @@ const CHECKLIST_ITEMS: { field: keyof CipaMeeting; label: string; group: 'Antes'
 const MAX_POLL_ATTEMPTS = 150;
 
 export default function ReuniaoPage() {
+  const atuando = useAtuando();
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const [ready, setReady] = useState(false);
@@ -346,6 +348,7 @@ export default function ReuniaoPage() {
         </div>
       ))}
 
+      {/* POST ata-audio (transcrição/IA) é proibido no modo atuação: some só o envio de áudio; o resto (GET) continua. */}
       {(isRascunho || ataDraft?.transcript) && (
         <>
           <h2 className="mt-8 text-sm font-bold uppercase tracking-wide text-brand-700">
@@ -363,6 +366,9 @@ export default function ReuniaoPage() {
                         {ataDraft.error_message ?? 'Não foi possível gerar o rascunho.'} Tente enviar o áudio de novo.
                       </p>
                     )}
+                    {atuando === true ? (
+                      <p className="text-sm text-brand-700">O envio de áudio não está disponível no modo empresa.</p>
+                    ) : (
                     <label className="flex flex-col gap-1 text-sm text-brand-900">
                       Áudio da reunião (mp3, m4a, ogg ou wav)
                       <input
@@ -377,6 +383,7 @@ export default function ReuniaoPage() {
                         className="rounded-[9px] border-[1.5px] border-brand-100 px-3 py-2"
                       />
                     </label>
+                    )}
                   </div>
                 )}
 
@@ -420,12 +427,14 @@ export default function ReuniaoPage() {
                         </div>
                       ),
                     )}
-                    <button
-                      onClick={() => setAtaDraft(null)}
-                      className="self-start text-xs font-semibold text-brand-700 underline"
-                    >
-                      Enviar outro áudio
-                    </button>
+                    {atuando !== true && (
+                      <button
+                        onClick={() => setAtaDraft(null)}
+                        className="self-start text-xs font-semibold text-brand-700 underline"
+                      >
+                        Enviar outro áudio
+                      </button>
+                    )}
                   </div>
                 )}
               </>

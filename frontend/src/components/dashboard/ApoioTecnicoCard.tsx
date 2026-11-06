@@ -1,9 +1,15 @@
+'use client';
+
 import Image from 'next/image';
 import Link from 'next/link';
+import { useAtuando } from '@/lib/useAtuando';
 import { ASSET_PATHS } from '@/lib/dashboard/assets';
 
 // Atalho para a página existente de Reuniões e Visitas (/empresa/agendamentos).
 export function ApoioTecnicoCard() {
+  // Agendamentos chamam /api/visits (proibido no modo atuação): o cartão inteiro só existe para sugerir esse atalho.
+  const atuando = useAtuando();
+  if (atuando === true) return null;
   return (
     <section
       aria-label="Apoio técnico"

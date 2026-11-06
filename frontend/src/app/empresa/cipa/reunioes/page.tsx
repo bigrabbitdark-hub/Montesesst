@@ -6,6 +6,8 @@ import Link from 'next/link';
 import { getToken } from '@/lib/auth';
 import { CipaCommittee, CipaMeeting, formatDateBR, getSelectedCompanyUnitId } from '@/lib/cipa-types';
 import { NovaExtraordinariaForm } from './NovaExtraordinariaForm';
+import { useAtuando } from '@/lib/useAtuando';
+import { MSG_CIPA_NOVA_GESTAO_ATUANDO } from '@/lib/cipa-atuacao';
 
 const STATUS_LABEL: Record<CipaMeeting['status'], string> = {
   planejada: 'Planejada',
@@ -43,6 +45,7 @@ function formatMesAno(key: string): string {
 
 export default function ReunioesPage() {
   const router = useRouter();
+  const atuando = useAtuando();
   const [ready, setReady] = useState(false);
   const [committee, setCommittee] = useState<CipaCommittee | null>(null);
   const [meetings, setMeetings] = useState<CipaMeeting[]>([]);
@@ -89,9 +92,13 @@ export default function ReunioesPage() {
       <div className="mx-auto max-w-2xl px-4 py-16 text-center">
         <p className="text-brand-700">
           Nenhuma gestão da CIPA ainda.{' '}
-          <Link href="/empresa/cipa/nova-gestao" className="font-semibold text-brand-900 underline">
-            Criar calendário
-          </Link>
+          {atuando === true ? (
+            MSG_CIPA_NOVA_GESTAO_ATUANDO
+          ) : (
+            <Link href="/empresa/cipa/nova-gestao" className="font-semibold text-brand-900 underline">
+              Criar calendário
+            </Link>
+          )}
         </p>
       </div>
     );

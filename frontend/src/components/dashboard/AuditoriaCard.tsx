@@ -1,4 +1,7 @@
+'use client';
+
 import Link from 'next/link';
+import { useAtuando } from '@/lib/useAtuando';
 import { Card } from '@/components/ui/Card';
 import { Badge, type Tone } from '@/components/ui/Badge';
 export const TOM_CRITICIDADE: Record<'Alta' | 'Média', Tone> = { Alta: 'high', Média: 'warn' };
@@ -8,6 +11,7 @@ const FALTAM = ['PGR × LTCAT', 'PPP × LTCAT', 'PPP × eSocial', 'PGR × S-2240
 // Só o cruzamento PGR × PCMSO existe de verdade. Os demais ficam
 // declarados "em breve", sem número. `pgrPcmso` ausente = backend sem o dado.
 export function AuditoriaCard({ pgrPcmso }: { pgrPcmso?: { risco_sem_exame: number; exame_sem_risco: number } }) {
+  const atuando = useAtuando();
   const riscos = pgrPcmso?.risco_sem_exame ?? 0;
   const exames = pgrPcmso?.exame_sem_risco ?? 0;
   return (
@@ -38,9 +42,12 @@ export function AuditoriaCard({ pgrPcmso }: { pgrPcmso?: { risco_sem_exame: numb
               )}
             </ul>
           )}
-          <Link href="/empresa/pente-fino" className="mt-2 inline-block text-[13px] font-semibold text-dash-brand-green-dark hover:underline">
-            Abrir Auditoria Montese
-          </Link>
+          {/* /empresa/pente-fino executa LLM (proibido no modo atuação): sem link nesse modo. */}
+          {atuando !== true && (
+            <Link href="/empresa/pente-fino" className="mt-2 inline-block text-[13px] font-semibold text-dash-brand-green-dark hover:underline">
+              Abrir Auditoria Montese
+            </Link>
+          )}
         </div>
       ) : (
         <p className="border-b border-dash-border-soft pb-3 text-sm text-dash-muted">PGR × PCMSO: dado indisponível no momento.</p>

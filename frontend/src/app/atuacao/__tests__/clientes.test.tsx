@@ -4,6 +4,7 @@ import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ replace: vi.fn(), push: vi.fn() }),
   useParams: () => ({ tenantId: 't-1' }),
+  useSearchParams: () => new URLSearchParams(''),
 }));
 
 import ClientesPage from '../clientes/page';
@@ -167,5 +168,26 @@ describe('ficha do cliente', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Salvar' }));
     expect(await screen.findByText(texto)).toBeInTheDocument();
     expect(screen.getByLabelText('Setor')).toHaveValue('MetalurgiaX');
+  });
+});
+
+describe('cadastro de nova empresa na lista', () => {
+  it('após Concluir devolve o foco ao botão Cadastrar nova empresa', async () => {
+    fetchMock.mockImplementation(async (url: string, init?: RequestInit) =>
+      init?.method === 'POST' ? resp(201, { tenant_id: 't', user_id: 'u', email: 'rh@exemplo.com.br' }) : resp(200, [cliente]));
+    render(<ClientesPage />);
+    await screen.findAllByText('Alfa Ltda');
+    const abrir = screen.getByRole('button', { name: 'Cadastrar nova empresa' });
+    expect(abrir).toHaveAttribute('aria-expanded', 'false');
+    fireEvent.click(abrir);
+    expect(abrir).toHaveAttribute('aria-expanded', 'true');
+    fireEvent.change(screen.getByLabelText('Razão social'), { target: { value: 'Empresa Exemplo' } });
+    fireEvent.change(screen.getByLabelText('CNPJ'), { target: { value: '11.222.333/0001-81' } });
+    fireEvent.change(screen.getByLabelText('Nome do responsável (RH)'), { target: { value: 'RH Exemplo' } });
+    fireEvent.change(screen.getByLabelText('E-mail do RH'), { target: { value: 'rh@exemplo.com.br' } });
+    fireEvent.change(screen.getByLabelText('Senha temporária'), { target: { value: 'Temporaria1' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Cadastrar empresa' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Concluir' }));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Cadastrar nova empresa' })).toHaveFocus());
   });
 });

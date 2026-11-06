@@ -3,6 +3,7 @@
 import { FormEvent, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { clearActingKeys } from '@/lib/acting';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -28,8 +29,13 @@ export default function LoginPage() {
       }
 
       const data = await res.json();
+      clearActingKeys(); // login novo nunca herda atuação anterior
       localStorage.setItem('montese_token', data.access_token);
       localStorage.setItem('montese_user', JSON.stringify(data.user));
+      if (data.user.mustChangePassword) {
+        router.push('/trocar-senha');
+        return;
+      }
       const role = data.user.role;
       router.push(
         role === 'empresa'

@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import { LinkOuTexto } from '@/components/dashboard/LinkOuTexto';
 import { Card } from '@/components/ui/Card';
 import { diasEntre, formatarData } from '@/lib/dashboard/status';
 import type { VencimentoItem } from '@/lib/dashboard/real';
@@ -22,9 +22,9 @@ export function VencimentosCard({ itens, hoje }: { itens: VencimentoItem[]; hoje
                   dias < 0 ? 'bg-dash-status-crit-bg text-dash-status-crit-text' : 'bg-dash-status-warn-bg text-dash-status-warn-text'
                 }`}
               >
-                <Link href={v.href} className="font-semibold hover:underline">
+                <LinkOuTexto href={v.href} className="font-semibold hover:underline">
                   {v.nome}
-                </Link>
+                </LinkOuTexto>
                 <p className="mt-0.5 text-[13px]">
                   {quando} — {formatarData(v.validade)}
                 </p>

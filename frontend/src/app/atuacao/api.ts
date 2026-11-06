@@ -1,4 +1,4 @@
-import { getToken } from '@/lib/auth';
+import { clearSession, getToken } from '@/lib/auth';
 
 export type Situacao = 'ativa' | 'trial' | 'pendente' | 'inativa';
 
@@ -12,6 +12,9 @@ export interface ClienteFicha extends ClienteResumo {
   contact_role: string | null; notes: string | null; plan: string; created_at: string;
   units: { id: string; name: string; address_city: string; address_state: string; status: string }[];
 }
+
+export interface CriarEmpresaInput { company_name: string; cnpj: string; full_name: string; email: string; password: string }
+export interface CriarEmpresaResultado { tenant_id: string; user_id: string; email: string }
 
 export const SITUACAO_LABEL: Record<Situacao, string> = {
   ativa: 'Ativa', trial: 'Em teste', pendente: 'Pendente', inativa: 'Inativa',
@@ -56,6 +59,8 @@ export async function atuacaoFetch<T>(path: string, init: RequestInit = {}): Pro
     }
     throw new Error(MSG_403);
   }
+  // Cadastro de empresa: o 23505 do servidor chega como "Registro duplicado"; a mensagem amigável tem prioridade.
+  if (res.status === 409 && path === '/clientes' && init.method === 'POST') throw new Error('CNPJ ou e-mail já cadastrado.');
   if (res.status === 409 && (path.startsWith('/documentos') || path.startsWith('/pgr') || path.startsWith('/tarefas') || path.startsWith('/checklists') || path.startsWith('/alertas'))) {
     // Conflito de estado/separação de funções: mensagem do servidor, sem reinterpretar.
     let msg = '';
@@ -68,8 +73,10 @@ export async function atuacaoFetch<T>(path: string, init: RequestInit = {}): Pro
   if (res.status === 413) throw new Error(`O arquivo excede o limite de ${DOC_MAX_MB} MB.`);
   if (res.status === 401) {
     // Mesmo efeito do logout() de lib/auth: limpa a sessão e volta ao login (UX; a autoridade é o backend).
-    localStorage.removeItem('montese_token');
-    localStorage.removeItem('montese_user');
+    // Fica clearSession (e não sessionExpired) de propósito: estas chamadas usam o token da PRÓPRIA sócia —
+    // durante a atuação o RoleGuard de /atuacao manda o papel 'empresa' para /dashboard-v2, então a sócia
+    // não chega aqui atuando; um 401 aqui é a sessão dela que venceu (Ruling 16).
+    clearSession();
     window.location.href = '/login';
     throw new Error('Sua sessão expirou. Entre novamente.');
   }
@@ -100,6 +107,10 @@ export async function atuacaoFetch<T>(path: string, init: RequestInit = {}): Pro
     }
     throw new Error('Cliente não encontrado.');
   }
+  const criaEmpresa = path === '/clientes' && init.method === 'POST';
+  if (criaEmpresa && res.status === 429) throw new Error('Muitas tentativas. Aguarde alguns minutos e tente novamente.');
+  // class-validator devolve mensagens em inglês: no cadastro de empresa, mensagem genérica em português.
+  if (criaEmpresa && res.status === 400) throw new Error('Confira os dados informados e tente novamente.');
   let detalhe = '';
   if (res.status === 400) {
     try {

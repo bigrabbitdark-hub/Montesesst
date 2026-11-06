@@ -84,3 +84,33 @@ export function itemAtivo(pathname: string, itens: MenuItem[]): string | null {
   }
   return melhor;
 }
+
+// ---- Modo "atuar como empresa" (sócia) ----
+// No modo atuação só controllers/handlers marcados @ActingAllowed respondem; o resto devolve 403 ACTING_ROUTE_DENIED.
+// Aqui ficam as áreas da empresa cujas páginas chamam rotas proibidas (UX; quem autoriza é o backend):
+//  /empresa/assistente   -> IA (AssistantChat)
+//  /empresa/agendamentos -> /api/tenant-technicians/minha-empresa e /api/visits (agendamentos/page.tsx:60,62,96)
+//  /empresa/pente-fino   -> POST de execução da auditoria (até 7 chamadas de LLM)
+//  /empresa/onboarding   -> PATCH /api/tenants/me e logo (MatrizForm.tsx:89,129,150)
+export const HREFS_BLOQUEADOS_ATUANDO: readonly string[] = [
+  '/empresa/assistente',
+  '/empresa/agendamentos',
+  '/empresa/pente-fino',
+  '/empresa/onboarding',
+];
+
+// Páginas sem item de menu que também chamam rotas proibidas (acesso só por URL direta).
+//  /empresa/esocial -> /api/esocial/* e CAT (certificado A1 + dados de saúde): fora do escopo da sócia.
+const PREFIXOS_SEM_MENU_BLOQUEADOS_ATUANDO: readonly string[] = ['/empresa/esocial'];
+
+export function filtrarMenuAtuando(setores: MenuSetor[], bloqueados: readonly string[]): MenuSetor[] {
+  return setores
+    .map((s) => ({ ...s, itens: s.itens.filter((i) => !bloqueados.includes(i.href)) }))
+    .filter((s) => s.itens.length > 0);
+}
+
+// Verdadeiro se o caminho é uma área bloqueada no modo atuação (exato ou subrota).
+export function rotaBloqueadaAtuando(pathname: string): boolean {
+  return [...HREFS_BLOQUEADOS_ATUANDO, ...PREFIXOS_SEM_MENU_BLOQUEADOS_ATUANDO]
+    .some((h) => pathname === h || pathname.startsWith(`${h}/`));
+}

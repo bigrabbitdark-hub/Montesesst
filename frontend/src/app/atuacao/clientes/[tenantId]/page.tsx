@@ -1,14 +1,15 @@
 'use client';
 
-import { FormEvent, useCallback, useEffect, useRef, useState } from 'react';
+import { FormEvent, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
+import { startActing } from '@/lib/acting';
 import { PageHeader } from '@/components/dashboard/PageHeader';
 import { Card } from '@/components/ui/Card';
 import { AsyncBody } from '@/components/ui/AsyncBody';
 import { Badge } from '@/components/ui/Badge';
 import { Interacoes } from './Interacoes';
-import { atuacaoFetch, formatCnpj, SITUACAO_LABEL, SITUACAO_TONE, type ClienteFicha,
+import { atuacaoFetch, formatCnpj, MSG_403, SITUACAO_LABEL, SITUACAO_TONE, type ClienteFicha,
   type ClienteFinanceiroFicha, formatBRL, formatDataCurta, pagamentoLabel, pagamentoTone, textoAtraso } from '../../api';
 
 const CAMPOS = [
@@ -23,6 +24,13 @@ type Valores = Record<Campo, string>;
 
 const INPUT =
   'w-full rounded-md border border-dash-border-input bg-white px-3 py-2 text-sm text-dash-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-dash-primary';
+
+// useSearchParams exige Suspense no build do Next: isolado neste componente.
+function AvisoExpirado() {
+  const params = useSearchParams();
+  if (params.get('atuacao') !== 'expirada') return null;
+  return <p role="status" className="mb-4 rounded-md bg-dash-card px-4 py-3 text-sm text-dash-primary">O modo empresa expirou. Abra novamente para continuar.</p>;
+}
 
 function paraValores(f: ClienteFicha): Valores {
   return {
@@ -120,6 +128,10 @@ export default function FichaClientePage() {
   const [erroSalvar, setErroSalvar] = useState<string | null>(null);
   const [sucesso, setSucesso] = useState(false);
   const [aviso, setAviso] = useState<string | null>(null);
+  const router = useRouter();
+  const [atuando, setAtuando] = useState(false);
+  const [erroAtuar, setErroAtuar] = useState<string | null>(null);
+  const atuandoRef = useRef(false);
 
   const carregar = useCallback(() => {
     setLoading(true);
@@ -161,6 +173,25 @@ export default function FichaClientePage() {
     }
   }
 
+  async function abrirComoEmpresa() {
+    if (atuandoRef.current) return;
+    atuandoRef.current = true;
+    setAtuando(true);
+    setErroAtuar(null);
+    try {
+      const r = await atuacaoFetch<{ access_token: string; expires_in: number; tenant: { id: string; name: string } }>(
+        `/clientes/${tenantId}/atuar`, { method: 'POST' },
+      );
+      if (!startActing(r.access_token, r.expires_in, r.tenant)) throw new Error('Sessão inválida. Entre novamente.');
+      router.push('/dashboard-v2');
+    } catch (e) {
+      const msg = (e as Error).message;
+      setErroAtuar(msg === MSG_403 ? 'Você não pode atuar nesta empresa.' : msg);
+      atuandoRef.current = false;
+      setAtuando(false);
+    }
+  }
+
   function mudar(campo: Campo, v: string) {
     setSucesso(false);
     setAviso(null);
@@ -172,6 +203,7 @@ export default function FichaClientePage() {
       <Link href="/atuacao/clientes" className="mb-4 inline-block rounded text-sm font-semibold text-dash-primary underline focus:outline-none focus-visible:ring-2 focus-visible:ring-dash-primary focus-visible:ring-offset-2">
         Voltar para clientes
       </Link>
+      <Suspense fallback={null}><AvisoExpirado /></Suspense>
       <AsyncBody
         data={ficha}
         error={error}
@@ -181,6 +213,17 @@ export default function FichaClientePage() {
         render={(f) => (
           <>
             <PageHeader titulo={f.name} descricao="Dados cadastrais ficam somente para leitura; contato e observações podem ser atualizados." />
+            <div className="mb-6 flex flex-col items-start gap-2">
+              <button
+                type="button"
+                onClick={abrirComoEmpresa}
+                disabled={atuando}
+                className="rounded-md bg-dash-primary px-4 py-2 text-sm font-semibold text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-dash-primary focus-visible:ring-offset-2 disabled:opacity-60"
+              >
+                {atuando ? 'Abrindo...' : 'Abrir como empresa'}
+              </button>
+              {erroAtuar && <p role="alert" className="text-sm text-dash-status-crit-text">{erroAtuar}</p>}
+            </div>
             <div className="grid gap-6 lg:grid-cols-2">
               <Card title="Dados cadastrais (somente leitura)">
                 <dl className="grid gap-3 sm:grid-cols-2">

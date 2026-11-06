@@ -2,7 +2,8 @@
 
 import { ReactNode, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { SessionUser, getToken, getUser, homeFor, isTokenExpired } from '@/lib/auth';
+import { restoreSocioSessionIfActing } from '@/lib/acting';
+import { SessionUser, clearSession, getToken, getUser, homeFor, isTokenExpired } from '@/lib/auth';
 
 // ITEM 017 (auditoria 2026-09-27): os layouts de admin/empresa/técnico
 // renderizavam a casca (menu, estrutura de navegação) para qualquer visitante,
@@ -18,14 +19,25 @@ export function RoleGuard({ allow, children }: { allow: SessionUser['role'][]; c
   useEffect(() => {
     const token = getToken();
     const user = getUser();
+    // Token de atuação vencido: volta à sessão da sócia em vez de derrubar o login dela.
+    if (token && isTokenExpired(token) && restoreSocioSessionIfActing()) {
+      setState('redirecionando');
+      router.replace('/atuacao/clientes?atuacao=expirada');
+      return;
+    }
     if (!token || !user || isTokenExpired(token)) {
       // Sessão ausente ou vencida: limpa o que sobrou e vai para o login.
       if (token || user) {
-        localStorage.removeItem('montese_token');
-        localStorage.removeItem('montese_user');
+        clearSession();
       }
       setState('redirecionando');
       router.replace('/login');
+      return;
+    }
+    // Senha temporária: só a tela de troca é útil (o backend responde 403 no resto).
+    if (user.mustChangePassword) {
+      setState('redirecionando');
+      router.replace('/trocar-senha');
       return;
     }
     if (!allow.includes(user.role)) {

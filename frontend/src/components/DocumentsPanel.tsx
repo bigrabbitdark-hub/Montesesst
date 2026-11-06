@@ -3,6 +3,7 @@
 import { ChangeEvent, FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import { FileInput } from './FileInput';
 import { Badge, Tone } from './ui/Badge';
+import { useAtuando } from '@/lib/useAtuando';
 import { addMonths, formatDateBR } from '@/lib/date-only';
 
 type Situacao = 'valido' | 'vencendo' | 'vencido' | 'sem_vencimento';
@@ -202,6 +203,7 @@ function situacaoTone(s: Situacao): Tone {
 }
 
 export function DocumentsPanel({ tenantId }: { tenantId?: string }) {
+  const atuando = useAtuando();
   const [documents, setDocuments] = useState<DocumentRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [category, setCategory] = useState('pgr');
@@ -814,6 +816,8 @@ export function DocumentsPanel({ tenantId }: { tenantId?: string }) {
         </form>
       </section>
 
+      {/* classify-batch usa IA (proibido no modo atuação): sem o upload em lote nesse modo. */}
+      {atuando !== true && (
       <section className="rounded-lg border border-brand-100 p-6">
         <h2 className="text-lg font-bold text-brand-900">Upload em lote</h2>
         <p className="mt-1 text-sm text-brand-700">
@@ -953,6 +957,7 @@ export function DocumentsPanel({ tenantId }: { tenantId?: string }) {
           </div>
         )}
       </section>
+      )}
 
       <section className="rounded-lg border border-brand-100 p-6">
         <h2 className="text-lg font-bold text-brand-900">Documentos</h2>

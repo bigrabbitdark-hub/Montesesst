@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { sessionExpired } from '@/lib/auth';
 import { DashboardBanner } from '@/components/dashboard/DashboardBanner';
 import { KpiCard } from '@/components/dashboard/KpiCard';
 import { ScoreRing } from '@/components/dashboard/ScoreRing';
@@ -60,9 +61,9 @@ export default function DashboardV2Page() {
         fetch('/api/dashboard/nr-conformidade', { headers }).catch(() => null),
       ]);
       if (tenantRes.status === 401 || summaryRes.status === 401) {
-        localStorage.removeItem('montese_token');
-        localStorage.removeItem('montese_user');
-        router.push('/login');
+        // Atuando (token de atuação vencido/recusado): volta à sessão da sócia em vez de apagá-la.
+        // Fora da atuação: limpa tudo e vai ao login (mesmo efeito de antes).
+        sessionExpired();
         return;
       }
       if (summaryRes.status === 403) {

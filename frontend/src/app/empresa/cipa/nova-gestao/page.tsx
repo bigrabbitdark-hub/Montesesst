@@ -4,6 +4,9 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { getToken, getUser } from '@/lib/auth';
 import { getSelectedCompanyUnitId } from '@/lib/cipa-types';
+import { useAtuando } from '@/lib/useAtuando';
+import { MSG_CIPA_NOVA_GESTAO_ATUANDO } from '@/lib/cipa-atuacao';
+import { IndisponivelAtuando } from '@/components/dashboard/IndisponivelAtuando';
 
 const DIAS_SEMANA = [
   { value: 1, label: 'Segunda-feira' },
@@ -13,7 +16,15 @@ const DIAS_SEMANA = [
   { value: 5, label: 'Sexta-feira' },
 ];
 
+// No modo atuação o formulário não aparece (Ruling 25); `null` (ainda sem saber) mostra o formulário como
+// para a empresa comum — o envio só acontece por ação do usuário e o backend continua sendo a autoridade.
 export default function NovaGestaoPage() {
+  const atuando = useAtuando();
+  if (atuando === true) return <IndisponivelAtuando mensagem={MSG_CIPA_NOVA_GESTAO_ATUANDO} />;
+  return <NovaGestaoForm />;
+}
+
+function NovaGestaoForm() {
   const router = useRouter();
   const [step, setStep] = useState<1 | 2>(1);
   const [committeeId, setCommitteeId] = useState<string | null>(null);

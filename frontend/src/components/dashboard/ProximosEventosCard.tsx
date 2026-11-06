@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import { LinkOuTexto } from '@/components/dashboard/LinkOuTexto';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import type { ItemLista } from '@/lib/dashboard/real';
@@ -13,9 +13,9 @@ export function ProximosEventosCard({ itens }: { itens: ItemLista[] }) {
         <ul className="flex flex-col gap-2.5">
           {itens.map((e) => (
             <li key={e.id} className="rounded-xl bg-dash-page px-3.5 py-3 text-sm">
-              <Link href={e.href} className="font-medium text-dash-primary hover:underline">
+              <LinkOuTexto href={e.href} className="font-medium text-dash-primary hover:underline">
                 {e.titulo}
-              </Link>
+              </LinkOuTexto>
               <p className="mt-1 flex items-center justify-between gap-2 text-[12.5px] text-dash-muted">
                 <span>{e.detalhe}</span>
                 <Badge tone={e.tone}>{e.rotulo}</Badge>
