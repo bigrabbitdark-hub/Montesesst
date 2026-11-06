@@ -4,9 +4,9 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "prebuild": "node scripts/check-dados-descontinuados.mjs",
+    "prebuild": "node scripts/check-dados-descontinuados.mjs && node scripts/check-rotas-obrigatorias.mjs",
     "build": "next build",
-    "postbuild": "node scripts/check-dados-descontinuados.mjs --artefato",
+    "postbuild": "node scripts/check-dados-descontinuados.mjs --artefato && node scripts/check-rotas-obrigatorias.mjs --artefato",
     "start": "next start -p 3000",
     "lint": "eslint . --max-warnings=0",
     "typecheck": "tsc --noEmit",
