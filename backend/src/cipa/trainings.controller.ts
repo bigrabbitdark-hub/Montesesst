@@ -17,8 +17,10 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { Roles } from '../common/decorators/roles.decorator';
 import { TrainingsService, TrainingType } from './trainings.service';
 import { CreateTrainingDto } from './dto/create-training.dto';
+import { ActingAllowed } from '../common/decorators/acting-allowed.decorator';
 
 @Controller('cipa/trainings')
+@ActingAllowed()
 export class TrainingsController {
   constructor(private readonly trainings: TrainingsService) {}
 

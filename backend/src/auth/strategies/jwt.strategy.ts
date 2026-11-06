@@ -3,6 +3,8 @@ import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { AuthenticatedUser, USER_ROLES, UserRole } from '../../common/types';
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 interface JwtPayload {
   sub: string;
   tenantId: string | null;
@@ -10,6 +12,8 @@ interface JwtPayload {
   // Só existe em tokens enviados por e-mail (confirmação de cadastro,
   // redefinição de senha) — nunca em token de sessão.
   purpose?: string;
+  act?: string;
+  mcp?: boolean;
 }
 
 @Injectable()
@@ -32,6 +36,15 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     if (payload.purpose !== undefined || !payload.sub || !USER_ROLES.includes(payload.role)) {
       throw new UnauthorizedException();
     }
-    return { id: payload.sub, tenantId: payload.tenantId, role: payload.role };
+    const user: AuthenticatedUser = { id: payload.sub, tenantId: payload.tenantId, role: payload.role };
+    if (payload.act !== undefined) {
+      // Token de atuação: só o papel socio, com uuid válido. Qualquer outra combinação é forjada/errada.
+      if (payload.role !== 'socio' || typeof payload.act !== 'string' || !UUID_RE.test(payload.act)) {
+        throw new UnauthorizedException();
+      }
+      user.actingTenantId = payload.act;
+    }
+    if (payload.mcp === true) user.mustChangePassword = true;
+    return user;
   }
 }

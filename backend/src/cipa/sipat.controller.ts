@@ -4,8 +4,10 @@ import { SipatService } from './sipat.service';
 import { CreateSipatEditionDto } from './dto/create-sipat-edition.dto';
 import { CreateSipatActivityDto } from './dto/create-sipat-activity.dto';
 import { UpdateSipatActivityDto } from './dto/update-sipat-activity.dto';
+import { ActingAllowed } from '../common/decorators/acting-allowed.decorator';
 
 @Controller('cipa/sipat/editions')
+@ActingAllowed()
 export class SipatController {
   constructor(private readonly sipat: SipatService) {}
 

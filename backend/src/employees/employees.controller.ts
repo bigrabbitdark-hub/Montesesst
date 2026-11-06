@@ -34,6 +34,7 @@ import { ResolveExtractionDto } from './dto/resolve-extraction.dto';
 import { DocumentsService } from '../documents/documents.service';
 import { sanitizeTitle } from './employee-text-sanitize';
 import { DOCX_MIME_TYPE } from '../common/docx/docx-text.util';
+import { ActingAllowed } from '../common/decorators/acting-allowed.decorator';
 
 const XLSX_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 // Projeção de funcionário para técnico/parceiro (GET /employees e GET /employees/:id).
@@ -148,6 +149,7 @@ export class EmployeesController {
   }
 
   @Roles('empresa', 'admin')
+  @ActingAllowed()
   @Get('extractions')
   listExtractions(@Query('status') status: unknown, @Query('tenant_id') tenantIdQ: unknown, @Req() req: any) {
     if (status !== undefined && status !== 'requer_revisao') throw new BadRequestException('status inválido');
@@ -160,6 +162,7 @@ export class EmployeesController {
   }
 
   @Roles('empresa', 'admin')
+  @ActingAllowed()
   @Get('extractions/:id')
   getExtraction(@Param('id') id: string, @Req() req: any) {
     return req.withTenantContext((client: any) => this.ingestion.get(client, id));
@@ -167,6 +170,7 @@ export class EmployeesController {
 
   // Só `empresa` (admin apenas lê). Tenant vem do contexto do token; a linha é filtrada por RLS.
   @Roles('empresa')
+  @ActingAllowed()
   @Post('extractions/:id/resolve')
   @HttpCode(200)
   resolveExtraction(@Param('id') id: string, @Body() dto: ResolveExtractionDto, @Req() req: any) {
@@ -176,6 +180,7 @@ export class EmployeesController {
   }
 
   @Roles('empresa', 'admin')
+  @ActingAllowed()
   @Post()
   create(@Body() dto: CreateEmployeeDto, @Req() req: any) {
     const user = req.user;
@@ -205,6 +210,7 @@ export class EmployeesController {
   }
 
   @Roles('empresa', 'admin')
+  @ActingAllowed()
   @Post('import')
   @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 5 * 1024 * 1024 } }))
   importCsv(
@@ -222,6 +228,7 @@ export class EmployeesController {
   }
 
   @Roles('empresa', 'admin')
+  @ActingAllowed()
   @Post('import-preview')
   @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 10 * 1024 * 1024 } }))
   async previewImport(@UploadedFile() file: Express.Multer.File) {
@@ -230,6 +237,7 @@ export class EmployeesController {
   }
 
   @Roles('empresa', 'admin')
+  @ActingAllowed()
   @Post('import-mapped')
   @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 10 * 1024 * 1024 } }))
   importMapped(
@@ -261,6 +269,7 @@ export class EmployeesController {
     );
   }
 
+  @ActingAllowed()
   @Get()
   findAll(@Query('tenant_id') tenantId: string | undefined, @Req() req: any) {
     if ((req.user.role === 'tecnico' || req.user.role === 'parceiro') && !tenantId) {
@@ -294,6 +303,7 @@ export class EmployeesController {
   // Rotas estáticas ('table', 'bulk') DEVEM vir antes de ':id', senão viram parâmetro.
   // Tabela oficial (CPF completo e dados pessoais): só empresa e admin; técnico/parceiro recebem 403.
   @Roles('empresa', 'admin')
+  @ActingAllowed()
   @Get('table')
   findTable(
     @Query() q: { tenant_id?: string; company_unit_id?: string; limit?: string; offset?: string },
@@ -317,6 +327,7 @@ export class EmployeesController {
   }
 
   @Roles('empresa', 'admin')
+  @ActingAllowed()
   @Get(':id/history')
   history(@Param('id') id: string, @Query('limit') limit: string, @Query('offset') offset: string, @Req() req: any) {
     const parse = (v: string | undefined, def: number) =>
@@ -330,6 +341,7 @@ export class EmployeesController {
   }
 
   @Roles('empresa', 'admin')
+  @ActingAllowed()
   @Patch('bulk')
   async bulkUpdate(@Body() dto: BulkUpdateEmployeesDto, @Req() req: any) {
     const changes = dto.changes ?? [];
@@ -359,6 +371,7 @@ export class EmployeesController {
     return result;
   }
 
+  @ActingAllowed()
   @Get(':id')
   findOne(@Param('id') id: string, @Req() req: any) {
     return req
@@ -367,6 +380,7 @@ export class EmployeesController {
   }
 
   @Roles('empresa', 'admin')
+  @ActingAllowed()
   @Patch(':id')
   // id que não é UUID vira 400 aqui (antes chegava ao pg como 22P02 e podia virar 500).
   update(@Param('id', EMPLOYEE_ID_PIPE) id: string, @Body() dto: UpdateEmployeeDto, @Req() req: any) {
@@ -374,6 +388,7 @@ export class EmployeesController {
   }
 
   @Roles('empresa', 'admin')
+  @ActingAllowed()
   @Delete(':id')
   remove(@Param('id') id: string, @Req() req: any) {
     return req.withTenantContext((client: any) => this.employees.remove(client, id));

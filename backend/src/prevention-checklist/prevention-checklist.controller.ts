@@ -18,8 +18,10 @@ import { Roles } from '../common/decorators/roles.decorator';
 import { PreventionChecklistService } from './prevention-checklist.service';
 import { CreatePreventionChecklistDto } from './dto/create-prevention-checklist.dto';
 import { UpdateChecklistItemDto } from './dto/update-checklist-item.dto';
+import { ActingAllowed } from '../common/decorators/acting-allowed.decorator';
 
 @Controller('prevention-checklists')
+@ActingAllowed()
 export class PreventionChecklistController {
   constructor(private readonly checklists: PreventionChecklistService) {}
 

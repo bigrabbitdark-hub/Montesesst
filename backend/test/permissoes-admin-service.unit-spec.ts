@@ -34,20 +34,20 @@ describe('catálogo de permissões', () => {
     expect(CATALOGO_PERMISSOES.map((g) => g.titulo)).toEqual(['Clientes', 'Tarefas e agenda', 'Financeiro', 'Documentos', 'Atuação por empresa', 'PGR — Programa de Gerenciamento de Riscos', 'Checklists por serviço', 'Alertas e notificações']);
     for (const g of CATALOGO_PERMISSOES) for (const i of g.itens) { expect(i.rotulo.length).toBeGreaterThan(2); expect(i.descricao.length).toBeGreaterThan(5); }
   });
-  it('grupo empresas traz empresas.read e empresas.documentos, não sensíveis', () => {
+  it('grupo empresas traz empresas.read, empresas.documentos, empresas.criar e empresas.atuar; só as duas novas são sensíveis', () => {
     const g = CATALOGO_PERMISSOES.find((x) => x.id === 'empresas')!;
     expect(g.titulo).toBe('Atuação por empresa');
-    expect(g.itens.map((x) => x.permissao)).toEqual(['empresas.read', 'empresas.documentos']);
-    expect(g.itens.every((x) => x.sensivel === false)).toBe(true);
+    expect(g.itens.map((x) => x.permissao)).toEqual(['empresas.read', 'empresas.documentos', 'empresas.criar', 'empresas.atuar']);
+    expect(g.itens.map((x) => x.sensivel)).toEqual([false, false, true, true]);
   });
   it('grupo pgr traz pgr.read e pgr.write, não sensíveis', () => {
     const g = CATALOGO_PERMISSOES.find((x) => x.id === 'pgr')!;
     expect(g.itens.map((x) => x.permissao)).toEqual(['pgr.read', 'pgr.write']);
     expect(g.itens.every((x) => x.sensivel === false)).toBe(true);
   });
-  it('sensíveis são exatamente os 8 do plano', () => {
+  it('sensíveis são exatamente os 10 do plano', () => {
     const sens = CATALOGO_PERMISSOES.flatMap((g) => g.itens).filter((i) => i.sensivel).map((i) => i.permissao).sort();
-    expect(sens).toEqual(['alertas.manage', 'checklists.approve', 'documents.approve', 'documents.cancel', 'documents.publish', 'documents.review', 'documents.sign', 'documents.view_registration']);
+    expect(sens).toEqual(['alertas.manage', 'checklists.approve', 'documents.approve', 'documents.cancel', 'documents.publish', 'documents.review', 'documents.sign', 'documents.view_registration', 'empresas.atuar', 'empresas.criar']);
     expect([...PERMISSOES_SENSIVEIS].sort()).toEqual(sens);
   });
 });

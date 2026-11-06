@@ -48,8 +48,15 @@ describe('varredura de controllers — papel socio', () => {
     expect(todas.length).toBeGreaterThan(100);
   });
 
-  it('só auth/me lista socio em @Roles sem exigir permissão', () => {
-    const fora = todas.filter((r) => r.roles.includes('socio') && r.perms.length === 0 && r.handler !== 'AuthController.me');
+  // Exceções: rotas do PRÓPRIO usuário, que não leem nem escrevem dados de
+  // tenant algum. AuthController.me devolve o próprio perfil;
+  // AuthController.changePassword troca a própria senha (exige a senha atual e
+  // é obrigatória no primeiro acesso) — mesmo motivo de auth/me (Ruling 24).
+  // Qualquer OUTRO handler com 'socio' em @Roles precisa de @RequirePermission.
+  const EXCECOES_SEM_PERMISSAO = ['AuthController.me', 'AuthController.changePassword'];
+
+  it('só auth/me e auth/change-password listam socio em @Roles sem exigir permissão', () => {
+    const fora = todas.filter((r) => r.roles.includes('socio') && r.perms.length === 0 && !EXCECOES_SEM_PERMISSAO.includes(r.handler));
     expect(fora.map((r) => r.handler)).toEqual([]);
   });
 

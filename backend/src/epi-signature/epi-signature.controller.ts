@@ -7,10 +7,12 @@ import { ListRequestsQueryDto } from './dto/list-requests-query.dto';
 import { resolveTenantScope } from '../epi/tenant-scope.util';
 import { EpiSignatureService } from './epi-signature.service';
 import { buildReceiptPdf } from './receipt-pdf.util';
+import { ActingAllowed } from '../common/decorators/acting-allowed.decorator';
 
 // Rotas autenticadas do responsável. O tenant vem do JWT/RLS (req.withTenantContext); ids da URL ou do corpo nunca decidem tenant.
 // As rotas fixas (requests, in-person) ficam antes de qualquer rota com :id.
 @Controller('epi-signatures')
+@ActingAllowed()
 export class EpiSignatureController {
   constructor(private readonly signatures: EpiSignatureService) {}
 

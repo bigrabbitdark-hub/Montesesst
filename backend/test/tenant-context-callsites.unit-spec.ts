@@ -34,6 +34,16 @@ const ALLOWED: Record<string, { calls: number; motivo: string }> = {
     motivo:
       'Contexto montado só de request.user (JWT validado pelo JwtAuthGuard), nunca de dto/body/query; lê apenas as próprias linhas de socio_permissions e falha fechada.',
   },
+  'common/guards/acting-tenant.guard.ts': {
+    calls: 1,
+    motivo:
+      'Contexto { userId, role: \'socio\' } (sem tenantId) montado só de request.user (JWT validado pelo JwtAuthGuard), nunca de dto/body/query; só chama socio_can_act_on_tenant(user.id, claim act) para revalidar a atuação e falha fechada.',
+  },
+  'auth/auth.service.ts': {
+    calls: 2,
+    motivo:
+      'changePassword: contexto { userId, tenantId, role } montado só de req.user (JWT validado), nunca de dto/body/query; só chama auth_own_password_hash/auth_change_password sobre o próprio user.id.',
+  },
   'normative/normative-assistant.service.ts': {
     calls: 4,
     motivo:

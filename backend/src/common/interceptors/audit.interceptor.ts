@@ -36,7 +36,7 @@ export class AuditInterceptor implements NestInterceptor {
       const user = request.user;
       void this.audit.log({
         actorUserId: user?.id ?? null,
-        actorRole: user?.role ?? null,
+        actorRole: user?.actingAs ? 'socio' : (user?.role ?? null),
         actorTenantId: user?.tenantId ?? null,
         action,
         resourceType,
@@ -45,6 +45,7 @@ export class AuditInterceptor implements NestInterceptor {
         path: request.originalUrl ?? request.url,
         statusCode,
         ipAddress: request.ip ?? null,
+        detail: user?.actingAs ? 'atuando_como_empresa' : null,
       });
     };
 

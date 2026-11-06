@@ -1,7 +1,9 @@
 import { BadRequestException, Controller, Get, Query } from '@nestjs/common';
 import { CaepiService } from './caepi.service';
+import { ActingAllowed } from '../common/decorators/acting-allowed.decorator';
 
 @Controller('caepi')
+@ActingAllowed()
 export class CaepiController {
   constructor(private readonly caepi: CaepiService) {}
 

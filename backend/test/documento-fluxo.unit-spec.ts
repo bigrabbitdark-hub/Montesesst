@@ -191,17 +191,17 @@ describe('documento-fluxo: textos e permissões', () => {
     }
   });
 
-  it('PERMISSIONS: 23 itens (21 anteriores + alertas.read/manage), sem permissões proibidas', () => {
+  it('PERMISSIONS: 25 itens (23 anteriores + empresas.criar/atuar), sem permissões proibidas', () => {
     const p = PERMISSIONS as readonly string[];
-    expect(p).toHaveLength(23);
-    for (const x of ['documents.read', 'documents.approve', 'documents.publish', 'documents.cancel', 'documents.view_registration', 'empresas.read', 'empresas.documentos', 'pgr.read', 'pgr.write', 'checklists.read', 'checklists.write', 'checklists.approve', 'alertas.read', 'alertas.manage']) expect(p).toContain(x);
+    expect(p).toHaveLength(25);
+    for (const x of ['documents.read', 'documents.approve', 'documents.publish', 'documents.cancel', 'documents.view_registration', 'empresas.read', 'empresas.documentos', 'pgr.read', 'pgr.write', 'checklists.read', 'checklists.write', 'checklists.approve', 'alertas.read', 'alertas.manage', 'empresas.criar', 'empresas.atuar']) expect(p).toContain(x);
     for (const x of ['finance.write', 'billing.manage', 'users.manage', 'settings.manage']) expect(p).not.toContain(x);
   });
 });
 
-describe('documento-fluxo: PERMISSIONS x CHECK de socio_permissions na migration mais recente que o redefine (0104)', () => {
+describe('documento-fluxo: PERMISSIONS x CHECK de socio_permissions na migration mais recente que o redefine (0108)', () => {
   it('a lista do CHECK do banco e a lista TS concordam', () => {
-    const sql = readFileSync(join(__dirname, '../db/migrations/0104_alertas_vencimento.sql'), 'utf8');
+    const sql = readFileSync(join(__dirname, '../db/migrations/0108_socio_cadastra_atua_empresa.sql'), 'utf8');
     // lastIndexOf: o bloco de rollback comentado no topo repete o texto (com a lista antiga)
     const ini = sql.lastIndexOf('ADD CONSTRAINT socio_permissions_permission_check CHECK (permission IN (');
     expect(ini).toBeGreaterThan(0);

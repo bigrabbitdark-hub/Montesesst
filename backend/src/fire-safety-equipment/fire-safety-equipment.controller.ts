@@ -19,8 +19,10 @@ import { Roles } from '../common/decorators/roles.decorator';
 import { FireSafetyEquipmentService } from './fire-safety-equipment.service';
 import { CreateFireSafetyEquipmentDto } from './dto/create-fire-safety-equipment.dto';
 import { UpdateFireSafetyEquipmentDto } from './dto/update-fire-safety-equipment.dto';
+import { ActingAllowed } from '../common/decorators/acting-allowed.decorator';
 
 @Controller('fire-safety-equipment')
+@ActingAllowed()
 export class FireSafetyEquipmentController {
   constructor(private readonly equipment: FireSafetyEquipmentService) {}
 

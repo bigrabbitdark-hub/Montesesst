@@ -3,8 +3,10 @@ import { Roles } from '../common/decorators/roles.decorator';
 import { CommitteesService } from './committees.service';
 import { CreateCommitteeDto } from './dto/create-committee.dto';
 import { GenerateMeetingsDto } from './dto/generate-meetings.dto';
+import { ActingAllowed } from '../common/decorators/acting-allowed.decorator';
 
 @Controller('cipa/committees')
+@ActingAllowed()
 export class CommitteesController {
   constructor(private readonly committees: CommitteesService) {}
 

@@ -19,8 +19,10 @@ import { UpdatePositionDto } from './dto/update-position.dto';
 import { ConfirmLinksDto } from './dto/confirm-links.dto';
 import { SetEpiRequirementsDto } from './dto/set-epi-requirements.dto';
 import { SetTrainingRequirementsDto } from './dto/set-training-requirements.dto';
+import { ActingAllowed } from '../common/decorators/acting-allowed.decorator';
 
 @Controller('positions')
+@ActingAllowed()
 @UsePipes(new ValidationPipe({ transform: true, whitelist: true, forbidNonWhitelisted: true }))
 export class PositionsController {
   constructor(private readonly positions: PositionsService) {}

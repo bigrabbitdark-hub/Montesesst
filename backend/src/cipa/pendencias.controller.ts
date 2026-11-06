@@ -3,8 +3,10 @@ import { Roles } from '../common/decorators/roles.decorator';
 import { PendenciasService } from './pendencias.service';
 import { CreatePendenciaDto } from './dto/create-pendencia.dto';
 import { UpdatePendenciaDto } from './dto/update-pendencia.dto';
+import { ActingAllowed } from '../common/decorators/acting-allowed.decorator';
 
 @Controller('cipa/pendencias')
+@ActingAllowed()
 export class PendenciasController {
   constructor(private readonly pendencias: PendenciasService) {}
 

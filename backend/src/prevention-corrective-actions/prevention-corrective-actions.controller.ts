@@ -2,8 +2,10 @@ import { Body, Controller, Get, Param, Patch, Query, Req, UsePipes, ValidationPi
 import { Roles } from '../common/decorators/roles.decorator';
 import { PreventionCorrectiveActionsService } from './prevention-corrective-actions.service';
 import { UpdateCorrectiveActionStatusDto } from './dto/update-corrective-action-status.dto';
+import { ActingAllowed } from '../common/decorators/acting-allowed.decorator';
 
 @Controller('prevention-corrective-actions')
+@ActingAllowed()
 export class PreventionCorrectiveActionsController {
   constructor(private readonly correctiveActions: PreventionCorrectiveActionsService) {}
 

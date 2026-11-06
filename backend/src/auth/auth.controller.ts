@@ -12,6 +12,8 @@ import { ResendConfirmationDto } from './dto/resend-confirmation.dto';
 import { Public } from '../common/decorators/public.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
 import { SkipSubscriptionCheck } from '../common/decorators/skip-subscription-check.decorator';
+import { ChangePasswordDto } from './dto/change-password.dto';
+import { AllowWhilePasswordPending } from '../common/decorators/allow-password-pending.decorator';
 import { RateLimit } from '../common/rate-limit/rate-limit.decorator';
 import { envInt } from '../common/env';
 
@@ -141,6 +143,21 @@ export class AuthController {
   // saber quem é o usuário pra mostrar a tela de "reative seu plano".
   @Roles('empresa', 'tecnico', 'parceiro', 'admin', 'socio')
   @SkipSubscriptionCheck()
+  @AllowWhilePasswordPending()
+  @RateLimit({
+    limit: envInt('CHANGE_PASSWORD_RATE_LIMIT_MAX', 10),
+    windowSeconds: envInt('CHANGE_PASSWORD_RATE_LIMIT_WINDOW_SECONDS', 3600),
+    keyBy: 'ip',
+  })
+  @UsePipes(new ValidationPipe({ transform: true, whitelist: true, forbidNonWhitelisted: true }))
+  @Post('change-password')
+  async changePassword(@Body() dto: ChangePasswordDto, @Req() req: any) {
+    return this.authService.changePassword(req.user, dto.current_password, dto.new_password, req.ip);
+  }
+
+  @Roles('empresa', 'tecnico', 'parceiro', 'admin', 'socio')
+  @SkipSubscriptionCheck()
+  @AllowWhilePasswordPending()
   @Get('me')
   me(@Req() req: any) {
     return req.user;

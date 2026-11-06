@@ -55,6 +55,8 @@ import { EmbeddingModule } from './common/embedding/embedding.module';
 import { AiUsageModule } from './common/ai-usage/ai-usage.module';
 import { RateLimitGuard } from './common/rate-limit/rate-limit.guard';
 import { SubscriptionStatusGuard } from './common/guards/subscription-status.guard';
+import { ActingTenantGuard } from './common/guards/acting-tenant.guard';
+import { PasswordChangeRequiredGuard } from './common/guards/password-change-required.guard';
 import { JsonLoggerService } from './common/logging/json-logger.service';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 
@@ -117,7 +119,12 @@ import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
     // antes do SubscriptionStatusGuard checar status de assinatura (ITEM 002,
     // auditoria 2026-09-27) — precisa de request.user.tenantId/role já populados.
     { provide: APP_GUARD, useClass: RateLimitGuard },
+    // PasswordChangeRequiredGuard vem ANTES do ActingTenantGuard: este reescreve request.user sem
+    // mustChangePassword, então um token com `act`+`mcp` escaparia do bloqueio na ordem inversa.
+    // ActingTenantGuard (sócia atuando => empresa do tenant X, validado no banco) roda antes de Subscription/Roles/Permissions.
     { provide: APP_GUARD, useClass: JwtAuthGuard },
+    { provide: APP_GUARD, useClass: PasswordChangeRequiredGuard },
+    { provide: APP_GUARD, useClass: ActingTenantGuard },
     { provide: APP_GUARD, useClass: SubscriptionStatusGuard },
     { provide: APP_GUARD, useClass: RolesGuard },
     // Depois do RolesGuard: ele deixa o socio com @RequirePermission passar e confia nesta guarda.

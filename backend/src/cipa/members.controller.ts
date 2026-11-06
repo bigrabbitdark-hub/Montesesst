@@ -3,8 +3,10 @@ import { Roles } from '../common/decorators/roles.decorator';
 import { MembersService } from './members.service';
 import { CreateMemberDto } from './dto/create-member.dto';
 import { UpdateMemberDto } from './dto/update-member.dto';
+import { ActingAllowed } from '../common/decorators/acting-allowed.decorator';
 
 @Controller('cipa/members')
+@ActingAllowed()
 export class MembersController {
   constructor(private readonly members: MembersService) {}
 

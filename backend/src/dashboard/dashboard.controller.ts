@@ -2,8 +2,10 @@ import { BadRequestException, Controller, Get, Query, Req } from '@nestjs/common
 import { Roles } from '../common/decorators/roles.decorator';
 import { DashboardService } from './dashboard.service';
 import { NrConformidadeService } from '../nr-conformidade/nr-conformidade.service';
+import { ActingAllowed } from '../common/decorators/acting-allowed.decorator';
 
 @Controller('dashboard')
+@ActingAllowed()
 export class DashboardController {
   constructor(
     private readonly dashboard: DashboardService,

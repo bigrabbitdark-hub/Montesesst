@@ -2,8 +2,10 @@ import { BadRequestException, Body, Controller, Get, Param, Patch, Query, Req, U
 import { Roles } from '../common/decorators/roles.decorator';
 import { InspectionsService } from './inspections.service';
 import { UpdateActionPlanDto } from './dto/update-action-plan.dto';
+import { ActingAllowed } from '../common/decorators/acting-allowed.decorator';
 
 @Controller('action-plans')
+@ActingAllowed()
 export class ActionPlansController {
   constructor(private readonly inspections: InspectionsService) {}
 

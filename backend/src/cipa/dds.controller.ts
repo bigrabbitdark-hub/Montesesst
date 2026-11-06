@@ -2,8 +2,10 @@ import { Body, Controller, Delete, Get, Param, Post, Query, Req, UsePipes, Valid
 import { Roles } from '../common/decorators/roles.decorator';
 import { DdsService } from './dds.service';
 import { CreateDdsRecordDto } from './dto/create-dds-record.dto';
+import { ActingAllowed } from '../common/decorators/acting-allowed.decorator';
 
 @Controller('cipa/dds')
+@ActingAllowed()
 export class DdsController {
   constructor(private readonly dds: DdsService) {}
 

@@ -23,6 +23,7 @@ import { UpdateInspectionDto } from './dto/update-inspection.dto';
 import { UpdateChecklistItemDto } from './dto/update-checklist-item.dto';
 import { AiDraftDto } from './dto/ai-draft.dto';
 import { FIELD_REPORT_EXTRACTOR, FieldReportExtractor } from '../ai-copilot/field-report-extractor.interface';
+import { ActingAllowed } from '../common/decorators/acting-allowed.decorator';
 
 @Controller('inspections')
 export class InspectionsController {
@@ -40,6 +41,7 @@ export class InspectionsController {
     );
   }
 
+  @ActingAllowed()
   @Get()
   findAll(@Query('tenant_id') tenantId: string | undefined, @Req() req: any) {
     if ((req.user.role === 'tecnico' || req.user.role === 'parceiro') && !tenantId) {
@@ -51,6 +53,7 @@ export class InspectionsController {
   // Modelo em branco do relatório (PDF) para o técnico levar à visita.
   // Declarada ANTES de ':id' para não ser capturada como id. Qualquer
   // usuário autenticado pode baixar: não contém dado de nenhum tenant.
+  @ActingAllowed()
   @Get('modelo-pdf')
   async blankTemplate() {
     const buffer = await buildBlankInspectionPdf();
@@ -60,6 +63,7 @@ export class InspectionsController {
     });
   }
 
+  @ActingAllowed()
   @Get(':id')
   findOne(@Param('id') id: string, @Req() req: any) {
     return req.withTenantContext((client: any) => this.inspections.findOne(client, id));

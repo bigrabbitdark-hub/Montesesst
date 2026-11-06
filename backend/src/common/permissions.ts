@@ -24,5 +24,7 @@ export const PERMISSIONS = [
   'checklists.approve',
   'alertas.read',
   'alertas.manage',
+  'empresas.criar',
+  'empresas.atuar',
 ] as const;
 export type Permission = (typeof PERMISSIONS)[number];

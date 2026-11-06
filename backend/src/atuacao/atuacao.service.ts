@@ -1,7 +1,11 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PoolClient } from 'pg';
+import { mapPgError } from '../common/pg-error.util';
+import { CriarEmpresaDto } from './dto/criar-empresa.dto';
 import { buildSafeSetClause } from '../common/safe-update.util';
 import { deriveAccessState, SubscriptionAccess } from '../payments/subscription-access.service';
+
+export const ACTING_TOKEN_TTL_SECONDS = 1800;
 
 export const CAMPOS_OPERACIONAIS = ['trade_name', 'sector', 'contact_name', 'contact_role', 'contact_phone', 'notes'] as const;
 
@@ -36,6 +40,13 @@ function paraResumo(r: any): ClienteResumo {
 
 @Injectable()
 export class AtuacaoService {
+  async podeAtuar(client: PoolClient, socioId: string, tenantId: string): Promise<{ name: string } | null> {
+    const ok = await client.query<{ ok: boolean }>('SELECT socio_can_act_on_tenant($1, $2) AS ok', [socioId, tenantId]);
+    if (ok.rows[0]?.ok !== true) return null;
+    const t = await client.query<{ name: string }>('SELECT name FROM tenants WHERE id = $1', [tenantId]);
+    return t.rows[0] ? { name: t.rows[0].name } : null;
+  }
+
   // Sem filtro de carteira no SQL: o RLS (tenants_socio_select + is_montese_tenant)
   // já restringe a empresas Montese, mesma convenção do resto do código.
   async listar(client: PoolClient, f: { q?: string; situacao?: SubscriptionAccess; meus?: boolean | string }, userId?: string): Promise<ClienteResumo[]> {
@@ -112,5 +123,21 @@ export class AtuacaoService {
       );
     }
     return { tenant_id: tenantId, responsaveis: await this.responsaveisDe(client, tenantId) };
+  }
+
+  // O hash vem pronto do controller: este serviço nunca vê a senha em claro.
+  async criarEmpresa(client: PoolClient, socioId: string, dto: CriarEmpresaDto, passwordHash: string): Promise<{ tenant_id: string; user_id: string }> {
+    try {
+      const res = await client.query<{ tenant_id: string; user_id: string }>(
+        'SELECT * FROM socio_create_company($1, $2, $3, $4, $5, $6)',
+        [socioId, dto.company_name, dto.cnpj, dto.email, passwordHash, dto.full_name],
+      );
+      return { tenant_id: res.rows[0].tenant_id, user_id: res.rows[0].user_id };
+    } catch (err) {
+      if ((err as { code?: string })?.code === '42501') {
+        throw new ForbiddenException({ statusCode: 403, message: 'Você não tem permissão para esta ação.', code: 'PERMISSION_DENIED' });
+      }
+      return mapPgError(err); // mapPgError é `never`: o método sempre lança
+    }
   }
 }

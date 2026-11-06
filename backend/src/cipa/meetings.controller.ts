@@ -9,6 +9,7 @@ import { CreateExtraordinariaDto } from './dto/create-extraordinaria.dto';
 import { UpdateMeetingDto } from './dto/update-meeting.dto';
 import { SetParticipantsDto } from './dto/set-participants.dto';
 import { AtaAiService } from './ata-ai/ata-ai.service';
+import { ActingAllowed } from '../common/decorators/acting-allowed.decorator';
 
 @Controller('cipa/meetings')
 export class MeetingsController {
@@ -20,6 +21,7 @@ export class MeetingsController {
 
   @Roles('empresa')
   @UsePipes(new ValidationPipe({ transform: true, whitelist: true, forbidNonWhitelisted: true }))
+  @ActingAllowed()
   @Post()
   create(@Body() dto: CreateExtraordinariaDto, @Req() req: any) {
     return req.withTenantContext((client: any) =>
@@ -30,11 +32,13 @@ export class MeetingsController {
     );
   }
 
+  @ActingAllowed()
   @Get()
   findAll(@Query('committee_id') committeeId: string | undefined, @Req() req: any) {
     return req.withTenantContext((client: any) => this.meetings.findAll(client, committeeId));
   }
 
+  @ActingAllowed()
   @Get(':id')
   findOne(@Param('id') id: string, @Req() req: any) {
     return req.withTenantContext((client: any) => this.meetings.findOne(client, id));
@@ -42,11 +46,13 @@ export class MeetingsController {
 
   @Roles('empresa')
   @UsePipes(new ValidationPipe({ transform: true, whitelist: true, forbidNonWhitelisted: true }))
+  @ActingAllowed()
   @Patch(':id')
   update(@Param('id') id: string, @Body() dto: UpdateMeetingDto, @Req() req: any) {
     return req.withTenantContext((client: any) => this.meetings.update(client, id, dto as Record<string, unknown>));
   }
 
+  @ActingAllowed()
   @Get(':id/participants')
   findParticipants(@Param('id') id: string, @Req() req: any) {
     return req.withTenantContext((client: any) => this.meetings.findParticipants(client, id));
@@ -54,6 +60,7 @@ export class MeetingsController {
 
   @Roles('empresa')
   @UsePipes(new ValidationPipe({ transform: true, whitelist: true, forbidNonWhitelisted: true }))
+  @ActingAllowed()
   @Put(':id/participants')
   setParticipants(@Param('id') id: string, @Body() dto: SetParticipantsDto, @Req() req: any) {
     for (const p of dto.participants) {
@@ -65,6 +72,7 @@ export class MeetingsController {
   }
 
   @Roles('empresa')
+  @ActingAllowed()
   @Post(':id/aprovar-ata')
   approveAta(@Param('id') id: string, @Req() req: any) {
     return req.withTenantContext((client: any) =>
@@ -73,6 +81,7 @@ export class MeetingsController {
   }
 
   @Roles('empresa')
+  @ActingAllowed()
   @Post(':id/reabrir-ata')
   reopenAta(@Param('id') id: string, @Req() req: any) {
     return req.withTenantContext((client: any) => this.meetings.reopenAta(client, id));
@@ -127,6 +136,7 @@ export class MeetingsController {
     return draft;
   }
 
+  @ActingAllowed()
   @Get(':id/ata-ai-draft')
   async getAtaAiDraft(@Param('id') id: string, @Req() req: any) {
     const draft = await req.withTenantContext((client: any) => this.ataAi.getDraft(client, id));

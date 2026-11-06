@@ -22,8 +22,10 @@ import { CreateFireBrigadeMemberDto } from './dto/create-fire-brigade-member.dto
 import { UpdateFireBrigadeMemberDto } from './dto/update-fire-brigade-member.dto';
 import { CreateFireBrigadeTrainingDto } from './dto/create-fire-brigade-training.dto';
 import { SetCoverageTargetDto } from './dto/set-coverage-target.dto';
+import { ActingAllowed } from '../common/decorators/acting-allowed.decorator';
 
 @Controller('fire-brigade')
+@ActingAllowed()
 export class FireBrigadeController {
   constructor(private readonly brigade: FireBrigadeService) {}
 

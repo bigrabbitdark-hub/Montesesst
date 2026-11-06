@@ -16,8 +16,10 @@ import { Roles } from '../common/decorators/roles.decorator';
 import { CompanyUnitsService } from './company-units.service';
 import { CreateCompanyUnitDto } from './dto/create-company-unit.dto';
 import { UpdateCompanyUnitDto } from './dto/update-company-unit.dto';
+import { ActingAllowed } from '../common/decorators/acting-allowed.decorator';
 
 @Controller('company-units')
+@ActingAllowed()
 @UsePipes(new ValidationPipe({ transform: true, whitelist: true, forbidNonWhitelisted: true }))
 export class CompanyUnitsController {
   constructor(private readonly companyUnits: CompanyUnitsService) {}

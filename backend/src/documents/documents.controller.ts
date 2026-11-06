@@ -32,6 +32,7 @@ import { UpdateDocumentValidityDto } from './dto/update-document-validity.dto';
 import { UpdateValidityRuleDto } from './dto/update-validity-rule.dto';
 import { DOCUMENT_CLASSIFIER_PROVIDER, DocumentClassifierProvider } from './document-classifier-provider.interface';
 import { CompanyDocumentIndexerService } from './company-document-indexer.service';
+import { ActingAllowed } from '../common/decorators/acting-allowed.decorator';
 
 const MAX_BATCH_FILES = 10;
 // 240s de folga segura sob o proxy_read_timeout de 300s do nginx
@@ -70,6 +71,7 @@ export class DocumentsController {
 
   @Roles('empresa', 'tecnico', 'parceiro')
   @UsePipes(new ValidationPipe({ transform: true, whitelist: true, forbidNonWhitelisted: true }))
+  @ActingAllowed()
   @Post()
   @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 10 * 1024 * 1024 } }))
   async upload(@UploadedFile() file: Express.Multer.File, @Body() dto: CreateDocumentDto, @Req() req: any) {
@@ -118,7 +120,11 @@ export class DocumentsController {
     // recriando o mesmo problema). Só depois de já ter todos os embeddings
     // computados é que abrimos a 2ª transação (persistChunks), dedicada só
     // a INSERTs — curta e rápida.
-    if (this.indexer.shouldIndex(document.category, document.mime_type)) {
+    // Ruling 11 (fail-closed): no modo "atuar como empresa" (request.user.actingAs, montado pelo
+    // ActingTenantGuard) o texto NÃO sai para o provedor externo de embedding — o envio de dados da
+    // empresa a provedor de IA pela sócia depende de decisão do dono. O documento é gravado normalmente,
+    // só fica sem indexação. Ver docs/superpowers/specs/2026-11-05-socio-cadastra-e-atua-como-empresa-design.md §3.
+    if (user.actingAs !== true && this.indexer.shouldIndex(document.category, document.mime_type)) {
       // ITEM 003 (auditoria 2026-09-27): busca os nomes já cadastrados do
       // tenant pra minimizar PII antes do texto do documento sair pro
       // provedor externo de embedding — consulta rápida, transação própria
@@ -226,6 +232,7 @@ export class DocumentsController {
   // IMPORTANTE: as rotas de validity-rules são declaradas ANTES de ':id/...'
   // pra que o Nest não tente casar 'validity-rules' como um id. A ordem
   // das declarações no controller importa pro roteador do Express.
+  @ActingAllowed()
   @Get('validity-rules')
   listRules(@Req() req: any) {
     return req.withTenantContext((client: any) => this.documents.findAllRules(client));
@@ -260,6 +267,7 @@ export class DocumentsController {
     );
   }
 
+  @ActingAllowed()
   @Get()
   findAll(@Query('tenant_id') tenantId: string | undefined, @Req() req: any) {
     // Técnico ou parceiro sem tenant_id: RLS já restringe a query às empresas
@@ -268,6 +276,7 @@ export class DocumentsController {
     return req.withTenantContext((client: any) => this.documents.findAll(client, tenantId));
   }
 
+  @ActingAllowed()
   @Get('compliance')
   compliance(@Query('tenant_id') tenantId: string | undefined, @Req() req: any) {
     if ((req.user.role === 'tecnico' || req.user.role === 'parceiro') && !tenantId) {
@@ -286,6 +295,7 @@ export class DocumentsController {
 
   @Roles('empresa', 'tecnico', 'parceiro', 'admin')
   @UsePipes(new ValidationPipe({ transform: true, whitelist: true, forbidNonWhitelisted: true }))
+  @ActingAllowed()
   @Patch(':id/validity')
   async updateValidity(
     @Param('id', new ParseUUIDPipe()) id: string,
@@ -319,12 +329,14 @@ export class DocumentsController {
     );
   }
 
+  @ActingAllowed()
   @Get(':id/download')
   download(@Param('id', new ParseUUIDPipe()) id: string, @Req() req: any) {
     return req.withTenantContext((client: any) => this.documents.getDownloadUrl(client, id));
   }
 
   @Roles('empresa', 'tecnico', 'parceiro', 'admin')
+  @ActingAllowed()
   @Delete(':id')
   remove(@Param('id', new ParseUUIDPipe()) id: string, @Req() req: any) {
     const user = req.user;

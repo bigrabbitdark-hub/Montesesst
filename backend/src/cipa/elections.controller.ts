@@ -4,8 +4,10 @@ import { ElectionsService } from './elections.service';
 import { CreateElectionDto } from './dto/create-election.dto';
 import { CreateCandidateDto } from './dto/create-candidate.dto';
 import { UpdateCandidateDto } from './dto/update-candidate.dto';
+import { ActingAllowed } from '../common/decorators/acting-allowed.decorator';
 
 @Controller('cipa/elections')
+@ActingAllowed()
 export class ElectionsController {
   constructor(private readonly elections: ElectionsService) {}
 

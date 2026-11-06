@@ -32,8 +32,10 @@ import { EpiDashboardService } from './epi-dashboard.service';
 import { EpiDashboardQueryDto, TenantOnlyQueryDto } from './dto/epi-dashboard-query.dto';
 import { UpdateEpiSettingsDto } from './dto/epi-settings.dto';
 import { resolveTenantScope } from './tenant-scope.util';
+import { ActingAllowed } from '../common/decorators/acting-allowed.decorator';
 
 @Controller('epis')
+@ActingAllowed()
 export class EpisController {
   constructor(
     private readonly epi: EpiService,

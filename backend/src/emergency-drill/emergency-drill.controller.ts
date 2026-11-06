@@ -2,8 +2,10 @@ import { BadRequestException, Body, Controller, Get, Param, Post, Query, Req, Us
 import { Roles } from '../common/decorators/roles.decorator';
 import { EmergencyDrillService } from './emergency-drill.service';
 import { CreateEmergencyDrillDto } from './dto/create-emergency-drill.dto';
+import { ActingAllowed } from '../common/decorators/acting-allowed.decorator';
 
 @Controller('emergency-drills')
+@ActingAllowed()
 export class EmergencyDrillController {
   constructor(private readonly drills: EmergencyDrillService) {}
 

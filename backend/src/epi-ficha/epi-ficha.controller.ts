@@ -5,8 +5,10 @@ import { FichaQueryDto } from './dto/ficha-query.dto';
 import { IssueFichaDto } from './dto/issue-ficha.dto';
 import { SignatureStatus } from './epi-ficha.types';
 import { buildFichaPdf } from './ficha-pdf.util';
+import { ActingAllowed } from '../common/decorators/acting-allowed.decorator';
 
 @Controller('epi-fichas')
+@ActingAllowed()
 export class EpiFichaController {
   constructor(private readonly ficha: EpiFichaService) {}
 

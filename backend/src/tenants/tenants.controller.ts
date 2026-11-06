@@ -23,6 +23,7 @@ import { Public } from '../common/decorators/public.decorator';
 import { DatabaseService } from '../common/database/database.service';
 import { TenantsService, Tenant } from './tenants.service';
 import { UpdateTenantDto } from './dto/update-tenant.dto';
+import { ActingAllowed } from '../common/decorators/acting-allowed.decorator';
 
 function withHasLogo(tenant: Tenant) {
   const { logo_file_key, ...rest } = tenant;
@@ -41,6 +42,7 @@ export class TenantsController {
   // sempre resolvendo o próprio tenantId do JWT, nunca um id vindo do
   // cliente.
   @Roles('empresa')
+  @ActingAllowed()
   @Get('me')
   async findMe(@Req() req: any) {
     const tenant = await req.withTenantContext((client: any) => this.tenants.findOne(client, req.user.tenantId));
