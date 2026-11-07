@@ -38,3 +38,9 @@ No e2e `socio-atua-empresa`: criar empresa de assinante (`owner_technician_id` p
 ## Ordem de release combinada (proposta, RECOMENDADO)
 1. (feito) 0108 sócia. 2. 0109 e 0110 do técnico. 3. 0111 guarda — **na mesma janela da 0109**, nunca depois (entre uma e outra a sócia atuaria em assinante). 4. Backends/frontends correspondentes.
 Também resolver o conflito de código com `/opt/montese-sessao` (`jwt.strategy`, `auth.service`) no merge.
+
+## Atualização 2026-11-07 — migration e teste prontos (VERIFICADO no ensaio descartável)
+- `backend/db/pendentes-tecnico/0111_socio_atua_exclui_assinante.sql` (FORA de `db/migrations` de propósito; mover para lá só junto da 0109) e `teste_0111_socio_nao_atua_em_assinante.sql`.
+- Ensaio: cópia do banco de ensaio com 0108 + 0109 + 0110 do técnico (da árvore `/opt/Montese`). Com a 0111: Montese normal = permitida; empresa de assinante (`kind='tecnico_proprio'`, dono com `account_type='assinante'`) = negada. **Sabotagem** (voltar ao corpo da 0108): a negação do assinante vira `f` (teste fica vermelho); restaurando a 0111, volta a verde. Dono `montese_auth_bypass`, SECURITY DEFINER, EXECUTE só `montese_app` (não PUBLIC) conferidos após a troca.
+- Lição do teste: tenants nascem `pendente`; sem `status='ativo'` a "permitida" dava falso e o teste não provava nada (corrigido).
+- NÃO VERIFICADO: o e2e HTTP (`POST /atuacao/clientes/:id/atuar` → 403 em assinante), pois depende do código do técnico assinante, ainda não commitado/mesclado.
